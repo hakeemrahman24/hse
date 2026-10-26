@@ -1,0 +1,32 @@
+{{define "content"}}
+{{$edit := and .EditUser .EditUser.ID}}
+<form method="post" action="{{if $edit}}/users/{{.EditUser.ID}}/edit{{else}}/users/new{{end}}">
+  <fieldset class="module aligned">
+    <div class="form-row">
+      <label>Username</label>
+      <input type="text" name="username" maxlength="64" value="{{with .EditUser}}{{.Username}}{{end}}" required>
+    </div>
+    <div class="form-row">
+      <label>Full name</label>
+      <input type="text" name="full_name" value="{{with .EditUser}}{{.FullName}}{{end}}">
+    </div>
+    <div class="form-row">
+      <label>Role</label>
+      <select name="role">
+        <option value="user"{{if or (not .EditUser) (ne .EditUser.Role "admin")}} selected{{end}}>User (three modules)</option>
+        <option value="admin"{{if and .EditUser (eq .EditUser.Role "admin")}} selected{{end}}>Admin (also Settings)</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>{{if $edit}}New password{{else}}Password{{end}}</label>
+      <input type="password" name="{{if $edit}}new_password{{else}}password{{end}}" minlength="8" autocomplete="new-password"{{if not $edit}} required{{end}}>
+      {{if $edit}}<small class="field-hint">Leave empty to keep the current password. To go back to the default, use Reset password on the Users page.</small>{{end}}
+    </div>
+  </fieldset>
+  {{if $edit}}<p class="obs-muted">Renaming a user keeps the posts they entered.</p>{{end}}
+  <div class="submit-row">
+    <input type="submit" value="Save">
+    <a href="/users" class="closelink">Cancel</a>
+  </div>
+</form>
+{{end}}

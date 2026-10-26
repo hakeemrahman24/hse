@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{tr .Lang "Fatigue screening"}} · SOFI</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <link rel="stylesheet" href="/static/sofi.css?v=5" />
+</head>
+<body>
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/sofi/start" class="nav-logo">hse <span>medpost</span></a>
+      <div class="lang-switch" role="group" aria-label="{{tr .Lang "Language"}}">
+        {{range .Langs}}<a href="/sofi/lang?l={{.Code}}&amp;next={{$.Path}}" lang="{{.Code}}" title="{{.Label}}"{{if eq .Code $.Lang}} class="active" aria-current="true"{{end}}>{{.Short}}</a>{{end}}
+      </div>
+      <div class="nav-cta">
+        <span class="btn-ghost" style="pointer-events:none">{{.Name}}</span>
+        <form method="post" action="/sofi/signout" style="display:inline"><button type="submit" class="btn-primary">{{tr .Lang "Sign out"}}</button></form>
+      </div>
+    </div>
+  </nav>
+
+  <div class="login-wrap">
+    <div class="login-card login-card--wide">
+      <h1>{{tr .Lang "Fatigue screening"}}</h1>
+      <p class="sub"><i>Swedish Occupational Fatigue Inventory</i> (SOFI)</p>
+
+      <p id="sofi-error" role="alert" class="sofi-error" hidden></p>
+
+      <form id="sofi-form" autocomplete="off" novalidate
+        data-lang="{{.Lang}}"
+        data-msg-answer-all="{{tr .Lang "Please answer every word."}}"
+        data-msg-weeks="{{tr .Lang "Choose the weeks on site."}}"
+        data-msg-failed="{{tr .Lang "Something went wrong."}}"
+        data-level-low="{{tr .Lang "Low"}}" data-level-moderate="{{tr .Lang "Moderate"}}" data-level-high="{{tr .Lang "High"}}"
+        data-help-low="{{tr .Lang (index .LevelHelp "Low")}}"
+        data-help-moderate="{{tr .Lang (index .LevelHelp "Moderate")}}"
+        data-help-high="{{tr .Lang (index .LevelHelp "High")}}">
+
+        <dl class="sofi-profile">
+          <div><dt>{{tr .Lang "Name"}}</dt><dd>{{.Profile.Name}}</dd></div>
+          <div><dt>{{tr .Lang "Date of birth"}}</dt><dd>{{.Profile.DateOfBirth}}</dd></div>
+          <div><dt>{{tr .Lang "Work position"}}</dt><dd>{{if .Profile.WorkPosition}}{{.Profile.WorkPosition}}{{else}}&ndash;{{end}}</dd></div>
+          <div><dt>{{tr .Lang "Company"}}</dt><dd>{{if .Profile.Company}}{{.Profile.Company}}{{else}}&ndash;{{end}}</dd></div>
+          <div><dt>{{tr .Lang "Age"}}</dt><dd>{{.Profile.Age}} {{tr .Lang "years"}}</dd></div>
+          <div><dt>{{tr .Lang "MCU review status"}}</dt><dd>{{tr .Lang .Profile.MCUReviewStatus}}</dd></div>
+          <div class="sofi-weeks">
+            <dt><label for="weeks">{{tr .Lang "Weeks on site"}}</label></dt>
+            <dd>
+              <select id="weeks" required>
+                <option value="">{{tr .Lang "Choose"}}</option>
+                {{range .WeekChoices}}<option value="{{.}}">{{.}}</option>{{end}}
+                <option value="{{.WeeksOverYear}}">{{tr .Lang "More than 1 year"}}</option>
+              </select>
+            </dd>
+          </div>
+        </dl>
+
+        <p class="sub sofi-hint sofi-instruction">{{tr .Lang "How much does each word describe how you feel? Choose 0 to 6."}}</p>
+        <p class="sofi-hint sofi-anchors"><span>0 = {{tr .Lang "Not at all"}}</span><span>6 = {{tr .Lang "To a very large extent"}}</span></p>
+
+        <ol class="sofi-items">
+          {{range $it := .Items}}
+          <li class="sofi-item" data-item="{{$it.Number}}">
+            <fieldset>
+              <legend>{{$it.Text $.Lang}}</legend>
+              <div class="sofi-scale">
+                {{range $.Scale}}<label><input type="radio" name="q{{$it.Number}}" value="{{.}}" /><span>{{.}}</span></label>{{end}}
+              </div>
+            </fieldset>
+          </li>
+          {{end}}
+        </ol>
+
+        <div class="submit-row">
+          <button type="submit" class="btn-primary">{{tr .Lang "Submit"}}</button>
+        </div>
+      </form>
+
+      <section id="sofi-result" hidden>
+        <h2>{{tr .Lang "Your result"}}</h2>
+        <div id="sofi-bars"></div>
+        <p class="sofi-total"><strong>{{tr .Lang "Total score"}}:</strong> <span id="sofi-total"></span> &middot; <span id="sofi-level" class="sofi-level"></span></p>
+        <p id="sofi-help"></p>
+        <p class="sub sofi-hint">{{tr .Lang "This is a screening result, not a diagnosis."}}</p>
+      </section>
+    </div>
+  </div>
+
+  <script src="/static/sofi-form.js?v=3" defer></script>
+</body>
+</html>

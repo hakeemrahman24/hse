@@ -1,0 +1,53 @@
+hazard_class,hazard_category
+Physical,Machinery & Work Equipment
+Physical,Mechanical Lifting / Load Handling
+Physical,Vehicles & Mobile Equipment
+Physical,Pressurized / Vacuum Systems
+Physical,Stored Energy
+Physical,Caught In / Between
+Physical,Struck By
+Physical,Cuts & Sharp Edges
+Physical,Fall from Height
+Physical,Dropped / Falling Objects
+Physical,"Slips, Trips & Falls"
+Physical,Excavation Collapse / Underground Services
+Physical,Structural Collapse
+Physical,Landslide / Slope Instability
+Physical,Electricity
+Physical,Fire
+Physical,Explosion / Flammable Atmosphere
+Physical,Loss of Containment
+Physical,Hot Surfaces / Burns
+Physical,Drowning / Work Over Water
+Physical,Unauthorized Access / Theft
+Physical,Community & Civil Disturbance
+Physical,Other
+Physical,Confined Space
+Physical,Hand & Power Tools
+Physical,Noise
+Physical,Vibration
+Physical,Heat Stress
+Physical,Poor Lighting
+Physical,Extreme Weather / Lightning
+Physical,Ionizing Radiation
+Physical,Non-Ionizing Radiation
+Physical,Spill / Leakage
+Physical,Waste Management
+Physical,Air Emission & Dust
+Physical,Land Disturbance & Biodiversity
+Physical,Natural Event
+Chemical,Hazardous Substances
+Chemical,Toxic Gas / Oxygen Deficiency
+Chemical,Dust & Welding Fumes
+Biological,Infection / Contaminated Food or Water
+Biological,"Animals, Insects & Plants"
+Biological,Infection / Illness
+Ergonomic,Manual Handling
+Ergonomic,Upper-Limb Disorders & Workstation
+Psychosocial,Mental Ill-Health & Stress
+Psychosocial,Violence & Harassment
+Psychosocial,Substance Abuse
+Psychosocial,Fatigue & Working Hours
+Psychosocial,Welfare - Accommodation
+Psychosocial,Welfare - Facilities
+Psychosocial,Welfare - Workload & Treatment

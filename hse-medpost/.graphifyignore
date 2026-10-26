@@ -1,0 +1,7 @@
+# Legacy apps kept for reading only. graphify detect.py loads this file
+# and skips matching paths on every scan.
+_reference/
+# Agent rules and skills, not the application.
+.cursor/
+# Uploaded photos and PDFs, not source.
+data/

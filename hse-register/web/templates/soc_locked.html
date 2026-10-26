@@ -1,0 +1,5 @@
+{{define "main"}}
+<h1>{{heading .Lang "Cannot be edited"}}</h1>
+{{if .Closed}}<p class="sub">{{tr .Lang "Report"}} <strong>{{.Ref}}</strong> {{tr .Lang "is closed. Verification is up to the HSE team."}}</p>{{else}}<p class="sub">{{tr .Lang "Report"}} <strong>{{.Ref}}</strong> {{tr .Lang "has been verified by the HSE team or closed, so it can no longer be edited."}}</p>{{end}}
+<p style="margin-top:20px"><a class="btn-primary" href="/soc/mine">{{tr .Lang "My submissions"}}</a></p>
+{{end}}

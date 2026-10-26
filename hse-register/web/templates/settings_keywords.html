@@ -1,0 +1,135 @@
+{{define "content"}}
+<div class="settings-panel-body kw-layout">
+  <div class="kw-side">
+    {{with .EditKeyword}}{{$row := .}}
+    <div class="app-sidebar-label">Edit keyword</div>
+    <form method="post" action="/admin/settings/keywords/{{.ID}}/save" class="settings-grid">
+      <input type="hidden" name="filter" value="{{if $.TopicFilter}}{{$.TopicFilter}}{{end}}" />
+      <label class="span-all">
+        <span>Topic</span>
+        <select name="topic" required>
+          {{range $.TopicOptions}}<option value="{{.ID}}"{{if eq .ID $row.TopicID}} selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+      </label>
+      <label class="span-all">
+        <span>Keyword</span>
+        <input type="text" name="keyword" value="{{.Keyword}}" maxlength="100" required autofocus />
+      </label>
+      <label>
+        <span>Matches</span>
+        <select name="match">
+          <option value="prefix"{{if not .Whole}} selected{{end}}>Starts with</option>
+          <option value="whole"{{if .Whole}} selected{{end}}>Whole word</option>
+        </select>
+      </label>
+      <label>
+        <span>Weight (1–10)</span>
+        <input type="number" name="weight" value="{{.Weight}}" min="1" max="10" required />
+      </label>
+      <div class="span-all settings-actions">
+        <button type="submit" class="btn-primary">Save</button>
+        <a class="btn-ghost" href="/admin/settings/keywords{{if $.TopicFilter}}?topic={{$.TopicFilter}}{{end}}">Cancel</a>
+      </div>
+    </form>
+    {{end}}
+
+    <div class="app-sidebar-label">Add keyword</div>
+    <form method="post" action="/admin/settings/keywords" class="settings-grid">
+      <input type="hidden" name="filter" value="{{if .TopicFilter}}{{.TopicFilter}}{{end}}" />
+      <label class="span-all">
+        <span>Topic</span>
+        <select name="topic" required>
+          <option value="">Select…</option>
+          {{range .TopicOptions}}<option value="{{.ID}}"{{if eq .ID $.TopicFilter}} selected{{end}}>{{.Name}}</option>{{end}}
+        </select>
+      </label>
+      <label class="span-all">
+        <span>Keyword</span>
+        <input type="text" name="keyword" maxlength="100" placeholder="e.g. ketinggian" required />
+      </label>
+      <label>
+        <span>Matches</span>
+        <select name="match">
+          <option value="prefix">Starts with</option>
+          <option value="whole">Whole word</option>
+        </select>
+      </label>
+      <label>
+        <span>Weight (1–10)</span>
+        <input type="number" name="weight" value="1" min="1" max="10" required />
+      </label>
+      <div class="span-all"><button type="submit" class="btn-primary">Add keyword</button></div>
+    </form>
+
+    <div class="app-sidebar-label">Try a description</div>
+    <form method="get" action="/admin/settings/keywords" class="settings-grid">
+      {{if .TopicFilter}}<input type="hidden" name="topic" value="{{.TopicFilter}}" />{{end}}
+      <label class="span-all">
+        <span>Type what staff might write</span>
+        <input type="text" name="try" value="{{.TryText}}" maxlength="300" placeholder="e.g. bekerja di ketinggian tanpa harness" />
+      </label>
+      <div class="span-all settings-actions">
+        <button type="submit" class="btn-primary">Check</button>
+        {{if .TryText}}
+          {{if .TryResult.Topic}}<span>Suggests <b>{{.TryResult.Topic}}</b>{{if .TryResult.Hazard}} · {{.TryResult.Hazard}}{{end}}</span>
+          {{else}}<span class="obs-muted">No topic matches this text.</span>{{end}}
+        {{end}}
+      </div>
+    </form>
+  </div>
+
+  <div class="kw-main">
+    <div class="app-sidebar-label">Topics and their keywords</div>
+    <div class="table-scroll">
+      <table class="data-table compact kw-table">
+        <thead><tr><th>Class</th><th>Category</th><th>Topic</th><th>Keywords</th><th></th></tr></thead>
+        <tbody>
+        {{range .TopicRows}}
+          <tr class="{{if eq .ID $.TopicFilter}}row-editing{{end}}">
+            <td>{{.Class}}</td>
+            <td>{{.Category}}</td>
+            <td>{{.Name}}</td>
+            <td>{{range $i, $k := .Keywords}}{{if $i}}; {{end}}<span{{if not $k.Active}} class="kw-off" title="Turned off"{{end}}>{{$k.Keyword}}</span>{{else}}<span class="obs-muted">None yet</span>{{end}}</td>
+            <td class="row-actions"><a class="btn-ghost" href="/admin/settings/keywords?topic={{.ID}}#kw-manage">Manage</a></td>
+          </tr>
+        {{else}}
+          <tr><td colspan="5">No topics found.</td></tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
+
+    {{if .TopicFilter}}
+    <div class="app-sidebar-label" id="kw-manage">Keywords of {{.ManageName}}</div>
+    <div class="table-scroll">
+      <table class="data-table compact">
+        <thead><tr><th>Keyword</th><th>Matches</th><th>Weight</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+        {{range .ManageRows}}
+          <tr class="{{if not .Active}}row-archived{{end}}{{if eq .ID $.EditID}} row-editing{{end}}">
+            <td>{{.Keyword}}</td>
+            <td>{{if .Whole}}Whole word{{else}}Starts with{{end}}</td>
+            <td>{{.Weight}}</td>
+            <td>{{if .Active}}On{{else}}<span class="badge badge-archived">Off</span>{{end}}</td>
+            <td class="row-actions">
+              <a class="btn-ghost" href="/admin/settings/keywords?topic={{$.TopicFilter}}&amp;edit={{.ID}}">Edit</a>
+              {{if .Active}}
+              <form method="post" action="/admin/settings/keywords/{{.ID}}/off"><input type="hidden" name="filter" value="{{$.TopicFilter}}" /><button type="submit">Turn off</button></form>
+              {{else}}
+              <form method="post" action="/admin/settings/keywords/{{.ID}}/on"><input type="hidden" name="filter" value="{{$.TopicFilter}}" /><button type="submit">Turn on</button></form>
+              {{end}}
+              <form method="post" action="/admin/settings/keywords/{{.ID}}/delete" onsubmit="return confirm('Delete this keyword?');"><input type="hidden" name="filter" value="{{$.TopicFilter}}" /><button type="submit" class="link-danger">Delete</button></form>
+            </td>
+          </tr>
+        {{else}}
+          <tr><td colspan="5">No keywords yet. Add the first one on the left.</td></tr>
+        {{end}}
+        </tbody>
+      </table>
+    </div>
+    <p><a class="btn-ghost" href="/admin/settings/keywords">Close</a></p>
+    {{end}}
+    <p class="obs-muted list-note">While staff type a description, each keyword found in it adds its weight to its topic, and the topic with the highest total is suggested together with its category. <b>Starts with</b> also finds longer words (<i>ketinggian</i> finds “ketinggian kerja”); <b>Whole word</b> finds only that word (<i>las</i> does not find “alas”). Dimmed keywords are turned off. Changes apply at once.</p>
+  </div>
+</div>
+{{end}}

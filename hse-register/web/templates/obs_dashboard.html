@@ -1,0 +1,90 @@
+{{define "bars"}}
+<ul class="dash-bars">
+  {{range .}}<li>
+    <span class="dash-bar-label">{{.Label}}</span>
+    <span class="dash-bar"><span class="dash-bar-fill" style="width:{{.Percent}}%"></span></span>
+    <span class="dash-bar-count">{{.Count}}</span>
+  </li>{{end}}
+</ul>
+{{end}}
+
+{{define "dashblock"}}
+<section class="dash-block">
+  <h2>{{.Title}}</h2>
+  <div class="dash-block-cards">
+    <a class="dash-card dash-card--total" href="{{.TotalURL}}"><span class="dash-num">{{.Total}}</span><span class="dash-label">Total findings</span></a>
+    <a class="dash-card dash-card--open" href="{{.OpenURL}}"><span class="dash-num">{{.Open}}</span><span class="dash-label">Total open</span></a>
+    <a class="dash-card dash-card--progress" href="{{.InProgressURL}}"><span class="dash-num">{{.InProgress}}</span><span class="dash-label">Total in progress</span></a>
+    <a class="dash-card dash-card--closed" href="{{.ClosedURL}}"><span class="dash-num">{{.Closed}}</span><span class="dash-label">Total closed</span></a>
+    {{if .ShowPositive}}<span class="dash-card dash-card--positive"><span class="dash-num">{{.Positive}}</span><span class="dash-label">Positive findings</span></span>{{end}}
+  </div>
+  {{if .Total}}
+  <div class="dash-stack" role="img" aria-label="Open {{.OpenPct}}%, in progress {{.InProgressPct}}%, closed {{.ClosedPct}}%">
+    <span class="s-open" style="width:{{.OpenPct}}%"></span><span class="s-progress" style="width:{{.InProgressPct}}%"></span><span class="s-closed" style="width:{{.ClosedPct}}%"></span>
+  </div>
+  <div class="dash-legend"><span>Open {{.OpenPct}}%</span><span>In progress {{.InProgressPct}}%</span><span>Closed {{.ClosedPct}}%</span></div>
+  {{else}}<p class="obs-muted" style="margin-top:12px">No findings in this period.</p>{{end}}
+  {{if and .Breakdown .Total}}
+  <div class="dash-breakdowns">
+    <div class="dash-hazards"><h3>Hazard categories</h3>{{if .Hazards}}{{template "bars" .Hazards}}{{else}}<p class="obs-muted">Not classified yet.</p>{{end}}</div>
+    <div class="dash-areas"><h3>Area</h3>{{template "bars" .Areas}}</div>
+    <div class="dash-subs"><h3>Subcontractor</h3>{{template "bars" .Subcontractors}}</div>
+  </div>
+  <p class="obs-muted">Top 10 shown in each list.</p>
+  {{end}}
+</section>
+{{end}}
+
+{{define "ranklist"}}
+<ol class="rank-list">
+  {{range .}}<li>
+    <span class="rank-pos">{{.Pos}}</span>
+    <div class="rank-body">
+      <span class="rank-head">
+        <span class="rank-name">{{if .URL}}<a href="{{.URL}}">{{.Name}}</a>{{else}}{{.Name}}{{end}}{{if .Sub}} <small>{{.Sub}}</small>{{end}}</span>
+        <span class="rank-rate rate-{{.RateClass}}" title="Closing rate: closed findings out of all findings">Closed {{.Rate}}%</span>
+      </span>
+      <span class="rank-track"><span class="rank-bar" style="width:{{.Bar}}%" role="img" aria-label="Closed {{.ClosedPct}}%, in progress {{.InProgressPct}}%, open {{.OpenPct}}%">
+        <span class="s-closed" style="width:{{.ClosedPct}}%"></span><span class="s-progress" style="width:{{.InProgressPct}}%"></span><span class="s-open" style="width:{{.OpenPct}}%"></span>
+      </span></span>
+      <span class="rank-nums"><b>{{.Total}}</b> finding{{if ne .Total 1}}s{{end}} · closed {{.Closed}} ({{.ClosedPct}}%) · in progress {{.InProgress}} ({{.InProgressPct}}%) · open {{.Open}} ({{.OpenPct}}%)</span>
+    </div>
+  </li>{{end}}
+</ol>
+{{end}}
+
+{{define "content"}}
+{{with .Dash}}
+<nav class="dash-tabs" aria-label="Dashboard views">
+  <a class="dash-tab{{if not .Tab}} active" aria-current="page{{end}}" href="{{.OverviewURL}}">Overview</a>
+  <a class="dash-tab{{if .Tab}} active" aria-current="page{{end}}" href="{{.CompaniesURL}}">Companies &amp; people</a>
+</nav>
+{{end}}
+{{template "datefilter" .}}
+{{with .Dash}}
+{{if .Tab}}
+<div class="rank-tools">
+  <nav class="rank-sort" aria-label="Order the rankings">
+    <span>Order by</span>
+    {{range .SortLinks}}<a class="rank-sort-opt{{if .Active}} active" aria-current="true{{end}}" href="{{.URL}}">{{.Label}}</a>{{end}}
+  </nav>
+  <div class="co-legend"><span class="pie-closed">Closed</span><span class="pie-progress">In progress</span><span class="pie-open">Open</span></div>
+</div>
+{{if or (eq .Sort "rate") (eq .Sort "best")}}<p class="obs-muted">{{if eq .Sort "rate"}}Lowest{{else}}Highest{{end}} closing rate first. Only companies and people with at least 5 findings are ranked, so one finding does not top the list.</p>{{end}}
+<div class="dash-two">
+  <section class="dash-block">
+    <h2>Top 10 companies <small>(responsible company, by findings)</small></h2>
+    {{if .TopCompanies}}{{template "ranklist" .TopCompanies}}{{else}}<p class="obs-muted">No findings in this period.</p>{{end}}
+  </section>
+  <section class="dash-block">
+    <h2>Top 10 individuals <small>(who reported the most findings)</small></h2>
+    {{if .TopPeople}}{{template "ranklist" .TopPeople}}{{else}}<p class="obs-muted">No findings in this period.</p>{{end}}
+  </section>
+</div>
+<p class="obs-muted">All sources, same date filter. Click a company to see its findings.</p>
+{{else}}
+{{if .AwaitingVerification}}<p class="dash-note"><a href="{{.AwaitingURL}}">{{.AwaitingVerification}} SOC post{{if ne .AwaitingVerification 1}}s{{end}} waiting for verification</a></p>{{end}}
+{{range $i, $b := .Blocks}}{{if eq $i 1}}<div class="dash-two">{{end}}{{template "dashblock" $b}}{{if eq $i 2}}</div>{{end}}{{end}}
+{{end}}
+{{end}}
+{{end}}

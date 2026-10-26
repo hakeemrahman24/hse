@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" class="vt-cover">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @view-transition { navigation: auto; }
+    html { background: #E8F4F2; }
+    html.vt-cover { visibility: hidden; }
+    ::view-transition-group(root) { animation-duration: 120ms; }
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-group(root) { animation: none; }
+    }
+  </style>
+  <noscript><style>html.vt-cover { visibility: visible; }</style></noscript>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inventory · hse-medpost</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
+  <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <script>
+    document.documentElement.classList.remove("vt-cover");
+  </script>
+</head>
+<body>
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/start" class="nav-logo">hse <span>medpost</span></a>
+      <div class="nav-cta">
+        <button type="button" id="logout" class="btn-primary">Log out</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="dev-notice-wrap">
+    <div class="dev-notice-stack">
+    <div id="presence-banner" class="presence-card" hidden></div>
+    <div class="dev-notice">
+      <h1>Inventory</h1>
+      <p>Page still under development.</p>
+    </div>
+    </div>
+  </div>
+
+  <script src="/static/session-guard.js"></script>
+  <script src="/static/busy.js"></script>
+  <script src="/static/presence.js"></script>
+  <script src="/static/page-shell.js"></script>
+  <script>startPresence(() => "Inventory");</script>
+
+  <footer class="app-dev-credit">
+    <p>Developed by dr. Arif Rahman Hakim.</p>
+    <p>Internal HSE record-keeping only. This does not replace clinical judgment, and the developer is not liable for data-entry errors or decisions based on this system.</p>
+  </footer>
+</body>
+</html>

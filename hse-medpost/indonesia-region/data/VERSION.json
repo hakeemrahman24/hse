@@ -1,0 +1,14 @@
+{
+  "source": "https://raw.githubusercontent.com/cahyadsn/wilayah/d68e8d5516f969d1905d0b2940f20034becb0db7/db/wilayah.sql",
+  "ref": "d68e8d5516f969d1905d0b2940f20034becb0db7",
+  "decree": "Kepmendagri No 300.2.2-2138 Tahun 2025",
+  "source_sha256": "c4c3396d9380d4edee072af1d9dff83573b574d7cd00a6562cf82e200e954031",
+  "fetched_at": "2026-10-20T07:58:45",
+  "total": 91599,
+  "levels": {
+    "province": 38,
+    "regency": 514,
+    "district": 7285,
+    "village": 83762
+  }
+}

@@ -1,0 +1,202 @@
+{{define "main"}}
+{{$in := .Wiz.Input}}
+<h1>{{heading .Lang "Observation Finding"}}</h1>
+{{if .ServerFailed}}<p role="alert" style="color:#b42318;font-size:0.875rem">{{tr .Lang "Could not save, please try again."}}</p>{{end}}
+
+<form method="post" action="/soc/new" enctype="multipart/form-data" id="wizard" class="add-activity wz" novalidate
+      data-path="{{$in.Path}}" data-qr="{{if .Wiz.AreaFromQR}}1{{end}}" data-qr-sub="{{if .Wiz.SubAreaFromQR}}1{{end}}" data-subareas="{{.Wiz.SubAreasJSON}}"
+      data-step="{{tr .Lang "Step {n} of {total}"}}" data-reset="{{tr .Lang "Start over"}}" data-send="{{tr .Lang "Submit"}}" data-next="{{tr .Lang "Next"}}">
+  <input type="hidden" name="path" id="wz-path" value="{{$in.Path}}">
+  <input type="hidden" name="hazard_id" id="hazard_id" value="{{$in.HazardID}}">
+  <p id="wz-progress" class="wz-progress" aria-live="polite"></p>
+
+  <section class="wz-screen" data-screen="start">
+    <h2 class="wz-q">{{tr .Lang "What did you see?"}}</h2>
+    <div class="wz-choices">
+      <button type="button" class="wz-choice" data-path="A">{{tr .Lang "Unsafe action"}}</button>
+      <button type="button" class="wz-choice" data-path="B">{{tr .Lang "Unsafe condition"}}</button>
+      <button type="button" class="wz-choice" data-path="C">{{tr .Lang "Safe observation"}}</button>
+      <button type="button" class="wz-choice" data-path="D">{{tr .Lang "Suggestion"}}</button>
+    </div>
+    {{with .Errors.path}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="area" data-paths="ABCD" hidden>
+    <label class="wz-q" for="wz-area">{{tr .Lang "Observation area"}}</label>
+    <select name="area" id="wz-area" data-req>
+      <option value="">{{tr .Lang "Select…"}}</option>
+      {{range .Areas}}<option value="{{.}}"{{if eq . $in.Area}} selected{{end}}>{{.}}</option>{{end}}
+    </select>
+    {{with .Errors.area}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="subarea" data-paths="ABCD" data-cond="subarea" hidden>
+    <label class="wz-q" for="wz-subarea">{{tr .Lang "Sub-area"}}</label>
+    <select name="sub_area" id="wz-subarea" data-req>
+      <option value="">{{tr .Lang "Select…"}}</option>
+      {{range .Wiz.SubOptions}}<option value="{{.}}"{{if eq . $in.SubArea}} selected{{end}}>{{.}}</option>{{end}}
+    </select>
+    {{with .Errors.sub_area}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="company" data-paths="AC" hidden>
+    <label class="wz-q" for="wz-company">{{tr .Lang "Company of the people you saw"}}</label>
+    <input type="text" name="company" id="wz-company" value="{{$in.Company}}" list="company-list" autocomplete="off" maxlength="255" data-req placeholder="{{tr .Lang "Type to search"}}">
+    <small class="field-hint">{{tr .Lang "Do not write people's names."}}</small>
+    {{with .Errors.company}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="owner" data-paths="B" hidden>
+    <label class="wz-q" for="wz-owner">{{tr .Lang "Area owner (company)"}}</label>
+    <input type="text" name="area_owner" id="wz-owner" value="{{$in.AreaOwner}}" list="company-list" autocomplete="off" maxlength="255" data-req placeholder="{{tr .Lang "Type to search"}}">
+    {{with .Errors.area_owner}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+  <datalist id="company-list">{{range .Companies}}<option value="{{.}}">{{end}}</datalist>
+
+  <section class="wz-screen" data-screen="work" data-paths="A" data-topic hidden>
+    <label class="wz-q" for="wz-work">{{tr .Lang "What work was being done?"}}</label>
+    <textarea name="work" id="wz-work" class="wz-desc" rows="3" maxlength="5000" data-req>{{if eq $in.Path "A"}}{{$in.Work}}{{end}}</textarea>
+    <small class="field-hint">{{tr .Lang "Example: grinding in the workshop"}}</small>
+    {{with .Errors.work}}{{if eq $in.Path "A"}}<small class="field-error">{{.}}</small>{{end}}{{end}}
+    <div class="wz-topic-slot"></div>
+  </section>
+
+  <section class="wz-screen" data-screen="condition" data-paths="B" data-topic hidden>
+    <label class="wz-q" for="wz-condition">{{tr .Lang "What unsafe condition did you see?"}}</label>
+    <textarea name="condition" id="wz-condition" class="wz-desc" rows="3" maxlength="5000" data-req>{{$in.Condition}}</textarea>
+    <small class="field-hint">{{tr .Lang "Example: cables across the walkway"}}</small>
+    {{with .Errors.condition}}<small class="field-error">{{.}}</small>{{end}}
+    <div class="wz-topic-slot"></div>
+  </section>
+
+  <section class="wz-screen" data-screen="improve" data-paths="D" data-topic hidden>
+    <label class="wz-q" for="wz-improve">{{tr .Lang "What needs to be improved?"}}</label>
+    <textarea name="improve" id="wz-improve" class="wz-desc" rows="3" maxlength="5000" data-req>{{$in.Improve}}</textarea>
+    {{with .Errors.improve}}<small class="field-error">{{.}}</small>{{end}}
+    <div class="wz-topic-slot"></div>
+  </section>
+
+  <section class="wz-screen" data-screen="reason" data-paths="A" data-auto hidden>
+    <p class="wz-q" id="wz-reason-q">{{tr .Lang "What is unsafe?"}}</p>
+    <div class="wz-options" role="radiogroup" aria-labelledby="wz-reason-q">
+      {{range .Wiz.UnsafeReasons}}<label class="wz-opt"><input type="radio" name="unsafe_reason" value="{{.Value}}"{{if .PPE}} data-ppe="1"{{end}}{{if eq .Value $in.UnsafeReason}} checked{{end}}><span>{{.Label}}</span></label>{{end}}
+    </div>
+    {{with .Errors.unsafe_reason}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="ppe" data-paths="A" data-cond="ppe" data-auto hidden>
+    <p class="wz-q" id="wz-ppe-q">{{tr .Lang "Which PPE item?"}}</p>
+    <div class="wz-options" role="radiogroup" aria-labelledby="wz-ppe-q">
+      {{range .Wiz.PPEItems}}<label class="wz-opt"><input type="radio" name="ppe_item" value="{{.Value}}"{{if eq .Value $in.PPEItem}} checked{{end}}><span>{{.Label}}</span></label>{{end}}
+    </div>
+    {{with .Errors.ppe_item}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="stop" data-paths="A" data-auto hidden>
+    <p class="wz-q" id="wz-stop-q">{{tr .Lang "Was the work stopped?"}}</p>
+    <div class="wz-options wz-yesno" role="radiogroup" aria-labelledby="wz-stop-q">
+      <label class="wz-opt"><input type="radio" name="stop_work" value="yes"{{if eq $in.StopWork "yes"}} checked{{end}}><span>{{tr .Lang "Yes"}}</span></label>
+      <label class="wz-opt"><input type="radio" name="stop_work" value="no"{{if eq $in.StopWork "no"}} checked{{end}}><span>{{tr .Lang "No"}}</span></label>
+    </div>
+    {{with .Errors.stop_work}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="stopped" data-paths="A" data-cond="stopped" data-auto hidden>
+    <p class="wz-q" id="wz-by-q">{{tr .Lang "Who stopped it?"}}</p>
+    <div class="wz-options" role="radiogroup" aria-labelledby="wz-by-q">
+      {{range .Wiz.StoppedBy}}<label class="wz-opt"><input type="radio" name="stopped_by" value="{{.Value}}"{{if eq .Value $in.StoppedBy}} checked{{end}}><span>{{.Label}}</span></label>{{end}}
+    </div>
+    {{with .Errors.stopped_by}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="shouldstop" data-paths="A" data-cond="shouldstop" data-auto hidden>
+    <p class="wz-q" id="wz-should-q">{{tr .Lang "Should this work have been stopped?"}}</p>
+    <div class="wz-options wz-yesno" role="radiogroup" aria-labelledby="wz-should-q">
+      <label class="wz-opt"><input type="radio" name="should_stop" value="yes"{{if eq $in.ShouldStop "yes"}} checked{{end}}><span>{{tr .Lang "Yes"}}</span></label>
+      <label class="wz-opt"><input type="radio" name="should_stop" value="no"{{if eq $in.ShouldStop "no"}} checked{{end}}><span>{{tr .Lang "No"}}</span></label>
+    </div>
+  </section>
+
+  <section class="wz-screen" data-screen="danger" data-paths="B" data-auto hidden>
+    <p class="wz-q" id="wz-danger-q">{{tr .Lang "Is there immediate danger?"}}</p>
+    <div class="wz-options wz-yesno" role="radiogroup" aria-labelledby="wz-danger-q">
+      <label class="wz-opt"><input type="radio" name="danger" value="yes"{{if eq $in.Danger "yes"}} checked{{end}}><span>{{tr .Lang "Yes"}}</span></label>
+      <label class="wz-opt"><input type="radio" name="danger" value="no"{{if eq $in.Danger "no"}} checked{{end}}><span>{{tr .Lang "No"}}</span></label>
+    </div>
+    {{with .Errors.danger}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="barricaded" data-paths="B" data-auto hidden>
+    <p class="wz-q" id="wz-barr-q">{{tr .Lang "Is it barricaded or stopped?"}}</p>
+    <div class="wz-options wz-yesno" role="radiogroup" aria-labelledby="wz-barr-q">
+      <label class="wz-opt"><input type="radio" name="barricaded" value="yes"{{if eq $in.Barricaded "yes"}} checked{{end}}><span>{{tr .Lang "Yes"}}</span></label>
+      <label class="wz-opt"><input type="radio" name="barricaded" value="no"{{if eq $in.Barricaded "no"}} checked{{end}}><span>{{tr .Lang "No"}}</span></label>
+    </div>
+    <p id="wz-urgent" class="wz-urgent" role="alert" hidden>{{tr .Lang "Tell your supervisor now. HSE is told this is urgent."}}</p>
+    {{with .Errors.barricaded}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="goodpractice" data-paths="C" data-auto hidden>
+    <p class="wz-q" id="wz-good-q">{{tr .Lang "What was done well?"}}</p>
+    <div class="wz-options" role="radiogroup" aria-labelledby="wz-good-q">
+      {{range .Wiz.GoodPractices}}<label class="wz-opt"><input type="radio" name="good_practice" value="{{.Value}}"{{if eq .Value $in.GoodPractice}} checked{{end}}><span>{{.Label}}</span></label>{{end}}
+    </div>
+    {{with .Errors.good_practice}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="workc" data-paths="C" data-topic hidden>
+    <label class="wz-q" for="wz-workc">{{tr .Lang "What work was it? (optional)"}}</label>
+    <textarea name="work" id="wz-workc" class="wz-desc" rows="3" maxlength="5000" disabled>{{if eq $in.Path "C"}}{{$in.Work}}{{end}}</textarea>
+    <small class="field-hint">{{tr .Lang "Example: grinding in the workshop"}}</small>
+    {{with .Errors.work}}{{if eq $in.Path "C"}}<small class="field-error">{{.}}</small>{{end}}{{end}}
+    <div class="wz-topic-slot"></div>
+  </section>
+
+  <section class="wz-screen" data-screen="corrective" data-paths="AB" hidden>
+    <label class="wz-q" for="wz-corrective">{{tr .Lang "What did you do on the spot?"}}</label>
+    <textarea name="corrective" id="wz-corrective" rows="3" maxlength="5000" data-req>{{$in.Corrective}}</textarea>
+    {{with .Errors.corrective}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="recommendation" data-paths="ABD" hidden>
+    <label class="wz-q" for="wz-rec"><span class="wz-rec-optional">{{tr .Lang "Recommendation (optional)"}}</span><span class="wz-rec-required" hidden>{{tr .Lang "Your proposal"}}</span></label>
+    <textarea name="recommendation" id="wz-rec" rows="3" maxlength="5000">{{$in.Recommendation}}</textarea>
+    {{with .Errors.recommendation}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <section class="wz-screen" data-screen="photo" data-paths="ABCD" hidden>
+    <p class="wz-q">{{tr .Lang "Photo (optional)"}}</p>
+    <div class="photo-field">
+      <input type="file" name="photos" id="photos-input" accept="image/*" multiple data-max="{{.PhotoSlots}}"{{if not .PhotoSlots}} disabled{{end}} aria-label="{{tr .Lang "Photo"}}">
+      <div id="photos-preview" class="photo-preview" aria-live="polite"></div>
+      <small id="photos-status" class="field-hint">{{tr .Lang "Photos are compressed automatically to 500 KB max."}}</small>
+    </div>
+    <small class="field-hint">{{tr .Lang "Do not show faces in photos if you can avoid it."}}</small>
+    {{with .Errors.photos}}<small class="field-error">{{.}}</small>{{end}}
+  </section>
+
+  <div id="wz-topic" class="wz-topic" hidden>
+    <span class="wz-topic-label">{{tr .Lang "Hazard topic"}}</span>
+    <div id="topic-chips" class="topic-chips" role="group" aria-label="{{tr .Lang "Suggested topics"}}"></div>
+    <select name="topic_id" id="topic_id" data-combo>
+      <option value="">{{tr .Lang "Choose from the list"}}</option>
+      {{range .Wiz.Topics}}<option value="{{.ID}}" data-hazard="{{if .HazardID}}{{.HazardID}}{{end}}"{{if .HighPotential}} data-hp="1"{{end}}{{if eq $in.TopicID (printf "%d" .ID)}} selected{{end}}>{{.Label}}</option>{{end}}
+    </select>
+    <button type="button" id="topic-none" class="topic-none" aria-pressed="false">{{tr .Lang "Other / none of these fit"}}</button>
+    <small id="suggest-hint" class="field-hint" aria-live="polite"></small>
+    {{with .Errors.topic}}<small class="field-error">{{.}}</small>{{end}}
+  </div>
+
+  <div class="wz-nav">
+    <button type="button" id="wz-back" class="btn-ghost" hidden>{{tr .Lang "Back"}}</button>
+    <button type="button" id="wz-next" class="btn-primary" hidden>{{tr .Lang "Next"}}</button>
+    <button type="submit" id="wz-send" class="btn-primary" hidden>{{tr .Lang "Submit"}}</button>
+  </div>
+  <p id="wz-missing" class="field-error" role="alert" hidden>{{tr .Lang "Please answer this question first."}}</p>
+</form>
+<script src="/soc/static/i18n.js?v=20261018b"></script>
+<script src="/soc/static/photo-compress.js?v=20261020b" defer></script>
+<script src="/soc/static/soc-suggest.js?v=20261018b" defer></script>
+<script src="/soc/static/soc-wizard.js?v=20261018b" defer></script>
+<script>document.addEventListener("DOMContentLoaded",function(){var i=document.getElementById("photos-input");if(i&&window.attachPhotoCompress){attachPhotoCompress(i,document.getElementById("photos-status"),document.getElementById("photos-preview"));}attachWizard({form:document.getElementById("wizard"),url:"/soc/api/suggest",texts:{suggested:{{tr .Lang "Tap the topic that fits, or choose from the list."}},nothing:{{tr .Lang "No suggestion. Choose from the list."}}}});});</script>
+{{end}}

@@ -1,0 +1,48 @@
+{{define "main"}}
+<h1>{{heading .Lang "Safety Observation"}}</h1>
+<p class="sub">{{tr .Lang "Report your safety observation. No account needed."}}</p>
+
+<p id="soc-error" role="alert" style="color:#b42318;font-size:0.875rem;margin:12px 0 0;display:none"></p>
+
+<section id="step-check" style="margin-top:24px">
+  <p class="sub" style="margin-bottom:12px">{{tr .Lang "1. Tick the box"}}</p>
+  <div id="turnstile-box" data-sitekey="{{.Sitekey}}" data-dev="{{.DevStubs}}" data-lang="{{.HTMLLang}}"></div>
+</section>
+
+<form id="signin-form" class="add-activity" hidden autocomplete="off" novalidate
+  data-msg-check-failed="{{tr .Lang "Check failed, please try again."}}"
+  data-msg-check-load="{{tr .Lang "The check could not load. Please check your connection and reload."}}"
+  data-msg-no-match="{{tr .Lang "No match"}}"
+  data-msg-search-down="{{tr .Lang "Name search is not available right now."}}"
+  data-msg-choose-name="{{tr .Lang "Choose your name from the list."}}"
+  data-msg-bad-date="{{tr .Lang "Enter your date of birth as dd/mm/yyyy."}}"
+  data-msg-not-found="{{tr .Lang "Details not found, please check and try again."}}">
+  <div class="section-label">{{tr .Lang "2. Reporter"}}</div>
+  <div class="settings-grid">
+    <label class="span-all">
+      <span>{{tr .Lang "Your name"}}</span>
+      <span class="combo combo-select">
+        <input id="name-input" class="combo-input" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="name-list" autocomplete="off" spellcheck="false" placeholder="{{tr .Lang "Type at least 3 letters"}}" />
+        <div id="name-list" class="combo-list" role="listbox" hidden></div>
+      </span>
+    </label>
+    <label>
+      <span>{{tr .Lang "Date of birth"}}</span>
+      <span class="dob-row">
+        <input id="dob-input" type="text" inputmode="numeric" autocomplete="off" placeholder="dd/mm/yyyy" maxlength="10" pattern="\d{2}/\d{2}/\d{4}" required />
+        <button type="button" id="dob-pick" class="dob-pick" aria-label="{{tr .Lang "Pick a date"}}" title="{{tr .Lang "Pick a date"}}">
+          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" focusable="false"><path fill="none" stroke="currentColor" stroke-width="1.6" d="M4 5.5h12v10.5H4zM4 8.5h12M7 3.5v3M13 3.5v3"/></svg>
+        </button>
+        <input id="dob-native" class="dob-native" type="date" tabindex="-1" aria-hidden="true" />
+      </span>
+      <small class="field-hint">{{tr .Lang "Position and company are filled in from Medpost."}}</small>
+    </label>
+  </div>
+  <div class="submit-row">
+    <button type="submit" class="btn-primary">{{tr .Lang "Sign in"}}</button>
+  </div>
+</form>
+
+<script src="/soc/static/soc-signin.js?v=20261017i" defer></script>
+{{if not .DevStubs}}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>{{end}}
+{{end}}

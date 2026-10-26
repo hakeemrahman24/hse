@@ -1,0 +1,71 @@
+{{define "content"}}
+<div class="settings-panel-body">
+  {{if .EditID}}{{range .CategoryRows}}{{if eq .ID $.EditID}}
+  {{$cur := .Class}}
+  <div class="app-sidebar-label">Edit category</div>
+  <form method="post" action="/admin/settings/hazard-categories/{{.ID}}/save" class="settings-grid">
+    <label>
+      <span>Hazard category name</span>
+      <input type="text" name="name" value="{{.Name}}" maxlength="100" required autofocus />
+    </label>
+    <label>
+      <span>Class</span>
+      <select name="class" required>
+        {{range $.ClassOptions}}<option value="{{.}}"{{if eq . $cur}} selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </label>
+    <div class="span-all settings-actions">
+      <button type="submit" class="btn-primary">Save</button>
+      <a class="btn-ghost" href="/admin/settings/hazard-categories">Cancel</a>
+    </div>
+  </form>
+  {{end}}{{end}}{{end}}
+
+  <div class="app-sidebar-label">Add category</div>
+  <form method="post" action="/admin/settings/hazard-categories" class="settings-grid">
+    <label>
+      <span>Hazard category name</span>
+      <input type="text" name="name" maxlength="100" placeholder="e.g. Radiation Exposure" required />
+    </label>
+    <label>
+      <span>Class</span>
+      <select name="class" required>
+        <option value="">Select…</option>
+        {{range .ClassOptions}}<option value="{{.}}">{{.}}</option>{{end}}
+      </select>
+    </label>
+    <div class="span-all"><button type="submit" class="btn-primary">Add category</button></div>
+  </form>
+
+  <div class="app-sidebar-label">Current categories</div>
+  <div class="table-scroll">
+    <table class="data-table compact">
+      <thead><tr><th>Category</th><th>Class</th><th>Observations</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {{range .CategoryRows}}
+        <tr class="{{if or .Archived .ClassOff}}row-archived{{end}}{{if eq .ID $.EditID}} row-editing{{end}}">
+          <td>{{.Name}}</td>
+          <td>{{.Class}}</td>
+          <td>{{.Used}}</td>
+          <td>{{if .Archived}}<span class="badge badge-archived">Archived</span>{{else if .ClassOff}}<span class="badge badge-archived">Class archived</span>{{else}}Active{{end}}</td>
+          <td class="row-actions">
+            <a class="btn-ghost" href="/admin/settings/hazard-categories?edit={{.ID}}">Edit</a>
+            {{if .Archived}}
+            <form method="post" action="/admin/settings/hazard-categories/{{.ID}}/restore"><button type="submit">Restore</button></form>
+            {{else}}
+            <form method="post" action="/admin/settings/hazard-categories/{{.ID}}/archive" onsubmit="return confirm('Archive this category? It can no longer be chosen on new observations. Existing observations keep it.');"><button type="submit">Archive</button></form>
+            {{end}}
+            {{if eq .Used 0}}
+            <form method="post" action="/admin/settings/hazard-categories/{{.ID}}/delete" onsubmit="return confirm('Delete this category?');"><button type="submit" class="link-danger">Delete</button></form>
+            {{end}}
+          </td>
+        </tr>
+      {{else}}
+        <tr><td colspan="5">No categories yet. Add the first one above.</td></tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  <p class="obs-muted list-note">Editing a category can rename it or move it to another class, which changes where it appears in the dropdown and the sidebar. <b>Delete</b> is offered only for a category no observation uses; archive the others.</p>
+</div>
+{{end}}

@@ -1,0 +1,48 @@
+sort_order,topic,kind,topic_group,suggested_hazard_category,suggested_work_activity,suggested_life_saving_rule,suggested_root_cause,label_id,high_potential,life_saving_rule_draft
+1,Working at Height,hazard,,Fall from Height,,Work at height,,Bekerja di ketinggian,Y,Work at height
+2,Confined Space,hazard,,Confined Space,,Confined space,,"Ruang terbatas (tangki, bejana, parit tertutup)",Y,Confined space
+3,Hot Work,hazard,,Fire,"Welding, Cutting & Grinding",Hot work,,"Pekerjaan panas (las, potong, gerinda)",Y,Hot work
+4,Fire & Ignition,hazard,,Fire,,,,Api dan sumber penyulut,Y,
+5,Process Safety / Hydrocarbon Release,hazard,,Loss of Containment,,,,Kebocoran hidrokarbon atau gas,Y,
+6,Lifting Operation,hazard,,Dropped / Falling Objects,Lifting Operation,Safe mechanical lifting,,"Pengangkatan (crane, sling)",Y,Lifting operations
+7,Excavation Work,hazard,,Excavation Collapse / Underground Services,Excavation & Earthworks,,,Pekerjaan galian,Y,
+8,Electrical Work,hazard,,Electricity,Electrical & Instrument Work,,,Pekerjaan listrik,Y,Energy isolation (partial)
+9,Machinery & Energy Isolation,hazard,,Machinery & Work Equipment,,Energy isolation,,Mesin berputar dan isolasi energi,Y,Energy isolation
+10,Line of Fire,hazard,,Struck By,,Line of fire,,Bahaya tertimpa atau terbentur (line of fire),Y,Line of fire
+11,Hand & Power Tools,hazard,,Hand & Power Tools,,,,Alat tangan dan alat listrik,N,
+12,Transportation,hazard,,Vehicles & Mobile Equipment,Transportation (Land),Driving,,Kendaraan dan alat berat,Y,Driving
+13,Wildlife & Pests,hazard,,"Animals, Insects & Plants",,,,Hewan dan serangga,N,
+14,Road Condition,hazard,,"Slips, Trips & Falls",,,,Kondisi jalan,N,
+15,Marine & Working Over Water,hazard,,Drowning / Work Over Water,,,,Pekerjaan di air atau kapal,Y,
+16,Housekeeping,hazard,,"Slips, Trips & Falls",Housekeeping & Waste Handling,,,Kebersihan dan kerapian area,N,
+17,Waste & Environmental Control,hazard,,Waste Management,Housekeeping & Waste Handling,,,Pengelolaan sampah dan limbah,N,
+18,"Dust, Smoke & Air Quality",hazard,,Air Emission & Dust,,,,"Debu, asap, kualitas udara",N,
+19,Hazardous Chemicals,hazard,,Hazardous Substances,,,,Bahan kimia berbahaya,N,
+20,Landslide,hazard,,Landslide / Slope Instability,,,,Longsor,N,
+21,Welfare - Sanitation & Drinking Water,hazard,Welfare,Infection / Contaminated Food or Water,"Camp, Catering & Welfare",,,"Toilet, kebersihan, air minum",N,
+22,Welfare - Accommodation & Laundry,hazard,Welfare,Welfare - Accommodation,"Camp, Catering & Welfare",,,"Mess, kamar, laundry",N,
+23,"Welfare - Rest Area, Shelter & Canteen",hazard,Welfare,Welfare - Facilities,"Camp, Catering & Welfare",,,"Tempat istirahat, shelter, kantin",N,
+24,Health & Infectious Disease,hazard,,Infection / Illness,,,,Kesehatan dan penyakit menular,N,
+25,Lighting,hazard,,Poor Lighting,,,,Penerangan,N,
+26,Noise,hazard,,Noise,,,,Kebisingan,N,
+27,Radiation & Vibration,hazard,,Ionizing Radiation,,,,Radiasi dan getaran,N,
+28,Sharp Edges,hazard,,Cuts & Sharp Edges,,,,Benda tajam,N,
+29,Pressurized,hazard,,Pressurized / Vacuum Systems,,,,Peralatan bertekanan,Y,
+30,Spill,hazard,,Spill / Leakage,,,,Tumpahan dan kebocoran cairan,N,
+31,Heat Stress,hazard,,Heat Stress,,,,Cuaca panas (heat stress),N,
+32,Natural Events / Weather,hazard,,Natural Event,,,,Cuaca ekstrem dan bencana alam,N,
+33,Manual Handling & Ergonomics,hazard,,Manual Handling,,,,Angkat manual dan posisi kerja,N,
+34,Fatigue / Rest,hazard,,Fatigue & Working Hours,,,,Kelelahan dan waktu istirahat,N,
+35,Welfare - Workload & Fair Treatment,hazard,Welfare,Welfare - Workload & Treatment,"Camp, Catering & Welfare",,,Beban kerja dan perlakuan adil,N,
+36,Bullying,hazard,,Violence & Harassment,,,,Perundungan dan pelecehan,N,
+37,Security & Intrusion,hazard,,Unauthorized Access / Theft,,,,"Keamanan, penyusup, kehilangan",N,
+38,Community & Civil Unrest,hazard,,Community & Civil Disturbance,,,,"Masyarakat sekitar, demo, blokade",N,
+39,Third-Party Interference,hazard,,Unauthorized Access / Theft,,,,"Gangguan pihak ketiga (illegal tapping, sabotase)",N,
+40,Violence & Threats from Outsiders,hazard,,Violence & Harassment,,,,Ancaman dan kekerasan dari luar,N,
+101,PPE,control,PPE,,,,Use of protective methods,APD (alat pelindung diri),,
+102,Permit To Work,control,Administrative,,,Work authorization,,Izin kerja (permit),,Permit to work
+103,Barricade / Sign,control,Engineering,,,,Protective systems,Barikade dan rambu,,
+104,"Safety Meeting, Induction & Checks",control,Administrative,,,,,"Rapat keselamatan, induksi, pengecekan",,
+105,Working Without Helper / Supervision,control,Administrative,,,,,Bekerja tanpa pengawas atau helper,,
+106,Emergency Preparedness & First Aid,control,Administrative,,,,,Kesiapsiagaan darurat dan P3K,,
+107,Procedure & Competency,control,Administrative,,,,Following procedures,Prosedur dan kompetensi,,Bypassing safety controls (partial)

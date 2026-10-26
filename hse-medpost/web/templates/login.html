@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" class="vt-cover">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @view-transition { navigation: auto; }
+    html { background: #E8F4F2; }
+    html.vt-cover { visibility: hidden; }
+    ::view-transition-group(root) { animation-duration: 120ms; }
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-group(root) { animation: none; }
+    }
+  </style>
+  <noscript><style>html.vt-cover { visibility: visible; }</style></noscript>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In - HSE Medpost</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
+  <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <script>
+    document.documentElement.classList.remove("vt-cover");
+  </script>
+</head>
+<body>
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/" class="nav-logo">hse <span>medpost</span></a>
+    </div>
+  </nav>
+
+  <div class="login-wrap">
+    <div class="login-card">
+
+      <section id="step-credentials">
+        <h1>hse <span>medpost</span></h1>
+        <p class="sub">Sign in to the first-aid post system.</p>
+
+        <form id="login-form" style="margin-top:28px">
+          <fieldset>
+            <legend>Username</legend>
+            <div class="login-modes">
+              <label><input type="radio" name="mode" value="pick" checked /> Pick from list</label>
+              <label><input type="radio" name="mode" value="type" /> Type username</label>
+            </div>
+            <div id="pick-wrap">
+              <select id="staff-select" required>
+                <option value="">Select staff…</option>
+              </select>
+            </div>
+            <div id="type-wrap" hidden>
+              <input name="username" id="username" autocomplete="username" />
+            </div>
+          </fieldset>
+          <label class="field">
+            <span>Password (6 digits)</span>
+            <input name="password" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="current-password" required />
+          </label>
+          <p id="error" style="color:#b42318;font-size:0.875rem;margin:0 0 12px;display:none"></p>
+          <button type="submit" class="btn-primary" style="width:100%;text-align:center;margin-top:20px">Sign in</button>
+        </form>
+      </section>
+
+    </div>
+  </div>
+  <script src="/static/busy.js"></script>
+  <script src="/static/login.js"></script>
+
+  <footer class="app-dev-credit">
+    <p>Developed by dr. Arif Rahman Hakim.</p>
+    <p>Internal HSE record-keeping only. This does not replace clinical judgment, and the developer is not liable for data-entry errors or decisions based on this system.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,243 @@
+{{define "base"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{.Title}} · HSE Register</title>
+<link rel="icon" type="image/png" href="/static/favicon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="/static/register/clearwave/templatemo-622-clearwave.css?v=20261016u">
+<link rel="stylesheet" href="/static/register/clearwave/app.css?v=20261016u">
+<link rel="stylesheet" href="/static/register/admin-clearwave.css?v=20261020b">
+</head>
+<body class="settings-theme{{if eq .Zone "settings"}} area-settings{{end}}">
+<nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+  <div class="nav-inner">
+    <a href="/start" class="nav-logo">hse <span>register</span></a>
+    <div class="nav-cta">
+      {{if eq .Session.Role "admin"}}<span class="settings-badge">Admin</span>{{end}}
+      <span class="btn-ghost" style="pointer-events:none">{{.Session.Username}}</span>
+      <form method="post" action="/logout" style="display:inline">
+        <button type="submit" class="btn-primary">Log out</button>
+      </form>
+    </div>
+  </div>
+</nav>
+
+<div class="app-shell settings-shell">
+  {{if .ObsNav}}
+  <aside class="app-sidebar">
+    <div class="app-program-list">
+      <a href="/observations{{.ObsNav.Q1}}" class="app-program-item{{if eq .Active "obs-dashboard"}} active{{end}}">
+        <span class="app-program-item-title">Dashboard</span>
+        <span class="app-program-item-meta">Overview and counts</span>
+      </a>
+      <a href="/observations/list{{.ObsNav.Q1}}" class="app-program-item{{if eq .Active "obs-list"}} active{{end}}">
+        <span class="app-program-item-title">Observations</span>
+        <span class="app-program-item-meta">{{.ObsNav.Total}} {{if .ObsNav.Filtered}}in range{{else}}overall{{end}}</span>
+      </a>
+    </div>
+    <div class="app-sidebar-label">Sources</div>
+    <div class="app-program-list obs-classes">
+      {{range .ObsNav.Sources}}{{$src := .Value}}
+      <div class="obs-group">
+        <div class="obs-row">
+          {{if .Items}}<button type="button" class="obs-toggle" aria-expanded="{{if .Open}}true{{else}}false{{end}}" aria-label="Show or hide the {{.Name}} types"></button>{{else}}<span class="obs-toggle-gap" aria-hidden="true"></span>{{end}}
+          <a class="app-program-item obs-hazard{{if .Active}} active{{end}}" href="/observations/list?source={{.Value | urlquery}}{{$.ObsNav.Qs}}">
+            <span class="app-program-item-title">{{.Name}}</span>
+            <span class="obs-count">{{.Count}}</span>
+          </a>
+        </div>
+        {{if .Items}}<div class="obs-subs"{{if not .Open}} hidden{{end}}>
+          {{range .Items}}<a class="obs-sub{{if .Active}} active{{end}}" href="/observations/list?source={{$src | urlquery}}&amp;type={{.Name | urlquery}}{{$.ObsNav.Qs}}"><span>{{.Name}}</span><span class="obs-count">{{.Count}}</span></a>{{end}}
+        </div>{{end}}
+      </div>
+      {{end}}
+    </div>
+  </aside>
+  <script>
+  // The small triangle opens or closes the types of one source. The source name is a link.
+  // Which sources you opened is remembered for this browser tab, so it survives clicking a filter.
+  (function () {
+    var KEY = "obsOpenClasses", saved = [];
+    try { saved = JSON.parse(sessionStorage.getItem(KEY) || "[]"); } catch (e) {}
+    function set(group, open) {
+      group.querySelector(".obs-toggle").setAttribute("aria-expanded", open ? "true" : "false");
+      group.querySelector(".obs-subs").hidden = !open;
+    }
+    function name(group) { return group.querySelector(".app-program-item-title").textContent.trim(); }
+    // A class with nothing under it (a control class with no topic yet) has no toggle: skip it.
+    var groups = Array.prototype.filter.call(document.querySelectorAll(".obs-group"), function (g) { return g.querySelector(".obs-toggle"); });
+    groups.forEach(function (g) {
+      if (saved.indexOf(name(g)) !== -1) { set(g, true); }
+      g.querySelector(".obs-toggle").addEventListener("click", function () {
+        set(g, g.querySelector(".obs-subs").hidden);
+        var open = [];
+        groups.forEach(function (x) { if (!x.querySelector(".obs-subs").hidden) { open.push(name(x)); } });
+        try { sessionStorage.setItem(KEY, JSON.stringify(open)); } catch (e) {}
+      });
+    });
+  })();
+  </script>
+  {{else if .ActSide}}
+  <aside class="app-sidebar">
+    <div class="app-program-list">
+      <a href="/activities" class="app-program-item{{if not .ActProgram}} active{{end}}">
+        <span class="app-program-item-title">Activities</span>
+        <span class="app-program-item-meta">All programs</span>
+      </a>
+    </div>
+    {{if .ActTree}}
+    <div class="app-sidebar-label">Health programs</div>
+    <div class="app-program-list act-programs">
+      {{range .ActTree}}
+      <div class="obs-group act-prog" data-prog="{{.Name}}">
+        <div class="obs-row">
+          {{if .Subs}}<button type="button" class="obs-toggle" aria-expanded="{{if .Open}}true{{else}}false{{end}}" aria-label="Show or hide the {{.Name}} sub-headers"></button>{{else}}<span class="obs-toggle-gap"></span>{{end}}
+          <a href="/activities?program={{.Name}}{{if eq $.ActTab "reference"}}&amp;tab=reference{{end}}" class="app-program-item{{if .Active}} active{{end}}">
+            <span class="app-program-item-title">{{.Name}}</span>
+          </a>
+        </div>
+        {{if .Subs}}
+        <div class="obs-subs"{{if not .Open}} hidden{{end}}>
+          {{range .Subs}}<a class="obs-sub{{if .Active}} active{{end}}" href="/activities?program={{.Program}}&amp;sub={{.SubHeaderID}}"><span>{{.Name}}</span></a>{{end}}
+        </div>
+        {{end}}
+      </div>
+      {{end}}
+    </div>
+    <script>
+    // The small triangle opens or closes the sub-headers of one program; what you opened is
+    // remembered for this browser tab, so it survives clicking a program.
+    (function () {
+      var KEY = "actOpenPrograms", saved = [];
+      try { saved = JSON.parse(sessionStorage.getItem(KEY) || "[]"); } catch (e) {}
+      function set(g, open) {
+        g.querySelector(".obs-toggle").setAttribute("aria-expanded", open ? "true" : "false");
+        g.querySelector(".obs-subs").hidden = !open;
+      }
+      document.querySelectorAll(".act-prog").forEach(function (g) {
+        var t = g.querySelector(".obs-toggle");
+        if (!t) { return; }
+        if (saved.indexOf(g.dataset.prog) !== -1) { set(g, true); }
+        t.addEventListener("click", function () {
+          set(g, g.querySelector(".obs-subs").hidden);
+          var open = [];
+          document.querySelectorAll(".act-prog").forEach(function (x) {
+            var s = x.querySelector(".obs-subs");
+            if (s && !s.hidden) { open.push(x.dataset.prog); }
+          });
+          try { sessionStorage.setItem(KEY, JSON.stringify(open)); } catch (e) {}
+        });
+      });
+    })();
+    </script>
+    {{end}}
+    <div class="app-program-list act-side-home">
+      <a href="/start" class="app-program-item"><span class="app-program-item-title">Back to home</span></a>
+    </div>
+  </aside>
+  {{else if eq .Zone "settings"}}
+  <aside class="app-sidebar">
+    {{if eq .Session.Role "admin"}}
+    <div class="app-sidebar-label">Settings</div>
+    <div class="app-program-list">
+      <a href="/admin/settings" class="app-program-item{{if eq .Active "settings"}} active{{end}}">
+        <span class="app-program-item-title">Overview</span>
+      </a>
+    </div>
+    <div class="app-sidebar-label">Staff &amp; access</div>
+    <div class="app-program-list">
+      <a href="/users" class="app-program-item{{if or (eq .Active "users") (eq .Active "users-new")}} active{{end}}">
+        <span class="app-program-item-title">User accounts</span>
+      </a>
+    </div>
+    <div class="app-sidebar-label">Lists</div>
+    <div class="app-program-list">
+      <a href="/admin/settings/areas" class="app-program-item{{if eq .Active "set-areas"}} active{{end}}">
+        <span class="app-program-item-title">Areas</span>
+      </a>
+      <a href="/admin/settings/sources" class="app-program-item{{if eq .Active "set-sources"}} active{{end}}">
+        <span class="app-program-item-title">Sources</span>
+      </a>
+      <a href="/admin/settings/source-types" class="app-program-item{{if eq .Active "set-types"}} active{{end}}">
+        <span class="app-program-item-title">Source types</span>
+      </a>
+      <a href="/admin/settings/keywords" class="app-program-item{{if eq .Active "set-keywords"}} active{{end}}">
+        <span class="app-program-item-title">Keywords</span>
+      </a>
+      <a href="/admin/settings/guard-words" class="app-program-item{{if eq .Active "set-guard"}} active{{end}}">
+        <span class="app-program-item-title">Typo guard words</span>
+      </a>
+      <a href="/admin/settings/hazard-classes" class="app-program-item{{if eq .Active "set-classes"}} active{{end}}">
+        <span class="app-program-item-title">Hazard classes</span>
+      </a>
+      <a href="/admin/settings/hazard-categories" class="app-program-item{{if eq .Active "set-categories"}} active{{end}}">
+        <span class="app-program-item-title">Hazard categories</span>
+      </a>
+    </div>
+    <div class="app-sidebar-label">Integrations</div>
+    <div class="app-program-list">
+      <a href="/admin/settings/medpost-api" class="app-program-item{{if eq .Active "set-medpost"}} active{{end}}">
+        <span class="app-program-item-title">Medpost API</span>
+      </a>
+    </div>
+    {{end}}
+    <div class="app-sidebar-label">Account</div>
+    <div class="app-program-list">
+      <a href="/account" class="app-program-item{{if eq .Active "account"}} active{{end}}">
+        <span class="app-program-item-title">My account</span>
+      </a>
+      <a href="/start" class="app-program-item">
+        <span class="app-program-item-title">Back to home</span>
+      </a>
+    </div>
+  </aside>
+  {{else}}
+  <aside class="app-sidebar">
+    <div class="app-sidebar-label">HSE register</div>
+    <div class="app-program-list">
+      <a href="/observations" class="app-program-item{{if eq .Active "observations"}} active{{end}}">
+        <span class="app-program-item-title">All observations</span>
+      </a>
+      <a href="/observations/new" class="app-program-item{{if eq .Active "observations-new"}} active{{end}}">
+        <span class="app-program-item-title">Add observation</span>
+      </a>
+    </div>
+    {{if eq .Session.Role "admin"}}
+    <div class="app-sidebar-label">Staff &amp; access</div>
+    <div class="app-program-list">
+      <a href="/users" class="app-program-item{{if or (eq .Active "users") (eq .Active "users-new")}} active{{end}}">
+        <span class="app-program-item-title">User accounts</span>
+      </a>
+    </div>
+    {{end}}
+  </aside>
+  {{end}}
+
+  <section class="app-main">
+    <div class="app-panel">
+      <div class="app-panel-head">
+        <h1>{{range $i, $p := titleParts .Heading}}{{if $i}}<span class="h1-sep"> · </span>{{end}}<span class="h1-{{if gt $i 1}}2{{else}}{{$i}}{{end}}">{{$p}}</span>{{end}}</h1>
+        {{if .Subheading}}<p>{{.Subheading}}</p>{{end}}
+      </div>
+      <div class="app-panel-body">
+        {{if .Flash}}
+        <ul class="messagelist"><li class="{{.FlashKind}}">{{.Flash}}</li></ul>
+        {{end}}
+        {{template "content" .}}
+      </div>
+    </div>
+  </section>
+</div>
+<footer class="app-dev-credit">
+  <p>Developed by Minhajul Mubarok, dr. Arif Rahman Hakim.</p>
+  <p>Internal HSE record-keeping only.</p>
+</footer>
+</body>
+</html>
+{{end}}

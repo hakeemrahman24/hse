@@ -1,0 +1,180 @@
+{{define "content"}}
+{{if .FormErrors}}<ul class="messagelist"><li class="error">Please correct the fields marked below.</li></ul>{{end}}
+<form method="post" class="add-activity" enctype="multipart/form-data" action="{{if .Observation.ID}}/observations/{{.Observation.ID}}/edit{{else}}/observations/new{{end}}">
+  <div class="section-label">Source</div>
+  <div class="settings-grid">
+    <label>
+      <span>Source</span>
+      <select name="source" id="source" data-combo required>
+        <option value="">Select…</option>
+        {{range .StaffSources}}<option value="{{.}}"{{if eq $.Form.Source .}} selected{{end}}>{{.}}</option>{{end}}
+      </select>
+      {{with .FormErrors.source}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label id="source-detail-row">
+      <span>Type</span>
+      <select name="source_detail" id="source_detail" data-combo>
+        <option value="">Select…</option>
+        {{range .SourceDetailChoices}}<option value="{{.Detail}}" data-source="{{.Source}}"{{if eq $.Form.SourceDetail .Detail}} selected{{end}}>{{.Detail}}</option>{{end}}
+      </select>
+      {{with .FormErrors.source_detail}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+  </div>
+
+  <div class="section-label">Submitter</div>
+  <div class="settings-grid">
+    <label>
+      <span>Name</span>
+      <input type="text" name="observer_name" id="observer_name" value="{{.Form.ObserverName}}" readonly aria-describedby="observer-hint">
+      <small class="field-hint" id="observer-hint">Taken from your login.</small>
+      {{with .FormErrors.observer_name}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label>
+      <span>Position</span>
+      <input type="text" name="designation" id="designation" value="{{.Form.Designation}}">
+      {{with .FormErrors.designation}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label>
+      <span>Company</span>
+      <input type="text" name="company" id="company" value="{{.Form.Company}}" list="company-list" autocomplete="off" data-combo-list>
+      {{with .FormErrors.company}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label>
+      <span>Date and time of the finding</span>
+      <input type="datetime-local" name="observed_at" id="observed_at" value="{{.Form.ObservedAt}}" required>
+      {{with .FormErrors.observed_at}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+  </div>
+
+  <div class="section-label">Finding</div>
+  <div class="settings-grid">
+    <label>
+      <span>Category</span>
+      <select name="category" id="category" data-combo required>
+        <option value="">Select…</option>
+        {{range .CategoryOptions}}<option value="{{.Value}}"{{if eq $.Form.Category .Value}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+      {{with .FormErrors.category}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label>
+      <span>Area</span>
+      <input type="text" name="area" id="area" value="{{.Form.Area}}" list="area-list" autocomplete="off" data-combo-list data-combo-strict required>
+      <datalist id="area-list">{{range .Areas}}<option value="{{.}}">{{end}}</datalist>
+      {{with .FormErrors.area}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label class="span-all">
+      <span>Finding description</span>
+      <textarea name="description" id="description" rows="4" maxlength="5000" required>{{.Form.Description}}</textarea>
+      {{with .FormErrors.description}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label>
+      <span>Topic</span>
+      <select name="topic_id" id="topic_id" data-combo>
+        <option value="">Suggested from the description</option>
+        {{range .Topics}}<option value="{{.ID}}" data-hazard="{{if .HazardID}}{{.HazardID}}{{end}}"{{if eq $.Form.TopicID (printf "%d" .ID)}} selected{{end}}>{{.Name}}</option>{{end}}
+      </select>
+      {{with .FormErrors.topic}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label>
+      <span>Hazard</span>
+      <select name="hazard_id" id="hazard_id" data-combo>
+        <option value="">Suggested from the topic</option>
+        {{range .HazardGroups}}<optgroup label="{{.Class}}">
+          {{range .Items}}<option value="{{.ID}}"{{if eq $.Form.HazardID (printf "%d" .ID)}} selected{{end}}>{{.Name}}</option>{{end}}
+        </optgroup>{{end}}
+      </select>
+      <small class="field-hint" id="suggest-hint"></small>
+      {{with .FormErrors.hazard}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label class="span-all">
+      <span>Company responsible in that area</span>
+      <input type="text" name="responsible_company" id="responsible_company" value="{{.Form.ResponsibleCompany}}" list="company-list" autocomplete="off" data-combo-list required>
+      <datalist id="company-list">{{range .CompanyOptions}}<option value="{{.}}">{{end}}</datalist>
+      {{with .FormErrors.responsible_company}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label class="span-all">
+      <span>Remarks: action taken (optional)</span>
+      <textarea name="action_taken" id="action_taken" rows="3" maxlength="5000" placeholder="What was done about this finding?">{{.Form.ActionTaken}}</textarea>
+      {{with .FormErrors.action_taken}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+  </div>
+
+  {{if not .Observation.ID}}
+  <div class="section-label">Evidence</div>
+  <div class="settings-grid">
+    <div class="span-all photo-field">
+      <span>Photos (optional, up to 4; JPEG, PNG, WebP or GIF, compressed to 500 KB each)</span>
+      <input type="file" name="photos" class="photo-input" accept="image/jpeg,image/png,image/gif,image/webp" multiple data-max="4" aria-label="Photos">
+      <div class="photo-preview"></div>
+      <small class="field-hint photo-status">Click a box to add photos. Click a photo to view it, × to remove it.</small>
+    </div>
+    <label class="span-all">
+      <span>Documents (optional, up to 2 PDF files, 5 MB each)</span>
+      <input type="file" name="documents" accept="application/pdf,.pdf" multiple>
+    </label>
+    {{with .FormErrors.files}}<small class="field-error">{{.}}</small>{{end}}
+  </div>
+
+  <div class="section-label">Evidence after action (optional)</div>
+  <div class="settings-grid">
+    <div class="span-all photo-field">
+      <span>After photos (optional, up to 4; compressed to 500 KB each)</span>
+      <input type="file" name="after_photos" class="photo-input" accept="image/jpeg,image/png,image/gif,image/webp" multiple data-max="4" aria-label="After photos">
+      <div class="photo-preview"></div>
+      <small class="field-hint photo-status">Photos showing the finding after the action was taken.</small>
+    </div>
+    <label class="span-all">
+      <span>After documents (optional, up to 2 PDF files, 5 MB each)</span>
+      <input type="file" name="after_documents" accept="application/pdf,.pdf" multiple>
+    </label>
+    {{with .FormErrors.after_files}}<small class="field-error">{{.}}</small>{{end}}
+  </div>
+  {{end}}
+
+  <p class="obs-muted">A new post starts Open. After evidence can also be added, and the post closed, from the observation page.</p>
+  <div class="submit-row">
+    <button type="submit" class="btn-primary">Save observation</button>
+    <a href="{{if .Observation.ID}}/observations/{{.Observation.ID}}{{else}}/observations/list{{end}}" class="btn-ghost">Cancel</a>
+  </div>
+</form>
+
+{{if .Observation.ID}}
+{{range .Blocks}}{{template "fileblock" .}}{{end}}
+{{end}}
+<script src="/static/photo-compress.js?v=20261020b" defer></script>
+{{/* Each input is bound to the preview and status inside its own .photo-field: the form holds a Before and an After group, and the first match in the whole form would draw both in the Before one. */}}
+<script>document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll(".photo-input").forEach(function(i){var box=i.closest(".photo-field");attachPhotoCompress(i,box.querySelector(".photo-status"),box.querySelector(".photo-preview"));});});</script>
+
+<script src="/static/combo.js" defer></script>
+<script src="/static/suggest.js?v=20261017g" defer></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  attachSuggest({
+    description: document.getElementById("description"),
+    topic: document.getElementById("topic_id"),
+    hazard: document.getElementById("hazard_id"),
+    hint: document.getElementById("suggest-hint"),
+    url: "/observations/suggest"
+  });
+  // Show only the types that belong to the chosen source (the server checks this again).
+  var src = document.getElementById("source"), det = document.getElementById("source_detail"), row = document.getElementById("source-detail-row");
+  if (src && det && row) {
+    var sync = function () {
+      var any = false;
+      Array.prototype.forEach.call(det.options, function (o) {
+        var s = o.getAttribute("data-source");
+        if (!s) { return; }
+        var show = s === src.value;
+        o.hidden = !show; o.disabled = !show;
+        if (show) { any = true; } else if (o.selected) { det.value = ""; }
+      });
+      row.hidden = !any;
+      det.required = any;
+      det.dispatchEvent(new Event("combo:sync"));
+    };
+    src.addEventListener("change", sync);
+    sync();
+  }
+});
+</script>
+{{end}}

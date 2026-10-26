@@ -1,0 +1,45 @@
+{{define "socbase"}}<!DOCTYPE html>
+<html lang="{{.HTMLLang}}" data-i18n="single">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @view-transition { navigation: auto; }
+    html { background: #EAF0F8; }
+    ::view-transition-group(root) { animation-duration: 120ms; }
+    @media (prefers-reduced-motion: reduce) { ::view-transition-group(root) { animation: none; } }
+  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{tr .Lang .Title}} · SOC</title>
+  <link rel="icon" type="image/png" href="/soc/static/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="/soc/static/register/clearwave/templatemo-622-clearwave.css?v=20261020b" />
+  <link rel="stylesheet" href="/soc/static/register/clearwave/app.css?v=20261020b" />
+  <link rel="stylesheet" href="/soc/static/register/admin-clearwave.css?v=20261021a" />
+</head>
+<body class="soc-theme">
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/soc" class="nav-logo">hse <span>observation</span></a>
+      <div class="lang-switch" role="group" aria-label="Language / Bahasa">
+        {{range .Langs}}<a href="/soc/lang?l={{.Code}}&amp;next={{$.Path}}" lang="{{.HTML}}" title="{{.Label}}"{{if eq .Code $.Lang}} class="active" aria-current="true"{{end}}>{{.Short}}</a>{{end}}
+      </div>
+      {{if .Session}}
+      <div class="nav-cta">
+        <span class="btn-ghost" style="pointer-events:none">{{.Session.Name}}</span>
+        <form method="post" action="/soc/signout" style="display:inline"><button type="submit" class="btn-primary">{{tr .Lang "Sign out"}}</button></form>
+      </div>
+      {{end}}
+    </div>
+  </nav>
+  <div class="login-wrap">
+    <div class="login-card login-card--wide">{{template "main" .}}</div>
+  </div>
+  <footer class="app-dev-credit">
+    <p>{{tr .Lang "Developed by Minhajul Mubarok, dr. Arif Rahman Hakim."}}</p>
+    <p>{{tr .Lang "Safety Observation Communication. Internal HSE record-keeping only."}}</p>
+  </footer>
+</body>
+</html>
+{{end}}

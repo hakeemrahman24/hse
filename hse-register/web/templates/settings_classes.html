@@ -1,0 +1,57 @@
+{{define "content"}}
+<div class="settings-panel-body">
+  {{if .EditID}}{{range .ClassRows}}{{if eq .ID $.EditID}}
+  <div class="app-sidebar-label">Edit class</div>
+  <form method="post" action="/admin/settings/hazard-classes/{{.ID}}/rename" class="settings-grid">
+    <label>
+      <span>Hazard class name</span>
+      <input type="text" name="name" value="{{.Name}}" maxlength="40" required autofocus />
+    </label>
+    <div class="span-all settings-actions">
+      <button type="submit" class="btn-primary">Save</button>
+      <a class="btn-ghost" href="/admin/settings/hazard-classes">Cancel</a>
+    </div>
+  </form>
+  {{end}}{{end}}{{end}}
+
+  <div class="app-sidebar-label">Add class</div>
+  <form method="post" action="/admin/settings/hazard-classes" class="settings-grid">
+    <label>
+      <span>Hazard class name</span>
+      <input type="text" name="name" maxlength="40" placeholder="e.g. Radiological" required />
+    </label>
+    <div class="span-all"><button type="submit" class="btn-primary">Add class</button></div>
+  </form>
+
+  <div class="app-sidebar-label">Current classes</div>
+  <div class="table-scroll">
+    <table class="data-table compact">
+      <thead><tr><th>Class</th><th>Categories</th><th>Observations</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {{range .ClassRows}}
+        <tr class="{{if .Archived}}row-archived{{end}}{{if eq .ID $.EditID}} row-editing{{end}}">
+          <td>{{.Name}}</td>
+          <td>{{.Categories}}</td>
+          <td>{{.Used}}</td>
+          <td>{{if .Archived}}<span class="badge badge-archived">Archived</span>{{else}}Active{{end}}</td>
+          <td class="row-actions">
+            <a class="btn-ghost" href="/admin/settings/hazard-classes?edit={{.ID}}">Edit</a>
+            {{if .Archived}}
+            <form method="post" action="/admin/settings/hazard-classes/{{.ID}}/restore"><button type="submit">Restore</button></form>
+            {{else}}
+            <form method="post" action="/admin/settings/hazard-classes/{{.ID}}/archive" onsubmit="return confirm('Archive this class? Its categories can no longer be chosen on new observations. Existing observations keep them.');"><button type="submit">Archive</button></form>
+            {{end}}
+            {{if eq .Categories 0}}
+            <form method="post" action="/admin/settings/hazard-classes/{{.ID}}/delete" onsubmit="return confirm('Delete this empty class?');"><button type="submit" class="link-danger">Delete</button></form>
+            {{end}}
+          </td>
+        </tr>
+      {{else}}
+        <tr><td colspan="5">No classes yet. Add the first one above.</td></tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  <p class="obs-muted list-note"><b>Archive</b> hides a class and its categories from the forms but keeps them on existing observations (you can restore it). <b>Delete</b> is offered only for a class with no categories.</p>
+</div>
+{{end}}

@@ -1,0 +1,48 @@
+﻿priority,topic,kind,group,hazard_category_original_list,category_working,active_keywords,hits_in_file,note,label_id,high_potential,life_saving_rule_draft,form_use
+1,Working at Height,hazard,,Fall from Height,6 Mechanical and Work Activity,29,22,,Bekerja di ketinggian,Y,Work at height,"Suggested by search and in browse list (paths A, B, C, D)"
+2,Confined Space,hazard,,Confined Space (new),6 Mechanical and Work Activity,18,1,,"Ruang terbatas (tangki, bejana, parit tertutup)",Y,Confined space,"Suggested by search and in browse list (paths A, B, C, D)"
+3,Hot Work,hazard,,Fire (hot work),"7 Fire, Explosion and Electrical",23,12,,"Pekerjaan panas (las, potong, gerinda)",Y,Hot work,"Suggested by search and in browse list (paths A, B, C, D)"
+4,Fire & Ignition,hazard,,Fire,"7 Fire, Explosion and Electrical",22,12,,Api dan sumber penyulut,Y,,"Suggested by search and in browse list (paths A, B, C, D)"
+5,Process Safety / Hydrocarbon Release,hazard,,Loss of Containment (new),"7 Fire, Explosion and Electrical",29,0,,Kebocoran hidrokarbon atau gas,Y,,"Suggested by search and in browse list (paths A, B, C, D)"
+6,Lifting Operation,hazard,,Dropped / Falling Objects,6 Mechanical and Work Activity,19,6,,"Pengangkatan (crane, sling)",Y,Lifting operations,"Suggested by search and in browse list (paths A, B, C, D)"
+7,Excavation Work,hazard,,Excavation Collapse / Underground Services,6 Mechanical and Work Activity,16,3,,Pekerjaan galian,Y,,"Suggested by search and in browse list (paths A, B, C, D)"
+8,Electrical Work,hazard,,Electricity,"7 Fire, Explosion and Electrical",23,16,,Pekerjaan listrik,Y,Energy isolation (partial),"Suggested by search and in browse list (paths A, B, C, D)"
+9,Machinery & Energy Isolation,hazard,,Rotating Equipment / Energy Isolation (new),6 Mechanical and Work Activity,31,0,,Mesin berputar dan isolasi energi,Y,Energy isolation,"Suggested by search and in browse list (paths A, B, C, D)"
+10,Line of Fire,hazard,,Struck By,6 Mechanical and Work Activity,19,6,,Bahaya tertimpa atau terbentur (line of fire),Y,Line of fire,"Suggested by search and in browse list (paths A, B, C, D)"
+11,Hand & Power Tools,hazard,,Hand and Power Tools (new),6 Mechanical and Work Activity,34,1,,Alat tangan dan alat listrik,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+12,Transportation,hazard,,Vehicles & Mobile Equipment,9 Transport and Driving,70,162,,Kendaraan dan alat berat,Y,Driving,"Suggested by search and in browse list (paths A, B, C, D)"
+13,Wildlife & Pests,hazard,,"Animals, Insects & Plants",3 Biological,29,6,Above Road Condition (fixes row 193),Hewan dan serangga,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+14,Road Condition,hazard,,"Slips, Trips & Falls",9 Transport and Driving,33,32,,Kondisi jalan,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+15,Marine & Working Over Water,hazard,,Marine / Drowning (new),6 Mechanical and Work Activity,23,5,,Pekerjaan di air atau kapal,Y,,"Suggested by search and in browse list (paths A, B, C, D)"
+16,Housekeeping,hazard,,"Slips, Trips & Falls",6 Mechanical and Work Activity,49,123,,Kebersihan dan kerapian area,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+17,Waste & Environmental Control,hazard,,Waste / Environmental Impact (new),8 Environmental,38,13,,Pengelolaan sampah dan limbah,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+18,"Dust, Smoke & Air Quality",hazard,,Air Emission & Dust,2 Chemical,22,18,Default Chemical; HSE decides Chemical vs Environmental,"Debu, asap, kualitas udara",N,,"Suggested by search and in browse list (paths A, B, C, D)"
+19,Hazardous Chemicals,hazard,,Hazardous Substances (new),2 Chemical,39,0,,Bahan kimia berbahaya,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+20,Landslide,hazard,,Landslide / Slope Instability,6 Mechanical and Work Activity,14,4,Above the Welfare topics (fixes row 95),Longsor,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+21,Welfare - Sanitation & Drinking Water,hazard,Welfare,Infection / Contaminated Food or Water,3 Biological,31,9,"Welfare. Drinking water, toilets, washing","Toilet, kebersihan, air minum",N,,"Suggested by search and in browse list (paths A, B, C, D)"
+22,Welfare - Accommodation & Laundry,hazard,Welfare,Welfare - accommodation (new),5 Psychosocial,29,17,"Welfare. Mess, rooms, laundry","Mess, kamar, laundry",N,,"Suggested by search and in browse list (paths A, B, C, D)"
+23,"Welfare - Rest Area, Shelter & Canteen",hazard,Welfare,Welfare - facilities (new),5 Psychosocial,30,11,"Welfare. Rest areas, shelter, canteen, prayer room","Tempat istirahat, shelter, kantin",N,,"Suggested by search and in browse list (paths A, B, C, D)"
+24,Health & Infectious Disease,hazard,,Infection / Illness (new),3 Biological,35,0,,Kesehatan dan penyakit menular,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+25,Lighting,hazard,,Poor Lighting,1 Physical,14,7,,Penerangan,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+26,Noise,hazard,,Noise,1 Physical,14,0,,Kebisingan,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+27,Radiation & Vibration,hazard,,Radiation / Vibration (new),1 Physical,25,0,,Radiasi dan getaran,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+28,Sharp Edges,hazard,,Cuts & Sharp Edges,6 Mechanical and Work Activity,23,5,,Benda tajam,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+29,Pressurized,hazard,,Pressurized / Vacuum Systems,6 Mechanical and Work Activity,16,3,,Peralatan bertekanan,Y,,"Suggested by search and in browse list (paths A, B, C, D)"
+30,Spill,hazard,,Spill / Leakage,8 Environmental,22,5,,Tumpahan dan kebocoran cairan,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+31,Heat Stress,hazard,,Heat Stress,1 Physical,19,4,Renamed from Heat / Weather,Cuaca panas (heat stress),N,,"Suggested by search and in browse list (paths A, B, C, D)"
+32,Natural Events / Weather,hazard,,Natural Event (new),8 Environmental,18,8,Kept in Environmental: nature is the hazard source,Cuaca ekstrem dan bencana alam,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+33,Manual Handling & Ergonomics,hazard,,Manual Handling / Posture (new),4 Ergonomic,29,0,,Angkat manual dan posisi kerja,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+34,Fatigue / Rest,hazard,,Fatigue & Working Hours,5 Psychosocial,20,1,,Kelelahan dan waktu istirahat,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+35,Welfare - Workload & Fair Treatment,hazard,Welfare,Welfare - workload / treatment (new),5 Psychosocial,32,0,"Welfare. Overtime, pay, leave, fair treatment, work stress",Beban kerja dan perlakuan adil,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+36,Bullying,hazard,,Violence & Harassment,5 Psychosocial,26,0,,Perundungan dan pelecehan,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+37,Security & Intrusion,hazard,,Security / External (new),10 Security and External,22,1,New in v5. Category 10,"Keamanan, penyusup, kehilangan",N,,"Suggested by search and in browse list (paths A, B, C, D)"
+38,Community & Civil Unrest,hazard,,Security / External (new),10 Security and External,37,0,New in v5. Category 10,"Masyarakat sekitar, demo, blokade",N,,"Suggested by search and in browse list (paths A, B, C, D)"
+39,Third-Party Interference,hazard,,Security / External (new),10 Security and External,28,0,New in v5. Category 10 (midstream: illegal tapping),"Gangguan pihak ketiga (illegal tapping, sabotase)",N,,"Suggested by search and in browse list (paths A, B, C, D)"
+40,Violence & Threats from Outsiders,hazard,,Security / External (new),10 Security and External,21,0,New in v5. Category 10. Workplace bullying stays in 5 Psychosocial,Ancaman dan kekerasan dari luar,N,,"Suggested by search and in browse list (paths A, B, C, D)"
+101,PPE,control,,(control tag only),(category comes from the hazard topic),43,32,Control tag,APD (alat pelindung diri),,,Set by picklist answer (paths A and C); keyword match only for old reports
+102,Permit To Work,control,,(control tag only),(category comes from the hazard topic),15,6,Control tag,Izin kerja (permit),,Permit to work,Set by picklist answer (paths A and C); keyword match only for old reports
+103,Barricade / Sign,control,,(control tag only),(category comes from the hazard topic),30,9,Control tag,Barikade dan rambu,,,Set by picklist answer (paths A and C); keyword match only for old reports
+104,"Safety Meeting, Induction & Checks",control,,(control tag only),(category comes from the hazard topic),42,53,Control tag,"Rapat keselamatan, induksi, pengecekan",,,Set by picklist answer (paths A and C); keyword match only for old reports
+105,Working Without Helper / Supervision,control,,(control tag only),(category comes from the hazard topic),18,5,Control tag,Bekerja tanpa pengawas atau helper,,,Set by picklist answer (paths A and C); keyword match only for old reports
+106,Emergency Preparedness & First Aid,control,,(control tag only),(category comes from the hazard topic),29,5,Control tag,Kesiapsiagaan darurat dan P3K,,,Set by picklist answer (paths A and C); keyword match only for old reports
+107,Procedure & Competency,control,,(control tag only),(category comes from the hazard topic),28,6,Control tag,Prosedur dan kompetensi,,Bypassing safety controls (partial),Set by picklist answer (paths A and C); keyword match only for old reports

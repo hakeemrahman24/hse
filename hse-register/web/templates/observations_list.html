@@ -1,0 +1,60 @@
+{{define "content"}}
+{{template "datefilter" .}}
+{{with .ListFilter}}
+<form method="get" action="/observations/list" class="obs-filters" aria-label="Hazard filter">
+  {{range $k, $v := .Keep}}<input type="hidden" name="{{$k}}" value="{{$v}}">{{end}}
+  <label>Hazard class
+    <select name="class">
+      <option value="">All</option>
+      {{range .Classes}}<option value="{{.}}"{{if eq . $.ListFilter.Class}} selected{{end}}>{{.}}</option>{{end}}
+      <option value="unclassified"{{if eq .Class "unclassified"}} selected{{end}}>Not classified</option>
+    </select>
+  </label>
+  <label>Hazard category
+    <select name="hazard">
+      <option value="">All</option>
+      {{range .HazardGroups}}<optgroup label="{{.Class}}">{{range .Items}}<option value="{{.ID}}"{{if eq .ID $.ListFilter.Hazard}} selected{{end}}>{{.Name}}</option>{{end}}</optgroup>{{end}}
+    </select>
+  </label>
+  <label>Control topic
+    <select name="topic">
+      <option value="">All</option>
+      {{range .Controls}}<option value="{{.ID}}"{{if eq .ID $.ListFilter.Topic}} selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+  </label>
+  <button type="submit" class="btn-ghost">Filter</button>
+</form>
+{{end}}
+<div class="obs-toolbar">
+  <div class="obs-chips">
+    {{range .Chips}}<a class="obs-chip{{if .Active}} active{{end}}" href="{{.URL}}">{{.Label}}</a>{{end}}
+  </div>
+  <a href="/observations/new" class="btn-primary">Add observation</a>
+</div>
+<table id="result_list" class="obs-table">
+  <thead>
+    <tr><th>Observed</th><th>Source</th><th>Submitter</th><th>Category</th><th>Area</th><th>Responsible company</th><th>Status</th><th>Verification</th>{{if eq .Session.Role "admin"}}<th></th>{{end}}</tr>
+  </thead>
+  <tbody>
+    {{range .Observations}}
+    <tr>
+      <td><a href="/observations/{{.ID}}">{{.ObservedAt.Format "2006-01-02 15:04"}}</a></td>
+      <td>{{if .Source}}{{.Source}}{{if .SourceDetail}} · {{.SourceDetail}}{{end}}{{else}}—{{end}}</td>
+      <td>{{.ObserverName}}</td>
+      <td>{{catLabel .Category}}</td>
+      <td>{{.Location}}{{if .SubArea}} · {{.SubArea}}{{end}}</td>
+      <td>{{if .ResponsibleCompany}}{{.ResponsibleCompany}}{{else}}—{{end}}</td>
+      <td><span class="badge badge-{{.Status}}">{{statusLabel .Status}}</span>{{if .Urgent}} <span class="badge badge-urgent">Urgent</span>{{end}}</td>
+      <td>{{if .Verification}}{{.Verification}}{{else}}—{{end}}</td>
+      {{if eq $.Session.Role "admin"}}<td>
+        <form method="post" action="/observations/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Delete this observation and its files?');">
+          <button type="submit" class="link-danger">Delete</button>
+        </form>
+      </td>{{end}}
+    </tr>
+    {{else}}
+    <tr><td colspan="9">No observations match.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}

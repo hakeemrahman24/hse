@@ -1,0 +1,26 @@
+---
+description: "Edit and simulate on the laptop. Deploy to the Orange Pi with the Pi settings."
+alwaysApply: true
+---
+# Laptop and Orange Pi
+
+The laptop and the Orange Pi each have their own MariaDB database, `.env`, and upload folder. A path or token that is correct on one machine is wrong on the other.
+
+## Edit here
+
+- Change code and try it on this laptop first.
+- The laptop upload folder is `UPLOAD_DIR` in the laptop `.env` (`data/uploads-migrated`).
+- Stored file paths on the laptop stay under `/home/ayahaif/Projects/hse-medpost/data/uploads-migrated/`.
+
+## Deploy there
+
+- Build the Linux arm64 binary on the laptop. Copy that binary and changed `web/` files to the Pi. Do not compile on the Pi.
+- Restart the Pi user service `hse-medpost` only when the binary or an HTML template changed.
+- On the Pi, use the Pi `.env`. Its upload folder is `/home/orangepi/projects/hse-medpost/data/uploads`.
+- When copying rows that store a file path, rewrite the laptop prefix to the Pi prefix. Never write `/home/ayahaif/...` into the Pi database.
+- Do not copy `DirectoryAPIToken` from the laptop onto the Pi. Each database keeps the tokens created in its own Settings page.
+
+## Uploaded files
+
+- Compare files by the path under the upload folder, not by the absolute path.
+- Copy a missing or different file into that machine's own upload folder, and store that machine's path in that machine's database.
