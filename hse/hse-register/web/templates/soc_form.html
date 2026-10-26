@@ -1,0 +1,122 @@
+{{define "main"}}
+{{if .EditID}}<h1>{{heading .Lang "Edit Report"}}</h1>{{else}}<h1>{{heading .Lang "Observation Finding"}}</h1>{{end}}
+<p class="sub">{{if .EditID}}{{tr .Lang "Edit your report"}} <strong>{{.Ref}}</strong>. {{tr .Lang "You can change it until HSE verifies it."}}{{else}}{{tr .Lang "Observation form. Reporter details come from Medpost."}}{{end}}</p>
+{{if .ServerFailed}}<p role="alert" style="color:#b42318;font-size:0.875rem">{{tr .Lang "Could not save, please try again."}}</p>{{end}}
+
+<form method="post" class="add-activity" action="{{if .EditID}}/soc/edit/{{.EditID}}{{else}}/soc/form{{end}}" enctype="multipart/form-data">
+  <div class="section-label">{{tr .Lang "Reporter"}}</div>
+  <div class="settings-grid">
+    <label>
+      <span>{{tr .Lang "Name"}}</span>
+      <input type="text" id="reporter_name" value="{{.Session.Name}}" readonly>
+    </label>
+    <label>
+      <span>{{tr .Lang "Position"}}</span>
+      <input type="text" id="reporter_position" value="{{.Session.Designation}}" readonly>
+    </label>
+    <label class="span-all">
+      <span>{{tr .Lang "Company"}}</span>
+      <input type="text" id="reporter_company" value="{{.Session.Company}}" readonly>
+      <small class="field-hint">{{tr .Lang "From Medpost, cannot be changed."}}</small>
+    </label>
+  </div>
+
+  <div class="section-label">{{tr .Lang "Finding"}}</div>
+  <div class="settings-grid">
+    <label>
+      <span>{{tr .Lang "Date of finding"}}</span>
+      <input type="date" name="date" value="{{.Input.Date}}" max="{{.Today}}" required>
+      {{with .Errors.date}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label>
+      <span>{{tr .Lang "Category"}}</span>
+      <select name="category" id="category" data-combo required>
+        <option value="">{{tr .Lang "Select…"}}</option>
+        {{range .Categories}}<option value="{{.Value}}"{{if eq $.Input.Category .Value}} selected{{end}}>{{tr $.Lang .Label}}</option>{{end}}
+      </select>
+      {{with .Errors.category}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label class="span-all">
+      <span>{{tr .Lang "Describe your findings"}}</span>
+      <textarea name="description" id="description" rows="4" maxlength="5000" required>{{.Input.Description}}</textarea>
+      {{with .Errors.description}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <div class="span-all topic-field">
+      <label for="topic_id"><span>{{tr .Lang "Hazard topic"}}</span></label>
+      <div id="topic-chips" class="topic-chips" role="group" aria-label="{{tr .Lang "Suggested topics"}}"></div>
+      <select name="topic_id" id="topic_id" data-combo>
+        <option value="">{{tr .Lang "Choose from the list"}}</option>
+        {{range .TopicGroups}}<optgroup label="{{tr $.Lang .Kind}}{{if .Class}} · {{tr $.Lang .Class}}{{end}}">
+          {{range .Items}}<option value="{{.ID}}" data-hazard="{{if .HazardID}}{{.HazardID}}{{end}}" data-class="{{tr $.Lang .Class}}"{{if eq $.Input.TopicID (printf "%d" .ID)}} selected{{end}}>{{.Label}}</option>{{end}}
+        </optgroup>{{end}}
+      </select>
+      <button type="button" id="topic-none" class="topic-none" aria-pressed="false">{{tr .Lang "Other / none of these fit"}}</button>
+      <small id="suggest-hint" class="field-hint" aria-live="polite"></small>
+      {{with .Errors.topic}}<small class="field-error">{{.}}</small>{{end}}
+    </div>
+    <label>
+      <span>{{tr .Lang "Hazard class"}}</span>
+      <input type="text" id="hazard_class" value="{{tr .Lang .HazardClass}}" data-none="{{tr .Lang "None"}}" placeholder="{{tr .Lang "Follows the topic"}}" readonly>
+      <input type="hidden" name="hazard_id" id="hazard_id" value="{{.Input.HazardID}}">
+      {{with .Errors.hazard}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label>
+      <span>{{tr .Lang "Observation area"}}</span>
+      <input type="text" name="area" id="area" value="{{.Input.Area}}" list="area-list" autocomplete="off" data-combo-list data-combo-strict placeholder="{{tr .Lang "Type to search"}}" required>
+      <datalist id="area-list">{{range .Areas}}<option value="{{.}}">{{end}}</datalist>
+      {{with .Errors.area}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label>
+      <span>{{tr .Lang "Responsible company (if known)"}}</span>
+      <input type="text" name="responsible_company" id="responsible_company" value="{{.Input.ResponsibleCompany}}" list="company-list" autocomplete="off" data-combo-list>
+      <datalist id="company-list">{{range .Companies}}<option value="{{.}}">{{end}}</datalist>
+      {{with .Errors.responsible_company}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+  </div>
+
+  <div class="section-label">{{tr .Lang "Evidence"}}</div>
+  <div class="settings-grid">
+    {{if .Photos}}<div class="span-all"><span>{{tr .Lang "Current photos"}}</span>
+      <div class="photo-grid photo-grid--small">{{range .Photos}}<figure><img src="/soc/photo/{{.}}" alt="{{tr $.Lang "Photo"}}" loading="lazy"><label class="field-hint"><input type="checkbox" name="remove_photo" value="{{.}}"> {{tr $.Lang "Remove"}}</label></figure>{{end}}</div></div>{{end}}
+    <div class="span-all photo-field">
+      <span>{{tr .Lang "Documentation, max 4 photos (if any)"}}</span>
+      <input type="file" name="photos" id="photos-input" accept="image/*" multiple data-max="{{.PhotoSlots}}"{{if not .PhotoSlots}} disabled{{end}} aria-label="Photos">
+      <div id="photos-preview" class="photo-preview" aria-live="polite"></div>
+      <small id="photos-status" class="field-hint">{{tr .Lang "Photos are compressed automatically to 500 KB max."}}</small>
+      {{with .Errors.photos}}<small class="field-error">{{.}}</small>{{end}}
+    </div>
+  </div>
+
+  {{if not .EditID}}
+  <div class="section-label">{{tr .Lang "After action (optional)"}}</div>
+  <div class="settings-grid">
+    <div class="span-all photo-field">
+      <span>{{tr .Lang "After photos, max 4 (if already fixed)"}}</span>
+      <input type="file" name="after_photos" id="after-input" accept="image/*" multiple data-max="4" aria-label="After photos">
+      <div id="after-preview" class="photo-preview" aria-live="polite"></div>
+      <small id="after-status" class="field-hint">{{tr .Lang "Photos are compressed automatically to 500 KB max."}}</small>
+      {{with .Errors.after_photos}}<small class="field-error">{{.}}</small>{{end}}
+    </div>
+    <label class="span-all">
+      <span>{{tr .Lang "Remarks, notes or recommendation (if any)"}}</span>
+      <textarea name="action_taken" id="action_taken" rows="3" maxlength="5000" placeholder="{{tr .Lang "What was done, or what do you recommend?"}}">{{.Input.ActionTaken}}</textarea>
+      {{with .Errors.action_taken}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+    <label class="span-all">
+      <span><input type="checkbox" name="close" value="1" style="width:auto;margin-right:6px"> {{tr .Lang "Close this finding now"}}</span>
+      <small class="field-hint">{{tr .Lang "Needs at least one After photo, except a Positive Finding. It cannot be changed once closed."}}</small>
+    </label>
+  </div>
+  {{end}}
+
+  <div class="submit-row">
+    <button type="submit" class="btn-primary">{{if .EditID}}{{tr .Lang "Save changes"}}{{else}}{{tr .Lang "Submit"}}{{end}}</button>
+    <a class="btn-ghost" href="/soc/mine">{{tr .Lang "My submissions"}}</a>
+  </div>
+</form>
+<script src="/soc/static/i18n.js?v=20261017h"></script>
+<script src="/soc/static/photo-compress.js?v=20261020b" defer></script>
+<script src="/soc/static/combo.js?v=20261017h" defer></script>
+<script src="/soc/static/soc-suggest.js?v=20261018a" defer></script>
+<script>document.addEventListener("DOMContentLoaded",function(){var i=document.getElementById("photos-input");if(i&&window.attachPhotoCompress){attachPhotoCompress(i,document.getElementById("photos-status"),document.getElementById("photos-preview"));}var a=document.getElementById("after-input");if(a&&window.attachPhotoCompress){attachPhotoCompress(a,document.getElementById("after-status"),document.getElementById("after-preview"));}var tp=document.getElementById("topic_id"),hz=document.getElementById("hazard_id"),hc=document.getElementById("hazard_class");tp.addEventListener("change",function(){var o=tp.options[tp.selectedIndex];if(o&&o.value){hz.value=o.getAttribute("data-hazard")||"";hc.value=o.getAttribute("data-class")||hc.getAttribute("data-none");}else{hz.value="";hc.value="";}});attachTopicSuggest({description:document.getElementById("description"),topic:tp,chips:document.getElementById("topic-chips"),none:document.getElementById("topic-none"),hint:document.getElementById("suggest-hint"),url:"/soc/api/suggest",texts:{suggested:{{tr .Lang "Tap the topic that fits, or choose from the list."}},nothing:{{tr .Lang "No suggestion. Choose from the list."}}}});});</script>
+{{end}}

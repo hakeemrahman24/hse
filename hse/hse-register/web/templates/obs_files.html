@@ -1,0 +1,45 @@
+{{/* One evidence block (before or after). Used by the detail page and by the edit page. */}}
+{{define "fileblock"}}
+<section class="obs-files" id="files-{{.Section.Kind}}">
+  <h2>{{.Section.Title}} <small>({{len .Section.Photos}} of 4 photos, {{len .Section.PDFs}} of 2 PDFs)</small></h2>
+  {{if or .Section.Photos .Section.PDFs}}
+  <div class="photo-grid">
+    {{range .Section.Photos}}
+    <figure>
+      <a href="/evidence/{{.ID}}" target="_blank" rel="noopener"><img src="/evidence/{{.ID}}" alt="Photo" loading="lazy"></a>
+      {{if $.CanDelete}}<form method="post" action="/observations/{{$.ObsID}}/files/{{.ID}}/delete" onsubmit="return confirm('Delete this photo?');"><button type="submit" class="link-danger">Delete</button></form>{{end}}
+    </figure>
+    {{end}}
+  </div>
+  {{if .Section.PDFs}}<ul class="pdf-list">
+    {{range .Section.PDFs}}<li>
+      <a href="/evidence/{{.ID}}">{{.Display}}</a> <small>({{kb .Size}})</small>
+      {{if $.CanDelete}}<form method="post" action="/observations/{{$.ObsID}}/files/{{.ID}}/delete" style="display:inline" onsubmit="return confirm('Delete this document?');"><button type="submit" class="link-danger">Delete</button></form>{{end}}
+    </li>{{end}}
+  </ul>{{end}}
+  {{else}}<p class="obs-muted">No files yet.</p>{{end}}
+  {{if or .CanAddPhoto .CanAddPDF}}
+  <form method="post" action="/observations/{{.ObsID}}/files?kind={{.Section.Kind}}" enctype="multipart/form-data" class="obs-upload">
+    {{if .CanAddPhoto}}<label class="field"><span>Photos (JPEG, PNG, WebP or GIF; compressed to 500 KB each)</span>
+      <input type="file" name="photos" accept="image/*" multiple data-max="{{.Section.PhotoSlots}}" class="photo-input"></label>
+      <div class="photo-preview"></div>
+      <small class="field-hint photo-status">Max 4 photos in total, including the ones above.</small>{{end}}
+    {{if .CanAddPDF}}<label class="field"><span>PDF documents (max 2 in total, 5 MB each)</span>
+      <input type="file" name="documents" accept="application/pdf,.pdf" multiple></label>{{end}}
+    <input type="submit" value="Upload">
+  </form>
+  {{end}}
+</section>
+{{end}}
+
+{{/* From/To filter on the date of the finding. Used by the dashboard and the list. */}}
+{{define "datefilter"}}
+<form method="get" action="{{.FilterAction}}" class="obs-datefilter">
+  {{range $k, $v := .FilterHidden}}<input type="hidden" name="{{$k}}" value="{{$v}}">{{end}}
+  <span class="obs-datefilter-title">Date of finding</span>
+  <label>From <input type="date" name="from" value="{{.Range.From}}"></label>
+  <label>To <input type="date" name="to" value="{{.Range.To}}"></label>
+  <button type="submit" class="btn-primary">Apply</button>
+  {{if .Range.Active}}<a class="btn-ghost" href="{{.ClearURL}}">Clear</a>{{end}}
+</form>
+{{end}}

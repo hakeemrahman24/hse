@@ -1,0 +1,90 @@
+{{define "content"}}
+<div class="settings-panel-body">
+  {{if .EditID}}{{range .AreaRows}}{{if eq .ID $.EditID}}
+  <div class="app-sidebar-label">Edit area</div>
+  <form method="post" action="/admin/settings/areas/{{.ID}}/rename" class="settings-grid">
+    <label>
+      <span>Area name</span>
+      <input type="text" name="name" value="{{.Name}}" maxlength="100" required autofocus />
+    </label>
+    <div class="span-all settings-actions">
+      <button type="submit" class="btn-primary">Save</button>
+      <a class="btn-ghost" href="/admin/settings/areas">Cancel</a>
+    </div>
+  </form>
+  {{end}}{{end}}{{end}}
+
+  {{if .SubOf}}{{range .AreaRows}}{{if eq .ID $.SubOf}}
+  <div class="app-sidebar-label">Sub-areas of {{.Name}}</div>
+  <form method="post" action="/admin/settings/areas/{{.ID}}/subareas" class="settings-grid">
+    <label>
+      <span>Sub-area name</span>
+      <input type="text" name="name" maxlength="100" placeholder="e.g. Mess hall" required autofocus />
+    </label>
+    <div class="span-all settings-actions">
+      <button type="submit" class="btn-primary">Add sub-area</button>
+      <a class="btn-ghost" href="/admin/settings/areas">Done</a>
+    </div>
+  </form>
+  <div class="table-scroll">
+    <table class="data-table compact">
+      <thead><tr><th>Sub-area</th><th>Used by</th><th></th></tr></thead>
+      <tbody>
+      {{range .Subs}}
+        <tr>
+          <td>
+            <form method="post" action="/admin/settings/subareas/{{.ID}}/rename" class="inline-form">
+              <input type="text" name="name" value="{{.Name}}" maxlength="100" required aria-label="Sub-area name" />
+              <button type="submit" class="btn-ghost">Rename</button>
+            </form>
+          </td>
+          <td>{{.Used}} observation{{if ne .Used 1}}s{{end}}</td>
+          <td class="row-actions">
+            <form method="post" action="/admin/settings/subareas/{{.ID}}/delete" onsubmit="return confirm('Remove this sub-area from the list? Existing observations keep it.');">
+              <button type="submit" class="link-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {{else}}
+        <tr><td colspan="3">No sub-areas. The form will not ask for one in this area.</td></tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}{{end}}{{end}}
+
+  <div class="app-sidebar-label">Add area</div>
+  <form method="post" action="/admin/settings/areas" class="settings-grid">
+    <label>
+      <span>Area name</span>
+      <input type="text" name="name" maxlength="100" placeholder="e.g. Warehouse" required />
+    </label>
+    <div class="span-all"><button type="submit" class="btn-primary">Add area</button></div>
+  </form>
+
+  <div class="app-sidebar-label">Current areas</div>
+  <div class="table-scroll">
+    <table class="data-table compact">
+      <thead><tr><th>Area</th><th>Sub-areas</th><th>Used by</th><th></th></tr></thead>
+      <tbody>
+      {{range .AreaRows}}
+        <tr{{if eq .ID $.EditID}} class="row-editing"{{end}}>
+          <td>{{.Name}}</td>
+          <td>{{range $i, $x := .Subs}}{{if $i}}, {{end}}{{$x.Name}}{{else}}-{{end}}</td>
+          <td>{{.Used}} observation{{if ne .Used 1}}s{{end}}</td>
+          <td class="row-actions">
+            <a class="btn-ghost" href="/admin/settings/areas?sub={{.ID}}">Sub-areas</a>
+            <a class="btn-ghost" href="/admin/settings/areas?edit={{.ID}}">Edit</a>
+            <form method="post" action="/admin/settings/areas/{{.ID}}/delete" onsubmit="return confirm('Remove this area from the list? Existing observations keep it.');">
+              <button type="submit" class="link-danger">Delete</button>
+            </form>
+          </td>
+        </tr>
+      {{else}}
+        <tr><td colspan="4">No areas yet. Add the first one above.</td></tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+</div>
+{{end}}

@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="en" class="vt-cover">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @view-transition { navigation: auto; }
+    html { background: #E8F4F2; }
+    html.vt-cover { visibility: hidden; }
+    ::view-transition-group(root) { animation-duration: 120ms; }
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-group(root) { animation: none; }
+    }
+  </style>
+  <noscript><style>html.vt-cover { visibility: visible; }</style></noscript>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings · hse medpost</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
+  <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <script>
+    document.documentElement.classList.remove("vt-cover");
+  </script>
+</head>
+<body class="settings-theme">
+  <nav class="nav scrolled" id="mainNav" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/start" class="nav-logo">hse <span>medpost</span></a>
+      <div class="nav-cta">
+        <span class="settings-badge">{{.Role}}</span>
+        <span class="btn-ghost" style="pointer-events:none">{{.Name}}</span>
+        <button type="button" id="change-password" class="btn-ghost">Change password</button>
+        <button type="button" id="logout" class="btn-primary">Log out</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="app-shell settings-shell">
+    <aside class="app-sidebar">
+      <div id="settings-nav">
+        {{if eq .Role "admin"}}
+        <div class="app-sidebar-label">Staff &amp; access</div>
+        <div class="app-program-list">
+          <button type="button" class="app-program-item" data-section="staff">
+            <span class="app-program-item-title">Medpost staff</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="positions">
+            <span class="app-program-item-title">Positions & roles</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="employee-api">
+            <span class="app-program-item-title">Employee API</span>
+          </button>
+        </div>
+
+        <div class="app-sidebar-label">Common settings</div>
+        <div class="app-program-list">
+          <button type="button" class="app-program-item" data-section="company-details">
+            <span class="app-program-item-title">Company details</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="company-relations">
+            <span class="app-program-item-title">Company relations</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="projects">
+            <span class="app-program-item-title">Projects</span>
+          </button>
+          <!-- "Email notifications" nav item shelved — see the settings-panel[data-panel="mcu-notifications"]
+               comment below and plan/hse-medpost-plan.md's Progress Log for why and how to revive it. -->
+        </div>
+
+        <div class="app-sidebar-label">MCU lookups</div>
+        <div class="app-program-list">
+          <button type="button" class="app-program-item" data-section="nationalities">
+            <span class="app-program-item-title">Nationalities</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="checkup-criteria">
+            <span class="app-program-item-title">Checkup purpose criteria</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="review-result-criteria">
+            <span class="app-program-item-title">Review result criteria</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="work-locations">
+            <span class="app-program-item-title">Work location</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="task-categories">
+            <span class="app-program-item-title">Occupational health risks</span>
+          </button>
+        </div>
+        {{end}}
+
+        <div class="app-sidebar-label">Activity log</div>
+        <div class="app-program-list">
+          <button type="button" class="app-program-item" data-section="programs">
+            <span class="app-program-item-title">Programs</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="supervisors">
+            <span class="app-program-item-title">Supervisors</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="documents">
+            <span class="app-program-item-title">Documents</span>
+          </button>
+        </div>
+      </div>
+      <a href="/programs" class="settings-back">← Back to programs</a>
+    </aside>
+
+    <section class="app-main">
+      <div id="presence-banner" class="presence-card" hidden></div>
+      <div class="app-panel">
+        <div class="app-panel-head">
+          <h1 id="section-title">Settings</h1>
+          <p id="section-hint"></p>
+        </div>
+
+        <form id="settings-edit" class="settings-grid" hidden>
+          <div class="app-sidebar-label" id="settings-edit-heading">Edit</div>
+          <div id="settings-edit-fields"></div>
+          <p id="settings-edit-error" class="settings-edit-error" hidden></p>
+          <div class="settings-edit-actions">
+            <button type="submit" class="btn-primary" id="settings-edit-save">Save</button>
+            <button type="button" class="btn-ghost" id="settings-edit-cancel">Cancel</button>
+          </div>
+        </form>
+
+        {{if eq .Role "admin"}}
+        <div class="settings-panel" data-panel="staff">
+          <div class="settings-panel-body">
+            <div class="app-sidebar-label">Add staff</div>
+            <form id="add-staff" class="settings-grid">
+              <label>
+                <span>Title before</span>
+                <input name="titleBefore" placeholder="dr" />
+              </label>
+              <label>
+                <span>Name</span>
+                <input name="staffName" required />
+              </label>
+              <label>
+                <span>Title after</span>
+                <input name="titleAfter" placeholder="MKKK" />
+              </label>
+              <p id="staff-name-preview" style="grid-column:1/-1;margin:0;font-size:0.8125rem"></p>
+              <label>
+                <span>Position</span>
+                <select name="position" id="staff-position" required></select>
+              </label>
+              <label>
+                <span>Role (from position)</span>
+                <input id="staff-role-display" readonly value="" />
+                <input type="hidden" name="role" id="staff-role" value="staff" />
+              </label>
+              <label>
+                <span>Username</span>
+                <input name="username" required />
+              </label>
+              <label>
+                <span>Password (6 digits)</span>
+                <input name="password" pattern="[0-9]{6}" maxlength="6" required />
+              </label>
+              <div style="grid-column:1/-1">
+                <button type="submit" class="btn-primary">Add staff + access</button>
+              </div>
+            </form>
+
+            <div class="settings-divider"></div>
+
+            <div class="app-sidebar-label">Current staff</div>
+            <div class="table-scroll" id="current-staff">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Position</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="staff-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="positions">
+          <div class="settings-panel-body">
+            <form id="add-position" class="settings-grid">
+              <label>
+                <span>Position title</span>
+                <input name="positionName" required placeholder="e.g. Chief Medical Officer" />
+              </label>
+              <label>
+                <span>App role</span>
+                <select name="role">
+                  <option value="staff">staff</option>
+                  <option value="admin">admin</option>
+                </select>
+              </label>
+              <div style="grid-column:1/-1">
+                <button type="submit" class="btn-primary">Add position mapping</button>
+              </div>
+            </form>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Position</th>
+                    <th>Role</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="position-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="company-details">
+          <div class="settings-panel-body">
+            <div class="app-sidebar-label" id="company-form-label">Add company</div>
+            <form id="add-company" class="settings-grid">
+              <label>
+                <span>Name</span>
+                <input name="name" id="add-company-name" required />
+              </label>
+              <label>
+                <span>Abbreviation</span>
+                <input name="abbreviation" id="add-company-abbreviation" />
+              </label>
+              <label>
+                <span>Entity type</span>
+                <select name="entityTypeId" id="company-entity-type"></select>
+              </label>
+              <div style="grid-column:1/-1">
+                <button type="submit" id="add-company-submit" class="btn-primary">Add company</button>
+                <button type="button" id="cancel-edit-company" class="btn-ghost" style="display:none">Cancel</button>
+              </div>
+            </form>
+
+            <div class="settings-divider"></div>
+
+            <div class="app-sidebar-label">Companies</div>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Abbreviation</th>
+                    <th>Entity type</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="company-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="company-relations">
+          <div class="settings-panel-body">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <div class="app-sidebar-label" id="edit-relation-label" style="display:none">Edit company relation</div>
+              <button type="button" id="add-relation-btn" class="btn-ghost">+ Add relation</button>
+            </div>
+            <p style="color:var(--text-3);font-size:0.8125rem;margin:4px 0 12px">A company can have more than one relation — add one per project it serves.</p>
+            <form id="edit-company-relation" class="settings-grid" style="display:none">
+              <input type="hidden" name="companyRelationId" />
+              <label style="position:relative">
+                <span>Company</span>
+                <input type="text" name="companyId" id="edit-relation-company" required autocomplete="off" />
+                <div id="edit-relation-company-typeahead" class="app-program-list company-typeahead" style="display:none"></div>
+              </label>
+              <label style="position:relative">
+                <span>Parent company</span>
+                <input type="text" name="parentId" id="edit-relation-parent" placeholder="Search company… (blank = top-level)" autocomplete="off" />
+                <div id="edit-relation-parent-typeahead" class="app-program-list company-typeahead" style="display:none"></div>
+              </label>
+              <label>
+                <span>Project</span>
+                <select name="project" id="edit-relation-project"></select>
+              </label>
+              <div style="grid-column:1/-1">
+                <button type="submit" class="btn-primary">Save relation</button>
+                <button type="button" id="edit-relation-cancel" class="btn-ghost">Cancel</button>
+              </div>
+            </form>
+
+            <div class="app-sidebar-label">Company relations</div>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Company</th>
+                    <th>Parent</th>
+                    <th>Project</th>
+                    <th>Depth</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="company-relation-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="projects">
+          <div class="settings-panel-body">
+            <form id="add-project" class="settings-grid" style="grid-template-columns:1fr auto">
+              <label>
+                <span>Name</span>
+                <input name="name" required placeholder="e.g. LNG" />
+              </label>
+              <div style="align-self:end">
+                <button type="submit" class="btn-primary">Add project</button>
+              </div>
+            </form>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead><tr><th>Name</th><th></th></tr></thead>
+                <tbody id="project-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="nationalities">
+          <div class="settings-panel-body">
+            <form id="add-nationality" class="settings-grid" style="grid-template-columns:1fr auto">
+              <label>
+                <span>Name</span>
+                <input name="name" required placeholder="e.g. Indonesia" />
+              </label>
+              <div style="align-self:end">
+                <button type="submit" class="btn-primary">Add nationality</button>
+              </div>
+            </form>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead><tr><th>Name</th><th></th></tr></thead>
+                <tbody id="nationality-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="checkup-criteria">
+          <div class="settings-panel-body">
+            <form id="add-checkup-criteria" class="settings-grid" style="grid-template-columns:1fr auto">
+              <label>
+                <span>Name</span>
+                <input name="name" required placeholder="e.g. PreEmployment" />
+              </label>
+              <div style="align-self:end">
+                <button type="submit" class="btn-primary">Add checkup purpose</button>
+              </div>
+            </form>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead><tr><th>Name</th><th></th></tr></thead>
+                <tbody id="checkup-criteria-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="review-result-criteria">
+          <div class="settings-panel-body">
+            <form id="add-review-result" class="settings-grid" style="grid-template-columns:1fr auto">
+              <label>
+                <span>Name</span>
+                <input name="name" required placeholder="e.g. Fit" />
+              </label>
+              <div style="align-self:end">
+                <button type="submit" class="btn-primary">Add review result</button>
+              </div>
+            </form>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead><tr><th>Name</th><th></th></tr></thead>
+                <tbody id="review-result-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="work-locations">
+          <div class="settings-panel-body">
+            <form id="add-work-location" class="settings-grid" style="grid-template-columns:1fr auto">
+              <label>
+                <span>Name</span>
+                <input name="name" required placeholder="e.g. RemoteSite" />
+              </label>
+              <div style="align-self:end">
+                <button type="submit" class="btn-primary">Add work location</button>
+              </div>
+            </form>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead><tr><th>Name</th><th></th></tr></thead>
+                <tbody id="work-location-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="task-categories">
+          <div class="settings-panel-body">
+            <form id="add-task-category" class="settings-grid">
+              <label>
+                <span>Name</span>
+                <input name="name" required placeholder="e.g. Food Handler" />
+              </label>
+              <label>
+                <span>Trigger words</span>
+                <input name="triggerWords" placeholder="food handler, cook" />
+              </label>
+              <div style="align-self:end">
+                <button type="submit" class="btn-primary">Add occupational health risk</button>
+              </div>
+            </form>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead><tr><th>Name</th><th>Trigger words</th><th></th></tr></thead>
+                <tbody id="task-category-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="employee-api">
+          <div class="settings-panel-body">
+            <div class="app-sidebar-label">Eligible token</div>
+            <p style="color:var(--text-2);font-size:0.875rem;margin:0 0 8px">For a database that may only receive Fit and Fit with note checkups that are still valid. This token cannot open the full checkup list.</p>
+            <ul class="directory-links">
+              <li><a href="https://medical-activities.ayahaif.my.id/api/directory/fitness">https://medical-activities.ayahaif.my.id/api/directory/fitness</a></li>
+              <li><a href="https://medical-activities.ayahaif.my.id/api/directory/employees">https://medical-activities.ayahaif.my.id/api/directory/employees</a></li>
+            </ul>
+            <form class="settings-grid" onsubmit="return false">
+              <label style="grid-column:1/-1">
+                <span>Eligible token</span>
+                <input id="directory-token" readonly autocomplete="off" />
+              </label>
+              <div style="align-self:end">
+                <button type="button" id="directory-token-update" class="btn-primary">Update eligible token</button>
+              </div>
+            </form>
+
+            <div class="app-sidebar-label" style="margin-top:18px">All checkups token</div>
+            <p style="color:var(--text-2);font-size:0.875rem;margin:0 0 8px">For a database that may receive every checkup, including unfit, overdue, and archived. This token can also read the eligible list.</p>
+            <ul class="directory-links">
+              <li><a href="https://medical-activities.ayahaif.my.id/api/directory/checkups">https://medical-activities.ayahaif.my.id/api/directory/checkups</a></li>
+            </ul>
+            <form class="settings-grid" onsubmit="return false">
+              <label style="grid-column:1/-1">
+                <span>All checkups token</span>
+                <input id="directory-full-token" readonly autocomplete="off" />
+              </label>
+              <div style="align-self:end">
+                <button type="button" id="directory-full-token-update" class="btn-primary">Update all-checkups token</button>
+              </div>
+            </form>
+            <p id="directory-token-msg" style="color:var(--text-3);font-size:0.875rem;margin-top:8px"></p>
+          </div>
+        </div>
+
+        <!-- "Email notifications" panel shelved (2026-09-25): the single To/Cc
+             list doesn't fit "many companies, no dedicated HR staff to send
+             to" — nobody owns a cross-company inbox. Backend
+             (internal/entrymcu/emailnotify.go), its DB table, and this markup
+             are left intact for a later per-company-routed redesign — see
+             plan/hse-medpost-plan.md's Progress Log. Re-enabling needs: (1)
+             uncomment this panel + its nav button above, (2) uncomment the
+             scheduler goroutine in cmd/server/main.go.
+        <div class="settings-panel" data-panel="mcu-notifications">
+          <div class="settings-panel-body">
+            <form id="mcu-notification-form" class="settings-grid">
+              <label style="display:flex;align-items:center;gap:8px;flex-direction:row">
+                <input type="checkbox" name="enabled" style="width:auto" />
+                <span>Enabled</span>
+              </label>
+              <label>
+                <span>SMTP host</span>
+                <input name="smtpHost" placeholder="smtp.gmail.com" />
+              </label>
+              <label>
+                <span>SMTP port</span>
+                <input type="number" name="smtpPort" placeholder="587" />
+              </label>
+              <label>
+                <span>SMTP username</span>
+                <input name="smtpUsername" />
+              </label>
+              <label>
+                <span>SMTP password</span>
+                <input type="password" name="smtpPassword" id="mcu-smtp-password" placeholder="Leave blank to keep existing" autocomplete="new-password" />
+              </label>
+              <label>
+                <span>From address</span>
+                <input type="email" name="fromAddress" />
+              </label>
+              <label>
+                <span>To address(es)</span>
+                <input name="toAddresses" placeholder="comma-separated, e.g. cmo@company.com, hse@company.com" />
+              </label>
+              <label>
+                <span>Cc address(es)</span>
+                <input name="ccAddresses" placeholder="comma-separated, optional" />
+              </label>
+              <label>
+                <span>Warn when expiring within (days)</span>
+                <input type="number" name="expiryThresholdDays" placeholder="60" />
+              </label>
+              <div style="align-self:end;display:flex;gap:8px">
+                <button type="submit" class="btn-primary">Save</button>
+                <button type="button" id="mcu-notification-send-now" class="btn-ghost">Send now</button>
+              </div>
+            </form>
+            <ul style="color:var(--text-3);font-size:9px;margin:8px 0 0;padding-left:16px;line-height:1.6">
+              <li>Sends automatically on the <strong>first Monday of each month, 09:00 GMT+7 (WIB)</strong> — "Send now" above still works any time for a manual test.</li>
+              <li>Using <strong>Brevo</strong> for delivery? Use <code>smtp-relay.brevo.com</code> on port <code>587</code>.</li>
+              <li>SMTP username = your Brevo account login; SMTP password = an SMTP key (Brevo → SMTP &amp; API → SMTP tab), not your account password.</li>
+              <li>The "From address" domain must be verified in Brevo (Senders, Domains &amp; Dedicated IPs → Domains) or sends will be rejected.</li>
+              <li>Archived / closed (Close, Archived / Exit) records are always excluded — only active patients are chased for renewal.</li>
+            </ul>
+            <p style="color:var(--text-3);font-size:0.875rem;margin-top:8px">
+              <span id="mcu-notification-status">Last sent: —</span>
+            </p>
+            <p id="mcu-notification-msg" style="color:var(--danger,#b91c1c)"></p>
+          </div>
+        </div>
+        -->
+        {{end}}
+
+        <div class="settings-panel" data-panel="programs">
+          <div class="settings-panel-body">
+            <form id="create-program" class="settings-grid" style="grid-template-columns:1fr auto">
+              <label>
+                <span>Program name</span>
+                <input name="name" required placeholder="e.g. FitnessForWork" />
+              </label>
+              <div style="align-self:end">
+                <button type="submit" class="btn-primary">Add program</button>
+              </div>
+            </form>
+            <div id="programs" class="settings-list"></div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="supervisors">
+          <div class="settings-panel-body">
+            <form id="add-supervisor" class="settings-grid">
+              <label>
+                <span>Program</span>
+                <select name="procId" id="sv-program" required></select>
+              </label>
+              <label>
+                <span>Staff</span>
+                <select name="staffId" id="sv-staff" required></select>
+              </label>
+              <label>
+                <span>Start date</span>
+                <input type="date" name="startDate" />
+              </label>
+              <label>
+                <span>End date</span>
+                <input type="date" name="endDate" />
+              </label>
+              <div style="grid-column:1/-1">
+                <button type="submit" class="btn-primary">Add supervisor</button>
+              </div>
+            </form>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Program</th>
+                    <th>Staff</th>
+                    <th>Start</th>
+                    <th>End</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="supervisor-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-panel" data-panel="documents">
+          <div class="settings-panel-body">
+            <form id="add-document" class="settings-grid">
+              <label>
+                <span>Type</span>
+                <select name="documentsType" id="doc-type">
+                  <option value="Procedure">Procedure</option>
+                  <option value="Forms">Forms</option>
+                  <option value="SocializationMaterial">Socialization material</option>
+                  <option value="Template">Template (medpost-wide)</option>
+                </select>
+              </label>
+              <label id="doc-program-wrap">
+                <span>Program</span>
+                <select name="procId" id="doc-program"></select>
+              </label>
+              <label style="grid-column:1/-1">
+                <span>Title</span>
+                <input name="documentTitle" required />
+              </label>
+              <label>
+                <span>Form / link URL</span>
+                <input name="formLink" type="url" placeholder="https://…" />
+              </label>
+              <label>
+                <span>Or file</span>
+                <input name="file" type="file" />
+              </label>
+              <label style="grid-column:1/-1">
+                <span>Notes</span>
+                <input name="notes" />
+              </label>
+              <div style="grid-column:1/-1">
+                <button type="submit" class="btn-primary">Add document</button>
+              </div>
+            </form>
+            <label class="settings-filter">
+              <span>Filter by program</span>
+              <select id="doc-filter">
+                <option value="">All program docs + templates</option>
+              </select>
+            </label>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Title</th>
+                    <th>Type</th>
+                    <th>Program</th>
+                    <th>Date</th>
+                    <th>Link / file</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="document-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <button type="button" id="back-to-top" class="app-back-to-top" aria-label="Back to top">&uarr;</button>
+
+  <script>
+    window.__USER_ROLE__ = {{.Role}};
+  </script>
+  <script src="/static/session-guard.js"></script>
+  <script src="/static/busy.js"></script>
+  <script src="/static/case-guard.js"></script>
+  <script src="/static/clearwave/app-nav.js"></script>
+  <script src="/static/presence.js"></script>
+  <script src="/static/settings.js?v=20261003-full-token"></script>
+
+  <footer class="app-dev-credit">
+    <p>Developed by dr. Arif Rahman Hakim.</p>
+    <p>Internal HSE record-keeping only. This does not replace clinical judgment, and the developer is not liable for data-entry errors or decisions based on this system.</p>
+  </footer>
+</body>
+</html>

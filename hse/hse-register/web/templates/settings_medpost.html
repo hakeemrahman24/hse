@@ -1,0 +1,43 @@
+{{define "content"}}
+<div class="settings-panel-body">
+  <div class="app-sidebar-label">Connection</div>
+  <div class="medpost-status {{if .Medpost.Configured}}is-set{{else}}is-unset{{end}}">
+    {{if .Medpost.Problem}}<p class="medpost-problem">{{.Medpost.Problem}}</p>{{end}}
+    {{if eq .Medpost.Source "settings"}}
+      <p><b>Using the address and token saved here.</b> The token is stored encrypted and is never shown again.</p>
+      <p class="obs-muted">Address: {{.Medpost.URL}}</p>
+    {{else if eq .Medpost.Source "environment"}}
+      <p><b>Using the server's own settings</b> (MEDPOST_URL and MEDPOST_DIRECTORY_TOKEN). Save an address and token below to replace them.</p>
+      <p class="obs-muted">Address: {{.Medpost.URL}}</p>
+    {{else}}
+      <p><b>Not connected.</b> Enter the address and token of HSE Medpost below. Until then the SOC sign-in cannot check employees and the Medical Activities page stays empty.</p>
+    {{end}}
+  </div>
+
+  <div class="app-sidebar-label">Address and token</div>
+  <form method="post" action="/admin/settings/medpost-api" class="settings-grid" autocomplete="off">
+    <label>
+      <span>HSE Medpost address</span>
+      <input type="url" name="url" value="{{.MedpostURL}}" maxlength="200" placeholder="https://medpost.example.com" required>
+    </label>
+    <label>
+      <span>Directory token</span>
+      <input type="password" name="token" maxlength="256" autocomplete="new-password"
+             placeholder="{{if eq .Medpost.Source "settings"}}Saved. Leave empty to keep it{{else}}Paste the token from HSE Medpost{{end}}"
+             {{if ne .Medpost.Source "settings"}}required{{end}}>
+    </label>
+    <div class="span-all settings-actions">
+      <button type="submit" name="action" value="save" class="btn-primary">Save and test</button>
+      <button type="submit" name="action" value="test" class="btn-ghost" formnovalidate>Test only</button>
+      {{if eq .Medpost.Source "settings"}}
+      <button type="submit" formaction="/admin/settings/medpost-api/clear" class="btn-ghost link-danger" formnovalidate
+              onclick="return confirm('Remove the saved address and token? The server\'s own settings, if any, apply again.');">Remove the saved settings</button>
+      {{end}}
+    </div>
+  </form>
+  <p class="obs-muted list-note">
+    Where the token comes from: in HSE Medpost, open Settings and its Employee API section; use the <b>eligible</b> token. The address must use <b>https</b>, except <b>http://127.0.0.1</b> or <b>localhost</b> when both programs run on the same machine.
+    Changes apply at once. If the SOC form was switched off at the last start because no address was set, restart the register once after saving.
+  </p>
+</div>
+{{end}}

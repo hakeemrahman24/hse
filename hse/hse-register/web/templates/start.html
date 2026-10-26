@@ -1,0 +1,13 @@
+{{define "main"}}
+<h1>Welcome<span>, {{.Session.Username}}</span></h1>
+<p class="sub">Choose where to go. Click "hse register" at the top left anytime to come back here. You stay signed in.</p>
+
+<div class="module-picker" role="list" style="margin-top:24px">
+  {{range .Modules}}
+  <a class="module-card{{if .Settings}} module-card--settings{{end}}" href="{{.Href}}" role="listitem">
+    <span class="module-card-title">{{.Title}}</span>
+    <span class="module-card-sub">{{.Sub}}</span>
+  </a>
+  {{end}}
+</div>
+{{end}}

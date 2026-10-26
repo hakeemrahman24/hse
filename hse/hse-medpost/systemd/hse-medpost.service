@@ -1,0 +1,13 @@
+[Unit]
+Description=hse-medpost
+After=network.target mariadb.service
+
+[Service]
+WorkingDirectory=%h/projects/hse-medpost
+ExecStart=%h/projects/hse-medpost/hse-medpost
+EnvironmentFile=%h/projects/hse-medpost/.env
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,17 @@
+{{define "content"}}
+<div class="danger-box" role="alert">
+  <h2>Deleting {{.EditUser.Username}} cannot be undone</h2>
+  <ul>
+    <li><b>They can never sign in again.</b> If they are signed in now, they are signed out at their next click.</li>
+    <li><b>{{if .PostCount}}The {{.PostCount}} observation{{if ne .PostCount 1}}s{{end}} they entered stay{{if eq .PostCount 1}}s{{end}}{{else}}They entered no observations{{end}}</b>{{if .PostCount}}, with their name as the submitter. But {{if eq .PostCount 1}}it is{{else}}they are{{end}} no longer linked to an account, so <b>only an administrator can edit {{if eq .PostCount 1}}it{{else}}them{{end}}</b> from now on (until closed).{{end}}</li>
+    <li>Their name can be given to a new account later; that account does <b>not</b> get the old posts.</li>
+    <li>The account, its role and its password are removed for good. Restoring it means adding the person again as a new user.</li>
+  </ul>
+  <p><b>Not sure?</b> <em>Archive</em> instead: the person can no longer sign in, nothing is deleted, and you can restore them any time.</p>
+  <div class="danger-actions">
+    <form method="post" action="/users/{{.EditUser.ID}}/delete"><input type="hidden" name="confirm" value="yes"><button type="submit" class="btn-danger">Yes, delete {{.EditUser.Username}} permanently</button></form>
+    {{if not .EditUser.Archived}}<form method="post" action="/users/{{.EditUser.ID}}/archive"><button type="submit" class="btn-primary">Archive instead</button></form>{{end}}
+    <a href="/users" class="btn-ghost">Cancel</a>
+  </div>
+</div>
+{{end}}

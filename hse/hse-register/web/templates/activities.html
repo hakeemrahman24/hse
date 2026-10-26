@@ -1,0 +1,96 @@
+{{define "content"}}
+{{if eq .ActState "off"}}
+<p class="act-note">This page is not connected to HSE Medpost yet.{{if eq .Session.Role "admin"}} <a href="/admin/settings/medpost-api">Set it up in Settings</a>.{{else}} Ask an administrator to connect it.{{end}}</p>
+{{else if eq .ActState "noapi"}}
+<p class="act-note">HSE Medpost is connected, but it does not offer {{if eq .ActTab "reference"}}the documents list{{else}}the activities list{{end}} yet. It needs to be updated first.</p>
+{{else if eq .ActState "error"}}
+<p class="act-note">HSE Medpost could not be reached right now. Please try again in a moment.</p>
+{{else}}
+<div class="app-tabs">
+  <a class="app-tab{{if eq .ActTab "activities"}} active{{end}}" href="/activities{{if .ActProgram}}?program={{.ActProgram}}{{end}}">Activities</a>
+  <a class="app-tab{{if eq .ActTab "reference"}} active{{end}}" href="/activities?tab=reference{{if .ActProgram}}&amp;program={{.ActProgram}}{{end}}">Reference</a>
+</div>
+
+{{if eq .ActTab "reference"}}
+<div class="app-groups act-reference">
+  {{range .DocGroups}}
+  <div class="app-type-label">{{.Program}}</div>
+  <div class="table-scroll">
+    <table class="obs-table">
+      <thead><tr><th>Title</th><th>Type</th><th>Notes</th><th></th></tr></thead>
+      <tbody>
+      {{range .Docs}}
+        <tr>
+          <td><b>{{.Title}}</b>{{if .FileName}}<div class="obs-muted">{{.FileName}}</div>{{end}}</td>
+          <td>{{.Type}}</td>
+          <td class="act-summary">{{.Notes}}</td>
+          <td class="act-doc-links">
+            {{if .URL}}<a class="btn-ghost" href="{{.URL}}" target="_blank" rel="noopener">View</a> <a class="btn-ghost" href="{{.URL}}" download="{{.FileName}}">Download</a>{{end}}
+            {{if .FormLink}}<a class="btn-ghost" href="{{.FormLink}}" target="_blank" rel="noopener noreferrer">Open link</a>{{end}}
+          </td>
+        </tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{else}}<p class="obs-muted">No reference documents yet.</p>{{end}}
+</div>
+{{else}}
+<form method="get" action="/activities" class="obs-datefilter">
+  {{if .ActProgram}}<input type="hidden" name="program" value="{{.ActProgram}}">{{end}}
+  <span class="obs-datefilter-title">Date of activity</span>
+  <label>From <input type="date" name="from" value="{{.ActFrom}}"></label>
+  <label>To <input type="date" name="to" value="{{.ActTo}}"></label>
+  <button type="submit" class="btn-primary">Apply</button>
+  {{if or .ActFrom .ActTo}}<a href="/activities{{if .ActProgram}}?program={{.ActProgram}}{{end}}" class="btn-ghost">Clear</a>{{end}}
+</form>
+
+<div class="app-groups">
+  {{range .ActGroups}}
+  <div class="app-type-label">{{.Type}}</div>
+  {{range .Items}}
+  <article class="app-post">
+    <div class="app-post-body">
+      <div class="app-post-date">{{.Date}}{{if not $.ActProgram}} · {{.Program}}{{end}}</div>
+      <div class="app-post-title">{{.Title}}</div>
+      {{if .Summary}}<div class="app-post-summary act-summary">{{.Summary}}</div>{{end}}
+    </div>
+    {{if .Photos}}
+    <div class="app-photo-grid">
+      {{range .Photos}}<button type="button" data-full="{{.URL}}" aria-label="Enlarge {{.Name}}"><img src="{{.URL}}" alt="" loading="lazy"></button>{{end}}
+    </div>
+    {{end}}
+    {{if .Proof}}
+    <div class="app-doc-grid">
+      {{range .Proof}}
+      <span class="app-doc-chip">
+        <a class="app-doc-view" href="{{.URL}}" target="_blank" rel="noopener" title="View {{.Name}}">
+          <span class="app-doc-thumb app-doc-thumb-generic">{{if .IsPDF}}PDF{{else}}FILE{{end}}</span>
+          <span class="app-doc-info"><span class="app-doc-name">{{.Name}}</span><span class="app-doc-meta">{{.Type}}{{if .Date}} · {{.Date}}{{end}}</span></span>
+        </a>
+        <a class="app-doc-download" href="{{.URL}}" download="{{.Name}}" title="Download" aria-label="Download {{.Name}}">&#8595;</a>
+      </span>
+      {{end}}
+    </div>
+    {{end}}
+    <div class="app-post-foot"><span>{{len .Photos}} photo{{if ne (len .Photos) 1}}s{{end}}</span><span>{{if .Location}}{{.Location}}{{else}}Medpost{{end}}</span></div>
+  </article>
+  {{end}}
+  {{else}}<p class="obs-muted">No activities match.</p>{{end}}
+</div>
+{{if .ActMore}}<p class="obs-muted act-more">Showing the newest 500 activities.</p>{{end}}
+
+<dialog id="lightbox" class="app-lightbox"><img id="lightbox-img" class="app-lightbox-img" alt=""></dialog>
+<script>
+  (function () {
+    var box = document.getElementById("lightbox"), img = document.getElementById("lightbox-img");
+    if (!box || !box.showModal) { return; }
+    box.addEventListener("click", function () { box.close(); });
+    document.querySelectorAll(".app-photo-grid button").forEach(function (b) {
+      b.addEventListener("click", function () { img.src = b.dataset.full; box.showModal(); });
+    });
+  })();
+</script>
+{{end}}
+{{end}}
+{{end}}

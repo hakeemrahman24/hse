@@ -1,0 +1,16 @@
+[Unit]
+Description=hse-register Go API (permits + observations)
+After=network.target mariadb.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/projects/hse-register
+EnvironmentFile=%h/projects/hse-register/.env
+EnvironmentFile=%h/projects/hse-register/db.env
+ExecStart=%h/projects/hse-register/api/hse-register-api
+Restart=on-failure
+RestartSec=3
+MemoryMax=80M
+
+[Install]
+WantedBy=default.target

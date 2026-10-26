@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign in · HSE Register</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
+  <link rel="stylesheet" href="/static/register/clearwave/templatemo-622-clearwave.css?v=20261016u" />
+  <link rel="stylesheet" href="/static/register/clearwave/app.css?v=20261016u" />
+  <link rel="stylesheet" href="/static/register/admin-clearwave.css?v=20261020b" />
+</head>
+<body class="settings-theme">
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/login" class="nav-logo">hse <span>register</span></a>
+    </div>
+  </nav>
+
+  <div class="login-wrap">
+    <div class="login-card">
+      <h1>hse <span>register</span></h1>
+      <p class="sub">Sign in to manage the Work Permit Register and safety observations.</p>
+
+      {{if .Error}}<p id="error" style="color:#b42318;font-size:0.875rem;margin:0 0 12px">{{.Error}}</p>{{end}}
+
+      <form action="/login" method="post" style="margin-top:28px">
+        <fieldset style="border:none;padding:0;margin:0 0 16px">
+          <legend style="font-size:0.8125rem;font-weight:600;color:var(--text-2);margin-bottom:6px;padding:0">Username</legend>
+          <div class="login-modes" style="display:flex;gap:16px;margin-bottom:8px;font-size:0.8125rem">
+            <label><input type="radio" name="mode" value="pick" checked onchange="hseSetLoginMode(this)" /> Pick from list</label>
+            <label><input type="radio" name="mode" value="type" onchange="hseSetLoginMode(this)" /> Type username</label>
+          </div>
+          <div id="pick-wrap">
+            <select name="username" id="username-select" autocomplete="username" required>
+              <option value="">Select user…</option>
+              {{range .Usernames}}<option value="{{.}}">{{.}}</option>{{end}}
+            </select>
+          </div>
+          <div id="type-wrap" hidden>
+            <input type="text" name="username" id="username-type" autocomplete="username" disabled />
+          </div>
+        </fieldset>
+        <label class="field">
+          <span>Password</span>
+          <input name="password" type="password" autocomplete="current-password" required />
+        </label>
+        <button type="submit" class="btn-primary" style="width:100%;text-align:center;margin-top:8px">Sign in</button>
+      </form>
+    </div>
+  </div>
+
+  <footer class="app-dev-credit">
+    <p>Developed by Minhajul Mubarok, dr. Arif Rahman Hakim.</p>
+    <p>Internal HSE record-keeping only.</p>
+  </footer>
+
+  <script>
+    function hseSetLoginMode(radio) {
+      var pick = radio.value === "pick";
+      document.getElementById("pick-wrap").hidden = !pick;
+      document.getElementById("type-wrap").hidden = pick;
+      var sel = document.getElementById("username-select");
+      var inp = document.getElementById("username-type");
+      sel.disabled = !pick;
+      sel.required = pick;
+      inp.disabled = pick;
+      inp.required = !pick;
+    }
+  </script>
+</body>
+</html>

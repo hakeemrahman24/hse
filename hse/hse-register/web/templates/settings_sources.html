@@ -1,0 +1,56 @@
+{{define "content"}}
+<div class="settings-panel-body">
+  {{if .EditID}}{{range .SourceRows}}{{if and (eq .ID $.EditID) (not .Builtin)}}
+  <div class="app-sidebar-label">Edit source</div>
+  <form method="post" action="/admin/settings/sources/{{.ID}}/rename" class="settings-grid">
+    <label>
+      <span>Source name</span>
+      <input type="text" name="name" value="{{.Name}}" maxlength="80" required autofocus />
+    </label>
+    <div class="span-all settings-actions">
+      <button type="submit" class="btn-primary">Save</button>
+      <a class="btn-ghost" href="/admin/settings/sources">Cancel</a>
+    </div>
+  </form>
+  {{end}}{{end}}{{end}}
+
+  <div class="app-sidebar-label">Add source</div>
+  <form method="post" action="/admin/settings/sources" class="settings-grid">
+    <label>
+      <span>Source name</span>
+      <input type="text" name="name" maxlength="80" placeholder="e.g. Regulator Inspection" required />
+    </label>
+    <div class="span-all"><button type="submit" class="btn-primary">Add source</button></div>
+  </form>
+
+  <div class="app-sidebar-label">Current sources</div>
+  <div class="table-scroll">
+    <table class="data-table compact">
+      <thead><tr><th>Source</th><th>Observations</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {{range .SourceRows}}
+        <tr class="{{if .Archived}}row-archived{{end}}{{if eq .ID $.EditID}} row-editing{{end}}">
+          <td>{{.Name}}{{if .Builtin}} <span class="obs-muted">(built in)</span>{{end}}</td>
+          <td>{{.Used}}</td>
+          <td>{{if .Archived}}<span class="badge badge-archived">Archived</span>{{else}}Active{{end}}</td>
+          <td class="row-actions">
+            {{if not .Builtin}}<a class="btn-ghost" href="/admin/settings/sources?edit={{.ID}}">Edit</a>{{end}}
+            {{if .Archived}}
+            <form method="post" action="/admin/settings/sources/{{.ID}}/restore"><button type="submit">Restore</button></form>
+            {{else}}
+            <form method="post" action="/admin/settings/sources/{{.ID}}/archive" onsubmit="return confirm('Archive this source? It can no longer be chosen on new observations. Existing observations keep it.');"><button type="submit">Archive</button></form>
+            {{end}}
+            {{if and (not .Builtin) (eq .Used 0)}}
+            <form method="post" action="/admin/settings/sources/{{.ID}}/delete" onsubmit="return confirm('Delete this source?');"><button type="submit" class="link-danger">Delete</button></form>
+            {{end}}
+          </td>
+        </tr>
+      {{else}}
+        <tr><td colspan="4">No sources yet.</td></tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  <p class="obs-muted list-note">Internal Audit, External Audit, Management Walkthrough and Project Monitoring Action Report are built in: the dashboard and the audit types rely on their names, so they can be archived but not renamed or deleted. Sources you add can be edited, archived and deleted. SOC is set only by the public form.</p>
+</div>
+{{end}}

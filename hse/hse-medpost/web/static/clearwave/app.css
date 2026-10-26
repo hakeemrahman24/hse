@@ -1,0 +1,5685 @@
+/* Compact + square overrides on Clearwave */
+
+/* Reserve scrollbar space on every page, whether or not it scrolls, so the
+   centered nav/app-shell containers land at the same pixel offset across
+   short pages (login) and long ones (programs, settings) instead of
+   shifting by the scrollbar's width. */
+html {
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+/* Short crossfade on full page loads. The outgoing page is not held still. */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-group(root) {
+  animation-duration: 120ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(root) {
+    animation: none;
+  }
+}
+
+:root {
+  --radius: 2px;
+  --radius-lg: 2px;
+  --shadow-sm: 0 1px 4px rgba(13, 30, 28, 0.05);
+  --shadow-md: 0 4px 16px rgba(13, 30, 28, 0.08);
+}
+
+/* Busy cursor while a request is in flight (busy.js). The system wait
+   cursor does not spin here, so once the pointer is known the page hides
+   it and draws a spinning ring at the pointer instead. Until then, the
+   progress cursor is the fallback. */
+html.busy,
+html.busy * {
+  cursor: progress !important;
+}
+
+html.busy.busy-follow,
+html.busy.busy-follow * {
+  cursor: none !important;
+}
+
+.busy-spinner {
+  display: none;
+  position: fixed;
+  z-index: 2147483646;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 50%;
+  border: 2px solid rgba(26, 122, 110, 0.28);
+  border-top-color: var(--accent, #1a7a6e);
+  pointer-events: none;
+  animation: busy-spin 0.6s linear infinite;
+}
+
+html.busy.busy-follow .busy-spinner {
+  display: block;
+}
+
+@keyframes busy-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.busy.busy-follow,
+  html.busy.busy-follow * {
+    cursor: progress !important;
+  }
+
+  html.busy.busy-follow .busy-spinner {
+    display: none;
+  }
+}
+
+/* Chrome/Firefox's UA stylesheet gives <summary> cursor:default, not
+   pointer — hovering a collapsible section (e.g. the checkup form's
+   "Measurements & vitals" / "Blood & lab work" / etc. groups in
+   mcu.html) gave no visual hint it was clickable. */
+summary {
+  cursor: pointer;
+}
+
+.nav {
+  padding: 8px 0 !important;
+}
+.nav.scrolled {
+  padding: 6px 0 !important;
+}
+.nav-inner {
+  max-width: 1280px !important;
+  padding: 0 12px !important; /* matches .app-shell's inset so the nav lines up with the header/content below */
+}
+.nav-logo {
+  font-size: 1.05rem !important;
+}
+
+@media (max-width: 768px) {
+  .nav-cta {
+    display: flex;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .nav-cta .btn-ghost {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .nav-inner {
+    padding: 0 8px !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .nav,
+  .nav.scrolled {
+    padding: 2px 0 !important;
+  }
+  .nav-inner {
+    padding: 0 8px !important;
+  }
+  .nav-logo {
+    font-size: 0.95rem !important;
+  }
+  .nav-cta {
+    gap: 4px;
+  }
+  .app-shell {
+    margin-top: 38px;
+  }
+  .app-shell--full {
+    height: calc(100vh - 38px - var(--app-footer-h, 10vh));
+    height: calc(100dvh - 38px - var(--app-footer-h, 10vh));
+  }
+}
+.btn-ghost,
+.btn-primary,
+.section-label {
+  border-radius: 2px !important;
+}
+.btn-ghost {
+  padding: 6px 12px !important;
+  font-size: 0.8125rem !important;
+}
+.btn-primary {
+  padding: 7px 14px !important;
+  font-size: 0.8125rem !important;
+  box-shadow: none !important;
+}
+.btn-primary:hover {
+  transform: none !important;
+}
+/* Nav logout matches the admin role chip in size, in red. */
+#logout {
+  padding: 4px 8px !important;
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: normal;
+  background: #c62828 !important;
+  color: #fff !important;
+  border: 0;
+  box-shadow: none !important;
+}
+#logout:hover {
+  background: #a61f1f !important;
+  transform: none !important;
+}
+.section-label {
+  padding: 3px 8px !important;
+  margin-bottom: 10px !important;
+  font-size: 10px !important;
+}
+
+/* App shell */
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: calc(100vh - 52px);
+  margin-top: 52px;
+  max-width: 1280px;
+  margin-left: auto;
+  margin-right: auto;
+  padding: 0 12px 20px;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+/* mcu.html: no left sidebar, tabbed navigation instead — see #mcu-tabs.
+   Width stays the shared .app-shell max (1280px), the previous MCU data card. */
+.app-shell--full {
+  grid-template-columns: 1fr;
+}
+
+/* Medical Checkups: the title bar stays fixed, like the footer. The window
+   itself does not scroll; the checkup table scrolls in the space between
+   that bar and the footer. */
+html:has(.app-shell--full) {
+  overflow: hidden;
+  height: 100%;
+}
+
+body:has(.app-shell--full) {
+  overflow: hidden;
+  height: 100%;
+  padding-bottom: 0;
+}
+
+.app-shell--full {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 52px - 10vh);
+  min-height: 0;
+  padding-bottom: 0;
+  overflow: hidden;
+}
+
+.app-shell--full .app-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell--full .app-panel {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.app-shell--full .app-head-rule {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-shell--full .app-head-rule::before {
+  content: "";
+  width: 1px;
+  height: 22px;
+  background: rgba(13, 30, 28, 0.72);
+}
+
+.app-shell--full .app-panel-head {
+  grid-column: 1;
+  grid-row: 1;
+  max-width: none;
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 16px;
+}
+
+.app-shell--full .app-panel-head h1 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.app-shell--full .app-panel-head p {
+  display: none;
+}
+
+.app-shell--full .app-tabs {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: stretch;
+  align-items: flex-end;
+  padding: 0 12px;
+}
+
+.app-shell--full .app-tab {
+  padding: 4px 12px 7px;
+  margin-bottom: -1px;
+  border-top: 2px solid transparent;
+  border-bottom-color: transparent;
+}
+
+.app-shell--full .app-tab.active {
+  border-top-color: var(--accent);
+  border-bottom-color: transparent;
+}
+
+@media (min-width: 641px) {
+  .app-shell--full .app-panel-head,
+  .app-shell--full .app-head-rule,
+  .app-shell--full .app-tabs {
+    min-height: 50px;
+  }
+}
+
+.app-shell--full .mcu-tab-new-patient {
+  display: flex;
+  align-items: center;
+  align-self: flex-end;
+  gap: 12px;
+  margin: 0 0 6px 8px;
+}
+
+.app-shell--full .mcu-tab-new-patient[hidden] {
+  display: none;
+}
+
+.app-shell--full .mcu-tab-rule {
+  width: 1px;
+  height: 18px;
+  background: rgba(13, 30, 28, 0.72);
+  flex: none;
+}
+
+.app-shell--full .mcu-tab-new-patient .new-patient-card {
+  gap: 6px;
+  padding: 2px 8px 2px 4px;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.app-shell--full .mcu-tab-new-patient .new-patient-card-icon {
+  width: 14px;
+  height: 14px;
+  font-size: 0.75rem;
+}
+
+.app-shell--full #tab-data-entry,
+.app-shell--full #tab-mcu-data,
+.app-shell--full #tab-dashboard {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-shell--full #tab-data-entry[hidden],
+.app-shell--full #tab-mcu-data[hidden],
+.app-shell--full #tab-dashboard[hidden] {
+  display: none;
+}
+
+.app-shell--full #tab-dashboard {
+  overflow: hidden;
+}
+
+.dash-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.app-shell--full .mcu-pane-scroll {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, currentColor 45%, transparent) transparent;
+}
+
+.app-shell--full .mcu-pane-scroll::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.app-shell--full .mcu-pane-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-shell--full .mcu-pane-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, currentColor 45%, transparent);
+  border-radius: 4px;
+}
+
+.app-shell--full .mcu-pane-scroll .table-scroll {
+  overflow: visible;
+  margin-top: 0;
+}
+
+.app-shell--full .mcu-pane-scroll .data-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-2);
+}
+
+@media (max-width: 640px) {
+  .app-shell--full .app-panel {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto minmax(0, 1fr);
+  }
+
+  .app-shell--full .app-panel-head,
+  .app-shell--full .app-head-rule,
+  .app-shell--full .app-tabs {
+    grid-column: 1;
+  }
+
+  .app-shell--full .app-head-rule {
+    display: none;
+  }
+
+  .app-shell--full .app-panel-head {
+    min-height: 0;
+    padding: 10px 12px 6px;
+  }
+
+  .app-shell--full .app-panel-head h1 {
+    font-size: 1.15rem;
+    line-height: 1.2;
+  }
+
+  .app-shell--full .app-tabs {
+    grid-row: 2;
+    min-height: 0;
+    padding: 0 10px;
+    flex-wrap: wrap;
+  }
+
+  .app-shell--full .app-tab {
+    padding: 2px 8px 3px;
+    font-size: 0.75rem;
+  }
+
+  .app-shell--full #tab-data-entry,
+  .app-shell--full #tab-mcu-data,
+  .app-shell--full #tab-dashboard {
+    grid-row: 3;
+  }
+}
+
+.app-sidebar {
+  position: sticky;
+  top: 52px; /* matches .app-shell's margin-top so sticky doesn't push the sidebar down below the content card on initial load */
+  align-self: start;
+  max-height: calc(100vh - 72px);
+  overflow: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  box-shadow: none;
+  padding: 4px 4px 6px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, currentColor 45%, transparent) transparent;
+}
+
+.app-sidebar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.app-sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.app-sidebar::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, currentColor 45%, transparent);
+  border-radius: 4px;
+}
+
+.app-sidebar .app-program-item {
+  padding: 2px 6px;
+  line-height: 1.15;
+}
+
+.app-sidebar .app-program-item-title {
+  line-height: 1.15;
+}
+
+.app-sidebar .app-program-item.active,
+.app-sidebar .app-tree-child.active {
+  box-shadow: inset -3px 0 0 var(--accent);
+}
+
+.app-sidebar-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin: 0 6px 8px;
+}
+
+#health-programs-label,
+#mr-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  background: var(--accent-ghost);
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin: 10px 4px 8px;
+}
+
+.app-program-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.app-program-list[hidden] {
+  display: none; /* same display:flex-vs-[hidden] issue as .app-tabs — mcu.js toggles #search-results via .hidden */
+}
+
+/* Floating searchable-dropdown variant of .app-program-list, positioned
+   under a text input (e.g. the company pickers) instead of sitting flat in
+   a sidebar — same look as mcu.html's #name-typeahead. */
+.company-typeahead {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin-top: 4px;
+  background: var(--surface-1, #fff);
+  border: 1px solid var(--border-1, #e5e7eb);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+/* Inline replacement for the native validation bubble — shown next to a
+   field that failed checkValidity() on submit. */
+.field-error {
+  color: var(--danger, #b91c1c);
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+.unfit-notice {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--danger, #b91c1c);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.app-tree-node {
+  display: flex;
+  flex-direction: column;
+}
+
+.app-tree-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+
+.app-tree-row .app-program-item {
+  flex: 1;
+}
+
+.app-tree-toggle {
+  flex-shrink: 0;
+  width: 22px;
+  border: none;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  border-radius: 2px;
+  font-size: 10px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-tree-toggle:hover {
+  background: var(--accent-ghost);
+  color: var(--accent);
+}
+
+
+.app-tree-children {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 0 4px 24px;
+}
+
+.app-tree-children[hidden] {
+  display: none; /* author display:flex above beats the UA [hidden] default otherwise */
+}
+
+.app-tree-child {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: 2px;
+  padding: 5px 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  color: var(--text-3);
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-tree-child:hover {
+  background: var(--accent-ghost);
+  color: var(--accent);
+}
+
+.app-tree-child.active {
+  background: var(--accent-ghost);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.app-tree-empty {
+  padding: 4px 8px;
+  font-size: 0.7rem;
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.app-program-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  border-radius: 2px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  color: var(--text-2);
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-program-item:hover {
+  background: var(--accent-ghost);
+  color: var(--accent);
+}
+
+.app-program-item.active {
+  background: var(--accent-ghost);
+  box-shadow: inset 2px 0 0 var(--accent);
+  color: var(--text-1);
+}
+
+.app-program-item-title {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: inherit;
+  line-height: 1.3;
+}
+
+.app-program-item-meta {
+  display: none;
+}
+
+/* Sidebar nav: Home stands out, "Health programs" gets breathing room
+   above it, and the programs under it read as a nested/indented group. */
+#home-nav-item .app-program-item-title {
+  font-size: 0.9775rem; /* 15% bigger than the default 0.85rem */
+}
+
+#program-list,
+#mr-nav {
+  gap: 6px;
+}
+
+#program-list .app-tree-row .app-program-item,
+#mr-nav .app-tree-row .app-program-item {
+  padding: 2px 6px 2px 0;
+  line-height: 1.15;
+}
+
+#program-list .app-tree-children,
+#mr-nav .app-tree-children {
+  padding: 0 0 1px 26px;
+}
+
+#program-list .app-tree-child,
+#mr-nav .app-tree-child {
+  padding: 2px 6px;
+  line-height: 1.15;
+}
+
+#home-nav-item.active,
+#program-list .app-program-item.active,
+#program-list .app-tree-child.active,
+#mr-nav .app-program-item.active,
+#mr-nav .app-tree-child.active {
+  box-shadow: inset -3px 0 0 var(--accent);
+}
+
+#program-list .app-program-item-title,
+#mr-nav .app-program-item-title {
+  font-size: 0.765rem; /* 10% smaller than the shared 0.85rem default */
+}
+
+.app-main {
+  min-width: 0;
+}
+
+.app-panel {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+/* Who else is signed in. Light red card, square like the other panels,
+   regular weight. Each person's name is brick. */
+.presence-card {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+  border-radius: 2px;
+  box-shadow: none;
+  padding: 4px 10px;
+  margin-bottom: 8px;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.3;
+}
+
+.presence-name {
+  color: #963f2d;
+  font-weight: 400;
+}
+
+.presence-card[hidden] {
+  display: none;
+}
+
+.app-panel-head {
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  max-width: 860px; /* caps the title/subtitle measure so sidebar pages (narrower .app-main) and app-shell--full pages (mcu.html, full-width .app-main) read at the same width instead of the full-width ones stretching edge-to-edge */
+}
+
+.app-panel-head h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+  line-height: 1.25;
+}
+
+#panel-title .title-action {
+  color: #963f2d;
+}
+
+.app-panel-head p {
+  margin-top: 4px;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.app-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.app-tabs[hidden] {
+  display: none; /* author CSS's display:flex above beats the UA [hidden] default otherwise */
+}
+
+.app-tab {
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-3);
+  padding: 8px 12px 10px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.app-tab:hover {
+  color: var(--text-1);
+}
+
+.app-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.app-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.app-filter[hidden] {
+  display: none; /* same display:flex-vs-[hidden] issue as .app-tabs */
+}
+
+/* Data entry: Search sits beside the field. New patient appears immediately
+   to its right, and only after a search finds nobody. */
+.mcu-entry-search {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+#tab-data-entry > .app-filter .new-patient-card {
+  flex-shrink: 0;
+}
+
+#tab-data-entry #mcu-search-input {
+  width: 380px;
+  max-width: 100%;
+}
+
+/* Narrow and phone: the field uses the row, and Search sits beside New patient. */
+@media (max-width: 800px) {
+  #tab-data-entry > .app-filter {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+  #tab-data-entry > .app-filter .mcu-entry-search {
+    display: contents;
+  }
+  #tab-data-entry > .app-filter .mcu-entry-search label {
+    grid-column: 1 / -1;
+  }
+  #tab-data-entry .search-field,
+  #tab-data-entry #mcu-search-input {
+    width: 100%;
+    max-width: none;
+  }
+  #tab-data-entry > .app-filter #mcu-search-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    justify-self: start;
+    margin-left: 0;
+    min-height: 36px;
+  }
+  #tab-data-entry > .app-filter:has(#new-patient-btn:not([hidden])) #mcu-search-btn,
+  #tab-data-entry > .app-filter #new-patient-btn:not([hidden]) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    margin-left: 0;
+    min-height: 36px;
+  }
+  #tab-data-entry > .app-filter #new-patient-btn[hidden] {
+    display: none;
+  }
+}
+
+/* MCU data: name and certificate actions on the first row. Company, Today's
+   review, Expiring, and Reset sit on a second row so the company field can
+   be wider than it was beside the name box. Employee keeps name and company
+   only; Today's review, the certificate zip, Excel, and Clear cache stay
+   on MCU data. */
+#tab-mcu-data thead tr.is-head-off {
+  display: none;
+}
+
+#tab-mcu-data.is-employee .mcu-cert-count,
+#tab-mcu-data.is-employee #mcu-cert-download,
+#tab-mcu-data.is-employee #mcu-data-export,
+#tab-mcu-data.is-employee #mcu-data-export-latest,
+#tab-mcu-data.is-employee #mcu-cert-clear,
+#tab-mcu-data.is-employee #mcu-cert-clear-notice,
+#tab-mcu-data.is-employee .mcu-cert-download,
+#tab-mcu-data.is-employee .mcu-data-rule,
+#tab-mcu-data.is-employee #mcu-data-today {
+  display: none;
+}
+
+#tab-mcu-data > .app-filter {
+  flex-direction: column;
+  align-items: stretch;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+#tab-mcu-data .mcu-data-top-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+}
+
+#tab-mcu-data .mcu-data-rule {
+  width: 1px;
+  align-self: center;
+  height: 22px;
+  background: rgba(13, 30, 28, 0.72);
+  flex: none;
+}
+
+#tab-mcu-data .mcu-data-search-row > label,
+#tab-mcu-data .mcu-data-filter-row > label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#tab-mcu-data .mcu-data-search-row > label > span,
+#tab-mcu-data .mcu-data-filter-row > label > span {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+#tab-mcu-data .mcu-data-search-row > label > span:first-child,
+#tab-mcu-data .mcu-data-company > span:first-child,
+#tab-mcu-data .mcu-cert-count > span {
+  flex: 0 0 5.85rem;
+  width: 5.85rem;
+}
+
+/* New patient sits beside the Name search, centred on its row. The base
+   .mcu-tab-new-patient rule is written for the tab row above. */
+.mcu-data-search-row .mcu-tab-new-patient {
+  align-self: center;
+  margin: 0 0 0 4px;
+}
+
+.mcu-data-search-row,
+.mcu-data-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.mcu-data-company-field {
+  position: relative;
+  display: inline-block;
+}
+
+#tab-mcu-data #mcu-data-name,
+#tab-mcu-data #mcu-data-company-input,
+#tab-mcu-data .mcu-cert-count input {
+  box-sizing: border-box;
+  height: 24px;
+  line-height: 1;
+  font-size: 0.75rem;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+#tab-mcu-data #mcu-data-name {
+  width: 168px;
+  max-width: 168px;
+  padding-left: 8px;
+  padding-right: 22px;
+}
+
+.app-download-batches {
+  flex: 1 0 100%;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--text-2);
+  text-align: left;
+}
+
+.app-download-batches p {
+  margin: 4px 0 6px;
+}
+
+.app-download-batch-list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.app-download-batch-list .btn-ghost {
+  font-size: 0.75rem;
+  padding: 2px 6px;
+  text-align: left;
+}
+
+.app-filter label span {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  margin-bottom: 3px;
+}
+
+.app-filter input[type="date"],
+.app-filter input[type="text"],
+.app-filter input:not([type]) {
+  font-family: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-1);
+  background: var(--surface-2);
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+  padding: 6px 10px;
+}
+
+/* Plain text/search fields (unlike date inputs, which size to their fixed
+   content) need an explicit width or they default to the browser's ~20-char
+   fallback — bounded instead of the flex:1 full-row stretch this replaced,
+   which looked disproportionate next to the Search/+New patient buttons. */
+.app-filter input[type="text"],
+.app-filter input:not([type]) {
+  width: 100%;
+  max-width: 320px;
+}
+
+.search-field {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+}
+
+.app-filter .search-field input {
+  padding-right: 28px;
+}
+
+.search-clear {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+}
+
+.search-field:has(input:placeholder-shown) .search-clear {
+  display: none;
+}
+
+.search-clear:hover {
+  color: var(--text-1);
+  background: rgba(13, 30, 28, 0.08);
+}
+
+.mcu-cert-download {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  margin-left: auto;
+  font-size: 0.8125rem;
+  color: var(--text-1);
+  flex: none;
+}
+
+.mcu-tool-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+#mcu-cert-download,
+#mcu-cert-clear,
+#mcu-data-export,
+#mcu-data-export-latest {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  min-height: 0;
+  padding: 0 10px !important;
+  font-size: 0.75rem !important;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.mcu-cert-clear-notice {
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+#mcu-cert-clear.is-confirm {
+  color: #B22222;
+  border-color: #B22222;
+}
+
+.mcu-cert-count {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#tab-mcu-data .mcu-cert-count > span {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
+#tab-mcu-data .mcu-cert-count input {
+  width: 72px;
+  max-width: 72px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+#tab-mcu-data #mcu-data-company-input {
+  width: 280px;
+  max-width: 280px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+#tab-mcu-data .mcu-data-filter-row .btn-ghost {
+  box-sizing: border-box;
+  height: 24px;
+  padding: 0 10px !important;
+  font-size: 0.75rem !important;
+  line-height: 1;
+}
+
+#mcu-data-company-typeahead.company-typeahead {
+  border-radius: 2px;
+}
+
+#mcu-data-company-typeahead .app-program-item {
+  font-family: inherit;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  padding: 5px 8px;
+}
+
+#tab-mcu-data .mcu-label-short {
+  display: none;
+}
+
+@media (max-width: 1100px) {
+  /* Match the table header's 4px inset, then stack the labeled fields so
+     Name, Latest certs, and Company share one left edge. Buttons follow
+     the field they belong to. */
+  #tab-mcu-data > .app-filter {
+    padding-left: 4px;
+    padding-right: 4px;
+  }
+  #tab-mcu-data .mcu-data-top-row {
+    display: grid;
+    grid-template-columns: max-content;
+    justify-content: start;
+    align-items: center;
+    row-gap: 4px;
+  }
+  #tab-mcu-data .mcu-data-rule {
+    display: none;
+  }
+  #tab-mcu-data .mcu-cert-download {
+    margin-left: 0;
+    justify-content: flex-start;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  #tab-mcu-data .mcu-data-filter-row {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  #tab-mcu-data > .app-filter {
+    padding: 4px 8px 2px;
+    gap: 4px;
+  }
+
+  #tab-mcu-data .mcu-data-top-row,
+  #tab-mcu-data .mcu-data-filter-row,
+  #tab-mcu-data .mcu-cert-download {
+    flex-wrap: wrap;
+    align-items: center;
+    width: 100%;
+    gap: 4px;
+  }
+
+  #tab-mcu-data .mcu-data-top-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #tab-mcu-data .mcu-cert-download {
+    margin-left: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+  }
+
+  /* One row per group: label and field keep a fixed column (so Latest
+     certs and Latest rows line up), the buttons share the rest equally. */
+  #tab-mcu-data .mcu-tool-group {
+    width: 100%;
+    gap: 4px;
+  }
+
+  #tab-mcu-data .mcu-tool-group > .btn-ghost,
+  #tab-mcu-data .mcu-tool-group > .btn-primary {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  /* Company takes its own row; Today, Expiring and Reset share the next. */
+  #tab-mcu-data:not(.is-employee) .mcu-data-filter-row > .btn-ghost {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  #tab-mcu-data .mcu-data-search-row > label,
+  #tab-mcu-data .mcu-data-filter-row > label,
+  #tab-mcu-data .mcu-cert-count {
+    gap: 4px;
+  }
+
+  #tab-mcu-data .mcu-data-search-row,
+  #tab-mcu-data .mcu-data-search-row > label,
+  #tab-mcu-data .mcu-data-filter-row > label.mcu-data-company {
+    width: 100%;
+    min-width: 0;
+  }
+
+  #tab-mcu-data .search-field,
+  #tab-mcu-data .mcu-data-company-field {
+    flex: 1 1 auto;
+    display: block;
+    min-width: 0;
+    width: auto;
+  }
+
+  #tab-mcu-data #mcu-data-name,
+  #tab-mcu-data #mcu-data-company-input {
+    width: 100%;
+    max-width: none;
+  }
+
+  #tab-mcu-data .mcu-label-full {
+    display: none;
+  }
+
+  #tab-mcu-data .mcu-label-short {
+    display: inline;
+  }
+
+  #tab-mcu-data > .app-filter .btn-ghost,
+  #tab-mcu-data > .app-filter .btn-primary {
+    height: 24px;
+    padding: 0 6px !important;
+    font-size: 0.75rem !important;
+    line-height: 1;
+    white-space: nowrap;
+  }
+
+  #tab-mcu-data.is-employee .mcu-data-filter-row > label.mcu-data-company {
+    width: auto;
+  }
+}
+
+/* Employee: name and company inputs share one width, a quarter of the
+   filter row. Expiring and Reset sit beside the company field. */
+#tab-mcu-data.is-employee > .app-filter {
+  container-type: inline-size;
+}
+
+#tab-mcu-data.is-employee .mcu-data-top-row,
+#tab-mcu-data.is-employee .mcu-data-filter-row,
+#tab-mcu-data.is-employee .mcu-data-search-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+}
+
+#tab-mcu-data.is-employee .mcu-data-search-row > label,
+#tab-mcu-data.is-employee .mcu-data-filter-row > label.mcu-data-company {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+}
+
+#tab-mcu-data.is-employee .search-field,
+#tab-mcu-data.is-employee .mcu-data-company-field {
+  flex: 0 0 auto;
+  display: block;
+  width: auto;
+  min-width: 0;
+}
+
+#tab-mcu-data.is-employee #mcu-data-name,
+#tab-mcu-data.is-employee #mcu-data-company-input {
+  width: 25cqw;
+  max-width: 25cqw;
+}
+
+@media (max-width: 640px) {
+  #tab-mcu-data.is-employee #mcu-data-name,
+  #tab-mcu-data.is-employee #mcu-data-company-input {
+    width: 37.5cqw;
+    max-width: 37.5cqw;
+  }
+}
+
+#tab-mcu-data.is-employee #mcu-data-expiring {
+  margin-left: 8px;
+}
+
+#mcu-data-today.is-on,
+#mcu-data-expiring.is-on {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+}
+
+/* Amber, not the teal used by Today's review / Expiring, so Reset reads as
+   "a filter is still applied" rather than as another active toggle. */
+#mcu-data-reset.is-filtered {
+  background: #fdf3e2;
+  color: #8a5a12;
+  border: 1px solid rgba(180, 116, 24, 0.55);
+  font-weight: 600;
+}
+
+#mcu-data-forms {
+  padding: 12px 16px 28px;
+}
+
+.new-patient-cancel-bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: flex-end;
+  margin: -12px -16px 12px;
+  padding: 8px 16px;
+  background: var(--surface, #fff);
+  border-bottom: 1px solid var(--border);
+}
+
+.new-patient-cancel-bar[hidden] {
+  display: none;
+}
+
+#new-patient-header-cancel {
+  margin-left: auto;
+  align-self: center;
+}
+
+#new-patient-header-cancel[hidden] {
+  display: none;
+}
+
+.app-panel.is-form-focus #mcu-tabs,
+.app-panel.is-form-focus .app-head-rule,
+.app-panel.is-form-focus #mcu-data-toolbar,
+.app-shell.is-form-focus #presence-banner {
+  display: none;
+}
+
+.app-shell.is-form-focus.app-shell--full {
+  height: calc(100vh - 52px - var(--mcu-footer-h, 48px));
+}
+
+@media (max-width: 640px) {
+  .app-shell.is-form-focus.app-shell--full {
+    height: calc(100vh - 38px - var(--mcu-footer-h, 48px));
+  }
+}
+
+#checkup-actions,
+#mal-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+#checkup-msg,
+#mal-message {
+  font-size: 0.875rem;
+  color: var(--text-3);
+}
+
+#mal-message.is-error {
+  color: var(--danger, #b91c1c);
+}
+
+#patient-msg {
+  font-size: 0.875rem;
+  color: var(--text-3);
+}
+
+#checkup-msg.is-error,
+#patient-msg.is-error {
+  color: var(--danger, #b91c1c);
+  font-weight: 600;
+}
+
+#form-action-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--mcu-disclaimer-h, 44px);
+  z-index: 41;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  padding: calc(4.5px * 1.2) 12px;
+  background: #f6ead3;
+  border-top: 1px solid rgba(138, 90, 18, 0.45);
+}
+
+#form-action-bar .btn-primary,
+#form-action-bar .btn-outline {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: calc(22px * 1.2);
+  min-width: 72px;
+  padding: 0 10px !important;
+  font-size: 0.75rem !important;
+  line-height: 1;
+}
+
+body:has(.app-shell.is-form-focus) .app-dev-credit {
+  overflow: visible;
+  max-height: none;
+}
+
+body:has(.app-shell.is-form-focus) .app-dev-credit p {
+  white-space: normal;
+}
+
+#form-action-bar[hidden] {
+  display: none;
+}
+
+#form-action-bar #checkup-actions,
+#form-action-bar #patient-form-buttons {
+  margin: 0;
+}
+
+#form-action-bar #checkup-msg {
+  max-width: 36ch;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.app-empty {
+  padding: 36px 16px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 0.875rem;
+}
+
+/* "New patient" on mcu.html's Data entry tab — deliberately not another
+   teal .btn-primary (that's already Search's color, right next to it) or a
+   flat .btn-ghost — a warm amber gives it its own visual identity as a
+   distinct action (start a new record) rather than a secondary/dismiss
+   action, while staying in the same muted, professional register as the
+   rest of the theme (not a bright/saturated color). */
+.new-patient-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px 7px 10px;
+  border-radius: 2px;
+  border: 1px solid rgba(180, 116, 24, 0.35);
+  background: #fdf3e2;
+  color: #8a5a12;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(180, 116, 24, 0.12);
+  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.new-patient-card:hover {
+  background: #fbe8c8;
+  box-shadow: 0 2px 8px rgba(180, 116, 24, 0.22);
+  transform: translateY(-1px);
+}
+
+.new-patient-card[hidden] {
+  display: none; /* same display:flex-vs-[hidden] issue as .app-tabs */
+}
+
+.new-patient-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 2px;
+  background: #b47418;
+  color: #fff;
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+.app-groups {
+  padding: 12px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.app-type-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  margin-bottom: -6px;
+}
+
+.app-post {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.app-post-body {
+  padding: 12px 12px 8px;
+}
+
+.app-post-date {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+}
+
+.app-post-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.app-post-delete {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  font-size: 1rem;
+  color: var(--text-3);
+  background: transparent;
+  border: 0;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.app-post-delete:hover {
+  color: #b3261e;
+  background: rgba(179, 38, 30, 0.1);
+}
+
+.app-post-delete:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.app-post-title {
+  margin-top: 3px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-1);
+  line-height: 1.3;
+}
+
+.app-post-summary {
+  margin-top: 4px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-2);
+}
+
+.app-post-summary p,
+.app-post-summary ul,
+.app-post-summary ol {
+  margin: 0;
+}
+
+.app-post-summary p + p,
+.app-post-summary p + ul,
+.app-post-summary p + ol,
+.app-post-summary ul + p,
+.app-post-summary ol + p,
+.app-post-summary ul + ol,
+.app-post-summary ol + ul {
+  margin-top: 0.35em;
+}
+
+.app-post-summary ul,
+.app-post-summary ol {
+  padding-left: 0.2em;
+}
+
+.app-post-summary ul {
+  list-style: disc inside;
+}
+
+.app-post-summary ol {
+  list-style: decimal inside;
+}
+
+.app-post-summary li + li {
+  margin-top: 0.15em;
+}
+
+/* Auto-detected links inside an activity summary (see linkifySummary in
+   summary-format.js) — distinct from the app's normal accent color so a
+   plain-looking URL still reads as clickable. */
+.app-summary-link {
+  color: #2563eb;
+  font-style: italic;
+  text-decoration: underline;
+}
+
+.app-summary-link:hover,
+.app-summary-link:focus-visible {
+  color: #1d4ed8;
+}
+
+.summary-doc {
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.summary-toolbar {
+  display: flex;
+  gap: 2px;
+  padding: 3px 4px;
+  border-bottom: 1px solid rgba(13, 30, 28, 0.15);
+  background: #f4f7f6;
+}
+
+.summary-toolbar button {
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 1.7rem;
+  height: 1.45rem;
+  padding: 0 6px;
+  color: var(--text-1);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.summary-toolbar button:hover,
+.summary-toolbar button[aria-pressed="true"] {
+  background: #fff;
+  border-color: rgba(13, 30, 28, 0.25);
+}
+
+.summary-doc-body {
+  min-height: 6.5rem;
+  padding: 6px 8px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-1);
+  outline: none;
+}
+
+.summary-doc-body p,
+.summary-doc-body div {
+  margin: 0;
+}
+
+.summary-doc-body ul,
+.summary-doc-body ol {
+  margin: 0.25em 0;
+  padding-left: 0.2em;
+}
+
+.summary-doc-body ul {
+  list-style: disc inside;
+}
+
+.summary-doc-body ol {
+  list-style: decimal inside;
+}
+
+.app-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  border-top: 1px solid var(--border);
+}
+
+.app-photo-grid button {
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--bg-alt);
+  padding: 0;
+  border-radius: 0;
+}
+
+.app-photo-grid img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.25s;
+}
+
+.app-photo-grid button:hover img {
+  transform: scale(1.03);
+}
+
+/* Lightbox — clicking a photo enlarges it, centered on screen */
+
+.app-lightbox {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  max-width: 90vw;
+  max-height: 90vh;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  transform: scale(0.92);
+  opacity: 0;
+  transition: transform 0.2s ease, opacity 0.2s ease, overlay 0.2s ease allow-discrete, display 0.2s ease allow-discrete;
+}
+
+.app-lightbox[open] {
+  transform: scale(1);
+  opacity: 1;
+}
+
+@starting-style {
+  .app-lightbox[open] {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+}
+
+.app-lightbox::backdrop {
+  background: rgba(10, 10, 12, 0.72);
+}
+
+.app-lightbox-img {
+  display: block;
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+}
+
+.app-doc-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.app-doc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 4px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+.app-doc-view {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-2);
+  text-decoration: none;
+}
+
+.app-doc-view:hover {
+  color: var(--text-1);
+}
+
+.app-doc-thumb {
+  flex: 0 0 auto;
+  width: 28px;
+  height: 36px;
+  border-radius: 2px;
+  background: #fff;
+  pointer-events: none;
+  object-fit: cover;
+}
+
+.app-doc-thumb-generic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.app-doc-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.app-doc-name {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+}
+
+.app-doc-meta {
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.65rem;
+  color: var(--text-3);
+}
+
+.app-doc-download {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  color: var(--text-3);
+  text-decoration: none;
+  border-radius: 2px;
+}
+
+.app-doc-download:hover {
+  color: var(--text-1);
+  background: var(--border);
+}
+
+/* Login */
+
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 72px 16px 32px;
+  position: relative;
+  z-index: 1;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  box-shadow: none;
+  padding: 24px 20px;
+}
+
+/* Wider variant for the /start module picker, which needs room for a
+   2-column card grid — login.html's credential form stays at the
+   narrower default width above. */
+.login-card--wide {
+  max-width: 640px;
+}
+
+.login-card h1 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.login-card h1 span { color: var(--accent); }
+
+.login-card .sub {
+  margin-top: 4px;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+}
+
+.login-card label > span,
+.login-card legend {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 4px;
+}
+
+.login-card input,
+.login-card select {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--text-1);
+  background: var(--surface);
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+  padding: 8px 10px;
+}
+
+.login-card fieldset {
+  border: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.login-modes {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 6px;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+
+.login-card .field { margin-bottom: 20px; }
+
+.module-picker {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .module-picker {
+    grid-template-columns: 1fr;
+  }
+}
+
+.module-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  text-decoration: none;
+  font-family: inherit;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: border-color 150ms, background 150ms;
+}
+
+.module-card:hover,
+.module-card:focus-visible {
+  border-color: var(--accent);
+  background: var(--surface-2);
+  outline: none;
+}
+
+.module-card-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.module-card-sub {
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+
+/* Settings is account/admin config, not a clinical module like the others —
+   brick red instead of the app's teal accent marks that distinction on sight. */
+.module-card--settings {
+  border-color: rgba(150, 63, 45, 0.3);
+}
+
+.module-card--settings .module-card-title {
+  color: #963f2d;
+}
+
+.module-card--settings:hover,
+.module-card--settings:focus-visible {
+  border-color: #963f2d;
+  background: rgba(150, 63, 45, 0.07);
+}
+
+/* Under-development placeholder page */
+
+.dev-notice-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 96px 16px 32px;
+}
+
+.dev-notice-stack {
+  width: 100%;
+  max-width: 420px;
+}
+
+.dev-notice {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 32px 24px;
+}
+
+.dev-notice h1 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-1);
+}
+
+.dev-notice p {
+  margin-top: 8px;
+  color: var(--text-2);
+  font-size: 0.875rem;
+}
+
+/* Settings */
+
+.settings-wrap {
+  max-width: 960px;
+  margin: 64px auto 28px;
+  padding: 0 12px 24px;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-card {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  box-shadow: none;
+  padding: 16px;
+}
+
+.settings-card h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.settings-card .hint {
+  margin-top: 3px;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+}
+
+.patient-required-notice {
+  margin: 12px 0 0;
+  color: var(--danger, #b91c1c);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.patient-required-notice[hidden] {
+  display: none;
+}
+
+.patient-latest-checkup {
+  margin-top: 14px;
+  margin-bottom: 0;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.patient-latest-checkup[hidden] {
+  display: none;
+}
+
+.patient-form-buttons {
+  margin-top: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.patient-form-buttons[hidden] {
+  display: none;
+}
+
+.settings-grid {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+
+/* mcu.html's patient/checkup forms are mostly short label+input pairs —
+   4 columns plus tighter padding/font packs more per row without cramping
+   any single field, and keeps the (much longer) checkup form from scrolling
+   as far. Scoped to these two forms only, not the base .settings-grid rule
+   above, since that's shared by settings.html/programs.html forms with
+   different field shapes. */
+#patient-form .settings-grid,
+#checkup-form .settings-grid,
+#malaria-form .settings-grid,
+#da-form .settings-grid,
+#fa-form .settings-grid {
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+/* New checkup only: pick an earlier checkup and copy its exam data into this one. */
+#checkup-form .copy-checkup-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px dashed rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+}
+
+#checkup-form .copy-checkup-row[hidden] {
+  display: none;
+}
+
+#checkup-form .copy-checkup-row label {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+#checkup-form .copy-checkup-row select {
+  font-size: 0.75rem;
+}
+
+#checkup-form .copy-checkup-note {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+/* Purpose criteria and its suggestion note, one column under the dropdown. */
+#checkup-form .purpose-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+#checkup-form .purpose-note {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+/* Header row of the checkup form: Checkup ID and Reviewer stacked as one
+   cluster in column 1, purpose in column 2, work location across columns 3-4. */
+#checkup-form .checkup-ident {
+  grid-row: span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+#checkup-form .work-location-field {
+  grid-column: span 2;
+  min-width: 0;
+}
+
+/* Same caption as the other checkup labels, including the red " *" that
+   marks a required field (work location is required on save). */
+/* Caption box matches the other checkup labels (block, 2px gap below), so the
+   work location field starts on the same line and spacing as its neighbours. */
+/* font-size must match the other captions: the line box follows the box's
+   own size, so a larger body size here pushes the field below its neighbour. */
+#checkup-form .work-location-field .field-caption {
+  display: block;
+  font-size: 0.75rem;
+  margin-bottom: 2px;
+}
+
+#checkup-form .work-location-field .field-caption > span:first-child {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--danger, #b91c1c);
+}
+
+#checkup-form .work-location-field .field-caption > span:first-child::after {
+  content: " *";
+}
+
+#checkup-form .work-location-field .field-hint {
+  display: inline;
+  margin: 0 0 0 6px;
+  font-size: 0.6875rem;
+  color: var(--text-3);
+}
+
+/* One text size for the whole checkup header: captions, inputs, the select,
+   the Checkup ID value, the hint, and both checkbox lists. */
+#checkup-form .settings-grid input,
+#checkup-form .settings-grid select,
+#checkup-form .settings-grid .ro-value,
+#malaria-form .settings-grid input,
+#da-form .settings-grid input,
+#fa-form .settings-grid input,
+#malaria-form .settings-grid select,
+#da-form .settings-grid select,
+#fa-form .settings-grid select,
+#malaria-form .settings-grid .ro-value,
+#da-form .settings-grid .ro-value,
+#fa-form .settings-grid .ro-value,
+#checkup-form .work-location-field .field-hint,
+#work-location-checkboxes label,
+#task-category-checkboxes label {
+  font-size: 0.75rem;
+}
+
+/* Same card as the occupational health risks list; two columns so the
+   two work locations sit on two rows. */
+#work-location-checkboxes {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px 18px;
+  margin-top: 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+  background: #fff;
+  min-height: 44px;
+}
+#work-location-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+#work-location-checkboxes input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+/* A criteria select and its notes box, kept as one grid cell (see
+   groupExamPairs in mcu.js). On phones the grid is one column, so each exam
+   becomes a full-width block with a divider between blocks. */
+#checkup-form .exam-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(154, 59, 38, 0.45);
+  padding-left: 10px;
+  border-left: 1px solid rgba(154, 59, 38, 0.45);
+}
+
+#patient-form .settings-grid label span,
+#checkup-form .settings-grid label span,
+#malaria-form .settings-grid label span,
+#da-form .settings-grid label span,
+#fa-form .settings-grid label span {
+  font-size: 0.75rem;
+}
+
+/* Required patient labels (name, work position, company, gender, date of
+   birth, nationality) are marked in the label text itself. */
+#patient-form label:has(:required) > span:first-child,
+#checkup-form label:has(:required) > span:first-child {
+  color: var(--danger, #b91c1c);
+}
+
+#patient-form label:has(:required) > span:first-child::after,
+#checkup-form label:has(:required) > span:first-child::after {
+  content: " *";
+}
+
+@media (max-width: 860px) {
+  #patient-form .settings-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  #patient-form .settings-grid,
+  #checkup-form .settings-grid,
+  #malaria-form .settings-grid,
+  #da-form .settings-grid,
+  #fa-form .settings-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Phones and narrow windows: one full-width row each, in this order: Checkup
+   ID and Reviewer side by side, then purpose with its note, then work location
+   with its options stacked. */
+@media (max-width: 640px) {
+  #checkup-form .checkup-ident {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  #checkup-form .purpose-field,
+  #checkup-form .work-location-field {
+    grid-column: 1 / -1;
+  }
+
+  #work-location-checkboxes {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 420px) {
+  #patient-form .settings-grid,
+  #checkup-form .settings-grid,
+  #malaria-form .settings-grid,
+  #da-form .settings-grid,
+  #fa-form .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #checkup-form .checkup-ident {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  #checkup-form .work-location-field {
+    grid-column: 1 / -1;
+  }
+
+  #work-location-checkboxes {
+    grid-template-columns: 1fr;
+  }
+}
+
+.settings-grid label > span:first-child,
+.ro-grid label span {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-bottom: 2px;
+}
+
+.settings-grid input,
+.settings-grid select,
+.settings-grid textarea {
+  width: 100%;
+  font-family: inherit;
+  padding: 4px 6px;
+  border-radius: 2px;
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  background: #fff;
+  color: var(--text-1);
+  font-size: 0.71875rem;
+}
+
+.settings-grid input[readonly] {
+  background: var(--surface-2, #fbfaf7);
+  color: var(--text-3);
+  cursor: not-allowed;
+}
+
+.visit-same {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.visit-same input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  margin: 0;
+}
+
+.visit-same span {
+  margin: 0;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+.date-dmy {
+  position: relative;
+  display: block;
+}
+
+.date-dmy-text {
+  padding-right: 2rem;
+}
+
+.date-dmy::after {
+  content: "";
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%235c6b68' stroke-width='1.4'%3E%3Crect x='2' y='3' width='12' height='11' rx='1'/%3E%3Cpath d='M2 6.5h12M5 2v2.5M11 2v2.5'/%3E%3C/svg%3E") center / 14px 14px no-repeat;
+}
+
+.settings-grid .date-dmy input[type="date"] {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 2.2rem;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+
+/* Read-only field display for the Data entry table's inline worker/MCU
+   detail rows (mcu.js's showWorkerDetailInline/showMcuDetailInline) — plain
+   label-over-value text, no input-like card/border, since these aren't
+   editable fields and shouldn't look like them. */
+.ro-value {
+  display: block;
+  color: var(--text-1);
+  font-size: 0.71875rem;
+  line-height: 1.4;
+}
+
+/* 4 columns down to 1 at narrow widths, matching #patient-form/#checkup-form's
+   .settings-grid breakpoints so the read-only view and the edit form it
+   switches into don't visibly change shape when the user clicks Edit. */
+.ro-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px 16px;
+  margin-top: 10px;
+}
+@media (max-width: 860px) {
+  .ro-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 640px) {
+  .ro-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 420px) {
+  .ro-grid { grid-template-columns: 1fr; }
+}
+
+/* The expanding detail row itself (a <tr><td colspan> under the clicked
+   row) — matches the table's own surface/border language instead of
+   introducing a new panel style. */
+.detail-row > td {
+  background: var(--surface-2);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+}
+
+/* Cancel/Close buttons were plain .btn-ghost text — easy to miss next to a
+   filled .btn-primary Save/Edit action. Same accent color, outlined instead
+   of filled, so both halves of a Save+Cancel (or Edit+Cancel) pair read as
+   clearly clickable buttons rather than one button and one label.
+   --accent-border is a near-invisible ~15-22% tint used elsewhere for
+   subtle input borders — too faint here, where the border IS the button's
+   only color signal before hover — so this uses the fully-opaque --accent
+   directly instead. */
+.btn-outline {
+  border: 1.5px solid var(--accent);
+  color: var(--accent);
+  background: transparent;
+  border-radius: 2px !important;
+  padding: 6px 12px !important;
+  font-size: 0.8125rem !important;
+  font-weight: 500;
+  transition: background 0.2s, border-color 0.2s;
+}
+.btn-outline:hover {
+  background: var(--accent-ghost);
+}
+
+/* Checkup form sections (Physical exam, Radiology, ...) and their read-only
+   mirror in the Data-entry table's inline detail row both use a run of
+   <details> blocks — a colored top border marks where one section ends and
+   the next begins (previously just a bare 10px margin, easy to misread as
+   one long list), and an open section gets a tinted background so it's
+   visually obvious which one is currently expanded versus still collapsed.
+   One uniform nuance for all of these (a 7-color-per-section rainbow was
+   tried and reverted — the user wanted the color distinction at the level of
+   the three top-level groups instead, see .detail-group below, not on every
+   individual exam sub-section). Inside a .detail-group, --group-color lets
+   these inherit that group's own nuance instead of the plain accent. A
+   separator *inside* a section (between its own sub-sections) stays thin —
+   only the .detail-group boundary below (the edge of the whole section) is
+   the thicker 3px line. */
+#checkup-form details,
+.detail-row details {
+  border-top: 1px solid var(--group-color, var(--accent-border, var(--border)));
+  padding-top: 10px;
+}
+#checkup-form details > summary,
+.detail-row details > summary {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--group-color, var(--text-2));
+}
+#checkup-form details[open],
+.detail-row details[open] {
+  background: var(--group-ghost, var(--accent-ghost));
+  border-radius: 4px;
+  padding: 10px 12px 14px;
+}
+
+/* .mcu-detail-empty (mcu.js's mcuDetailFieldsHtml, read-only inline view
+   only) — an exam sub-section with nothing recorded stays collapsed by
+   default and reads as muted/plain instead of taking the group's own
+   themed color, so the sections that actually have data (colored,
+   auto-expanded) visually stand out against the empty ones. */
+.detail-row details.mcu-detail-empty {
+  border-top-color: var(--border);
+}
+.detail-row details.mcu-detail-empty > summary {
+  color: var(--text-3);
+  font-weight: 600;
+}
+
+/* Three top-level groups in the Data-entry table's inline detail row —
+   Worker's Detail (identity), Exam details (checkup metadata + all the
+   exam <details> sections), Review Result (outcome) — each gets its own
+   nuance via a left accent bar + a tinted .section-label pill, so the eye
+   can tell which of the three a given field belongs to at a glance. */
+.detail-group {
+  border-left: 3px solid var(--group-color);
+  padding-left: 12px;
+  margin-top: 10px;
+}
+.detail-group .section-label {
+  color: var(--group-color);
+  background: var(--group-ghost);
+  border-color: var(--group-color);
+}
+.detail-group .section-label::before {
+  background: var(--group-color);
+}
+.detail-group--worker { --group-color: #1a7a6e; --group-ghost: rgba(26, 122, 110, 0.08); }
+.detail-group--exam { --group-color: #2f6fa8; --group-ghost: rgba(47, 111, 168, 0.08); }
+.detail-group--result { --group-color: #c1484f; --group-ghost: rgba(193, 72, 79, 0.08); }
+
+/* Task category was a bare flex-wrap of checkbox+label pairs with no
+   container edge — the only field in the checkup form with no border of its
+   own, so it read as loose/unfinished next to every bordered input/select
+   around it. One bordered box (matching input/select's own border), matching
+   the legacy system's #taskTypeContainer/.tickbox-item
+   (_reference/entry-mcu/google_sheet/WebApp.html:471-473) for the plain,
+   no-per-item-box row style. Unlike legacy's CSS multi-column (column-count),
+   this uses a real grid: multi-column lets each column's height float
+   independently, so rows don't line up once item text wraps differently
+   across columns — a grid keeps every row's checkboxes aligned to the same
+   baseline across all 4 columns. */
+#task-category-checkboxes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px 18px;
+  padding: 8px 10px;
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+  background: #fff;
+  min-height: 44px;
+}
+/* Matches .ro-grid/.settings-grid's own 4→...→1 narrowing (same breakpoints)
+   so the checkbox cluster doesn't feel out of step with the rest of the form
+   on a phone-width screen. */
+@media (max-width: 860px) {
+  #task-category-checkboxes { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 420px) {
+  #task-category-checkboxes { grid-template-columns: 1fr; }
+}
+#task-category-checkboxes label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: normal;
+  cursor: pointer;
+}
+#task-category-checkboxes input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+
+/* Editable forms wrap their content in the same .detail-group classes the
+   read-only inline view uses (see mcu.html) — #patient-form IS the worker's
+   identity data, #checkup-form's top fields + exam <details> are its "Exam
+   details", and its Result block matches the read-only Result group. No
+   separate rule needed here: .detail-group's border-left/padding-left and
+   #checkup-form details/summary's --group-color lookup already apply. */
+
+.settings-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+.table-scroll {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+
+/* Data entry stays a stacked card below 640px. Employee and MCU data keep
+   their columns; the list pane scrolls sideways when the table is wider
+   than the screen. */
+@media (max-width: 640px) {
+  #tab-data-entry .table-scroll {
+    overflow-x: visible;
+  }
+  #tab-data-entry .data-table thead {
+    display: none;
+  }
+  #tab-data-entry .data-table,
+  #tab-data-entry .data-table tbody {
+    display: block;
+    width: 100%;
+  }
+  #tab-data-entry .data-table tr {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  #tab-data-entry .data-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    padding: 3px 0;
+    border-bottom: none;
+  }
+  #tab-data-entry .data-table td::before {
+    content: attr(data-label);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    flex-shrink: 0;
+  }
+  #tab-data-entry .data-table td[data-label="Name"] {
+    order: -2;
+    justify-content: flex-start;
+    padding-bottom: 6px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  #tab-data-entry .data-table td[data-label="Name"]::before {
+    content: none;
+  }
+  #tab-data-entry .data-table td[data-label="Name"] a {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: var(--text-1);
+  }
+  #tab-data-entry .data-table td[data-label="Checkup ID"] {
+    order: -1;
+  }
+
+  /* The expanded inline detail row (showDetailRow/showMcuDetailInline,
+     mcu.js) reuses this same table's <tr>/<td> — but its one <td> holds
+     rich nested content (three .detail-group blocks: Worker's Detail, Exam
+     details, Result), not a label/value pair. Without this override it
+     inherited the label-row's `display:flex` (row-direction by default),
+     which laid all three .detail-group blocks out side by side and pushed
+     "Exam details"/"Result" off the right edge of the screen instead of
+     stacking them. Reset back to plain block flow so they stack normally,
+     and drop the outer card border/padding since .detail-group already
+     draws its own left accent bar per section. */
+  #tab-data-entry .data-table tr.detail-row {
+    display: block;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    margin-bottom: 8px;
+  }
+  #tab-data-entry .data-table tr.detail-row td {
+    display: block;
+    padding: 0;
+  }
+  #tab-data-entry .data-table tr.detail-row td::before {
+    content: none;
+  }
+
+  /* Result notes / Recommendation (checkup form's Result section, mcu.html)
+     sit side by side as two half-width columns on desktop — too cramped to
+     usefully type into once the viewport narrows to phone width, so this
+     drops back to one full-width textarea per row below 480px. */
+  .result-notes-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.data-table th {
+  text-align: left;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+  padding: 6px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* mcu.js sets cursor:pointer inline on th[data-sort] and toggles
+   .sort-active on the current column (see renderMcuDataTable) — this is the
+   visual affordance/feedback for that, same accent color the rest of the
+   theme uses for interactive/active state. */
+.data-table th[data-sort]:hover {
+  color: var(--accent);
+}
+.data-table th.sort-active {
+  color: var(--accent);
+}
+
+.data-table td {
+  padding: 7px 6px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
+  vertical-align: middle;
+}
+
+.data-table select {
+  font-family: inherit;
+  font-size: 0.8125rem;
+  padding: 4px 6px;
+  border-radius: 2px;
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  background: var(--surface);
+  color: var(--text-1);
+}
+
+.data-table a {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.data-table a.cert-open-adverse,
+.data-table a.cert-open-adverse:visited {
+  color: #B22222;
+  font-weight: 700;
+}
+
+.data-table a.is-expanded-link,
+#tab-data-entry .data-table td[data-label="Name"] a.is-expanded-link,
+#tab-data-entry .data-table td[data-label="Checkup ID"] a.is-expanded-link,
+#tab-mcu-data .data-table td[data-label="Name"] a.is-expanded-link,
+#tab-mcu-data .data-table td[data-label="Checkup ID"] a.is-expanded-link,
+#tab-mcu-data .data-table td[data-label="Latest medical ID"] a.is-expanded-link {
+  color: #c62828;
+  font-weight: 700;
+}
+
+#tab-mcu-data .data-table tr.is-list-hidden {
+  display: none !important;
+}
+
+/* Tighter row height for lists where the company/relation list is the whole
+   panel content (e.g. Company relations) rather than one section among several. */
+.data-table.compact th {
+  padding: 4px 6px;
+}
+
+.data-table.compact td {
+  padding: 3px 6px;
+}
+
+/* Company list (Settings › Company details): same text size as the rest of
+   the table, with small single-line action buttons. */
+#company-body td {
+  font-size: 0.8125rem;
+  line-height: 1.3;
+}
+
+#company-body td.company-actions {
+  white-space: nowrap;
+  border-left: 1px solid rgba(178, 34, 34, 0.35);
+  padding-left: 12px;
+}
+
+#company-body td.company-actions .btn-ghost {
+  font-size: 0.75rem;
+  line-height: 1.3;
+  padding: 2px 8px;
+  margin-right: 4px;
+}
+
+/* Documents list (Settings › Documents): keep "Edit title" + the delete
+   button on one row instead of wrapping — same nowrap + shrunk-button
+   approach as #company-body's action column above. */
+#document-body td.doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+#document-body td.doc-actions .btn-ghost {
+  font-size: 0.75rem;
+  line-height: 1.3;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+/* Employee and MCU data stay one line per row. The table keeps a minimum
+   width so a narrower pane scrolls sideways instead of crushing columns. */
+  #tab-mcu-data .data-table.compact {
+    table-layout: fixed;
+    width: 100%;
+    min-width: 62rem;
+  }
+
+  #tab-mcu-data.is-employee .data-table.compact {
+    min-width: 72rem;
+  }
+
+  #tab-mcu-data .data-table.compact th,
+  #tab-mcu-data .data-table.compact td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 3px 4px;
+  }
+
+  #tab-mcu-data .data-table.compact th {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    color: #6b3a2c;
+    background: #ead5cb;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+
+  #tab-mcu-data .data-table.compact th[data-sort]:hover,
+  #tab-mcu-data .data-table.compact th.sort-active {
+    color: #542c22;
+    background: #e0c6ba;
+  }
+
+  #tab-mcu-data .data-table.compact td {
+    font-size: 0.75rem;
+  }
+
+  #tab-mcu-data .data-table.compact th:nth-child(1) { width: 10%; }
+  #tab-mcu-data .data-table.compact th:nth-child(2) { width: 13%; }
+  #tab-mcu-data .data-table.compact th:nth-child(3) { width: 20%; }
+
+  #tab-mcu-data .co-abbr {
+    font-weight: 600;
+    color: var(--text-2);
+  }
+
+  #tab-mcu-data .co-full {
+    font-size: 0.68rem;
+    font-weight: 400;
+    color: var(--text-3);
+  }
+  #tab-mcu-data .data-table.compact th:nth-child(4) { width: 10%; }
+  #tab-mcu-data .data-table.compact th:nth-child(5) { width: 11%; }
+  #tab-mcu-data .data-table.compact th:nth-child(6) { width: 11%; }
+  #tab-mcu-data .data-table.compact th:nth-child(7) { width: 11%; }
+  #tab-mcu-data .data-table.compact th:nth-child(8) { width: 14%; }
+
+  /* Employee: Name is about 70% of its previous width. Company stays next.
+     The MCU data nth-child widths above stay for that tab's eight columns. */
+  #tab-mcu-data.is-employee #mcu-employee-head th:nth-child(1) { width: 18%; }
+  #tab-mcu-data.is-employee #mcu-employee-head th:nth-child(2) { width: 22%; }
+  #tab-mcu-data.is-employee #mcu-employee-head th:nth-child(3) { width: 14%; }
+  #tab-mcu-data.is-employee #mcu-employee-head th:nth-child(4) { width: 14%; }
+  #tab-mcu-data.is-employee #mcu-employee-head th:nth-child(5) { width: 16%; }
+  #tab-mcu-data.is-employee #mcu-employee-head th:nth-child(6) { width: 16%; }
+
+  #tab-mcu-data.is-employee .data-table.compact th:last-child,
+  #tab-mcu-data.is-employee .data-table.compact td:last-child {
+    text-align: left;
+    padding-right: 4px;
+  }
+
+  #tab-mcu-data .data-table.compact th:last-child,
+  #tab-mcu-data .data-table.compact td:last-child {
+    text-align: right;
+  }
+
+  #tab-mcu-data .data-table.compact th:last-child {
+    padding-right: 16px;
+  }
+
+  #tab-mcu-data .data-table.compact td:last-child {
+    padding-right: 12px;
+  }
+
+  #tab-mcu-data .data-table.compact tr.detail-row td {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: clip;
+    text-align: left;
+    width: auto;
+  }
+
+.btn-trash {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 6px !important;
+  color: #b42318 !important;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.btn-trash:hover {
+  background: rgba(180, 35, 24, 0.08);
+  border-color: rgba(180, 35, 24, 0.25);
+}
+
+.btn-trash svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.settings-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.add-activity {
+  padding: 12px 16px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.add-activity textarea {
+  width: 100%;
+  font-family: inherit;
+  padding: 7px 9px;
+  border-radius: 2px;
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  background: var(--surface-2);
+  color: var(--text-1);
+  resize: vertical;
+  font-size: 0.875rem;
+}
+
+.add-activity input[type="file"] {
+  font-size: 0.8rem;
+  color: var(--text-2);
+}
+
+.app-post .add-activity {
+  border-bottom: 0;
+  border-top: 1px solid var(--border);
+}
+
+.app-edit-hint {
+  margin: 12px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-3);
+}
+
+.app-edit-media {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+
+.app-edit-media > span {
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+.app-edit-album {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 6px;
+}
+
+.app-edit-album [data-pending-photos] {
+  display: contents;
+}
+
+.app-edit-thumb {
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+}
+
+.app-edit-thumb img,
+.app-edit-album .photo-thumb,
+.app-edit-doc a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.app-edit-album .photo-thumb {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.app-edit-thumb img,
+.app-edit-album .photo-thumb img,
+.app-edit-doc-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  border: 0;
+}
+
+.app-edit-doc {
+  aspect-ratio: 3 / 4;
+}
+
+.app-edit-doc-name {
+  position: absolute;
+  left: 0;
+  right: 22px;
+  bottom: 0;
+  padding: 2px 4px;
+  font-size: 0.6rem;
+  color: #fff;
+  background: rgba(10, 10, 12, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-edit-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(10, 10, 12, 0.72);
+  color: #fff;
+  font-size: 0.9rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.app-edit-remove:hover {
+  background: #b3261e;
+}
+
+.app-edit-add {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  border: 1px dashed rgba(13, 30, 28, 0.35);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.app-edit-add input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+    margin-top: 52px;
+    padding: 0 8px 16px;
+  }
+  .app-sidebar {
+    position: static;
+    max-height: none;
+  }
+  .app-photo-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .settings-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Settings theme (distinct from teal home) ── */
+.settings-theme {
+  --bg: #ece8e1;
+  --bg-alt: #e3ddd4;
+  --surface: #f6f3ee;
+  --surface-2: #fbfaf7;
+  --accent: #8a4b1f;
+  --accent-mid: #a85a24;
+  --accent-light: #c47a45;
+  --accent-ghost: rgba(138, 75, 31, 0.1);
+  --accent-border: rgba(138, 75, 31, 0.22);
+  --text-1: #1c1712;
+  --text-2: #4a4036;
+  --text-3: #7a6e62;
+  --border: rgba(28, 23, 18, 0.12);
+  background: var(--bg);
+}
+
+.settings-theme .nav.scrolled {
+  background: rgba(236, 232, 225, 0.94) !important;
+}
+
+.settings-theme .nav-logo span {
+  color: var(--accent);
+}
+
+.settings-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--accent);
+  padding: 4px 8px;
+  border-radius: 2px;
+}
+
+.settings-shell .app-sidebar {
+  background: #2a241e;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #ebe4da;
+}
+
+/* Section-header labels ("Staff & access", "MCU / medical", ...) get the
+   same treatment programs.html's #health-programs-label already uses for
+   "Health programs" — larger font + a highlighted card background — instead
+   of the plain small uppercase text the base .app-sidebar-label rule gives
+   every other page. The nav buttons underneath stay as plain list items;
+   only the group headers read as cards. */
+.settings-shell .app-sidebar-label {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #d4a574;
+  background: rgba(212, 165, 116, 0.14);
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin: 10px 4px 8px;
+}
+
+.settings-shell .app-sidebar .app-sidebar-label:first-child {
+  margin-top: 0;
+}
+
+/* Same nesting relationship programs.html uses: items living under a
+   card-highlighted group label (#program-list, under "Health programs")
+   render 10% smaller than the 0.85rem base — every settings nav item is in
+   exactly that position now, under a card-highlighted group label. */
+.settings-shell .app-program-item-title {
+  font-size: 0.765rem;
+}
+
+.settings-shell .app-sidebar .app-program-item {
+  color: #c9bfb3;
+  padding: 2px 6px 2px 22px;
+  line-height: 1.15;
+}
+
+/* Panel sections ("Add staff", "Current staff") are pills. Their text
+   starts inside the padding, so the fields and lists under them line up
+   with that writing, a little further right, rather than with the pill edge. */
+.settings-shell .settings-panel-body > .app-sidebar-label ~ :not(.app-sidebar-label) {
+  margin-left: 22px;
+}
+
+.settings-shell .app-program-item:hover {
+  background: rgba(212, 165, 116, 0.12);
+  color: #f3ebe1;
+}
+
+.settings-shell .app-sidebar .app-program-item.active {
+  background: rgba(212, 165, 116, 0.16);
+  box-shadow: inset -3px 0 0 #d4a574;
+  color: #fff;
+}
+
+/* .company-typeahead is a light popup wherever it's anchored, so it needs
+   dark-on-light text instead of the beige-on-dark palette above, which was
+   tuned for the sidebar's dark background and is unreadable on white. */
+.settings-shell .company-typeahead.app-program-item,
+.settings-shell .company-typeahead .app-program-item {
+  color: var(--text-1);
+}
+
+.settings-shell .company-typeahead .app-program-item:hover {
+  background: var(--accent-ghost);
+  color: var(--accent);
+}
+
+.settings-back {
+  display: block;
+  margin: 14px 8px 4px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.8rem;
+  color: #a89888;
+}
+
+.settings-back:hover {
+  color: #d4a574;
+}
+
+.settings-panel {
+  display: none;
+}
+
+.settings-panel.active {
+  display: block;
+}
+
+#settings-edit[hidden] {
+  display: none;
+}
+
+#settings-edit {
+  margin: 0 16px 12px;
+}
+
+#settings-edit-fields {
+  display: contents;
+}
+
+#settings-edit .app-sidebar-label,
+#settings-edit .settings-edit-error,
+#settings-edit .settings-edit-actions {
+  grid-column: 1 / -1;
+}
+
+.settings-edit-error {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.75rem;
+}
+
+.settings-edit-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-panel-body {
+  padding: 8px 12px 10px;
+}
+
+.directory-links {
+  margin: 0 0 12px;
+  padding-left: 1.15rem;
+  color: var(--text-2);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  list-style: disc;
+}
+
+.directory-links a {
+  font-size: inherit;
+  overflow-wrap: anywhere;
+}
+
+.settings-shell .app-panel-head {
+  padding: 8px 12px 6px;
+}
+
+.settings-shell .table-scroll {
+  margin-top: 4px;
+}
+
+.settings-shell .settings-list {
+  margin-top: 6px;
+}
+
+.settings-shell .lookup-archived,
+.settings-shell .btn-ghost.lookup-archived,
+.settings-shell .btn-ghost.lookup-archived:hover {
+  color: #e06a12;
+}
+
+.settings-shell .settings-row {
+  padding: 3px 0;
+  gap: 6px;
+  font-size: 0.75rem;
+}
+
+.settings-shell .data-table.compact th,
+.settings-shell .data-table.compact td {
+  padding: 3px 6px;
+  line-height: 1.25;
+}
+
+.settings-shell .data-table select {
+  padding: 1px 4px;
+  font-size: 0.75rem;
+}
+
+.settings-shell .data-table .btn-ghost,
+.settings-shell .settings-row .btn-ghost,
+.settings-shell .data-table .btn-trash {
+  padding: 2px 8px !important;
+  font-size: 0.68rem !important;
+  line-height: 1.2;
+  min-height: 0;
+}
+
+.settings-shell .staff-row-actions {
+  gap: 6px;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+
+.settings-shell .staff-row-actions .btn-ghost {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+@media (min-width: 641px) {
+  .settings-shell .data-table .staff-row-actions {
+    flex-wrap: nowrap;
+  }
+}
+
+/* Name-only lists (projects, nationalities, checkup purpose, review
+   result, work location, task category) sit two-up so the panel stays
+   short. Wider tables stay one grid. */
+@media (min-width: 641px) {
+  .settings-shell .settings-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .settings-shell .settings-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 18px;
+  }
+
+  .settings-shell .data-table.compact:has(thead tr > :nth-child(2):last-child) {
+    display: block;
+  }
+
+  .settings-shell .data-table.compact:has(thead tr > :nth-child(2):last-child) thead {
+    display: none;
+  }
+
+  .settings-shell .data-table.compact:has(thead tr > :nth-child(2):last-child) tbody {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 18px;
+  }
+
+  .settings-shell .data-table.compact:has(thead tr > :nth-child(2):last-child) tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 6px;
+  }
+
+  .settings-shell .data-table.compact:has(thead tr > :nth-child(2):last-child) tbody td {
+    border-bottom: none;
+    padding: 2px 0;
+  }
+
+  .settings-shell .data-table.compact:has(thead tr > :nth-child(2):last-child) tbody tr {
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.staff-row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Current staff: a wide roster on desktop, one card per person on a phone.
+   Name heads the card. Each label and its value stay on one row in the left
+   two-thirds, with a fixed label column so the values line up. Edit, reset,
+   and the bin sit in the right third. */
+@media (max-width: 640px) {
+  #current-staff.table-scroll {
+    overflow-x: visible;
+  }
+  #current-staff .data-table thead {
+    display: none;
+  }
+  #current-staff .data-table,
+  #current-staff .data-table tbody {
+    display: block;
+    width: 100%;
+  }
+  #current-staff .data-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    column-gap: 8px;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 3px 6px;
+    margin-bottom: 4px;
+    background: var(--surface-2);
+  }
+  #current-staff .data-table td {
+    border-bottom: none;
+    padding: 1px 0;
+    min-width: 0;
+  }
+  #current-staff .data-table td:not([data-label="Name"]):not(.staff-row-actions) {
+    grid-column: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-size: 0.75rem;
+    color: var(--text-2);
+  }
+  #current-staff .data-table td::before {
+    content: attr(data-label);
+    flex: 0 0 4.6rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text-3);
+  }
+  #current-staff .data-table td[data-label="Name"] {
+    grid-column: 1 / -1;
+    display: block;
+    padding-bottom: 4px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: var(--text-1);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #current-staff .data-table td[data-label="Name"]::before {
+    content: none;
+  }
+  #current-staff .data-table select {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: auto;
+    max-width: 100%;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--text-2);
+    padding: 1px 4px;
+  }
+  #current-staff .staff-row-actions {
+    grid-column: 2;
+    grid-row: 2 / span 4;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 4px;
+    margin: 0;
+    min-width: 0;
+  }
+  #current-staff .data-table td.staff-row-actions::before {
+    content: none;
+  }
+  #current-staff .staff-row-actions .btn-ghost {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: 24px;
+    padding: 2px 4px !important;
+    font-size: 0.68rem !important;
+    font-weight: 400;
+    line-height: 1.15;
+    white-space: normal;
+    text-align: left;
+    border: 1px solid var(--border);
+    background: var(--surface);
+  }
+  #current-staff .staff-row-actions .btn-trash {
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    align-self: center;
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    padding: 0 !important;
+    border: 1px solid rgba(180, 35, 24, 0.35);
+    background: transparent;
+  }
+}
+
+/* Phone: the stacked sidebar and the panel share one narrow column, so the
+   desktop insets (sidebar 14px, panel 16px, group-label margins) waste a
+   lot of the screen. Tighten only the settings shell. */
+@media (max-width: 640px) {
+  .settings-theme .app-back-to-top {
+    right: 12px;
+    bottom: calc(10vh + 8px);
+    width: 36px;
+    height: 36px;
+  }
+  .app-shell {
+    margin-top: 38px;
+    padding: 0 8px 8px;
+  }
+  .app-shell--full {
+    height: calc(100vh - 38px - 10vh);
+  }
+  .settings-shell.app-shell {
+    gap: 6px;
+  }
+  .app-sidebar {
+    padding: 2px;
+  }
+  .settings-shell .app-sidebar .app-sidebar-label,
+  #health-programs-label,
+  #mr-label {
+    margin: 8px 2px 6px;
+    padding: 2px 6px;
+    font-size: 12px;
+    letter-spacing: 0.04em;
+  }
+  .settings-shell .app-sidebar .app-sidebar-label:first-child {
+    margin-top: 0;
+  }
+  .app-sidebar .app-program-item {
+    padding: 2px 6px;
+    line-height: 1.2;
+  }
+  .settings-shell .settings-back {
+    margin: 4px 4px 0;
+    padding-top: 4px;
+  }
+  #program-list .app-tree-row .app-program-item,
+  #mr-nav .app-tree-row .app-program-item {
+    padding-left: 0;
+  }
+  #program-list .app-tree-children,
+  #mr-nav .app-tree-children {
+    padding: 1px 0 2px 22px;
+  }
+  #program-list .app-tree-child,
+  #mr-nav .app-tree-child {
+    padding: 2px 6px;
+    line-height: 1.2;
+  }
+  #program-list .app-tree-toggle,
+  #mr-nav .app-tree-toggle {
+    width: 18px;
+  }
+  .settings-theme .app-panel-head {
+    padding: 8px 10px 6px;
+  }
+  .settings-theme .app-panel-head p {
+    margin-top: 2px;
+  }
+  .settings-shell .settings-panel-body {
+    padding: 8px 8px 10px;
+  }
+  .settings-shell .settings-divider {
+    margin: 12px 0 8px;
+  }
+  .settings-shell .settings-panel-body .settings-grid {
+    margin-bottom: 8px;
+  }
+  /* Add staff: label and field share one row, and every field starts at
+     the same x. The label column fits the longest caption. */
+  #add-staff.settings-grid,
+  #settings-edit.settings-grid {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    margin: 4px 8px 8px;
+  }
+  #add-staff label,
+  #settings-edit label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  #add-staff label > span:first-child,
+  #settings-edit label > span:first-child {
+    flex: 0 0 8.6rem;
+    margin-bottom: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+  }
+  #add-staff input:not([type="hidden"]),
+  #add-staff select,
+  #settings-edit input,
+  #settings-edit select {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+  #add-staff #staff-name-preview {
+    margin: 0;
+    padding-left: calc(8.6rem + 6px);
+    font-size: 0.7rem;
+  }
+  #add-staff > div[style],
+  #settings-edit .settings-edit-actions {
+    padding-left: calc(8.6rem + 6px);
+  }
+  #add-staff > div[style] .btn-primary,
+  #settings-edit .settings-edit-actions .btn-primary {
+    width: 100%;
+    padding: 4px 8px !important;
+    font-size: 0.75rem !important;
+  }
+}
+
+.settings-panel-body .settings-grid {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.settings-divider {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 10px 0 8px;
+}
+
+.settings-filter {
+  display: block;
+  max-width: 280px;
+  margin: 4px 0 10px;
+}
+
+.settings-filter span {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-bottom: 3px;
+}
+
+.settings-filter select {
+  width: 100%;
+  font-family: inherit;
+  padding: 7px 9px;
+  border-radius: 2px;
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  background: var(--surface);
+  color: var(--text-1);
+  font-size: 0.875rem;
+}
+
+/* Developer credit + disclaimer footer — same short snippet duplicated at
+   the bottom of every page template (no shared-partial system exists in
+   this app yet, see internal/README.md), styled once here. */
+
+body {
+  padding-bottom: 10vh;
+}
+
+.app-dev-credit {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  width: 100%;
+  max-height: 10vh;
+  margin: 0;
+  padding: 6px 16px;
+  box-sizing: border-box;
+  overflow: hidden;
+  text-align: left;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.625rem;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--text-3);
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+
+.app-dev-credit p {
+  margin: 0;
+  white-space: nowrap;
+}
+
+@media (max-width: 960px) {
+  .app-dev-credit {
+    max-height: none;
+    overflow: visible;
+  }
+  .app-dev-credit p {
+    white-space: normal;
+  }
+  body {
+    padding-bottom: 6.5rem;
+  }
+  body:has(.app-shell--full) {
+    padding-bottom: 0;
+  }
+  .app-shell--full {
+    height: calc(100vh - 52px - 10vh);
+  }
+  .app-back-to-top {
+    bottom: calc(6.5rem + 12px);
+  }
+}
+
+@media (max-width: 640px) {
+  /* The list pane ends exactly where the footer starts. --app-footer-h is the
+     footer's measured height (mcu.js); dvh keeps mobile browser toolbars from
+     pushing the bottom cards under the footer. */
+  .app-shell--full {
+    height: calc(100vh - 38px - var(--app-footer-h, 10vh));
+    height: calc(100dvh - 38px - var(--app-footer-h, 10vh));
+  }
+  .settings-theme .app-back-to-top {
+    bottom: calc(6.5rem + 8px);
+  }
+}
+
+/* Back-to-top floating button — shown once the page has scrolled down */
+
+.app-back-to-top {
+  position: fixed;
+  right: 20px;
+  bottom: calc(10vh + 12px);
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  z-index: 500;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(8px);
+  transition: opacity 0.2s, transform 0.2s, visibility 0.2s;
+}
+
+.app-back-to-top.visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.app-back-to-top:hover {
+  opacity: 0.85;
+}
+
+/* MCU dashboard: filter, split chart layout, right-aligned counts.
+   Charts are SVG in dashboard.js. The PDF is a server response. */
+
+.dash-filter-card {
+  display: flex;
+  flex: none;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin: 8px 16px 0;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.dash-filter-query,
+.dash-filter-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px 8px;
+}
+
+.dash-filter-actions {
+  margin-left: auto;
+}
+
+.dash-field {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.dash-field[hidden],
+.btn-dash-pdf[hidden],
+.dash-error[hidden],
+.dash-board[hidden] {
+  display: none !important;
+}
+
+.dash-field span {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.dash-field input,
+.dash-field select {
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  color: var(--text-1);
+  background: var(--surface-2);
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+  padding: 0 8px;
+  height: 24px;
+  line-height: 1;
+  box-sizing: border-box;
+}
+
+input[type="date"] {
+  color-scheme: light;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+}
+
+.dash-field input[type="date"] {
+  line-height: 1.2;
+  padding-right: 28px;
+}
+
+.dash-field input[type="date"]::-webkit-datetime-edit,
+.dash-field input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+.dash-field input[type="date"]::-webkit-datetime-edit-text,
+.dash-field input[type="date"]::-webkit-datetime-edit-month-field,
+.dash-field input[type="date"]::-webkit-datetime-edit-day-field,
+.dash-field input[type="date"]::-webkit-datetime-edit-year-field {
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-1);
+  padding: 0;
+}
+
+#report-filter .dash-field span {
+  text-transform: uppercase;
+}
+
+#report-filter input[type="date"] {
+  width: 140px;
+}
+
+.dash-company-field {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+#dash-company-field {
+  position: relative;
+  z-index: 6;
+}
+
+#dash-company-input {
+  width: 168px;
+}
+
+#dash-company-typeahead {
+  border-radius: 2px;
+}
+
+.dash-filter-rule {
+  width: 1px;
+  height: 22px;
+  background: rgba(13, 30, 28, 0.72);
+  flex: none;
+}
+
+#report-filter .btn-ghost,
+#report-filter .btn-primary,
+#report-filter .btn-dash-pdf,
+.btn-dash-clear {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 0.75rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.btn-dash-clear {
+  border: 1px solid #145e54;
+  border-radius: 2px;
+  background: #1a7a6e;
+  color: #fff;
+  font-family: "DM Sans", sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-dash-clear:hover {
+  background: #145e54;
+}
+
+.dash-chart-tools {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 16px 0;
+  font-family: "DM Sans", sans-serif;
+}
+
+.dash-chart-tools > span,
+.dash-status-view > span {
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-2);
+}
+
+.dash-tools-rule {
+  width: 1px;
+  height: 16px;
+  background: rgba(13, 30, 28, 0.72);
+  flex: none;
+}
+
+.dash-status-view {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.dash-status-view[hidden] {
+  display: none !important;
+}
+
+.dash-field:has(.dash-chart-toggle) {
+  min-width: 0;
+  align-items: center;
+}
+
+.dash-chart-toggle {
+  display: inline-flex;
+  align-self: center;
+  width: max-content;
+  height: 24px;
+  padding: 0;
+  background: #f0f2f5;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.dash-chart-toggle button {
+  border: 0;
+  background: transparent;
+  padding: 0 10px;
+  height: 100%;
+  border-radius: 0;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+#report-this-month:not(.is-on) {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-2);
+  box-shadow: none;
+}
+
+.dash-chart-toggle button.is-on,
+#report-this-month.is-on {
+  background: #1a7a6e;
+  color: #fff;
+  border-color: #1a7a6e;
+  box-shadow: none;
+}
+
+#dash-reset.is-filtered {
+  background: #fdf3e2;
+  color: #8a5a12;
+  border: 1px solid rgba(180, 116, 24, 0.55);
+  font-weight: 600;
+}
+
+.btn-dash-pdf {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid #2ea043;
+  border-radius: 2px;
+  color: #116329;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.btn-dash-pdf:hover {
+  background: rgba(46, 160, 67, 0.12);
+}
+
+.dash-error {
+  margin: 8px 16px 0;
+  padding: 8px 10px;
+  color: #b91c1c;
+  background: #fff5f5;
+  border: 1px solid #fecaca;
+  font-size: 0.8125rem;
+}
+
+/* Charts stay on an A4 sheet. The filter bar above matches the MCU data header. */
+.dash-board,
+.dash-scroll > .dash-error,
+.dash-scroll > .dash-empty,
+.dash-scroll > .app-empty {
+  box-sizing: border-box;
+}
+
+.dash-board {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: auto;
+  max-width: none;
+  margin: 12px 16px 16px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.dash-cohort {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-2);
+}
+
+.dash-chart-card {
+  display: flex;
+  flex-direction: column;
+  height: 300px;
+  min-height: 300px;
+  max-height: 300px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 10px 12px 12px;
+}
+
+.dash-section-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px 20px;
+  align-items: stretch;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.dash-card-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dash-card-chart {
+  display: flex;
+  justify-content: center;
+}
+
+.dash-card-chart .dash-bars {
+  width: 100%;
+}
+
+.dash-chart-card h3 {
+  flex: none;
+  margin: 0 0 8px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  text-transform: none;
+  color: var(--text-1);
+}
+
+.dash-chart-hint,
+.dash-reconcile {
+  margin: 0 0 8px;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--text-3);
+}
+
+.dash-section-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 16px 28px;
+  align-items: center;
+}
+
+.dash-section-left,
+.dash-section-right {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-height: 100%;
+  overflow: auto;
+}
+
+.dash-section-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.dash-section-right--stack {
+  align-items: stretch;
+  justify-content: flex-start;
+}
+
+.dash-section-right .dash-bars {
+  width: 100%;
+}
+
+/* Bars start at the top and reuse the legend table's row box (4px/8px padding,
+   1px rule, 0.75rem text), so each bar sits level with its table row below an
+   empty header row. */
+.dash-section-right:has(> .dash-bars) {
+  justify-content: flex-start;
+}
+
+.dash-section-right > .dash-bars::before {
+  content: "\00a0";
+  display: block;
+  padding: 4px 8px;
+  border-bottom: 1px solid transparent;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.dash-section-right > .dash-bars .dash-bar-row {
+  margin: 0;
+  padding: 4px 8px;
+  border-bottom: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.dash-chart-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  gap: 8px;
+}
+
+.dash-pivot-wrap {
+  overflow: visible;
+  border: 0;
+  margin-bottom: 0;
+}
+
+.dash-pivot-table,
+.dash-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.75rem;
+}
+
+.dash-pivot-table th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-2);
+}
+
+.dash-pivot-table thead th,
+.dash-detail-table thead th {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 1;
+}
+
+.dash-pivot-table th,
+.dash-detail-table th,
+.dash-pivot-table td,
+.dash-detail-table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid #eef0f3;
+  text-align: left;
+  vertical-align: top;
+}
+
+.dash-pivot-table th.num,
+.dash-detail-table th.num,
+.dash-pivot-table td.num,
+.dash-detail-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.dash-pivot-company td {
+  font-family: "DM Sans", sans-serif;
+  font-weight: 700;
+  background: #f4f7f6;
+}
+
+.dash-pivot-subhead td {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  background: #f8f9fb;
+}
+
+.dash-pivot-item td:first-child {
+  padding-left: 16px;
+}
+
+.dash-pivot-grand td {
+  font-weight: 700;
+  background: #e4f2ef;
+}
+
+.dash-pivot-share td {
+  font-weight: 600;
+  color: var(--text-2);
+  background: #f7fbfa;
+}
+
+.dash-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.dash-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.dash-bar-row span {
+  width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+
+.dash-bar-row svg {
+  flex: 1;
+  min-width: 40px;
+  height: 12px;
+}
+
+.dash-bar-row b {
+  width: 28px;
+  text-align: right;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.dash-pie {
+  width: 168px;
+  height: 168px;
+  flex: none;
+}
+
+.dash-per-company-card .dash-pie {
+  display: block;
+  width: 88px;
+  height: 88px;
+  margin: 0 auto;
+}
+
+.dash-legend {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+
+.dash-legend i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+}
+
+.dash-per-company-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+
+.dash-per-company-card {
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  background: #fff;
+}
+
+.dash-per-company-card h4 {
+  margin: 0;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text-1);
+}
+
+.dash-per-company-card p {
+  margin: 0 0 4px;
+  font-size: 0.65rem;
+  color: var(--text-3);
+}
+
+@media (max-width: 860px) {
+  .dash-section-split {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+    gap: 12px;
+  }
+
+  .dash-section-left,
+  .dash-section-right {
+    overflow: visible;
+    flex: none;
+    height: auto;
+    max-height: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .dash-filter-card {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    margin: 4px 8px 0;
+    padding: 4px 6px;
+  }
+
+  .dash-filter-query {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .dash-filter-query > .dash-field:not(#dash-company-field) {
+    flex: 1 1 calc(50% - 6px);
+  }
+
+  #dash-company-field {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  #dash-apply {
+    flex: none;
+    width: auto;
+  }
+
+  .dash-filter-actions {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 4px;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .dash-field {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .dash-field span {
+    flex: none;
+    letter-spacing: 0.04em;
+    font-size: 0.6rem;
+  }
+
+  #report-filter input[type="date"],
+  #dash-company-input {
+    width: auto;
+    max-width: none;
+    min-width: 0;
+    flex: 1;
+    height: 24px;
+    padding-top: 0;
+    padding-bottom: 0;
+    font-size: 0.75rem;
+    line-height: 1;
+  }
+
+  #report-filter input[type="date"]::-webkit-datetime-edit,
+  #report-filter input[type="date"]::-webkit-datetime-edit-fields-wrapper,
+  #report-filter input[type="date"]::-webkit-datetime-edit-text,
+  #report-filter input[type="date"]::-webkit-datetime-edit-month-field,
+  #report-filter input[type="date"]::-webkit-datetime-edit-day-field,
+  #report-filter input[type="date"]::-webkit-datetime-edit-year-field {
+    font-size: 0.75rem;
+    line-height: 1;
+    padding: 0;
+  }
+
+  #report-filter input[type="date"] {
+    padding-right: 2px;
+  }
+
+  #dash-company-input {
+    width: 100%;
+    padding-right: 8px;
+  }
+
+  #report-filter .btn-primary,
+  #report-filter .btn-ghost,
+  #report-filter .btn-dash-pdf {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+    min-height: 0;
+    height: 24px;
+    padding: 0 6px !important;
+    font-size: 0.75rem !important;
+  }
+
+  #report-filter #dash-apply {
+    flex: none;
+    width: auto;
+    padding: 0 12px !important;
+  }
+
+  .dash-filter-rule {
+    display: none;
+  }
+
+  .dash-chart-tools,
+  .dash-error,
+  .dash-board {
+    margin-left: 8px;
+    margin-right: 8px;
+  }
+
+  .dash-chart-tools {
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+    margin-bottom: 0;
+  }
+
+  .dash-chart-toggle {
+    height: 24px;
+  }
+
+  .dash-board {
+    gap: 8px;
+    margin-top: 8px;
+    margin-bottom: 8px;
+  }
+
+  .dash-cohort {
+    font-size: 0.75rem;
+    line-height: 1.35;
+  }
+
+  .dash-chart-card h3 {
+    font-size: 0.875rem;
+  }
+
+  .dash-chart-hint,
+  .dash-reconcile {
+    margin-bottom: 4px;
+  }
+
+  .dash-bar-row span {
+    width: 88px;
+  }
+
+  .dash-chart-card {
+    height: 340px;
+    min-height: 340px;
+    max-height: 340px;
+    padding: 10px;
+  }
+
+  .dash-section-split {
+    display: flex;
+    flex-direction: column;
+    overflow: auto;
+  }
+
+  .dash-section-left,
+  .dash-section-right {
+    overflow: visible;
+    flex: none;
+  }
+
+  .dash-section-right {
+    order: -1;
+  }
+}
+
+/* Phone width: the MCU data and Employee lists show each row as a compact
+   card instead of a table row. Sharp corners, a 2px gap between cards, and the
+   column name shown before each value. The search prompt above still appears
+   first, when no search is active. */
+@media (max-width: 640px) {
+  #tab-mcu-data .table-scroll {
+    overflow-x: visible;
+  }
+  #tab-mcu-data.is-employee .data-table.compact {
+    min-width: 0;
+  }
+  #tab-mcu-data .data-table.compact {
+    min-width: 0;
+    table-layout: auto;
+    display: block;
+    width: 100%;
+  }
+  #tab-mcu-data .data-table.compact thead {
+    display: none;
+  }
+  #tab-mcu-data .data-table.compact tbody {
+    display: block;
+    width: 100%;
+  }
+  #tab-mcu-data .data-table.compact tr {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    border: 0;
+    border-bottom: 1px solid rgba(154, 59, 38, 0.45);
+    border-radius: 0;
+    background: #fff;
+    margin: 0 0 2px;
+    padding: 6px 8px;
+  }
+  /* Values flow as normal text, so a company cell's abbreviation and full
+     name stay together. The column label floats left, values sit right. */
+  #tab-mcu-data .data-table.compact td {
+    display: block;
+    width: 100%;
+    padding: 2px 0;
+    border: 0;
+    white-space: normal;
+    overflow: visible;
+    text-align: right;
+  }
+  #tab-mcu-data .data-table.compact td::before {
+    content: attr(data-label);
+    float: left;
+    margin-right: 8px;
+    text-align: left;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-3);
+  }
+  /* The Employee tab's last column (validity status) has its own left-aligned
+     rule earlier in this file; this later rule keeps the card value on the right. */
+  #tab-mcu-data.is-employee .data-table.compact td:last-child {
+    text-align: right;
+    padding-right: 0;
+  }
+}
+
+/* Medical Checkups: the list is sized to leave exactly 10vh under the title
+   bar for the footer (see .app-shell--full heights above). Cap the footer at
+   that same 10vh on every width, so the gap above it stays the same whether
+   its text wraps to two lines or three. */
+body:has(.app-shell--full) .app-dev-credit {
+  max-height: 10vh;
+  overflow: hidden;
+}
+
+/* Phone cards: the list scrolls far enough that the last card is fully above
+   the footer, with a small margin under it. */
+@media (max-width: 640px) {
+  #tab-mcu-data #mcu-data-list.mcu-pane-scroll {
+    padding-bottom: 12px;
+  }
+}
+
+/* Checkup detail panel reads top-to-bottom, left-aligned, at every width.
+   The mobile card rules above set right-aligned values on table cells, and
+   this panel sits inside one, so it gets its own override. */
+tr.detail-row > td,
+tr.detail-row > td .ro-grid,
+tr.detail-row > td .ro-grid label,
+tr.detail-row > td .ro-value,
+tr.detail-row > td .detail-group {
+  text-align: left;
+}
+
+/* Test log: summary rows open to a full detail view */
+.log-row { cursor: pointer; }
+.log-row:hover, .log-row:focus-visible { background: var(--panel-2, rgba(0, 0, 0, 0.04)); outline: none; }
+.log-row.open { font-weight: 600; }
+.log-detail > td { padding: 12px 14px; }
+.log-detail-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px 18px; margin: 0;
+}
+.log-detail-grid dt { font-size: 0.75rem; color: var(--text-3, #6b7280); margin: 0; }
+.log-detail-grid dd { margin: 2px 0 0; word-break: break-word; }
+
+/* ---- Medical Record > Screening > Malaria entry form ------------------- */
+/* The form itself reuses the checkup form's classes (.add-activity,
+   .settings-grid, .date-dmy, .ro-value, .visit-same, .company-typeahead); only
+   what is specific to it is below. */
+#malaria-form .mal-wide,
+#da-form .mal-wide,
+#fa-form .mal-wide {
+  grid-column: span 2;
+}
+
+#malaria-form .app-program-item,
+#da-form .app-program-item,
+#fa-form .app-program-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+}
+
+.mal-hint {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: var(--text-3);
+}
+
+@media (max-width: 420px) {
+  #malaria-form .mal-wide,
+  #da-form .mal-wide,
+  #fa-form .mal-wide {
+    grid-column: 1 / -1;
+  }
+}
+
+.mal-slide {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.mal-slide span {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+
+.mal-slide strong {
+  font-size: 1.75rem;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.mal-slide[hidden] {
+  display: none;
+}
+
+.mal-slide-cell {
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+
+/* ---- Medical Record: two-colour heading, clickable sidebar title -------- */
+#mr-title .mr-title-accent {
+  color: var(--accent);
+}
+
+#mr-label {
+  cursor: pointer;
+  user-select: none;
+}
+
+#mr-label:hover,
+#mr-label:focus-visible {
+  background: var(--accent-ghost);
+  outline: none;
+}
+
+/* Medical Record only: the toggle triangles of the four sections (Outpatient,
+   Inpatient, Screening, Wellness) line up with the left edge of the "Medical
+   record" header text, and the section names sit to the right of them. The
+   offsets were measured in the browser (the triangle's own padding puts it 8.5px
+   right of the node's edge). Sub-headers move with their section. */
+#mr-nav .app-tree-node {
+  margin-left: 3.5px;
+}
+
+@media (max-width: 640px) {
+  #mr-nav .app-tree-node {
+    margin-left: 1.5px;
+  }
+}
+
+/* Malaria form rows: a small title above each of the three rows. */
+.mal-row-title {
+  margin: 14px 0 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.mal-row-title:first-of-type {
+  margin-top: 8px;
+}
+
+/* The slide initial: bold capitals, easy to copy onto the slide. */
+#malaria-form .mal-slide-preview {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  line-height: 1.6;
+}
+
+/* Malaria: the small x inside each searchable box. The labels holding those
+   boxes are position:relative, and the box is the last thing in its label. */
+.mal-clear {
+  position: absolute;
+  right: 4px;
+  bottom: 3px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mal-clear:hover,
+.mal-clear:focus-visible {
+  background: var(--accent-ghost);
+  color: var(--text-1);
+  outline: none;
+}
+
+.mal-clear[hidden] {
+  display: none;
+}
+
+#malaria-form input[role="combobox"],
+#da-form input[role="combobox"],
+#fa-form input[role="combobox"] {
+  padding-right: 22px;
+}
+
+/* ---- Screening > Drug and Alcohol: the consent and result form ----------- */
+/* Form mode: "New drug & alcohol screening" swaps the toolbar and the table for
+   the form, as the malaria page does. */
+#scr-view-table.is-form-mode #scr-toolbar,
+#scr-view-table.is-form-mode > .table-scroll,
+#scr-view-table.is-form-mode #scr-empty,
+#scr-view-table.is-form-mode #scr-error {
+  display: none;
+}
+
+#da-form i,
+#fa-form i {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--text-3);
+}
+
+#da-form .da-docid,
+#fa-form .da-docid {
+  margin: 6px 0 0;
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+
+#da-form .da-docid b,
+#fa-form .da-docid b {
+  color: var(--danger, #b91c1c);
+}
+
+#da-form .da-consent,
+#fa-form .da-consent {
+  margin: 6px 0 0;
+  padding: 8px 10px 8px 26px;
+  border: 1px solid var(--border, rgba(13, 30, 28, 0.2));
+  font-size: 0.72rem;
+  columns: 2 280px;
+  column-gap: 28px;
+}
+
+#da-form .da-consent li,
+#fa-form .da-consent li {
+  break-inside: avoid;
+  margin-bottom: 5px;
+}
+
+#da-form .da-consent li i,
+#fa-form .da-consent li i {
+  display: block;
+}
+
+/* Radio and checkbox groups: label text beside the box, wrapping on a narrow screen. */
+#da-form .da-options,
+#fa-form .da-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin: 8px 0 0;
+  padding: 4px 8px 6px;
+  border: 1px solid var(--border, rgba(13, 30, 28, 0.2));
+  font-size: 0.75rem;
+}
+
+#da-form .settings-grid .da-options,
+#fa-form .settings-grid .da-options {
+  margin: 0;
+  align-self: end;
+}
+
+#da-form .da-options legend,
+#fa-form .da-options legend {
+  padding: 0 4px;
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+
+#da-form .da-final,
+#fa-form .da-final {
+  flex-direction: column;
+}
+
+#da-form .settings-grid input[type="checkbox"],
+#fa-form .settings-grid input[type="checkbox"],
+#da-form .settings-grid input[type="radio"],
+#fa-form .settings-grid input[type="radio"] {
+  width: auto;
+  flex: none;
+}
+
+#da-form .da-options label,
+#fa-form .da-options label,
+#da-form .da-check,
+#fa-form .da-check {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+}
+
+#da-form .da-check,
+#fa-form .da-check {
+  margin-top: 8px;
+}
+
+#da-form .settings-grid .da-check,
+#fa-form .settings-grid .da-check {
+  margin-top: 0;
+  align-self: end;
+  padding-bottom: 6px;
+}
+
+#da-form .da-note,
+#fa-form .da-note {
+  margin: 6px 0 0;
+  font-size: 0.7rem;
+  color: var(--text-3);
+}
+
+#da-form .da-sub,
+#fa-form .da-sub {
+  margin: 12px 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+#da-form .da-specimen,
+#fa-form .da-specimen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 18px;
+  margin-top: 8px;
+}
+
+#da-form .da-inline,
+#fa-form .da-inline {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+}
+
+#da-form .da-inline input:not([type="checkbox"]),
+#fa-form .da-inline input:not([type="checkbox"]) {
+  width: 64px;
+}
+
+#da-form .da-panel th,
+#fa-form .da-panel th,
+#da-form .da-panel td,
+#fa-form .da-panel td {
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.7rem;
+}
+
+#da-form .da-panel th:first-child,
+#fa-form .da-panel th:first-child,
+#da-form .da-panel td:first-child,
+#fa-form .da-panel td:first-child {
+  text-align: left;
+}
+
+/* A signature: the title, the button that approves, and the date it was approved.
+   Approved, the button shows the first name in cursive (Dancing Script, OFL,
+   web/static/fonts) the way it is printed on the PDF. */
+@font-face {
+  font-family: "Dancing Script";
+  src: url("/static/fonts/DancingScript-wght.ttf") format("truetype");
+  font-weight: 400 700;
+  font-display: swap;
+}
+
+#da-form .da-sign,
+#fa-form .da-sign {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.75rem;
+}
+
+#da-form .da-sign-title,
+#fa-form .da-sign-title {
+  color: var(--text-2);
+}
+
+#da-form .da-sign-btn,
+#fa-form .da-sign-btn {
+  min-height: 52px;
+  border: 1px dashed var(--border-strong, rgba(13, 30, 28, 0.45));
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+#da-form .da-sign-btn:hover:not(:disabled),
+#fa-form .da-sign-btn:hover:not(:disabled) {
+  background: var(--accent-ghost);
+}
+
+#da-form .da-sign-btn:disabled,
+#fa-form .da-sign-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+#da-form .da-sign-btn.is-approved,
+#fa-form .da-sign-btn.is-approved {
+  border-style: solid;
+  border-color: #0066ff;
+  background: #f5f9ff;
+  color: #0066ff;
+  font-family: "Dancing Script", cursive;
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+#da-form .da-sign-stamp,
+#fa-form .da-sign-stamp {
+  min-height: 1em;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #c81e1e;
+}
+
+#da-form .da-signer,
+#fa-form .da-signer {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#da-form .da-signers,
+#fa-form .da-signers {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+#da-form .da-photos,
+#fa-form .da-photos {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+#da-form .da-photo-list,
+#fa-form .da-photo-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#da-form .da-photo,
+#fa-form .da-photo {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+
+#da-form .da-photo img,
+#fa-form .da-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border: 1px solid var(--border, rgba(13, 30, 28, 0.2));
+}
+
+#da-form .da-photo button,
+#fa-form .da-photo button {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--danger, #b91c1c);
+  color: #fff;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+#da-form .da-actions,
+#fa-form .da-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+#da-form .da-msg,
+#fa-form .da-msg {
+  font-size: 0.875rem;
+  color: var(--text-3);
+}
+
+#da-form .da-msg.is-error,
+#fa-form .da-msg.is-error {
+  color: var(--danger, #b91c1c);
+}
+
+#da-form .da-missing,
+#fa-form .da-missing {
+  outline: 2px solid var(--danger, #b91c1c);
+  outline-offset: 1px;
+}
+
+@media (max-width: 640px) {
+  #da-form .da-signers,
+  #fa-form .da-signers {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Malaria dashboard: four number tiles, then the bar chart. The bars themselves
+   use the MCU dashboard's .dash-bars rules. */
+.mal-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 12px 16px 0;
+}
+
+.mal-stat {
+  padding: 8px 10px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
+
+.mal-stat span {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.mal-stat strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  color: var(--text-1);
+}
+
+.mal-stat--positive strong {
+  color: var(--danger, #b91c1c);
+}
+
+.mal-chart {
+  padding: 14px 16px 16px;
+}
+
+.mal-chart h3 {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.mal-chart .dash-bar-row span {
+  width: 200px;
+}
+
+.mal-chart .dash-bar-row svg {
+  flex: 1;
+  height: 14px;
+  min-width: 0;
+}
+
+.mal-chart .dash-bar-row b {
+  min-width: 110px;
+  font-size: 0.75rem;
+  color: var(--text-1);
+}
+
+.mal-bar-all {
+  fill: var(--accent);
+}
+
+.mal-bar-positive {
+  fill: var(--danger, #b91c1c);
+}
+
+.mal-bar-Pv { fill: #d97706; }
+.mal-bar-Pf { fill: #b91c1c; }
+.mal-bar-Po { fill: #7c3aed; }
+.mal-bar-Mixed { fill: #374151; }
+
+.mal-stats--species {
+  padding-top: 8px;
+}
+
+.mal-stats--species[hidden] {
+  display: none;
+}
+
+.mal-stat--Pv strong { color: #d97706; }
+.mal-stat--Pf strong { color: #b91c1c; }
+.mal-stat--Po strong { color: #7c3aed; }
+.mal-stat--Mixed strong { color: #374151; }
+
+.mal-swatch--Pv { background: #d97706; }
+.mal-swatch--Pf { background: #b91c1c; }
+.mal-swatch--Po { background: #7c3aed; }
+.mal-swatch--Mixed { background: #374151; }
+
+.mal-legend[hidden] {
+  display: none;
+}
+
+.mal-legend {
+  margin: 10px 0 0;
+  font-size: 0.75rem;
+  color: var(--text-3);
+}
+
+.mal-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin: 0 4px 0 10px;
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+
+.mal-swatch:first-child {
+  margin-left: 0;
+}
+
+.mal-swatch--all {
+  background: var(--accent);
+}
+
+.mal-swatch--positive {
+  background: var(--danger, #b91c1c);
+}
+
+@media (max-width: 640px) {
+  .mal-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mal-chart .dash-bar-row span {
+    width: 110px;
+  }
+
+  .mal-chart .dash-bar-row b {
+    min-width: 70px;
+  }
+}
+
+/* Malaria dashboard filter: the same dd/mm/yyyy box as the forms (the native date
+   input hides behind its calendar icon), and a select that matches the inputs. */
+#mal-dash-filter .date-dmy,
+#mal-toolbar .date-dmy,
+#scr-dash-filter .date-dmy,
+#scr-toolbar .date-dmy {
+  width: 140px;
+}
+
+/* One control height across both filter bars, bottoms on one line. The date box
+   is a span, so .app-filter's caption margin must not apply to it. */
+#mal-dash-filter .date-dmy,
+#mal-toolbar .date-dmy,
+#scr-dash-filter .date-dmy,
+#scr-toolbar .date-dmy {
+  margin-bottom: 0;
+}
+
+#mal-toolbar .btn-primary,
+#mal-toolbar .btn-ghost,
+#mal-toolbar input[type="text"],
+#mal-dash-filter .btn-primary,
+#mal-dash-filter .btn-ghost,
+#mal-dash-filter input[type="text"],
+#mal-dash-filter select,
+#scr-toolbar .btn-primary,
+#scr-toolbar .btn-ghost,
+#scr-toolbar input[type="text"],
+#scr-dash-filter .btn-primary,
+#scr-dash-filter .btn-ghost,
+#scr-dash-filter input[type="text"],
+#scr-dash-filter select {
+  box-sizing: border-box;
+  height: 31px;
+}
+
+#mal-toolbar .btn-ghost,
+#mal-dash-filter .btn-ghost,
+#scr-toolbar .btn-ghost,
+#scr-dash-filter .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+}
+
+
+#mal-dash-filter .date-dmy input[type="date"],
+#mal-toolbar .date-dmy input[type="date"],
+#scr-dash-filter .date-dmy input[type="date"],
+#scr-toolbar .date-dmy input[type="date"] {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 2.2rem;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+#mal-dash-filter select,
+#scr-dash-filter select {
+  font-family: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-1);
+  background: var(--surface-2);
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+  padding: 6px 10px;
+}
+
+/* Malaria table toolbar: the search box is a positioned label so its x can sit inside. */
+#mal-toolbar label,
+#scr-toolbar label {
+  position: relative;
+}
+
+#mal-toolbar input[type="text"]:not(.date-dmy-text),
+#scr-toolbar input[type="text"]:not(.date-dmy-text) {
+  min-width: 200px;
+  padding-right: 22px;
+}
+
+/* Malaria table: the same look as the checkup (MCU data) table, which is styled
+   under #tab-mcu-data above: tinted header band, 0.7rem bold headers, 0.75rem
+   cells, 3px 4px padding, one line per row (the table scrolls sideways when the
+   pane is narrow), and the detail row's text wrapping normally. */
+/* Form mode: "New malaria exam" swaps the toolbar and the table for the form. */
+/* The form's title on the left, a second Cancel button on the right. */
+.mal-form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.mal-form-head .section-label {
+  margin: 0;
+}
+
+#mal-view-table.is-form-mode #mal-toolbar,
+#mal-view-table.is-form-mode .table-scroll,
+#mal-view-table.is-form-mode #mal-empty {
+  display: none;
+}
+
+/* The header band hugs the toolbar card above it, as on the checkup page. */
+#mal-view-table .table-scroll,
+#scr-view-table .table-scroll {
+  margin-top: 0;
+}
+
+#mal-view-table .data-table.compact th,
+#mal-view-table .data-table.compact td,
+#scr-view-table .data-table.compact th,
+#scr-view-table .data-table.compact td {
+  white-space: nowrap;
+  padding: 3px 4px;
+}
+
+#mal-view-table .data-table.compact th,
+#scr-view-table .data-table.compact th {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: #6b3a2c;
+  background: #ead5cb;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+#mal-view-table .data-table.compact td,
+#scr-view-table .data-table.compact td {
+  font-size: 0.75rem;
+}
+
+#mal-view-table .data-table.compact th:last-child,
+#scr-view-table .data-table.compact th:last-child {
+  padding-right: 16px;
+}
+
+#mal-view-table .data-table.compact td:last-child,
+#scr-view-table .data-table.compact td:last-child {
+  padding-right: 12px;
+}
+
+#mal-view-table .data-table.compact tr.detail-row td,
+#scr-view-table .data-table.compact tr.detail-row td {
+  white-space: normal;
+  text-align: left;
+}
+
+#mal-view-table .data-table.compact select,
+#scr-view-table .data-table.compact select {
+  font-size: 0.75rem;
+  padding: 2px 4px;
+}
+
+/* Screening log (alcohol, fatigue): the Table and Dashboard tabs reuse the malaria
+   look above (same toolbar, table and dashboard classes, via the #scr- ids). What
+   is specific to them: the outcome colours on tiles, bars, legend and table. */
+.mal-stats.scr-stats {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.scr-bar-negative { fill: var(--accent); }
+.scr-bar-positive { fill: #b91c1c; }
+.scr-bar-lab { fill: #d97706; }
+.scr-bar-low { fill: #2e7d32; }
+.scr-bar-mild { fill: #b28704; }
+.scr-bar-medium { fill: #e65100; }
+.scr-bar-high { fill: #c62828; }
+.scr-bar-other { fill: #9aa5a2; }
+
+.scr-swatch--negative { background: var(--accent); }
+.scr-swatch--positive { background: #b91c1c; }
+.scr-swatch--lab { background: #d97706; }
+.scr-swatch--low { background: #2e7d32; }
+.scr-swatch--mild { background: #b28704; }
+.scr-swatch--medium { background: #e65100; }
+.scr-swatch--high { background: #c62828; }
+.scr-swatch--other { background: #9aa5a2; }
+
+.scr-stat--negative strong { color: var(--accent); }
+.scr-stat--positive strong { color: #b91c1c; }
+.scr-stat--lab strong { color: #d97706; }
+.scr-stat--low strong { color: #2e7d32; }
+.scr-stat--mild strong { color: #b28704; }
+.scr-stat--medium strong { color: #e65100; }
+.scr-stat--high strong { color: #c62828; }
+.scr-stat--other strong { color: #6b7b78; }
+
+/* Room for "3 (Positive 1, Sent to lab 1)" next to a bar on a wide screen. */
+#scr-bars .dash-bar-row b {
+  min-width: 200px;
+}
+
+@media (max-width: 640px) {
+  #scr-bars .dash-bar-row b {
+    min-width: 70px;
+  }
+}
+
+.scr-result--other {
+  color: var(--text-3);
+  font-style: italic;
+}
+
+.scr-result--positive,
+.scr-result--high {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.scr-result--lab,
+.scr-result--medium {
+  color: #d97706;
+  font-weight: 700;
+}
+
+.scr-result--mild {
+  color: #b28704;
+  font-weight: 600;
+}
+
+
+/* ---- Screening > Fatigue: the scoring form (shares the #fa-form / #da-form rules above) ---- */
+#fa-form .fa-signers {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+#fa-form .fa-score td,
+#fa-form .fa-bands td {
+  white-space: normal;
+  text-align: left;
+}
+
+#fa-form .fa-score td:nth-child(n + 3) {
+  text-align: center;
+}
+
+#fa-form .fa-score input {
+  width: 90px;
+  text-align: center;
+}
+
+#fa-form .fa-total td {
+  font-weight: 700;
+  background: var(--accent-ghost);
+}
+
+#fa-form .fa-bands tr.is-active td {
+  font-weight: 600;
+}
+
+#fa-form .fa-bp-high {
+  border-color: #c62828;
+  color: #c62828;
+  font-weight: 700;
+}
+
+#fa-form .fa-bp-elevated {
+  border-color: #e65100;
+  color: #e65100;
+  font-weight: 700;
+}
+
+#fa-form .fa-applicable {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+}
+
+#fa-form .fa-applicable b {
+  font-size: 0.95rem;
+}
+
+@media (max-width: 640px) {
+  #fa-form .fa-signers {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* SOFI tab (Medical Record > Screening > Fatigue): provisional level colours. */
+.sofi-cell-low { color: #2f855a; }
+.sofi-cell-moderate { color: #b7791f; }
+.sofi-cell-high { color: #b42318; font-weight: 600; }
+.sofi-cell-result { font-weight: 700; }
+.sofi-note { margin: 0; padding: 12px 16px; font-size: 0.8rem; line-height: 1.5; color: var(--text-2); }
+
+/* SOFI on the Fatigue dashboard: the three bands reuse the screening colours (low and high are
+   defined above), plus the one in between. */
+.scr-bar-moderate { fill: #d97706; }
+.scr-swatch--moderate { background: #d97706; }
+.scr-stat--moderate strong { color: #d97706; }
+.sofi-dash-title { margin: 8px 16px 0; padding-top: 16px; border-top: 1px solid var(--border); font-size: 1.05rem; font-weight: 700; color: var(--text-1); }
+#sofi-dim-bars .dash-bar-row span, #sofi-group-bars .dash-bar-row span { width: 200px; }
+#sofi-dim-bars .dash-bar-row b, #sofi-group-bars .dash-bar-row b { min-width: 150px; }
+@media (max-width: 640px) {
+  #sofi-dim-bars .dash-bar-row b, #sofi-group-bars .dash-bar-row b { min-width: 90px; }
+  #sofi-dim-bars .dash-bar-row span, #sofi-group-bars .dash-bar-row span { width: 110px; }
+}

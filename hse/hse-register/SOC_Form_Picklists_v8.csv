@@ -1,0 +1,32 @@
+﻿list_name,option_order,label_id,control_tag_set,used_in_path,note
+unsafe_reason,1,PPE tidak ada atau salah,PPE,A,Draft wording; HSE to confirm
+unsafe_reason,2,Bekerja tanpa izin kerja (permit),Permit To Work,A,
+unsafe_reason,3,Prosedur atau isolasi dilewati,Procedure & Competency,A,
+unsafe_reason,4,Tanpa barikade atau rambu,Barricade / Sign,A,
+unsafe_reason,5,Bekerja sendiri tanpa pengawas atau helper,Working Without Helper / Supervision,A,
+unsafe_reason,6,Posisi atau cara kerja tidak aman,,A,
+unsafe_reason,7,Lainnya,,A,
+ppe_item,1,Helm,PPE,"A, follows PPE choice",Draft wording; HSE to confirm
+ppe_item,2,Rompi,PPE,"A, follows PPE choice",
+ppe_item,3,Sepatu,PPE,"A, follows PPE choice",
+ppe_item,4,Sarung tangan,PPE,"A, follows PPE choice",
+ppe_item,5,Kacamata atau face shield,PPE,"A, follows PPE choice",
+ppe_item,6,Masker atau respirator,PPE,"A, follows PPE choice",
+ppe_item,7,Earplug atau earmuff,PPE,"A, follows PPE choice",
+ppe_item,8,Harness,PPE,"A, follows PPE choice",
+ppe_item,9,ID card,PPE,"A, follows PPE choice",
+ppe_item,10,Lainnya,PPE,"A, follows PPE choice",
+good_practice,1,PPE dipakai dengan benar,PPE,C,Draft wording; HSE to confirm
+good_practice,2,Izin kerja dan pengecekan lengkap,Permit To Work,C,
+good_practice,3,Barikade atau rambu terpasang,Barricade / Sign,C,
+good_practice,4,Area bersih dan sampah dipilah,,C,
+good_practice,5,Berkendara aman,,C,
+good_practice,6,Rapat keselamatan atau induksi dilakukan,"Safety Meeting, Induction & Checks",C,
+good_practice,7,Stop work digunakan dengan benar,Procedure & Competency,C,
+good_practice,8,Lainnya,,C,
+stopped_by,1,Saya sendiri,,"A, when stop work = Yes",Draft wording; HSE to confirm
+stopped_by,2,Supervisor,,"A, when stop work = Yes",
+stopped_by,3,Lainnya,,"A, when stop work = Yes",
+yes_no,1,Stop work (Ya / Tidak),,A,Draft wording; HSE to confirm
+yes_no,2,Ada bahaya langsung (Ya / Tidak),,B,
+yes_no,3,Sudah dibarikade atau dihentikan (Ya / Tidak),,B,

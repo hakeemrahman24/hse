@@ -1,0 +1,35 @@
+{{define "main"}}
+<h1>{{heading .Lang "After photos"}}</h1>
+<p class="sub">{{tr .Lang "After photos for report"}} <strong>{{.Ref}}</strong>. {{tr .Lang "Upload photos taken after the fix, then close the finding when it is done. HSE verifies it afterwards."}}</p>
+
+<form method="post" class="add-activity" action="/soc/after/{{.EditID}}" enctype="multipart/form-data">
+  <div class="section-label">{{tr .Lang "After photos"}}</div>
+  <div class="settings-grid">
+    {{if .Photos}}<div class="span-all"><span>{{tr .Lang "Current photos"}}</span>
+      <div class="photo-grid photo-grid--small">{{range .Photos}}<figure><img src="/soc/photo/{{.}}" alt="{{tr $.Lang "After photo"}}" loading="lazy"></figure>{{end}}</div></div>{{end}}
+    {{if .PhotoSlots}}
+    <div class="span-all photo-field">
+      <span>{{tr .Lang "After photos, max 4"}}</span>
+      <input type="file" name="photos" id="after-input" accept="image/*" multiple data-max="{{.PhotoSlots}}" aria-label="{{tr .Lang "After photos"}}">
+      <div id="after-preview" class="photo-preview" aria-live="polite"></div>
+      <small id="after-status" class="field-hint">{{tr .Lang "Photos are compressed automatically to 500 KB max."}}</small>
+      {{with .Errors.photos}}<small class="field-error">{{.}}</small>{{end}}
+    </div>
+    {{else}}<p class="span-all field-hint">{{tr .Lang "The maximum of 4 After photos is reached."}}{{with .Errors.photos}} <span class="field-error">{{.}}</span>{{end}}</p>{{end}}
+    {{if and .NeedsAfter (not .Photos)}}<p class="span-all field-hint">{{tr .Lang "To close, add at least one After photo."}}</p>{{end}}
+    <label class="span-all">
+      <span>{{tr .Lang "Remarks, notes or recommendation (if any)"}}</span>
+      <textarea name="action_taken" id="action_taken" rows="3" maxlength="5000" placeholder="{{tr .Lang "What was done, or what do you recommend?"}}">{{.Input.ActionTaken}}</textarea>
+      {{with .Errors.action_taken}}<small class="field-error">{{.}}</small>{{end}}
+    </label>
+  </div>
+  <div class="submit-row">
+    {{if .PhotoSlots}}<button type="submit" class="btn-ghost">{{tr .Lang "Save photos"}}</button>{{end}}
+    <button type="submit" name="close" value="1" class="btn-primary" onclick="return confirm({{tr .Lang "Close this finding? It cannot be changed afterwards."}});">{{tr .Lang "Close finding"}}</button>
+    <a class="btn-ghost" href="/soc/mine">{{tr .Lang "My submissions"}}</a>
+  </div>
+</form>
+<script src="/soc/static/i18n.js?v=20261017h"></script>
+<script src="/soc/static/photo-compress.js?v=20261020b" defer></script>
+<script>document.addEventListener("DOMContentLoaded",function(){var i=document.getElementById("after-input");if(i&&window.attachPhotoCompress){attachPhotoCompress(i,document.getElementById("after-status"),document.getElementById("after-preview"));}});</script>
+{{end}}

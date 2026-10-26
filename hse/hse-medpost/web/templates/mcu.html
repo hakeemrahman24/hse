@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en" class="vt-cover">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @view-transition { navigation: auto; }
+    html { background: #E8F4F2; }
+    html.vt-cover { visibility: hidden; }
+    ::view-transition-group(root) { animation-duration: 120ms; }
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-group(root) { animation: none; }
+    }
+  </style>
+  <noscript><style>html.vt-cover { visibility: visible; }</style></noscript>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medical Checkups · hse medpost</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
+  <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <script>
+    document.documentElement.classList.remove("vt-cover");
+  </script>
+</head>
+<body>
+  <nav class="nav scrolled" id="mainNav" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/start" class="nav-logo">hse <span>medpost</span></a>
+      <div class="nav-cta">
+        <span class="btn-ghost" style="pointer-events:none">{{.Name}}</span>
+        <button type="button" id="logout" class="btn-primary">Log out</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="app-shell app-shell--full">
+    <section class="app-main">
+      <div id="presence-banner" class="presence-card" hidden></div>
+      <div class="app-panel">
+        <div class="app-panel-head">
+          <h1 id="panel-title">Medical Checkups</h1>
+          <p id="panel-sub">Each employee’s latest checkup, or every visit on MCU data.</p>
+        </div>
+
+        <div class="app-head-rule" aria-hidden="true"></div>
+
+        <div id="mcu-tabs" class="app-tabs">
+          <a href="/programs" id="mcu-back-to-activities" class="btn-outline" hidden>&larr; Back to Activities</a>
+          <button type="button" class="app-tab active" data-tab="employee">Employee</button>
+          <button type="button" class="app-tab" data-tab="mcu-data">MCU data</button>
+          <button type="button" class="app-tab" data-tab="dashboard">Dashboard</button>
+          <button type="button" id="new-patient-header-cancel" class="btn-outline" hidden>Cancel</button>
+        </div>
+
+
+        <!-- Shared list for the Employee tab (one latest checkup per
+             person) and the MCU data tab (every visit). Search, company,
+             and column sort are wired in mcu.js. -->
+        <div id="tab-mcu-data">
+          <div id="mcu-data-toolbar" class="app-filter">
+            <div class="mcu-data-top-row">
+              <div class="mcu-data-search-row">
+                <label>
+                  <span>Name</span>
+                  <span class="search-field">
+                    <input id="mcu-data-name" placeholder="Type part of a name…" autocomplete="off" />
+                    <button type="button" class="search-clear" aria-label="Clear search">×</button>
+                  </span>
+                </label>
+                <div id="mcu-new-patient-offer" class="mcu-tab-new-patient" hidden>
+                  <button type="button" id="new-patient-btn" class="new-patient-card">
+                    <span class="new-patient-card-icon">+</span>
+                    <span>New patient</span>
+                  </button>
+                </div>
+              </div>
+              <div class="mcu-data-rule" aria-hidden="true"></div>
+              <div class="mcu-cert-download">
+                <div class="mcu-tool-group">
+                  <label class="mcu-cert-count">
+                    <span>Latest certs</span>
+                    <input id="mcu-cert-count" inputmode="numeric" autocomplete="off" placeholder="1–20" aria-label="How many latest eligible certificates, 1 to 20" />
+                    <div id="mcu-cert-count-list" class="app-program-list company-typeahead" style="display:none"></div>
+                  </label>
+                  <button type="button" id="mcu-cert-download" class="btn-primary" aria-label="Download zip">
+                    <span class="mcu-label-full">Download zip</span>
+                    <span class="mcu-label-short">Zip</span>
+                  </button>
+                  <button type="button" id="mcu-cert-clear" class="btn-ghost" aria-label="Clear cached certificates">
+                    <span class="mcu-label-full">Clear cached certificates</span>
+                    <span class="mcu-label-short">Clear cache</span>
+                  </button>
+                </div>
+                <div class="mcu-tool-group">
+                  <label class="mcu-cert-count">
+                    <span>Latest rows</span>
+                    <input id="mcu-data-limit" inputmode="numeric" autocomplete="off" placeholder="1+" aria-label="How many of the latest rows to export to Excel" />
+                  </label>
+                  <a id="mcu-data-export-latest" class="btn-ghost" href="/api/mcu-records/mcu-data.xlsx" aria-label="Export the latest rows to Excel">
+                    <span class="mcu-label-full">Export latest</span>
+                    <span class="mcu-label-short">Latest</span>
+                  </a>
+                  <a id="mcu-data-export" class="btn-ghost" href="/api/mcu-records/mcu-data.xlsx" aria-label="Export all data to Excel">
+                    <span class="mcu-label-full">Export all data to Excel</span>
+                    <span class="mcu-label-short">All</span>
+                  </a>
+                </div>
+              </div>
+              <p id="mcu-cert-clear-notice" class="mcu-cert-clear-notice" hidden>Saved certificate files will be deleted. The next View builds a new one. Click the button again to clear.</p>
+            </div>
+            <div class="mcu-data-filter-row">
+              <label class="mcu-data-company">
+                <span>Company</span>
+                <span class="mcu-data-company-field">
+                  <input id="mcu-data-company-input" placeholder="All companies" autocomplete="off" />
+                  <input type="hidden" id="mcu-data-company" />
+                  <div id="mcu-data-company-typeahead" class="app-program-list company-typeahead" style="display:none"></div>
+                </span>
+              </label>
+              <button type="button" id="mcu-data-today" class="btn-ghost" aria-pressed="false" aria-label="Today's review">
+                <span class="mcu-label-full">Today's review</span>
+                <span class="mcu-label-short">Today</span>
+              </button>
+              <button type="button" id="mcu-data-expiring" class="btn-ghost" aria-pressed="false" aria-label="Expiring within 60 days">
+                <span class="mcu-label-full">Expiring ≤ 60 days</span>
+                <span class="mcu-label-short">≤ 60 days</span>
+              </button>
+              <button type="button" id="mcu-data-expiring-export" class="btn-ghost" aria-label="Export the expiring rows shown to Excel" hidden>
+                <span class="mcu-label-full">Excel</span>
+                <span class="mcu-label-short">Excel</span>
+              </button>
+              <button type="button" id="mcu-data-reset" class="btn-ghost">Reset</button>
+            </div>
+          </div>
+          <div id="mcu-data-list" class="mcu-pane-scroll">
+          <div class="table-scroll">
+            <table class="data-table compact">
+              <thead>
+                <tr id="mcu-employee-head">
+                  <th data-sort="patientName">Name</th>
+                  <th data-sort="companyName">Company</th>
+                  <th data-sort="workPosition">Work position</th>
+                  <th data-sort="checkUpId">Latest medical ID</th>
+                  <th data-sort="resultCriteria">Latest med status</th>
+                  <th data-sort="hcValidityStatus">Medical validity status</th>
+                </tr>
+                <tr id="mcu-data-head" class="is-head-off">
+                  <th data-sort="checkUpId">Checkup ID</th>
+                  <th data-sort="patientName">Name</th>
+                  <th data-sort="companyName">Company</th>
+                  <th data-sort="criteria">Criteria</th>
+                  <th data-sort="resultCriteria">Result</th>
+                  <th data-sort="dateCheckUp">Check up date</th>
+                  <th data-sort="resultValidUntil">Valid until</th>
+                  <th>Certificate</th>
+                </tr>
+              </thead>
+              <tbody id="mcu-data-body"></tbody>
+            </table>
+          </div>
+          <p id="mcu-data-empty" class="app-empty" hidden>No records match this search.</p>
+          </div>
+          <div id="mcu-data-forms" class="mcu-pane-scroll" hidden>
+        <div id="new-patient-cancel-bar" class="new-patient-cancel-bar" hidden>
+          <button type="button" id="new-patient-cancel" class="btn-outline">Cancel</button>
+        </div>
+        <!-- New / edit patient form -->
+        <form id="patient-form" class="add-activity" novalidate hidden>
+          <div class="detail-group detail-group--worker">
+            <div class="section-label" style="margin-bottom:12px" id="patient-form-title">New patient</div>
+            <div class="settings-grid">
+              <label>
+                <span>Name</span>
+                <input name="name" required />
+              </label>
+              <label>
+                <span>Gender</span>
+                <select name="gender" required>
+                  <option value="">—</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </label>
+              <label>
+                <span>Date of birth</span>
+                <span class="date-dmy">
+                  <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="Date of birth" />
+                  <input type="date" name="dateOfBirth" required tabindex="-1" />
+                </span>
+              </label>
+              <label>
+                <span>Nationality</span>
+                <select name="nationalityId" id="patient-nationality" required></select>
+              </label>
+              <label>
+                <span>NIK/Passport ID</span>
+                <input name="personalId" id="patient-personal-id" placeholder="16-digit NIK" maxlength="16" />
+              </label>
+              <label>
+                <span>Employee/badge ID</span>
+                <input name="employeeId" />
+              </label>
+            </div>
+          </div>
+          <p id="patient-latest-checkup" class="patient-latest-checkup" hidden></p>
+          <p id="patient-required-notice" class="patient-required-notice" hidden></p>
+          <div id="patient-form-buttons" class="patient-form-buttons">
+            <button type="button" id="patient-new-checkup" class="btn-primary" hidden>New Medical Checkup</button>
+            <button type="submit" class="btn-primary">Save patient</button>
+            <button type="button" id="patient-cancel" class="btn-outline">Cancel</button>
+          </div>
+          <p id="patient-msg" style="margin-top:10px"></p>
+        </form>
+
+        <!-- Selected patient summary + history -->
+        <div id="patient-detail" hidden>
+          <div class="app-panel-head" style="padding-top:0">
+            <h2 id="patient-name" style="margin:0;font-size:1.1rem"></h2>
+            <p id="patient-meta"></p>
+          </div>
+          <div class="app-filter">
+            <button type="button" id="edit-patient-btn" class="btn-ghost">Edit patient</button>
+            <button type="button" id="new-checkup-btn" class="btn-ghost" style="margin-left:auto">+ New checkup</button>
+          </div>
+
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Checkup ID</th>
+                  <th>Criteria</th>
+                  <th>Review date</th>
+                  <th>Result</th>
+                  <th>Valid until</th>
+                  <th>Status</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="history-body"></tbody>
+            </table>
+          </div>
+          <p id="history-empty" class="app-empty" hidden>No checkups recorded yet for this patient.</p>
+        </div>
+
+        <!-- New checkup form -->
+        <form id="checkup-form" class="add-activity" hidden>
+          <div class="section-label" style="margin-bottom:12px" id="checkup-form-title">New checkup</div>
+
+          <div id="copy-checkup-row" class="copy-checkup-row" hidden>
+            <label>
+              <span>Copy from previous checkup</span>
+              <select id="copy-checkup-select"></select>
+            </label>
+            <button type="button" class="btn-ghost" id="copy-checkup-btn">Copy exam data</button>
+            <p class="copy-checkup-note">Copies exam results and notes, result, checkup and submission dates, work location and risks. Company, position, age, reviewer and review date are not copied.</p>
+          </div>
+
+          <div class="detail-group detail-group--exam">
+          <div class="settings-grid">
+            <div class="checkup-ident">
+              <label>
+                <span>Checkup ID</span>
+                <span class="ro-value" id="checkup-id-display">—</span>
+                <input type="hidden" name="checkUpId" />
+              </label>
+              <label>
+                <span>Reviewer</span>
+                <input name="reviewer" />
+              </label>
+            </div>
+            <div class="purpose-field">
+              <label>
+                <span>Checkup purpose criteria</span>
+                <select name="checkUpCriteriaId" id="checkup-criteria-select" required></select>
+              </label>
+              <p id="criteria-suggestion-note" class="purpose-note"></p>
+            </div>
+            <div class="work-location-field">
+              <div class="field-caption">
+                <span>Work location</span>
+                <span class="field-hint">Select all that apply.</span>
+              </div>
+              <div id="work-location-checkboxes"></div>
+              <input type="hidden" name="workLocation" />
+            </div>
+            <label style="grid-column:1/-1">
+              <span>Occupational health risks (optional)</span>
+              <p style="margin:2px 0 0;font-size:0.6875rem;color:var(--text-3)">Select all that apply. Leave blank if none. A trigger word in Work position ticks the matching box.</p>
+              <div id="task-category-checkboxes" style="margin-top:4px"></div>
+            </label>
+            <p id="food-handler-scope-note" style="grid-column:1/-1;margin:-6px 0 0;font-size:0.8125rem;color:var(--text-3)"></p>
+            <div class="visit-field">
+              <label style="position:relative">
+                <span>Company (at this visit)</span>
+                <input id="checkup-company-input" placeholder="Type to search…" autocomplete="off" required />
+                <input type="hidden" name="companyId" id="checkup-company-select" />
+                <div id="checkup-company-typeahead" class="app-program-list company-typeahead" style="display:none"></div>
+              </label>
+              <label class="visit-same">
+                <input type="checkbox" id="visit-company-same" />
+                <span>Same as previous</span>
+              </label>
+            </div>
+            <label id="checkup-relation-field" hidden>
+              <span>Parent / Project (at this visit)</span>
+              <select name="companyRelationId" id="checkup-relation-select">
+                <option value="">Select…</option>
+              </select>
+            </label>
+            <label>
+              <span>Links to (renewal/follow-up of)</span>
+              <select name="parentRecordId" id="parent-record-select">
+                <option value="">None</option>
+              </select>
+            </label>
+            <div class="visit-field">
+              <label>
+                <span>Work position (at this visit)</span>
+                <input name="workPosition" required />
+              </label>
+              <label class="visit-same">
+                <input type="checkbox" id="visit-position-same" />
+                <span>Same as previous</span>
+              </label>
+            </div>
+            <label>
+              <span>Review date</span>
+              <span class="date-dmy">
+                <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="Review date" />
+                <input type="date" name="reviewDate" required tabindex="-1" />
+              </span>
+            </label>
+            <label>
+              <span>Date of checkup</span>
+              <span class="date-dmy">
+                <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="Date of checkup" required />
+                <input type="date" name="dateCheckUp" tabindex="-1" />
+              </span>
+            </label>
+            <label>
+              <span>Submission date</span>
+              <span class="date-dmy">
+                <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="Submission date" required />
+                <input type="date" name="submissionDate" required tabindex="-1" />
+              </span>
+            </label>
+            <label>
+              <span>Age</span>
+              <span class="ro-value" id="checkup-age-display">—</span>
+              <input type="hidden" name="age" />
+            </label>
+            <label>
+              <span>Validity period (months)</span>
+              <input type="number" name="validityPeriodMonths" min="1" placeholder="12" />
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;flex-direction:row">
+              <input type="checkbox" name="isShortProject" style="width:auto" disabled />
+              <span>Short project (auto-detected, ≥180 days since check-up)</span>
+            </label>
+          </div>
+
+          <details style="margin-top:16px">
+            <summary>History &amp; Physical Exam</summary>
+            <div class="settings-grid" style="margin-top:10px">
+              <label>
+                <span>Smoking/vape</span>
+                <select name="smoking">
+                  <option value="">Select…</option>
+                  <option value="Yes">Yes</option>
+                  <option value="No">No</option>
+                </select>
+              </label>
+              <label>
+                <span>Height (cm)</span>
+                <input type="number" name="heightCm" step="0.1" />
+              </label>
+              <label>
+                <span>Weight (kg)</span>
+                <input type="number" name="weightKg" step="0.1" />
+              </label>
+              <label>
+                <span>BMI value</span>
+                <input type="number" step="0.01" name="bmiValue" readonly />
+                <small id="bmi-label" style="color:var(--text-3)">—</small>
+              </label>
+              <label>
+                <span>BMI criteria</span>
+                <select name="bmiCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Normal w/ Therapy">Normal w/ Therapy</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>BMI notes</span><input name="bmiNotes" /></label>
+              <label>
+                <span>Hernia/hemorrhoid criteria</span>
+                <select name="herniaHemorrhoidCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Hernia/hemorrhoid notes</span><input name="herniaHemorrhoidNotes" /></label>
+              <label>
+                <span>Vision</span>
+                <select name="visionCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Normal w/ Therapy">Normal w/ Therapy</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Vision notes</span><input name="visionNotes" /></label>
+              <label>
+                <span>Blood pressure criteria</span>
+                <select name="bpCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Normal w/ Therapy">Normal w/ Therapy</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Blood pressure notes</span><input name="bpNotes" /></label>
+              <label style="grid-column:1/-1"><span>Other physical exam notes</span><input name="otherPhysicalExamNotes" /></label>
+            </div>
+          </details>
+
+          <details style="margin-top:10px">
+            <summary>Blood &amp; lab work</summary>
+            <div class="settings-grid" style="margin-top:10px">
+              <label>
+                <span>Blood type</span>
+                <select name="bloodType">
+                  <option value="">Select…</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                </select>
+              </label>
+              <label>
+                <span>CBC criteria</span>
+                <select name="cbcCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>CBC notes</span><input name="cbcNotes" /></label>
+              <label>
+                <span>Lipid profile criteria</span>
+                <select name="lipidCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Normal w/ Therapy">Normal w/ Therapy</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Lipid profile notes</span><input name="lipidNotes" /></label>
+              <label>
+                <span>Blood glucose criteria</span>
+                <select name="glucoseCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Normal w/ Therapy">Normal w/ Therapy</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Blood glucose notes</span><input name="glucoseNotes" /></label>
+              <label>
+                <span>Liver function criteria</span>
+                <select name="liverCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Normal w/ Therapy">Normal w/ Therapy</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Liver function notes</span><input name="liverNotes" /></label>
+              <label>
+                <span>Kidney function criteria</span>
+                <select name="kidneyCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Normal w/ Therapy">Normal w/ Therapy</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Kidney function notes</span><input name="kidneyNotes" /></label>
+              <label>
+                <span>Urinalysis (incl. drug test) criteria</span>
+                <select name="urinalysisCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Normal w/ Therapy">Normal w/ Therapy</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Urinalysis notes</span><input name="urinalysisNotes" /></label>
+            </div>
+          </details>
+
+          <details style="margin-top:10px">
+            <summary>Radiology</summary>
+            <div class="settings-grid" style="margin-top:10px">
+              <label>
+                <span>Thorax X-ray criteria</span>
+                <select name="radiologyResult">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Thorax X-ray notes</span><input name="radiologyNotes" /></label>
+              <label>
+                <span>Echocardiography criteria</span>
+                <select name="echocardiographyCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Echocardiography notes</span><input name="echocardiographyNotes" /></label>
+              <label>
+                <span>CT scan criteria</span>
+                <select name="ctScanCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>CT scan notes</span><input name="ctScanNotes" /></label>
+              <label>
+                <span>USG abdomen criteria</span>
+                <select name="usgAbdomenCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>USG abdomen notes</span><input name="usgAbdomenNotes" /></label>
+            </div>
+          </details>
+
+          <details style="margin-top:10px">
+            <summary>ECG &amp; Treadmill</summary>
+            <div class="settings-grid" style="margin-top:10px">
+              <label>
+                <span>ECG result</span>
+                <select name="ecgResult">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label>
+                <span>Treadmill result</span>
+                <select name="treadmillResult">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>ECG/treadmill notes</span><input name="ecgTreadmillNotes" /></label>
+            </div>
+          </details>
+
+          <details style="margin-top:10px">
+            <summary>Spirometry &amp; Audiometry</summary>
+            <div class="settings-grid" style="margin-top:10px">
+              <label>
+                <span>Spirometry criteria</span>
+                <select name="spirometryCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Spirometry notes</span><input name="spirometryNotes" /></label>
+              <label>
+                <span>Audiometry criteria</span>
+                <select name="audiometryCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Acceptable - monitor">Acceptable - monitor</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Audiometry notes</span><input name="audiometryNotes" /></label>
+            </div>
+          </details>
+
+          <details style="margin-top:10px">
+            <summary>Infectious disease screening</summary>
+            <div class="settings-grid" style="margin-top:10px">
+              <label>
+                <span>Hepatitis B serology</span>
+                <select name="hepBCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Hepatitis B notes</span><input name="hepBNotes" /></label>
+              <label>
+                <span>Hepatitis A serology</span>
+                <select name="hepACriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Hepatitis A notes</span><input name="hepANotes" /></label>
+              <label>
+                <span>Rectal swab criteria</span>
+                <select name="rectalSwabCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+              <label><span>Rectal swab notes</span><input name="rectalSwabNotes" /></label>
+              <label>
+                <span>HIV serology</span>
+                <select name="hivCriteria">
+                  <option value="">Select…</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Unacceptable">Unacceptable</option>
+                </select>
+              </label>
+            </div>
+          </details>
+
+          <details style="margin-top:10px">
+            <summary>Additional exam</summary>
+            <div class="settings-grid" style="margin-top:10px">
+              <label style="grid-column:1/-1">
+                <span>Additional exam notes</span>
+                <textarea name="additionalNotes" rows="2"></textarea>
+              </label>
+            </div>
+          </details>
+          </div>
+
+          <div class="detail-group detail-group--result">
+          <details open style="margin-top:16px">
+            <summary>Result</summary>
+            <div class="settings-grid" style="margin-top:10px">
+            <label>
+              <span>Result</span>
+              <select name="resultCriteria" id="result-criteria-select" required>
+                <option value="">—</option>
+              </select>
+            </label>
+            <label>
+              <span>Checkup status</span>
+              <div id="checkup-status-display" class="ro-value" style="font-weight:600;padding:5px 6px" data-status="Open">Open</div>
+              <!-- Open/Close is derived server-side from the Result field
+                   above (see isTerminalResult/checkUpStatusFor in
+                   validity.go). Archived/Exit (HcValidityStatus) isn't a
+                   decision made at data-entry time — it's system-derived
+                   (displayHcValidityStatus, validity.go) from the Unfit
+                   result / a >180-day-stale record / closeParentRecord's
+                   "Renewed by <id>" supersession stamp — so there's no
+                   manual control for it here; it still shows read-only in
+                   the Data entry table's detail view and the MCU data tab's
+                   "HC validity" column. -->
+            </label>
+            <p id="unfit-notice" class="unfit-notice" hidden>Unfit closes this checkup as Archived / Exit. On MCU data the Open link is red. The certificate stays black, with only the review result in red. It is not a clearance to work. A later visit is a new record. If this person may return once results are back in range, choose Temporarily Unfit or Need Follow Up — those stay open.</p>
+            <div class="result-notes-grid" style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:5px">
+              <label>
+                <span>Result notes</span>
+                <textarea name="resultNotes" rows="2"></textarea>
+              </label>
+              <label>
+                <span>Recommendation / follow-up</span>
+                <textarea name="recommendation" rows="2"></textarea>
+              </label>
+            </div>
+            </div>
+          </details>
+          </div>
+          <p id="cert-status" style="margin-top:8px;font-size:0.8125rem;color:var(--text-3)"></p>
+
+          <div id="checkup-actions">
+            <button type="submit" form="checkup-form" class="btn-primary">Save checkup</button>
+            <button type="button" id="checkup-cancel" class="btn-outline">Close</button>
+            <span id="checkup-msg"></span>
+          </div>
+        </form>
+          </div>
+        </div>
+
+        <!-- Dashboard: viewable by any clinician role. Charts are inline
+             SVG. Excel export and the server-drawn PDF (GET
+             /api/mcu-reports/summary.pdf) stay admin-only below. -->
+        <div id="tab-dashboard" hidden>
+          <form id="report-filter" class="dash-filter-card">
+            <div class="dash-filter-query">
+              <label class="dash-field">
+                <span>From</span>
+                <input type="date" name="from" />
+              </label>
+              <label class="dash-field">
+                <span>To</span>
+                <input type="date" name="to" />
+              </label>
+              <label class="dash-field" id="dash-company-field">
+                <span>Company</span>
+                <div class="dash-company-field">
+                  <input id="dash-company-input" type="text" placeholder="All companies" autocomplete="off" aria-label="Company" />
+                  <input type="hidden" id="dash-company" value="" />
+                  <div id="dash-company-typeahead" class="app-program-list company-typeahead" hidden></div>
+                </div>
+              </label>
+              <button type="submit" class="btn-primary" id="dash-apply">Apply</button>
+            </div>
+            <span class="dash-filter-rule" aria-hidden="true"></span>
+            <div class="dash-filter-actions">
+              <button type="button" id="report-this-month" class="btn-ghost">This month</button>
+              <button type="button" id="dash-reset" class="btn-ghost">Reset</button>
+              {{if eq .Role "admin"}}
+              <a href="/api/mcu-records/export.xlsx" class="btn-ghost dash-export" title="Export checkup records to Excel">Excel</a>
+              <a id="dash-pdf-download" class="btn-dash-pdf" title="Download this dashboard as PDF" hidden>PDF</a>
+              <a id="dash-pdf-open" class="btn-dash-pdf" target="_blank" rel="noopener" hidden>Open PDF</a>
+              {{end}}
+            </div>
+          </form>
+          <div class="dash-chart-tools">
+            <span>Chart</span>
+            <div class="dash-chart-toggle" role="group" aria-label="Chart type">
+              <button type="button" id="dash-toggle-bar" class="is-on">Bar</button>
+              <button type="button" id="dash-toggle-pie">Pie</button>
+            </div>
+            <span id="dash-status-rule" class="dash-tools-rule" hidden></span>
+            <div id="dash-status-view" class="dash-status-view" hidden>
+              <span>View</span>
+              <div class="dash-chart-toggle" role="group" aria-label="Overall or per company">
+                <button type="button" id="dash-toggle-combined" class="is-on">Overall</button>
+                <button type="button" id="dash-toggle-per-company">Per company</button>
+              </div>
+            </div>
+          </div>
+          <div id="dash-scroll" class="dash-scroll">
+            <p id="dash-error" class="dash-error" hidden></p>
+            <p id="dash-empty" class="app-empty" hidden>No records in this review date range.</p>
+            <div id="dash-charts" class="dash-board" hidden></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <button type="button" id="back-to-top" class="app-back-to-top" aria-label="Back to top">&uarr;</button>
+
+  <script>
+    window.__USER_ROLE__ = {{.Role}};
+    window.__USER_NAME__ = {{.ReviewerName}};
+  </script>
+  <script src="/static/clinic-date.js"></script>
+  <script src="/static/date-dmy.js"></script>
+  <script src="/static/session-guard.js"></script>
+  <script src="/static/busy.js"></script>
+  <script src="/static/case-guard.js"></script>
+  <script src="/static/risk-triggers.js"></script>
+  <script src="/static/certificate-name.js"></script>
+  <script src="/static/clearwave/app-nav.js"></script>
+  <script src="/static/presence.js"></script>
+  <script src="/static/mcu.js"></script>
+  <script src="/static/dashboard.js"></script>
+
+  <footer class="app-dev-credit">
+    <div class="app-dev-credit-copy">
+      <p>Developed by dr. Arif Rahman Hakim.</p>
+      <p>Internal HSE record-keeping only. This does not replace clinical judgment, and the developer is not liable for data-entry errors or decisions based on this system.</p>
+    </div>
+  </footer>
+</body>
+</html>

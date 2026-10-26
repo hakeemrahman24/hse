@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="en" class="vt-cover">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @view-transition { navigation: auto; }
+    html { background: #E8F4F2; }
+    html.vt-cover { visibility: hidden; }
+    ::view-transition-group(root) { animation-duration: 120ms; }
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-group(root) { animation: none; }
+    }
+  </style>
+  <noscript><style>html.vt-cover { visibility: visible; }</style></noscript>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medical Record · hse-medpost</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
+  <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <script>
+    document.documentElement.classList.remove("vt-cover");
+  </script>
+</head>
+<body>
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/start" class="nav-logo">hse <span>medpost</span></a>
+      <div class="nav-cta">
+        <button type="button" id="logout" class="btn-primary">Log out</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <!-- Same look as the Activity Log's "Health programs" header and program list
+           (the #mr-label and #mr-nav rules in clearwave/app.css share its rules). -->
+      <div class="app-sidebar-label" id="mr-label" role="button" tabindex="0" aria-controls="mr-nav" aria-expanded="false" title="Expand or collapse all">Medical record</div>
+      <div id="mr-nav" class="app-program-list">
+        <div class="app-tree-node">
+          <div class="app-tree-row">
+            <button type="button" class="app-tree-toggle" data-toggle="outpatient" aria-label="Toggle outpatient sub-headers" aria-expanded="false" aria-controls="mr-children-outpatient">▸</button>
+            <button type="button" class="app-program-item" data-section="outpatient">
+              <span class="app-program-item-title">Outpatient</span>
+            </button>
+          </div>
+          <div class="app-tree-children" id="mr-children-outpatient" hidden>
+            <div class="app-tree-empty">No sub-headers yet</div>
+          </div>
+        </div>
+        <div class="app-tree-node">
+          <div class="app-tree-row">
+            <button type="button" class="app-tree-toggle" data-toggle="inpatient" aria-label="Toggle inpatient sub-headers" aria-expanded="false" aria-controls="mr-children-inpatient">▸</button>
+            <button type="button" class="app-program-item" data-section="inpatient">
+              <span class="app-program-item-title">Inpatient</span>
+            </button>
+          </div>
+          <div class="app-tree-children" id="mr-children-inpatient" hidden>
+            <div class="app-tree-empty">No sub-headers yet</div>
+          </div>
+        </div>
+        <div class="app-tree-node">
+          <div class="app-tree-row">
+            <button type="button" class="app-tree-toggle" data-toggle="screening" aria-label="Toggle screening sub-headers" aria-expanded="false" aria-controls="mr-children-screening">▸</button>
+            <button type="button" class="app-program-item" data-section="screening">
+              <span class="app-program-item-title">Screening</span>
+            </button>
+          </div>
+          <div class="app-tree-children" id="mr-children-screening" hidden>
+            <button type="button" class="app-tree-child" data-section="screening" data-sub="alcohol">Drug and Alcohol</button>
+            <button type="button" class="app-tree-child" data-section="screening" data-sub="fatigue">Fatigue</button>
+            <button type="button" class="app-tree-child" data-section="screening" data-sub="malaria">Malaria</button>
+          </div>
+        </div>
+        <div class="app-tree-node">
+          <div class="app-tree-row">
+            <button type="button" class="app-tree-toggle" data-toggle="wellness" aria-label="Toggle wellness sub-headers" aria-expanded="false" aria-controls="mr-children-wellness">▸</button>
+            <button type="button" class="app-program-item" data-section="wellness">
+              <span class="app-program-item-title">Wellness</span>
+            </button>
+          </div>
+          <div class="app-tree-children" id="mr-children-wellness" hidden>
+            <div class="app-tree-empty">No sub-headers yet</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="app-main">
+      <div id="presence-banner" class="presence-card" hidden></div>
+      <div class="app-panel">
+        <div class="app-panel-head">
+          <h1 id="mr-title"><span class="mr-title-main">Medical</span> <span class="mr-title-accent">Record</span></h1>
+          <p id="mr-sub">Choose a record type on the left.</p>
+        </div>
+
+        <!-- Drug and Alcohol and Fatigue share this panel: a Table tab and a Dashboard
+             tab, like Malaria. screening-log.js fills it for the test emr.js asks for
+             (GET /api/screening-log, /api/screening-log.xlsx, /api/screening-log/summary).
+             There is no entry form: these records are uploaded from the offline forms. -->
+        <div id="mr-panel-screening" hidden>
+          <div class="app-tabs" role="tablist" aria-label="Screening views">
+            <button type="button" class="app-tab active" id="scr-tab-table" role="tab" aria-selected="true" aria-controls="scr-view-table" data-view="table">Table</button>
+            <!-- Fatigue only: screening-log.js relabels the first tab "Sleep Score" and shows this one (the table of what employees submitted at /sofi). -->
+            <button type="button" class="app-tab" id="scr-tab-sofi" role="tab" aria-selected="false" aria-controls="scr-view-sofi" data-view="sofi" hidden>SOFI Fatigue Survey</button>
+            <button type="button" class="app-tab" id="scr-tab-dashboard" role="tab" aria-selected="false" aria-controls="scr-view-dashboard" data-view="dashboard">Dashboard</button>
+          </div>
+
+          <div id="scr-view-table" role="tabpanel" aria-labelledby="scr-tab-table">
+            <div class="app-filter" id="scr-toolbar">
+              <!-- Shown for Drug and Alcohol only: opens the consent and result form below. -->
+              <button type="button" id="scr-new" class="btn-primary" hidden>New drug &amp; alcohol screening</button>
+              <button type="button" id="scr-new-fatigue" class="btn-primary" hidden>New fatigue screening</button>
+              <label>
+                <span>Search name</span>
+                <input type="text" id="scr-search" placeholder="Type a name…" autocomplete="off" aria-label="Search name" />
+              </label>
+              <label>
+                <span>From</span>
+                <span class="date-dmy">
+                  <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="From date" />
+                  <input type="date" id="scr-from" tabindex="-1" />
+                </span>
+              </label>
+              <label>
+                <span>To</span>
+                <span class="date-dmy">
+                  <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="To date" />
+                  <input type="date" id="scr-to" tabindex="-1" />
+                </span>
+              </label>
+              <button type="button" id="scr-filter-reset" class="btn-ghost">Reset</button>
+              <!-- The table shows the summary columns and a click on the first column opens the rest; the export has all of them.
+                   It follows the search and the dates; with those empty it is every record. -->
+              <a href="/api/screening-log.xlsx" id="scr-export" class="btn-ghost" style="margin-left:auto">Export to Excel (.xlsx)</a>
+            </div>
+            <!-- Drug & Alcohol consent and result form, typed here instead of on the offline
+                 form (forms/da-consent-result-form-*.html). Same sections A to D. Every
+                 Name box is a searchable list of patients (da-form.js). A signature is a
+                 click that writes the signer's first name in cursive. -->
+            <form id="da-form" class="add-activity" autocomplete="off" novalidate hidden>
+              <div class="mal-form-head">
+                <div class="section-label">New drug &amp; alcohol screening</div>
+                <button type="button" id="da-cancel-top" class="btn-outline">Cancel</button>
+              </div>
+              <p class="da-docid">DRUG &amp; ALCOHOL TEST CONSENT &amp; RESULT FORM · F-02 · Document ID <span id="da-docid">—</span> · <b>CONFIDENTIAL / RAHASIA</b></p>
+
+              <div class="mal-row-title">A · Donor information <i>/ Data donor</i></div>
+              <div class="settings-grid">
+                <label class="mal-wide" style="position:relative">
+                  <span>Name <i>Nama</i> *</span>
+                  <input id="da-donorName" role="combobox" aria-expanded="false" aria-controls="da-donorName-list" aria-autocomplete="list" placeholder="Type to search…" autocomplete="off" />
+                  <div id="da-donorName-list" class="app-program-list company-typeahead" role="listbox" style="display:none"></div>
+                </label>
+                <label>
+                  <span>Employee ID <i>NIK</i></span>
+                  <input id="da-donorNik" />
+                </label>
+                <label>
+                  <span>Company / Dept. <i>Perusahaan / Dept.</i> *</span>
+                  <input id="da-donorCompany" />
+                </label>
+                <label>
+                  <span>Position <i>Jabatan</i> *</span>
+                  <input id="da-donorPosition" />
+                </label>
+              </div>
+              <fieldset class="da-options" id="da-testType">
+                <legend>Test type <i>Jenis tes</i> *</legend>
+                <label><input type="radio" name="da-testType" value="random" /> Random <i>(Acak)</i></label>
+                <label><input type="radio" name="da-testType" value="pre" /> Pre-employment <i>(Pra-kerja)</i></label>
+                <label><input type="radio" name="da-testType" value="post" /> Post-incident <i>(Pasca-insiden)</i></label>
+                <label><input type="radio" name="da-testType" value="suspicion" /> Reasonable suspicion <i>(Kecurigaan)</i></label>
+                <label><input type="radio" name="da-testType" value="return" /> Return to duty <i>(Kembali bekerja)</i></label>
+              </fieldset>
+
+              <div class="mal-row-title">B · Consent <i>/ Persetujuan</i></div>
+              <ul class="da-consent" id="da-consent"></ul>
+              <div class="settings-grid">
+                <div class="da-sign" data-sign="donor">
+                  <span class="da-sign-title">Donor's signature <i>Tanda tangan donor</i> *</span>
+                  <button type="button" class="da-sign-btn" data-key="donor">Click to approve</button>
+                  <small class="da-sign-stamp"></small>
+                </div>
+                <div class="da-sign" data-sign="witness">
+                  <span class="da-sign-title">Witness' signature <i>Tanda tangan saksi</i></span>
+                  <button type="button" class="da-sign-btn" data-key="witness">Click to approve</button>
+                  <small class="da-sign-stamp"></small>
+                </div>
+                <label>
+                  <span>Date / Time <i>Tanggal / Jam</i> *</span>
+                  <input type="datetime-local" id="da-consentDt" />
+                </label>
+                <label class="mal-wide" style="position:relative">
+                  <span>Witness name <i>Nama saksi</i></span>
+                  <input id="da-witnessName" role="combobox" aria-expanded="false" aria-controls="da-witnessName-list" aria-autocomplete="list" placeholder="Type to search…" autocomplete="off" />
+                  <div id="da-witnessName-list" class="app-program-list company-typeahead" role="listbox" style="display:none"></div>
+                </label>
+              </div>
+
+              <div class="mal-row-title">C · Medication in the past 30 days <i>/ Obat yang dikonsumsi 30 hari terakhir</i></div>
+              <label class="da-check"><input type="checkbox" id="da-medNone" /> I have NOT taken any medicine in the past 30 days <i>Saya TIDAK mengonsumsi obat dalam 30 hari terakhir</i></label>
+              <p class="da-note">Otherwise, list all medicine taken in the past 30 days, with or without prescription. <i>Jika ada, tulis semua obat yang dikonsumsi dalam 30 hari terakhir, dengan atau tanpa resep.</i></p>
+              <div class="settings-grid da-med">
+                <label><span>1 · Medicine name <i>Nama obat</i></span><input id="da-med1Name" /></label>
+                <label><span>Dose / freq. <i>Dosis</i></span><input id="da-med1Dose" /></label>
+                <label><span>Reason <i>Alasan</i></span><input id="da-med1Reason" /></label>
+                <fieldset class="da-options"><legend>Prescribed? <i>Resep dokter?</i></legend>
+                  <label><input type="radio" name="da-med1Presc" value="yes" /> Yes</label>
+                  <label><input type="radio" name="da-med1Presc" value="no" /> No</label>
+                </fieldset>
+              </div>
+              <div class="settings-grid da-med">
+                <label><span>2 · Medicine name <i>Nama obat</i></span><input id="da-med2Name" /></label>
+                <label><span>Dose / freq. <i>Dosis</i></span><input id="da-med2Dose" /></label>
+                <label><span>Reason <i>Alasan</i></span><input id="da-med2Reason" /></label>
+                <fieldset class="da-options"><legend>Prescribed? <i>Resep dokter?</i></legend>
+                  <label><input type="radio" name="da-med2Presc" value="yes" /> Yes</label>
+                  <label><input type="radio" name="da-med2Presc" value="no" /> No</label>
+                </fieldset>
+              </div>
+
+              <div class="mal-row-title">D · Test result <i>/ Hasil tes</i></div>
+              <div class="da-sub">D1. Breath alcohol <i>Alkohol napas</i></div>
+              <div class="settings-grid">
+                <label><span>Device / Serial No. <i>Alat / No. Seri</i></span><input id="da-breathDevice" /></label>
+                <label>
+                  <span>Calibration valid until <i>Kalibrasi berlaku s/d</i></span>
+                  <span class="date-dmy">
+                    <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="Calibration valid until" />
+                    <input type="date" id="da-breathCalib" tabindex="-1" />
+                  </span>
+                </label>
+              </div>
+              <div class="settings-grid da-breath">
+                <label><span>1st test · Time <i>Jam</i></span><input type="time" id="da-b1Time" /></label>
+                <label><span>Reading (BAC %) <i>Hasil</i></span><input id="da-b1Read" inputmode="decimal" /></label>
+                <label class="da-check"><input type="checkbox" id="da-b1Mouth" /> Mouthpiece new &amp; sealed <i>Mouthpiece baru &amp; tersegel</i></label>
+                <fieldset class="da-options"><legend>Result <i>Hasil</i></legend>
+                  <label><input type="radio" name="da-b1Res" value="neg" /> Negative</label>
+                  <label><input type="radio" name="da-b1Res" value="pos" /> Positive</label>
+                </fieldset>
+              </div>
+              <div class="settings-grid da-breath">
+                <label><span>Confirmation (+15 min) · Time <i>Jam</i></span><input type="time" id="da-b2Time" /></label>
+                <label><span>Reading (BAC %) <i>Hasil</i></span><input id="da-b2Read" inputmode="decimal" /></label>
+                <label class="da-check"><input type="checkbox" id="da-b2Mouth" /> Mouthpiece new &amp; sealed <i>Mouthpiece baru &amp; tersegel</i></label>
+                <fieldset class="da-options"><legend>Result <i>Hasil</i></legend>
+                  <label><input type="radio" name="da-b2Res" value="neg" /> Negative</label>
+                  <label><input type="radio" name="da-b2Res" value="pos" /> Positive</label>
+                </fieldset>
+              </div>
+
+              <div class="da-sub">D2. Urine drug screen <i>Skrining narkoba urin</i></div>
+              <div class="da-specimen">
+                <label class="da-check"><input type="checkbox" id="da-specTemp" /> Temperature 32–38 °C <i>Suhu 32–38 °C</i></label>
+                <label class="da-check"><input type="checkbox" id="da-specColour" /> Colour acceptable <i>Warna dapat diterima</i></label>
+                <label class="da-inline">Temp <input id="da-specTempVal" inputmode="decimal" aria-label="Specimen temperature" /> °C</label>
+              </div>
+              <div class="table-scroll da-panel-scroll">
+                <table class="data-table compact da-panel">
+                  <thead>
+                    <tr><th>Panel <i>Parameter</i></th><th>AMP<br /><i>Amphetamine</i></th><th>MET<br /><i>Methamphetamine</i></th><th>THC<br /><i>Marijuana</i></th><th>COC<br /><i>Cocaine</i></th><th>MOP<br /><i>Morphine/Opiate</i></th><th>BZO<br /><i>Benzodiazepine</i></th></tr>
+                  </thead>
+                  <tbody id="da-panel-body"></tbody>
+                </table>
+              </div>
+
+              <div class="da-sub">D3. Conclusion <i>Kesimpulan</i></div>
+              <fieldset class="da-options da-final" id="da-finalRes">
+                <legend>Final result <i>Hasil akhir</i></legend>
+                <label><input type="radio" name="da-finalRes" value="neg" /> NEGATIVE – fit to work <i>NEGATIF – layak bekerja</i></label>
+                <label><input type="radio" name="da-finalRes" value="pos" /> POSITIVE / NON-NEGATIVE – not fit to work, report to HR <i>POSITIF / NON-NEGATIF – tidak layak bekerja, lapor ke HR</i></label>
+                <label><input type="radio" name="da-finalRes" value="lab" /> Sample sent to laboratory for confirmation <i>Sampel dikirim ke laboratorium untuk konfirmasi</i></label>
+              </fieldset>
+              <div class="settings-grid">
+                <label class="mal-wide">
+                  <span>Remarks <i>Catatan</i></span>
+                  <input id="da-remarks" />
+                </label>
+              </div>
+              <p class="da-note">I certify that I collected the specimen(s) from the donor above; to the best of my knowledge they were not substituted or adulterated. <i>Saya menyatakan telah mengambil spesimen dari donor di atas dan sepengetahuan saya spesimen tidak ditukar atau dicampur.</i></p>
+              <div class="settings-grid da-signers">
+                <div class="da-signer">
+                  <label style="position:relative">
+                    <span>Collector / Medical <i>Petugas / Medis</i></span>
+                    <input id="da-collectorName" role="combobox" aria-expanded="false" aria-controls="da-collectorName-list" aria-autocomplete="list" placeholder="Type to search…" autocomplete="off" />
+                    <div id="da-collectorName-list" class="app-program-list company-typeahead" role="listbox" style="display:none"></div>
+                  </label>
+                  <div class="da-sign" data-sign="collector">
+                    <button type="button" class="da-sign-btn" data-key="collector">Click to approve</button>
+                    <small class="da-sign-stamp"></small>
+                  </div>
+                </div>
+                <div class="da-signer">
+                  <label style="position:relative">
+                    <span>Witness (Security) <i>Saksi (Security)</i></span>
+                    <input id="da-securityName" role="combobox" aria-expanded="false" aria-controls="da-securityName-list" aria-autocomplete="list" placeholder="Type to search…" autocomplete="off" />
+                    <div id="da-securityName-list" class="app-program-list company-typeahead" role="listbox" style="display:none"></div>
+                  </label>
+                  <div class="da-sign" data-sign="security">
+                    <button type="button" class="da-sign-btn" data-key="security">Click to approve</button>
+                    <small class="da-sign-stamp"></small>
+                  </div>
+                </div>
+                <div class="da-signer">
+                  <label style="position:relative">
+                    <span>Donor (acknowledged result) <i>Donor (mengetahui hasil)</i></span>
+                    <input id="da-ackName" role="combobox" aria-expanded="false" aria-controls="da-ackName-list" aria-autocomplete="list" placeholder="Type to search…" autocomplete="off" />
+                    <div id="da-ackName-list" class="app-program-list company-typeahead" role="listbox" style="display:none"></div>
+                  </label>
+                  <div class="da-sign" data-sign="ack">
+                    <button type="button" class="da-sign-btn" data-key="ack">Click to approve</button>
+                    <small class="da-sign-stamp"></small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mal-row-title">Photos <i>/ Foto</i> (optional, up to 8; only in the PDF)</div>
+              <div class="da-photos">
+                <input type="file" id="da-photo-input" accept="image/*" multiple hidden />
+                <button type="button" id="da-photo-add" class="btn-outline">Add photo</button>
+                <div id="da-photo-list" class="da-photo-list"></div>
+              </div>
+
+              <div class="mal-actions da-actions">
+                <button type="button" id="da-save" class="btn-primary">Save</button>
+                <button type="button" id="da-pdf" class="btn-outline">Save PDF</button>
+                <!-- Saving clears the form for the next person, so the PDF is made first unless this is unticked. -->
+                <label class="da-inline"><input type="checkbox" id="da-save-pdf" checked /> Also download the PDF when saving</label>
+                <button type="button" id="da-reset" class="btn-ghost">Clear form</button>
+                <button type="button" id="da-cancel" class="btn-outline">Cancel</button>
+                <span id="da-msg" class="da-msg" role="status" aria-live="polite"></span>
+              </div>
+            </form>
+            <!-- Fatigue scoring sheet, typed here instead of on the offline form
+                 (forms/fatigue-scoring-form-*.html). Same sections A to F; same behaviour
+                 as the drug & alcohol form above (fatigue-form.js reuses its helpers). -->
+            <form id="fa-form" class="add-activity" autocomplete="off" novalidate hidden>
+              <div class="mal-form-head">
+                <div class="section-label">New fatigue screening</div>
+                <button type="button" id="fa-cancel-top" class="btn-outline">Cancel</button>
+              </div>
+              <p class="da-docid">FATIGUE SCORING · Penilaian Kelelahan · IKT-LNG form-OH-007 · Document ID <span id="fa-docid">—</span></p>
+
+              <div class="mal-row-title">A · Worker information <i>/ Informasi pekerja</i></div>
+              <div class="settings-grid">
+                <label class="mal-wide" style="position:relative">
+                  <span>Examiner <i>Pemeriksa</i> *</span>
+                  <input id="fa-examiner" role="combobox" aria-expanded="false" aria-controls="fa-examiner-list" aria-autocomplete="list" placeholder="Type to search…" autocomplete="off" />
+                  <div id="fa-examiner-list" class="app-program-list company-typeahead" role="listbox" style="display:none"></div>
+                </label>
+                <label class="mal-wide" style="position:relative">
+                  <span>Worker name <i>Nama pekerja</i> *</span>
+                  <input id="fa-name" role="combobox" aria-expanded="false" aria-controls="fa-name-list" aria-autocomplete="list" placeholder="Type to search…" autocomplete="off" />
+                  <div id="fa-name-list" class="app-program-list company-typeahead" role="listbox" style="display:none"></div>
+                </label>
+                <label>
+                  <span>Company / Dept. <i>Perusahaan</i> *</span>
+                  <input id="fa-company" />
+                </label>
+                <label>
+                  <span>Position <i>Jabatan</i> *</span>
+                  <input id="fa-position" />
+                </label>
+                <label>
+                  <span>Date <i>Tanggal</i></span>
+                  <span class="date-dmy">
+                    <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="Date" />
+                    <input type="date" id="fa-date" tabindex="-1" />
+                  </span>
+                </label>
+                <label>
+                  <span>Time <i>Jam</i></span>
+                  <input type="time" id="fa-time" />
+                </label>
+              </div>
+
+              <div class="mal-row-title">B · Physical examination <i>/ Pemeriksaan fisik</i></div>
+              <div class="settings-grid">
+                <label><span>Systolic BP <i>Sistolik</i> (mmHg) *</span><input type="number" id="fa-sys" min="60" max="250" step="1" inputmode="numeric" /></label>
+                <label><span>Diastolic BP <i>Diastolik</i> (mmHg) *</span><input type="number" id="fa-dia" min="40" max="150" step="1" inputmode="numeric" /></label>
+                <label><span>Pulse <i>Nadi</i> (bpm) *</span><input type="number" id="fa-pulse" min="30" max="220" step="1" inputmode="numeric" /></label>
+                <fieldset class="da-options" id="fa-healthy"><legend>Feel healthy today? <i>Sehat hari ini?</i> *</legend>
+                  <label><input type="radio" name="fa-healthy" value="Y" /> Y <i>Ya</i></label>
+                  <label><input type="radio" name="fa-healthy" value="N" /> N <i>Tidak</i></label>
+                </fieldset>
+                <fieldset class="da-options" id="fa-medicine"><legend>Taking medicine? <i>Minum obat?</i> *</legend>
+                  <label><input type="radio" name="fa-medicine" value="Y" /> Y <i>Ya</i></label>
+                  <label><input type="radio" name="fa-medicine" value="N" /> N <i>Tidak</i></label>
+                </fieldset>
+                <label class="mal-wide"><span>Medicine name, if yes <i>Nama obat, jika ya</i></span><input id="fa-medicineName" /></label>
+              </div>
+
+              <div class="mal-row-title">C · Sleep and wake score <i>/ Skor jam tidur dan bangun</i></div>
+              <div class="table-scroll da-panel-scroll">
+                <table class="data-table compact da-panel fa-score">
+                  <thead>
+                    <tr><th>Variable <i>Variabel</i></th><th>Explanation <i>Penjelasan</i></th><th>Threshold<br /><i>Ambang</i></th><th>Actual (hour) *<br /><i>Aktual (jam)</i></th><th>Score<br /><i>Skor</i></th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>X = Hours slept in the last 24 hours<br /><i>Jumlah jam tidur dalam 24 jam terakhir</i></td>
+                      <td>Add 4 points for every hour below threshold<br /><i>Tambah 4 poin untuk tiap 1 jam di bawah nilai ambang</i></td>
+                      <td>6</td>
+                      <td><input type="number" id="fa-x" min="0" max="20" step="0.5" inputmode="decimal" aria-label="Hours slept in the last 24 hours" /></td>
+                      <td><b id="fa-score-x">—</b></td>
+                    </tr>
+                    <tr>
+                      <td>Y = Hours slept in the last 48 hours<br /><i>Jumlah jam tidur dalam 48 jam terakhir</i></td>
+                      <td>Add 2 points for every hour below threshold<br /><i>Tambah 2 poin untuk tiap 1 jam di bawah nilai ambang</i></td>
+                      <td>12</td>
+                      <td><input type="number" id="fa-y" min="0" max="30" step="0.5" inputmode="decimal" aria-label="Hours slept in the last 48 hours" /></td>
+                      <td><b id="fa-score-y">—</b></td>
+                    </tr>
+                    <tr>
+                      <td>Z = Hours awake since you woke up<br /><i>Jumlah jam setelah bangun</i></td>
+                      <td>Add 1 point for every hour of wakefulness greater than threshold<br /><i>Tambah 1 poin untuk tiap 1 jam di atas nilai ambang</i></td>
+                      <td>14</td>
+                      <td><input type="number" id="fa-z" min="2" max="24" step="0.5" inputmode="decimal" aria-label="Hours awake since waking up" /></td>
+                      <td><b id="fa-score-z">—</b></td>
+                    </tr>
+                    <tr class="fa-total">
+                      <td colspan="4">Total fatigue score (X+Y+Z) <i>Total skor kelelahan</i></td>
+                      <td><b id="fa-score-total">—</b></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="mal-row-title">D · Control measures <i>/ Tindakan berikutnya</i></div>
+              <div class="table-scroll da-panel-scroll">
+                <table class="data-table compact da-panel fa-bands">
+                  <thead><tr><th>Score <i>Skor</i></th><th>Action <i>Tindakan</i></th></tr></thead>
+                  <tbody id="fa-band-body"></tbody>
+                </table>
+              </div>
+              <p class="fa-applicable">Applicable control measure <i>Tindakan yang berlaku</i>: <b id="fa-band-label">—</b></p>
+              <p class="da-note" id="fa-recommendation"></p>
+
+              <div class="mal-row-title">E · Remarks <i>/ Catatan</i></div>
+              <div class="settings-grid">
+                <label class="mal-wide"><span>Observations, actions taken <i>Catatan, tindakan yang diambil</i></span><input id="fa-remarks" /></label>
+              </div>
+
+              <div class="mal-row-title">F · Signatures <i>/ Tanda tangan</i></div>
+              <p class="da-note">I voluntarily consent to the release of this fatigue assessment (blood pressure, pulse, sleep/wake hours and fatigue score) to PT. Layar Nusantara Gas and its authorised HSE personnel, solely for fitness-for-work and safety purposes on the project. <i>Saya dengan sukarela menyetujui pemberian hasil penilaian kelelahan ini (tekanan darah, nadi, jam tidur/bangun dan skor kelelahan) kepada PT. Layar Nusantara Gas dan petugas HSE yang berwenang, semata-mata untuk keperluan kelayakan kerja dan keselamatan pada proyek.</i></p>
+              <div class="settings-grid da-signers fa-signers">
+                <div class="da-signer">
+                  <div class="da-sign" data-sign="worker">
+                    <span class="da-sign-title">Worker signature <i>Tanda tangan pekerja</i> *</span>
+                    <button type="button" class="da-sign-btn" data-key="worker">Click to approve</button>
+                    <small class="da-sign-stamp"></small>
+                  </div>
+                </div>
+                <div class="da-signer">
+                  <div class="da-sign" data-sign="assessor">
+                    <span class="da-sign-title">Examiner signature <i>Tanda tangan pemeriksa</i> *</span>
+                    <button type="button" class="da-sign-btn" data-key="assessor">Click to approve</button>
+                    <small class="da-sign-stamp"></small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mal-row-title">Photos <i>/ Foto bukti</i> (optional, up to 8; only in the PDF)</div>
+              <div class="da-photos">
+                <input type="file" id="fa-photo-input" accept="image/*" multiple hidden />
+                <button type="button" id="fa-photo-add" class="btn-outline">Add photo</button>
+                <div id="fa-photo-list" class="da-photo-list"></div>
+              </div>
+
+              <div class="mal-actions da-actions">
+                <button type="button" id="fa-save" class="btn-primary">Save</button>
+                <button type="button" id="fa-pdf" class="btn-outline">Save PDF</button>
+                <label class="da-inline"><input type="checkbox" id="fa-save-pdf" checked /> Also download the PDF when saving</label>
+                <button type="button" id="fa-reset" class="btn-ghost">Clear form</button>
+                <button type="button" id="fa-cancel" class="btn-outline">Cancel</button>
+                <span id="fa-msg" class="da-msg" role="status" aria-live="polite"></span>
+              </div>
+            </form>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead id="scr-head"></thead>
+                <tbody id="scr-body"></tbody>
+              </table>
+            </div>
+            <p id="scr-empty" class="app-empty" hidden></p>
+            <p id="scr-error" class="app-empty" hidden></p>
+          </div>
+
+          <div id="scr-view-sofi" role="tabpanel" aria-labelledby="scr-tab-sofi" hidden>
+            <!-- Filled by sofi-log.js from GET /api/sofi-log: what employees submitted at /sofi. -->
+            <div class="app-filter">
+              <label>
+                <span>Search name</span>
+                <input type="text" id="sofi-search" placeholder="Type a name…" autocomplete="off" aria-label="Search name" />
+              </label>
+            </div>
+            <div class="table-scroll">
+              <table class="data-table compact" id="sofi-table">
+                <thead>
+                  <tr>
+                    <th>Submitted</th><th>Name</th><th>Position</th><th>Company</th><th>Age</th><th>Weeks on site</th><th>MCU review</th>
+                    <th>Lack of energy</th><th>Physical exertion</th><th>Physical discomfort</th><th>Lack of motivation</th><th>Sleepiness</th>
+                    <th>Total</th><th>Result</th>
+                  </tr>
+                </thead>
+                <tbody id="sofi-body"></tbody>
+              </table>
+            </div>
+            <p id="sofi-empty" class="app-empty" hidden>No SOFI questionnaires yet.</p>
+            <p id="sofi-error" class="app-empty" hidden></p>
+            <p class="sofi-note"><i>Swedish Occupational Fatigue Inventory</i>: 25 words rated 0 to 6. Each dimension is the sum of its 5 words (0 to 30); the total is the sum of all 25 (0 to 150). Result bands are <b>provisional</b> until the doctor approves them: dimension Low 0&ndash;10, Moderate 11&ndash;20, High 21&ndash;30; total Low 0&ndash;50, Moderate 51&ndash;100, High 101&ndash;150.</p>
+          </div>
+
+          <div id="scr-view-dashboard" role="tabpanel" aria-labelledby="scr-tab-dashboard" hidden>
+            <form id="scr-dash-filter" class="app-filter">
+              <label>
+                <span>From</span>
+                <span class="date-dmy">
+                  <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="From date" />
+                  <input type="date" id="scr-dash-from" name="from" tabindex="-1" />
+                </span>
+              </label>
+              <label>
+                <span>To</span>
+                <span class="date-dmy">
+                  <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="To date" />
+                  <input type="date" id="scr-dash-to" name="to" tabindex="-1" />
+                </span>
+              </label>
+              <label>
+                <span>Chart by</span>
+                <select id="scr-dash-by" name="by"></select>
+              </label>
+              <button type="submit" class="btn-primary">Apply filter</button>
+              <button type="button" id="scr-dash-reset" class="btn-ghost">Reset filter</button>
+            </form>
+            <p id="scr-dash-error" class="app-empty" hidden></p>
+            <div id="scr-dash-board">
+              <div class="mal-stats scr-stats" id="scr-stats"></div>
+              <div class="mal-chart">
+                <h3 id="scr-chart-title"></h3>
+                <p class="dash-chart-hint" id="scr-chart-hint"></p>
+                <div id="scr-bars"></div>
+                <p id="scr-chart-empty" class="app-empty" hidden></p>
+                <p class="mal-legend" id="scr-legend"></p>
+              </div>
+            </div>
+
+            <!-- Fatigue only: the SOFI Fatigue Survey, under the sleep-score charts. sofi-dashboard.js
+                 shows it for Fatigue and fills it from GET /api/sofi-log/summary, using the same
+                 From / To dates and "Chart by" company or position as the charts above. -->
+            <div id="sofi-dash" hidden>
+              <h2 class="sofi-dash-title">SOFI Fatigue Survey</h2>
+              <p id="sofi-dash-error" class="app-empty" hidden></p>
+              <div class="mal-stats scr-stats" id="sofi-stats"></div>
+              <div class="mal-chart">
+                <h3>Result by dimension</h3>
+                <p class="dash-chart-hint">Surveys in each band, and the average score out of 30.</p>
+                <div id="sofi-dim-bars"></div>
+              </div>
+              <div class="mal-chart">
+                <h3 id="sofi-group-title"></h3>
+                <p class="dash-chart-hint" id="sofi-group-hint"></p>
+                <div id="sofi-group-bars"></div>
+                <p id="sofi-dash-empty" class="app-empty" hidden>No SOFI surveys in this period.</p>
+                <p class="mal-legend" id="sofi-legend"><i class="mal-swatch scr-swatch--low"></i> Low <i class="mal-swatch scr-swatch--moderate"></i> Moderate <i class="mal-swatch scr-swatch--high"></i> High (overall result of each survey; bands are provisional)</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Malaria screening: entered here on the website only (there is no offline
+             form). malaria.js fills the dropdowns and saves through
+             /api/malaria-screenings. -->
+        <div id="mr-panel-malaria" hidden>
+          <div class="app-tabs" role="tablist" aria-label="Malaria screening views">
+            <button type="button" class="app-tab active" id="mal-tab-table" role="tab" aria-selected="true" aria-controls="mal-view-table" data-view="table">Table</button>
+            <button type="button" class="app-tab" id="mal-tab-dashboard" role="tab" aria-selected="false" aria-controls="mal-view-dashboard" data-view="dashboard">Dashboard</button>
+          </div>
+
+          <div id="mal-view-table" role="tabpanel" aria-labelledby="mal-tab-table">
+          <div class="app-filter" id="mal-toolbar">
+            <button type="button" id="mal-new" class="btn-primary">New malaria exam</button>
+            <label>
+              <span>Search name</span>
+              <input type="text" id="mal-search" placeholder="Type a patient name…" autocomplete="off" aria-label="Search name" />
+            </label>
+            <label>
+              <span>From</span>
+              <span class="date-dmy">
+                <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="From date" />
+                <input type="date" id="mal-from" tabindex="-1" />
+              </span>
+            </label>
+            <label>
+              <span>To</span>
+              <span class="date-dmy">
+                <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="To date" />
+                <input type="date" id="mal-to" tabindex="-1" />
+              </span>
+            </label>
+            <button type="button" id="mal-filter-reset" class="btn-ghost">Reset</button>
+            <!-- The table shows the summary columns and a click on the Test ID opens the rest; the export has all of them.
+                 It follows the search and the dates above; with those empty it is every record. -->
+            <a href="/api/malaria-screenings.xlsx" id="mal-export" class="btn-ghost" style="margin-left:auto">Export to Excel (.xlsx)</a>
+          </div>
+
+          <form id="malaria-form" class="add-activity" autocomplete="off" novalidate hidden>
+            <div class="mal-form-head">
+              <div class="section-label">New malaria screening</div>
+              <button type="button" id="mal-cancel-top" class="btn-outline">Cancel</button>
+            </div>
+            <!-- Same look as the medical checkup form (mcu.html): .settings-grid rows of
+                 label-over-field pairs, dd/mm/yyyy date box, floating typeahead, values
+                 taken from the patient shown as plain read-only text. Three rows, top to
+                 bottom: the date, the patient, then how it was tested. -->
+
+            <div class="mal-row-title">1 · Date</div>
+            <div class="settings-grid">
+              <label>
+                <span>Test date</span>
+                <span class="date-dmy">
+                  <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="Test date" />
+                  <input type="date" id="mal-date" name="testDate" tabindex="-1" />
+                </span>
+              </label>
+              <label>
+                <span>Week of the year</span>
+                <span class="ro-value" id="mal-week">—</span>
+              </label>
+              <label>
+                <span>Examiner (signed in)</span>
+                <span class="ro-value">{{.Name}}</span>
+              </label>
+            </div>
+
+            <div class="mal-row-title">2 · Patient detail</div>
+            <div class="settings-grid">
+              <label class="mal-wide" style="position:relative">
+                <span>Name</span>
+                <input id="mal-patient" role="combobox" aria-expanded="false" aria-controls="mal-patient-list" aria-autocomplete="list" placeholder="Type to search…" autocomplete="off" />
+                <div id="mal-patient-list" class="app-program-list company-typeahead" role="listbox" style="display:none"></div>
+              </label>
+              <label>
+                <span>Age (from patient)</span>
+                <span class="ro-value" id="mal-age">—</span>
+              </label>
+              <label>
+                <span>Weight (kg, max 150)</span>
+                <input id="mal-weight" inputmode="decimal" placeholder="e.g. 61.5" />
+              </label>
+              <label>
+                <span>Work position (latest MCU)</span>
+                <span class="ro-value" id="mal-position">—</span>
+              </label>
+              <label>
+                <span>Company (latest MCU)</span>
+                <span class="ro-value" id="mal-company">—</span>
+              </label>
+              <div class="visit-field mal-wide">
+                <label>
+                  <span>Head of household</span>
+                  <input id="mal-head" maxlength="150" />
+                </label>
+                <label class="visit-same">
+                  <input type="checkbox" id="mal-head-same" />
+                  <span>Sama dengan pasien</span>
+                </label>
+              </div>
+              <label style="position:relative">
+                <span>Regency (search)</span>
+                <input id="mal-regency" role="combobox" aria-expanded="false" aria-controls="mal-regency-list" aria-autocomplete="list" placeholder="Loading…" autocomplete="off" disabled />
+                <div id="mal-regency-list" class="app-program-list company-typeahead" role="listbox" style="display:none"></div>
+              </label>
+              <label style="position:relative">
+                <span>District (search)</span>
+                <input id="mal-district" role="combobox" aria-expanded="false" aria-controls="mal-district-list" aria-autocomplete="list" placeholder="Search any district…" autocomplete="off" />
+                <div id="mal-district-list" class="app-program-list company-typeahead" role="listbox" style="display:none"></div>
+              </label>
+              <label style="position:relative">
+                <span>Village</span>
+                <input id="mal-village" role="combobox" aria-expanded="false" aria-controls="mal-village-list" aria-autocomplete="list" placeholder="Choose a district first" autocomplete="off" disabled />
+                <div id="mal-village-list" class="app-program-list company-typeahead" role="listbox" style="display:none"></div>
+              </label>
+            </div>
+
+            <div class="mal-row-title">3 · Test</div>
+            <div class="settings-grid">
+              <label>
+                <span>Screening purpose</span>
+                <select id="mal-purpose">
+                  <option value="1">On arrival</option>
+                  <option value="2">Symptomatic</option>
+                </select>
+              </label>
+              <label>
+                <span>Check method</span>
+                <select id="mal-exam">
+                  <option value="RDT">RDT</option>
+                  <option value="BloodSmear">Blood smear</option>
+                </select>
+              </label>
+              <label>
+                <span>Slide initial (write on the slide)</span>
+                <span class="ro-value mal-slide-preview" id="mal-slide-preview">—</span>
+              </label>
+              <label>
+                <span>Result</span>
+                <select id="mal-result">
+                  <option value="">Pending</option>
+                  <option value="Negative">Negative</option>
+                  <option value="Pv">Pv</option>
+                  <option value="Pf">Pf</option>
+                  <option value="Po">Po</option>
+                  <option value="Mixed">Mixed</option>
+                </select>
+              </label>
+            </div>
+
+            <div id="mal-actions">
+              <button type="submit" class="btn-primary">Save malaria screening</button>
+              <button type="button" id="mal-cancel" class="btn-outline">Cancel</button>
+              <span id="mal-message" role="status" aria-live="polite"></span>
+            </div>
+          </form>
+
+          <div id="mal-slide" class="mal-slide" hidden>
+            <span>Write on the blood slide</span>
+            <strong id="mal-slide-code"></strong>
+          </div>
+
+          <div class="table-scroll">
+            <table class="data-table compact">
+              <thead>
+                <tr>
+                  <th>Test ID</th><th>Date</th><th>Initial</th><th>Name</th><th>Position</th><th>Company</th><th>Test</th><th>Result</th>
+                </tr>
+              </thead>
+              <tbody id="mal-body"></tbody>
+            </table>
+          </div>
+          <p id="mal-empty" class="app-empty" hidden>No malaria screenings yet.</p>
+          </div>
+
+          <!-- Dashboard: how many screenings were done and where. The bars reuse the
+               MCU dashboard's .dash-bars look; malaria.js draws them from
+               GET /api/malaria-screenings/summary. -->
+          <div id="mal-view-dashboard" role="tabpanel" aria-labelledby="mal-tab-dashboard" hidden>
+            <form id="mal-dash-filter" class="app-filter">
+              <label>
+                <span>From</span>
+                <span class="date-dmy">
+                  <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="From date" />
+                  <input type="date" id="mal-dash-from" name="from" tabindex="-1" />
+                </span>
+              </label>
+              <label>
+                <span>To</span>
+                <span class="date-dmy">
+                  <input type="text" class="date-dmy-text" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10" autocomplete="off" aria-label="To date" />
+                  <input type="date" id="mal-dash-to" name="to" tabindex="-1" />
+                </span>
+              </label>
+              <label>
+                <span>Chart by</span>
+                <select id="mal-dash-by" name="by">
+                  <option value="regency">Regency</option>
+                  <option value="district">District</option>
+                  <option value="village">Village</option>
+                </select>
+              </label>
+              <label>
+                <span>Positives</span>
+                <select id="mal-dash-species" name="species">
+                  <option value="all">All positive</option>
+                  <option value="type">By type (Pv, Pf, Po, Mixed)</option>
+                </select>
+              </label>
+              <button type="submit" class="btn-primary">Apply filter</button>
+              <button type="button" id="mal-dash-reset" class="btn-ghost">Reset filter</button>
+            </form>
+            <p id="mal-dash-error" class="app-empty" hidden></p>
+            <div id="mal-dash-board">
+              <div class="mal-stats">
+                <div class="mal-stat"><span>Screenings done</span><strong id="mal-stat-total">—</strong></div>
+                <div class="mal-stat"><span>Patients screened</span><strong id="mal-stat-patients">—</strong></div>
+                <div class="mal-stat mal-stat--positive"><span>Positive</span><strong id="mal-stat-positive">—</strong></div>
+                <div class="mal-stat"><span>Result pending</span><strong id="mal-stat-pending">—</strong></div>
+              </div>
+              <div class="mal-stats mal-stats--species" id="mal-species-tiles" hidden>
+                <div class="mal-stat mal-stat--Pv"><span>Pv · P. vivax</span><strong id="mal-stat-Pv">—</strong></div>
+                <div class="mal-stat mal-stat--Pf"><span>Pf · P. falciparum</span><strong id="mal-stat-Pf">—</strong></div>
+                <div class="mal-stat mal-stat--Po"><span>Po · P. ovale</span><strong id="mal-stat-Po">—</strong></div>
+                <div class="mal-stat mal-stat--Mixed"><span>Mixed</span><strong id="mal-stat-Mixed">—</strong></div>
+              </div>
+              <div class="mal-chart">
+                <h3 id="mal-chart-title">Screenings by regency</h3>
+                <p class="dash-chart-hint" id="mal-chart-hint"></p>
+                <div id="mal-bars"></div>
+                <p id="mal-chart-empty" class="app-empty" hidden>No screenings in this period.</p>
+                <p class="mal-legend" id="mal-legend-all"><i class="mal-swatch mal-swatch--all"></i> All screenings <i class="mal-swatch mal-swatch--positive"></i> Positive (Pv, Pf, Po, Mixed)</p>
+                <p class="mal-legend" id="mal-legend-type" hidden><i class="mal-swatch mal-swatch--all"></i> All screenings <i class="mal-swatch mal-swatch--Pv"></i> Pv <i class="mal-swatch mal-swatch--Pf"></i> Pf <i class="mal-swatch mal-swatch--Po"></i> Po <i class="mal-swatch mal-swatch--Mixed"></i> Mixed</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script src="/static/session-guard.js"></script>
+  <script src="/static/busy.js"></script>
+  <script src="/static/presence.js"></script>
+  <script src="/static/page-shell.js"></script>
+  <script src="/static/clinic-date.js"></script>
+  <script src="/static/date-dmy.js"></script>
+  <script src="/static/malaria.js"></script>
+  <script src="/static/screening-log.js"></script>
+  <script src="/static/sofi-log.js"></script>
+  <script src="/static/sofi-dashboard.js"></script>
+  <script src="/static/da-form-core.js"></script>
+  <script src="/static/da-form-pdf.js"></script>
+  <script src="/static/da-form.js"></script>
+  <script src="/static/fatigue-form-core.js"></script>
+  <script src="/static/fatigue-form-pdf.js"></script>
+  <script src="/static/fatigue-form.js"></script>
+  <script src="/static/emr.js"></script>
+  <script>startPresence(() => medicalRecordPresenceLabel());</script>
+
+  <footer class="app-dev-credit">
+    <p>Developed by dr. Arif Rahman Hakim.</p>
+    <p>Internal HSE record-keeping only. This does not replace clinical judgment, and the developer is not liable for data-entry errors or decisions based on this system.</p>
+  </footer>
+</body>
+</html>

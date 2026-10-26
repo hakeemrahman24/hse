@@ -1,0 +1,12 @@
+{{define "main"}}
+<h1>{{heading .Lang "My reports"}}</h1>
+{{if .Notice}}<p role="status" style="color:#067647;font-size:0.875rem">{{.Notice}}</p>{{end}}
+<p class="sub">{{tr .Lang "Your own submissions: reference, date, category, status and photos."}}</p>
+{{if .Items}}
+<table class="data-table" style="width:100%;margin-top:20px;font-size:0.875rem">
+  <thead><tr><th align="left">{{tr .Lang "Ref"}}</th><th align="left">{{tr .Lang "Date"}}</th><th align="left">{{tr .Lang "Category"}}</th><th align="left">{{tr .Lang "Status"}}</th><th></th></tr></thead>
+  <tbody>{{range .Items}}<tr><td>{{.Ref}}{{if .Photos}}<div class="photo-grid photo-grid--small">{{range .Photos}}<img src="/soc/photo/{{.}}" alt="{{tr $.Lang "Photo"}}" loading="lazy" />{{end}}</div>{{end}}</td><td>{{.Date.Format "2006-01-02"}}</td><td>{{tr $.Lang (categoryLabel .Category)}}</td><td>{{tr $.Lang (stage .)}}</td><td>{{if .Editable}}<a href="/soc/edit/{{.ID}}">{{tr $.Lang "Edit"}}</a>{{end}}{{if .CanClose}} <a href="/soc/after/{{.ID}}">{{tr $.Lang "After photos & close"}}</a>{{end}}</td></tr>{{end}}</tbody>
+</table>
+{{else}}<p style="margin-top:20px">{{tr .Lang "No submissions yet."}}</p>{{end}}
+<p style="margin-top:20px"><a class="btn-primary" href="/soc/new">{{tr .Lang "New report"}}</a></p>
+{{end}}

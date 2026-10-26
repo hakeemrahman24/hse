@@ -1,0 +1,8 @@
+Codemap report 2026-10-20
+First generation: no previous codemaps, so no diff and no approval step needed.
+Created docs/CODEMAPS/{architecture,backend,frontend,data,dependencies}.md
+Scanned: cmd/server/main.go routes (~165), internal/* (~24k Go lines non-test, 12k), web templates/static, migrations sqlite 001-014 / mysql 011-024.
+Newest areas covered: Medical Record malaria (Visit, MalariaScreening, MalariaPurposeTable), region API, MalariaID key change.
+New dependencies since earlier docs: none recorded (no earlier codemaps).
+Staleness: no earlier docs to compare.
+Gaps: internal/inventory and internal/settings have no Go files (inventory.html has no script); not documented further.

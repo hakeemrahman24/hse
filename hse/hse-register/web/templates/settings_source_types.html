@@ -1,0 +1,68 @@
+{{define "content"}}
+<div class="settings-panel-body">
+  {{if .EditID}}{{range .TypeRows}}{{if eq .ID $.EditID}}
+  <div class="app-sidebar-label">Edit type</div>
+  <form method="post" action="/admin/settings/source-types/{{.ID}}/rename" class="settings-grid">
+    <label>
+      <span>Source</span>
+      <input type="text" value="{{.Source}}" readonly />
+    </label>
+    <label>
+      <span>Type name</span>
+      <input type="text" name="name" value="{{.Name}}" maxlength="80" required autofocus />
+    </label>
+    <div class="span-all settings-actions">
+      <button type="submit" class="btn-primary">Save</button>
+      <a class="btn-ghost" href="/admin/settings/source-types">Cancel</a>
+    </div>
+  </form>
+  {{end}}{{end}}{{end}}
+
+  <div class="app-sidebar-label">Add type</div>
+  <form method="post" action="/admin/settings/source-types" class="settings-grid">
+    <label>
+      <span>Source</span>
+      <select name="source" required>
+        <option value="">Select…</option>
+        {{range .SourceOptions}}<option value="{{.}}">{{.}}</option>{{end}}
+      </select>
+    </label>
+    <label>
+      <span>Type name</span>
+      <input type="text" name="name" maxlength="80" placeholder="e.g. Corporate Audit" required />
+    </label>
+    <div class="span-all"><button type="submit" class="btn-primary">Add type</button></div>
+  </form>
+
+  <div class="app-sidebar-label">Current types</div>
+  <div class="table-scroll">
+    <table class="data-table compact">
+      <thead><tr><th>Source</th><th>Type</th><th>Observations</th><th>Status</th><th></th></tr></thead>
+      <tbody>
+      {{range .TypeRows}}
+        <tr class="{{if or .Archived .SourceOff}}row-archived{{end}}{{if eq .ID $.EditID}} row-editing{{end}}">
+          <td>{{.Source}}</td>
+          <td>{{.Name}}</td>
+          <td>{{.Used}}</td>
+          <td>{{if .Archived}}<span class="badge badge-archived">Archived</span>{{else if .SourceOff}}<span class="badge badge-archived">Source archived</span>{{else}}Active{{end}}</td>
+          <td class="row-actions">
+            <a class="btn-ghost" href="/admin/settings/source-types?edit={{.ID}}">Edit</a>
+            {{if .Archived}}
+            <form method="post" action="/admin/settings/source-types/{{.ID}}/restore"><button type="submit">Restore</button></form>
+            {{else}}
+            <form method="post" action="/admin/settings/source-types/{{.ID}}/archive" onsubmit="return confirm('Archive this type? It can no longer be chosen on new observations. Existing observations keep it.');"><button type="submit">Archive</button></form>
+            {{end}}
+            {{if eq .Used 0}}
+            <form method="post" action="/admin/settings/source-types/{{.ID}}/delete" onsubmit="return confirm('Delete this type?');"><button type="submit" class="link-danger">Delete</button></form>
+            {{end}}
+          </td>
+        </tr>
+      {{else}}
+        <tr><td colspan="5">No types yet. Add the first one above.</td></tr>
+      {{end}}
+      </tbody>
+    </table>
+  </div>
+  <p class="obs-muted list-note">When a source has at least one active type, staff must choose one on the observation form. A source with no active types asks for none. <b>Delete</b> is offered only for a type no observation uses; archive the others. KL Audit is kept as an archived type so older observations stay valid.</p>
+</div>
+{{end}}

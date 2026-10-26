@@ -1,0 +1,23 @@
+# secrets and local config
+.env
+.env.*
+!.env.example
+.claude/
+
+# patient / production data and databases
+hse/hse-medpost/data/
+hse/hse-medpost/old-data/
+*.db
+*.sqlite
+*.sqlite3
+
+# large or generated
+legacy/
+graphify-out/
+node_modules/
+venv/
+__pycache__/
+*.pyc
+hse/hse-register/api/api
+hse/hse-register/api/hse-register-api
+.xdp-*

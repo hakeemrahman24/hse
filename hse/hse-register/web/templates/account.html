@@ -1,0 +1,25 @@
+{{define "content"}}
+<form method="post" action="/account" class="add-activity" style="margin-top:16px">
+  <div class="settings-grid">
+    <label class="span-all">
+      <span>Username</span>
+      <input type="text" name="username" value="{{.Session.Username}}" maxlength="64" autocomplete="username" required>
+    </label>
+    <label class="span-all">
+      <span>Current password (required)</span>
+      <input type="password" name="current_password" autocomplete="current-password" required>
+    </label>
+    <label>
+      <span>New password (leave empty to keep it)</span>
+      <input type="password" name="new_password" minlength="8" autocomplete="new-password">
+    </label>
+    <label>
+      <span>Repeat the new password</span>
+      <input type="password" name="confirm_password" minlength="8" autocomplete="new-password">
+    </label>
+  </div>
+  <div class="submit-row">
+    <button type="submit" class="btn-primary">Save</button>
+  </div>
+</form>
+{{end}}

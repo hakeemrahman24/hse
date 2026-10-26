@@ -1,0 +1,48 @@
+{{define "content"}}
+{{with .Detail}}{{$o := .O}}
+<div class="obs-badges">
+  <span class="badge badge-{{$o.Status}}">{{statusLabel $o.Status}}</span>
+  <span class="badge">{{catLabel $o.Category}}</span>
+  {{if $o.Urgent}}<span class="badge badge-urgent">Urgent</span>{{end}}
+  {{if $o.Verification}}<span class="badge{{if eq $o.Verification "Verified"}} badge-verified{{end}}">{{$o.Verification}}</span>{{end}}
+</div>
+{{if .Perms.Locked}}<p class="obs-lock">This post is closed and can no longer be edited.{{if .Perms.CanVerify}} It is waiting for HSE verification.{{end}}</p>{{end}}
+
+<dl class="obs-dl">
+  <dt>Source</dt><dd>{{if $o.Source}}{{$o.Source}}{{if $o.SourceDetail}} · {{$o.SourceDetail}}{{end}}{{else}}Not recorded{{end}}</dd>
+  <dt>Submitted by</dt><dd>{{$o.ObserverName}}{{if $o.Designation}}, {{$o.Designation}}{{end}}{{if $o.Company}} · {{$o.Company}}{{end}}{{if and $o.CreatedBy (ne $o.Source "SOC")}} <small class="obs-muted">(entered by {{$o.CreatedBy}})</small>{{end}}</dd>
+  <dt>Date of finding</dt><dd>{{$o.ObservedAt.Format "2006-01-02 15:04"}}</dd>
+  <dt>Description</dt><dd class="obs-text">{{$o.Description}}</dd>
+  <dt>Topic</dt><dd>{{if .Topic}}{{.Topic}}{{else}}<span class="obs-muted">Not classified</span>{{end}}</dd>
+  <dt>Hazard</dt><dd>{{if .Hazard}}{{.Hazard}} <small class="obs-muted">({{.HazardClass}})</small>{{else}}<span class="obs-muted">Not classified</span>{{end}}</dd>
+  <dt>Area</dt><dd>{{$o.Location}}{{if $o.SubArea}} · {{$o.SubArea}}{{end}}</dd>
+  {{if $o.Path}}<dt>Form path</dt><dd>{{if eq $o.Path "A"}}A · Unsafe action{{else if eq $o.Path "B"}}B · Unsafe condition{{else if eq $o.Path "C"}}C · Safe observation{{else}}D · Suggestion{{end}}</dd>{{end}}
+  {{if $o.UnsafeReason}}<dt>What was unsafe</dt><dd>{{$o.UnsafeReason}}{{if $o.PPEItem}} · {{$o.PPEItem}}{{end}}</dd>{{end}}
+  {{if $o.GoodPractice}}<dt>Done well</dt><dd>{{$o.GoodPractice}}</dd>{{end}}
+  {{if $o.StopWork}}<dt>Work stopped</dt><dd>{{$o.StopWork}}{{if $o.StoppedBy}} · {{$o.StoppedBy}}{{end}}</dd>{{end}}
+  {{if $o.ImmediateDanger}}<dt>Immediate danger</dt><dd>{{$o.ImmediateDanger}}{{if $o.Barricaded}} · barricaded or stopped: {{$o.Barricaded}}{{end}}</dd>{{end}}
+  {{if .ControlTag}}<dt>Control tag</dt><dd>{{.ControlTag}}</dd>{{end}}
+  {{if $o.TopicPick}}<dt>Topic chosen</dt><dd>{{if eq $o.TopicPick "suggested"}}from the suggestions{{else if eq $o.TopicPick "list"}}from the full list{{else}}<span class="obs-muted">not picked</span>{{end}}</dd>{{end}}
+  {{if $o.ReviewFlags}}<dt>For HSE review</dt><dd>{{$o.ReviewFlags}}</dd>{{end}}
+  {{if $o.Recommendation}}<dt>Recommendation</dt><dd class="obs-text">{{$o.Recommendation}}</dd>{{end}}
+  {{if $o.ActionTaken}}<dt>Action taken</dt><dd class="obs-text">{{$o.ActionTaken}}</dd>{{end}}
+  <dt>Responsible company</dt><dd>{{if $o.ResponsibleCompany}}{{$o.ResponsibleCompany}}{{else}}<span class="obs-muted">Not recorded</span>{{end}}</dd>
+  <dt>Recorded</dt><dd>{{$o.CreatedAt.Format "2006-01-02 15:04"}}</dd>
+</dl>
+
+<div class="obs-actions">
+  {{if .Perms.CanEdit}}<a class="btn-ghost" href="/observations/{{$o.ID}}/edit">Edit</a>{{end}}
+  {{if .Perms.CanStart}}<form method="post" action="/observations/{{$o.ID}}/status"><input type="hidden" name="to" value="in_progress"><button type="submit" class="btn-ghost">Mark In Progress</button></form>{{end}}
+  {{if .Perms.CanClose}}<form method="post" action="/observations/{{$o.ID}}/status" onsubmit="return confirm('Close this post? It can no longer be edited afterwards.');"><input type="hidden" name="to" value="closed"><button type="submit" class="btn-primary">Close</button></form>{{end}}
+  {{if .Perms.CanVerify}}<form method="post" action="/observations/{{$o.ID}}/verify"><button type="submit" class="btn-ghost">Verify</button></form>{{end}}
+  {{if .Perms.CanDelete}}<form method="post" action="/observations/{{$o.ID}}/delete" onsubmit="return confirm('Delete this observation and its files?');"><button type="submit" class="link-danger">Delete</button></form>{{end}}
+</div>
+{{if .CloseHint}}<p class="obs-muted">{{.CloseHint}}</p>{{end}}
+{{if and (eq $o.Source "SOC") (not .Perms.Locked)}}<p class="obs-muted">Sent by an employee through the public form. They can edit it until it is verified or closed, and they can add After photos and close it themselves. HSE verifies it.</p>{{end}}
+{{if and (not .Perms.CanEdit) (not .Perms.Locked) (ne $o.Source "SOC")}}<p class="obs-muted">Only the person who entered this post can change its details. Everyone can add After evidence and close it.</p>{{end}}
+
+{{range .Blocks}}{{template "fileblock" .}}{{end}}
+<script src="/static/photo-compress.js?v=20261020b" defer></script>
+<script>document.addEventListener("DOMContentLoaded",function(){document.querySelectorAll(".photo-input").forEach(function(i){var box=i.closest("form");attachPhotoCompress(i,box.querySelector(".photo-status"),box.querySelector(".photo-preview"));});});</script>
+{{end}}
+{{end}}

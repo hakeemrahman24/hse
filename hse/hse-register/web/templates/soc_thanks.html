@@ -1,0 +1,11 @@
+{{define "main"}}
+<h1>{{heading .Lang "Thank you"}}</h1>
+<p class="sub">{{tr .Lang "Your report has been received."}}</p>
+<p style="margin-top:20px;font-size:0.9375rem">{{tr .Lang "Reference number:"}}<br /><strong style="font-size:1.25rem">{{.Ref}}</strong></p>
+<p class="sub" style="margin-top:12px">{{tr .Lang "The HSE team will check this report."}}</p>
+{{if .Photos}}<div class="photo-grid">{{range .Photos}}<img src="/soc/photo/{{.}}" alt="{{tr $.Lang "Report photo"}}" loading="lazy" />{{end}}</div>{{end}}
+<p style="margin-top:24px;display:flex;gap:10px;flex-wrap:wrap">
+  <a class="btn-primary" href="/soc/new">{{tr .Lang "Submit another"}}</a>
+  <a class="btn-ghost" href="/soc/mine">{{tr .Lang "My submissions"}}</a>
+</p>
+{{end}}

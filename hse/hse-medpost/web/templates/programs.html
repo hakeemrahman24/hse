@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" class="vt-cover">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @view-transition { navigation: auto; }
+    html { background: #E8F4F2; }
+    html.vt-cover { visibility: hidden; }
+    ::view-transition-group(root) { animation-duration: 120ms; }
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-group(root) { animation: none; }
+    }
+  </style>
+  <noscript><style>html.vt-cover { visibility: visible; }</style></noscript>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hse medpost</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
+  <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <script>
+    document.documentElement.classList.remove("vt-cover");
+  </script>
+</head>
+<body>
+  <nav class="nav scrolled" id="mainNav" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/start" class="nav-logo">hse <span>medpost</span></a>
+      <div class="nav-cta">
+        <span class="btn-ghost" style="pointer-events:none">{{.Name}}</span>
+        <button type="button" id="change-password" class="btn-ghost">Change password</button>
+        <button type="button" id="logout" class="btn-primary">Log out</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="app-shell">
+    <aside class="app-sidebar">
+      <div class="app-program-list">
+        <button type="button" class="app-program-item" id="home-nav-item">
+          <span class="app-program-item-title">Activities</span>
+          <span class="app-program-item-meta">All activities</span>
+        </button>
+      </div>
+      <div class="app-sidebar-label" id="health-programs-label">Health programs</div>
+      <div id="program-list" class="app-program-list"></div>
+    </aside>
+
+    <section class="app-main">
+      <div id="presence-banner" class="presence-card" hidden></div>
+      <div class="app-panel">
+        <div class="app-panel-head">
+          <h1 id="program-title">Select a program</h1>
+          <p id="program-sub">Choose a health program on the left to view activities, photos, and summaries.</p>
+        </div>
+
+        <div id="program-tabs" class="app-tabs" hidden>
+          <button type="button" class="app-tab active" data-tab="activities">Activities</button>
+          <button type="button" class="app-tab" data-tab="reference">Reference</button>
+          {{if eq .Role "admin"}}<button type="button" class="app-tab" data-tab="subheaders">Sub-headers</button>{{end}}
+        </div>
+
+        <div id="tab-activities">
+          <form id="date-filter" class="app-filter" hidden>
+            <label>
+              <span>From</span>
+              <input type="date" name="from" />
+            </label>
+            <label>
+              <span>To</span>
+              <input type="date" name="to" />
+            </label>
+            <button type="submit" class="btn-primary">Apply filter</button>
+            <button type="button" id="reset-filter" class="btn-ghost">Reset filter</button>
+            {{if eq .Role "admin"}}
+            <a href="#" id="download-all" class="btn-ghost" style="margin-left:auto">Download all</a>
+            {{end}}
+            {{if eq .Role "admin"}}
+            <a href="#" id="download-all-uploads" class="btn-ghost" style="margin-left:auto" hidden>Download all uploads (zip)</a>
+            <a href="/api/entries/download" id="download-all-entries" class="btn-ghost" style="margin-left:auto" hidden>Download all entries (.xlsx)</a>
+            {{end}}
+            <button type="button" id="toggle-add" class="btn-ghost"{{if not (eq .Role "admin")}} style="margin-left:auto"{{end}}>Add activity</button>
+          </form>
+
+          <form id="add-activity" class="add-activity" hidden>
+            <div class="section-label" style="margin-bottom:12px">New activity</div>
+            <div class="settings-grid">
+              <label>
+                <span>Type</span>
+                <select name="activityType" required>
+                  <option value="Monitoring/Inspection">Monitoring/Inspection</option>
+                  <option value="Socialization">Socialization</option>
+                </select>
+              </label>
+              <label>
+                <span>Date</span>
+                <input type="date" name="activityDate" required />
+              </label>
+              <label style="grid-column:1/-1">
+                <span>Title</span>
+                <input name="activityTitle" required />
+              </label>
+              <label style="grid-column:1/-1">
+                <span>Summary</span>
+                <textarea name="activitySummary" rows="3"></textarea>
+              </label>
+              <label>
+                <span>Location</span>
+                <input name="location" />
+              </label>
+              <label>
+                <span>Notes</span>
+                <input name="notes" />
+              </label>
+              <label style="grid-column:1/-1">
+                <span>Photos</span>
+                <input type="file" name="photos" accept="image/jpeg,image/png,image/gif,image/webp" multiple />
+              </label>
+              <label>
+                <span>Attendance list (optional)</span>
+                <input type="file" name="attendance" accept="application/pdf,.pdf" />
+              </label>
+              <label>
+                <span>Report attachment (optional)</span>
+                <input type="file" name="report" accept="application/pdf,.pdf" />
+              </label>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:10px">
+              <button type="submit" class="btn-primary">Save activity</button>
+              <button type="button" id="cancel-add" class="btn-ghost">Cancel</button>
+            </div>
+            <p id="add-msg" style="margin-top:10px;font-size:0.875rem;color:var(--text-3)"></p>
+          </form>
+
+          <div id="groups" class="app-groups"></div>
+          <p id="empty" class="app-empty">No program selected yet.</p>
+        </div>
+
+        <div id="tab-reference" hidden>
+          <div class="table-scroll">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Type</th>
+                  <th>Date</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="reference-body"></tbody>
+            </table>
+          </div>
+          <p id="reference-empty" class="app-empty" hidden>No reference documents yet.</p>
+        </div>
+
+        {{if eq .Role "admin"}}
+        <div id="tab-subheaders" hidden>
+          <form id="add-subheader" class="app-filter">
+            <label style="flex:1">
+              <span>New sub-header</span>
+              <input name="subHeaderName" required placeholder="e.g. Monthly Resume" />
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;white-space:nowrap">
+              <input type="checkbox" name="auditLocked" />
+              <span>Audit-locked (entries can't be edited or deleted)</span>
+            </label>
+            <button type="submit" class="btn-primary">Add sub-header</button>
+          </form>
+
+          <div id="subheader-list" class="app-program-list" style="margin-bottom:16px"></div>
+          <p id="subheader-empty" class="app-empty" hidden>No sub-headers yet.</p>
+        </div>
+        {{end}}
+
+        <div id="tab-subheader-entries" hidden>
+          <div class="app-panel-head">
+            <button type="button" id="subheader-back" class="btn-ghost" style="margin-bottom:8px">&larr; Back to activities</button>
+            <h2 id="subheader-title" style="margin:0;font-size:1.1rem"></h2>
+          </div>
+
+          <div class="app-filter">
+            <button type="button" id="toggle-add-entry" class="btn-ghost" style="margin-left:auto">Add entry</button>
+          </div>
+
+          <form id="add-subheader-entry" class="add-activity" hidden>
+            <div class="settings-grid">
+              <label>
+                <span>Date</span>
+                <input type="date" name="entryDate" />
+              </label>
+              <label style="grid-column:1/-1">
+                <span>Title</span>
+                <input name="title" required />
+              </label>
+              <label style="grid-column:1/-1">
+                <span>Description</span>
+                <textarea name="description" rows="3"></textarea>
+              </label>
+              <label>
+                <span>Link (optional)</span>
+                <input name="formLink" type="url" placeholder="https://…" />
+              </label>
+              <label style="grid-column:1/-1">
+                <span>Link to a test (optional)</span>
+                <select name="submissionId" id="subheader-entry-submission">
+                  <option value="">— no linked test —</option>
+                </select>
+              </label>
+              <label>
+                <span>Photos (optional)</span>
+                <input name="photos" type="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple />
+              </label>
+              <label>
+                <span>Document (optional)</span>
+                <input name="document" type="file" />
+              </label>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:10px">
+              <button type="submit" class="btn-primary">Add entry</button>
+              <button type="button" id="cancel-add-entry" class="btn-ghost">Cancel</button>
+            </div>
+            <p id="subheader-entry-msg" style="margin-top:10px;font-size:0.875rem;color:var(--text-3)"></p>
+          </form>
+
+          <div id="subheader-entries"></div>
+          <p id="subheader-entries-empty" class="app-empty" hidden>No entries yet.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="lightbox" class="app-lightbox">
+    <img id="lightbox-img" class="app-lightbox-img" alt="" />
+  </dialog>
+
+  <button type="button" id="back-to-top" class="app-back-to-top" aria-label="Back to top">&uarr;</button>
+
+  <script>
+    window.__PROC_ID__ = "{{.ProcID}}";
+    window.__USER_NAME__ = {{.Name}};
+    window.__USER_ROLE__ = {{.Role}};
+    window.__USER_STAFF_ID__ = {{.StaffID}};
+  </script>
+  <script src="/static/session-guard.js"></script>
+  <script src="/static/busy.js"></script>
+  <script src="/static/case-guard.js"></script>
+  <script src="/static/summary-format.js"></script>
+  <script src="/static/image-compress.js"></script>
+  <script src="/static/clearwave/app-nav.js"></script>
+  <script src="/static/presence.js"></script>
+  <script src="/static/clinic-date.js"></script>
+  <script src="/static/app.js"></script>
+
+  <footer class="app-dev-credit">
+    <p>Developed by dr. Arif Rahman Hakim.</p>
+    <p>Internal HSE record-keeping only. This does not replace clinical judgment, and the developer is not liable for data-entry errors or decisions based on this system.</p>
+  </footer>
+</body>
+</html>

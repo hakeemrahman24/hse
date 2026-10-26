@@ -1,0 +1,13 @@
+{{define "content"}}
+<div class="settings-panel-body">
+  <div class="app-sidebar-label">Guard words</div>
+  <form method="post" action="/admin/settings/guard-words" class="settings-grid">
+    <label class="span-all">
+      <span>One word per line</span>
+      <textarea name="words" rows="14" spellcheck="false" autocapitalize="none">{{.GuardText}}</textarea>
+      <small class="field-hint">Words of 4 to 40 letters. Capital letters are ignored and the list is sorted when saved.</small>
+    </label>
+    <div class="span-all"><button type="submit" class="btn-primary">Save</button></div>
+  </form>
+</div>
+{{end}}

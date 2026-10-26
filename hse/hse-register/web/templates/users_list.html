@@ -1,0 +1,40 @@
+{{define "content"}}
+<div id="content-main">
+  <ul class="object-tools">
+    <li><a href="/users/new" class="addlink">Add user</a></li>
+  </ul>
+  <div class="module" id="changelist">
+    <div class="changelist-form-container">
+      <table id="result_list">
+        <thead><tr><th>Username</th><th>Full name</th><th>Role</th><th>Status</th><th>Created</th><th>Actions</th></tr></thead>
+        <tbody>
+          {{range .Users}}
+          <tr{{if .Archived}} class="row-archived"{{end}}>
+            <td>{{.Username}}</td>
+            <td>{{.FullName}}</td>
+            <td>{{.Role}}</td>
+            <td>{{if .Archived}}<span class="badge badge-archived">Archived</span>{{else}}Active{{end}}</td>
+            <td>{{.CreatedAt.Format "2006-01-02"}}</td>
+            <td class="row-actions">
+              <a href="/users/{{.ID}}/edit">Edit</a>
+              {{if ne .ID $.Session.UserID}}
+              <form method="post" action="/users/{{.ID}}/reset-password" onsubmit="return confirm('Reset the password of {{.Username}} to the default? They will have to choose a new one when they sign in.');"><button type="submit">Reset password</button></form>
+              {{if .Archived}}
+              <form method="post" action="/users/{{.ID}}/restore"><button type="submit">Restore</button></form>
+              {{else}}
+              <form method="post" action="/users/{{.ID}}/archive" onsubmit="return confirm('Archive {{.Username}}? They can no longer sign in. Nothing is deleted and you can restore them later.');"><button type="submit">Archive</button></form>
+              {{end}}
+              <a class="link-danger" href="/users/{{.ID}}/delete">Delete…</a>
+              {{end}}
+            </td>
+          </tr>
+          {{else}}
+          <tr><td colspan="6">No users yet.</td></tr>
+          {{end}}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p class="obs-muted" style="margin-top:12px"><b>Archive</b> keeps the account and its history but blocks sign-in (you can restore it). <b>Delete</b> removes the account for good. Use My account to change your own password.</p>
+</div>
+{{end}}

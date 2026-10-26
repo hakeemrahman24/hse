@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" class="vt-cover">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @view-transition { navigation: auto; }
+    html { background: #E8F4F2; }
+    html.vt-cover { visibility: hidden; }
+    ::view-transition-group(root) { animation-duration: 120ms; }
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-group(root) { animation: none; }
+    }
+  </style>
+  <noscript><style>html.vt-cover { visibility: visible; }</style></noscript>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>hse medpost</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
+  <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <script>
+    document.documentElement.classList.remove("vt-cover");
+  </script>
+</head>
+<body>
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/start" class="nav-logo">hse <span>medpost</span></a>
+      <div class="nav-cta">
+        <span class="btn-ghost" style="pointer-events:none">{{.Name}}</span>
+        <button type="button" id="logout" class="btn-primary">Log out</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="login-wrap">
+    <div class="login-card login-card--wide">
+      <div id="presence-banner" class="presence-card" hidden></div>
+      <h1>Welcome<span>, {{.Name}}</span></h1>
+      <p class="sub">Choose where to go. Click "hse medpost" at the top left anytime to come back here. You stay signed in.</p>
+
+      <div class="module-picker" role="list" style="margin-top:24px">
+        <a class="module-card" href="/emr" role="listitem">
+          <span class="module-card-title">Medical Record</span>
+          <span class="module-card-sub">Outpatient, inpatient, screening and wellness records</span>
+        </a>
+        {{if .MedicalCheckup}}
+        <a class="module-card" href="/mcu" role="listitem">
+          <span class="module-card-title">Medical Checkups</span>
+          <span class="module-card-sub">Periodic MCU records, fitness-for-work renewals</span>
+        </a>
+        {{end}}
+        <a class="module-card" href="/inventory" role="listitem">
+          <span class="module-card-title">Inventory</span>
+          <span class="module-card-sub">Medicine stock and dispensing</span>
+        </a>
+        <a class="module-card" href="/programs" role="listitem">
+          <span class="module-card-title">Activity Log</span>
+          <span class="module-card-sub">Health programs, activities, evidence</span>
+        </a>
+        {{if eq .Role "admin"}}
+        <a class="module-card module-card--settings" href="/admin/settings" role="listitem">
+          <span class="module-card-title">Settings</span>
+          <span class="module-card-sub">Users, programs, companies, lookups</span>
+        </a>
+        {{end}}
+      </div>
+    </div>
+  </div>
+  <script src="/static/session-guard.js"></script>
+  <script src="/static/busy.js"></script>
+  <script src="/static/presence.js"></script>
+  <script src="/static/page-shell.js"></script>
+  <script>startPresence(() => "Home");</script>
+
+  <footer class="app-dev-credit">
+    <p>Developed by dr. Arif Rahman Hakim.</p>
+    <p>Internal HSE record-keeping only. This does not replace clinical judgment, and the developer is not liable for data-entry errors or decisions based on this system.</p>
+  </footer>
+</body>
+</html>
