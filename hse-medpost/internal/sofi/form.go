@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -166,6 +167,10 @@ func (a *API) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := a.save(s.UserID, p, *in.WeeksOnSite, in.Answers, res, winID); err != nil {
+		if isDuplicateKey(err) { // another server process saved it between the check and the insert
+			writeError(w, r, http.StatusConflict, msgAlreadyDone)
+			return
+		}
 		log.Printf("sofi: submit save: %v", err)
 		writeError(w, r, http.StatusInternalServerError, "Something went wrong.")
 		return
@@ -248,6 +253,16 @@ func (a *API) StaffList(w http.ResponseWriter, r *http.Request) {
 	if clause != "" {
 		where, args = append(where, clause), append(args, wargs...)
 	}
+	// The table shows at most listLimit rows; the total is sent in a header so the page can say
+	// "showing the first 500 of N" instead of silently disagreeing with the dashboard's count.
+	var total int
+	if err := a.DB.QueryRow(`
+		SELECT COUNT(*) FROM SofiScreening s JOIN Patient p ON p.PatientID = s.FK_PatientID
+		WHERE `+strings.Join(where, " AND "), args...).Scan(&total); err != nil {
+		log.Printf("sofi: list count: %v", err)
+		writeError(w, r, http.StatusInternalServerError, "Could not read the SOFI records.")
+		return
+	}
 	args = append(args, listLimit)
 	rows, err := a.DB.Query(`
 		SELECT s.SofiID, p.Name, s.SubmittedAt, s.WeeksOnSite, COALESCE(s.AgeYears, 0), s.WorkPosition, s.Company,
@@ -292,6 +307,7 @@ func (a *API) StaffList(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusInternalServerError, "Could not read the SOFI records.")
 		return
 	}
+	w.Header().Set("X-Total-Count", strconv.Itoa(total))
 	writeJSON(w, http.StatusOK, out)
 }
 
