@@ -295,3 +295,42 @@ func TestResultsCanBeFilteredByRound(t *testing.T) {
 		t.Errorf("bad window: %d", code)
 	}
 }
+
+// Window A ends exactly when window B opens. A session that signed in under A must save into B once
+// B is the open window; A is closed and may already have been reported.
+func TestSessionFromAnEarlierWindowSavesIntoTheWindowOpenNow(t *testing.T) {
+	api := newBareTestAPI(t)
+	move := clockAt(api, at(2, 0, 0))
+	a, _ := api.CreateWindow("A", at(2, 1, 0), at(2, 9, 0), "Admin", at(1, 0, 0))
+	b, _ := api.CreateWindow("B", at(2, 9, 0), at(2, 17, 0), "Admin", at(1, 0, 0))
+	move(at(2, 8, 30))
+	c := signedInCookie(t, api)
+	move(at(2, 9, 30))
+	if rec := submit(api, c, `{"weeksOnSite":12,"answers":`+answersJSON(2)+`}`); rec.Code != http.StatusOK {
+		t.Fatalf("submit: %d %s", rec.Code, rec.Body.String())
+	}
+	var got int64
+	if err := api.DB.QueryRow(`SELECT FK_WindowID FROM SofiScreening`).Scan(&got); err != nil || got != b {
+		t.Fatalf("FK_WindowID = %d, %v; want B (%d), not A (%d)", got, err, b, a)
+	}
+}
+
+// Someone who already answered in A is not told "already done" once B is open.
+func TestAPersonWhoAnsweredInAMayAnswerInB(t *testing.T) {
+	api := newBareTestAPI(t)
+	move := clockAt(api, at(2, 0, 0))
+	api.CreateWindow("A", at(2, 1, 0), at(2, 9, 0), "Admin", at(1, 0, 0))
+	api.CreateWindow("B", at(2, 9, 0), at(2, 17, 0), "Admin", at(1, 0, 0))
+	move(at(2, 8, 30))
+	c := signedInCookie(t, api)
+	if rec := submit(api, c, `{"weeksOnSite":12,"answers":`+answersJSON(1)+`}`); rec.Code != http.StatusOK {
+		t.Fatalf("in A: %d", rec.Code)
+	}
+	move(at(2, 9, 30))
+	if rec := get(api.Start, "/sofi/start", c); strings.Contains(rec.Body.String(), "already completed") || strings.Contains(rec.Body.String(), "sudah mengisi") {
+		t.Fatal("told the person they are done while B is open")
+	}
+	if rec := submit(api, c, `{"weeksOnSite":12,"answers":`+answersJSON(1)+`}`); rec.Code != http.StatusOK {
+		t.Fatalf("in B: %d", rec.Code)
+	}
+}

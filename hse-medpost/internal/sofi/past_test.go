@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -117,5 +118,33 @@ func TestStartAfterSubmittingShowsNoFormForThePeriod(t *testing.T) {
 	}
 	if !strings.Contains(body, "already completed") || !strings.Contains(body, "Your earlier results") {
 		t.Error("no message or earlier result")
+	}
+}
+
+// Taps arriving together must save one questionnaire, not several.
+func TestConcurrentSubmitsSaveOnlyOne(t *testing.T) {
+	api := newTestAPI(t)
+	c := signedInCookie(t, api)
+	body := `{"weeksOnSite":12,"answers":` + answersJSON(1) + `}`
+	var wg sync.WaitGroup
+	codes := make([]int, 8)
+	for i := range codes {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			codes[i] = submit(api, c, body).Code
+		}(i)
+	}
+	wg.Wait()
+	ok := 0
+	for _, code := range codes {
+		if code == http.StatusOK {
+			ok++
+		}
+	}
+	var n int
+	_ = api.DB.QueryRow(`SELECT COUNT(*) FROM SofiScreening`).Scan(&n)
+	if ok != 1 || n != 1 {
+		t.Fatalf("%d accepted, %d rows saved; codes %v", ok, n, codes)
 	}
 }

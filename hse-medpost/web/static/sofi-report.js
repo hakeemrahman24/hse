@@ -24,6 +24,9 @@
 
   var saved = { note: "", canWrite: false, writtenBy: "", writtenAt: "" };
   var seq = 0;
+  // The period whose note the box holds. Save writes only to it, so a note typed for one period can
+  // never be saved under another that was picked while the new note was still loading.
+  var loadedFor = "";
 
   // The chosen period's window id, or "" for "All periods" / "Before periods were scheduled",
   // which have no note.
@@ -48,7 +51,18 @@
     return n.writtenBy ? "Written by " + n.writtenBy + ", " + n.writtenAt + " (GMT+9)." : "No note written yet.";
   }
 
-  function showNote(n) {
+  // Empties and locks the box until the note of the chosen period has arrived.
+  function lockBox() {
+    loadedFor = "";
+    saved = { note: "", canWrite: false, writtenBy: "", writtenAt: "" };
+    textEl.value = "";
+    textEl.readOnly = true;
+    saveBtn.hidden = true;
+    metaEl.textContent = "";
+  }
+
+  function showNote(n, id) {
+    loadedFor = id;
     saved = n;
     textEl.value = n.note || "";
     textEl.readOnly = !n.canWrite;
@@ -62,13 +76,13 @@
   function loadNote() {
     var id = periodId();
     var mine = ++seq;
+    lockBox();
     if (!id) {
       box.hidden = true;
-      saved = { note: "", canWrite: false, writtenBy: "", writtenAt: "" };
       return;
     }
     fetchJson(noteUrl(id))
-      .then(function (n) { if (mine === seq) { showNote(n); } })
+      .then(function (n) { if (mine === seq) { showNote(n, id); } })
       .catch(function (err) {
         if (mine !== seq) { return; }
         box.hidden = false;
@@ -82,7 +96,7 @@
 
   saveBtn.addEventListener("click", function () {
     var id = periodId();
-    if (!id) { return; }
+    if (!id || id !== loadedFor) { return; }
     saveBtn.disabled = true;
     noteMsg.textContent = "Saving…";
     fetchJson(noteUrl(id), {
@@ -92,7 +106,7 @@
     })
       .then(function (n) {
         if (periodId() !== id) { return; } // another period was picked while saving
-        showNote(n);
+        showNote(n, id);
         noteMsg.textContent = "Saved.";
       })
       .catch(function (err) { noteMsg.textContent = err.message; })

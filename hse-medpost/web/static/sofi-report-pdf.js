@@ -63,7 +63,8 @@ function sofiCharScript(ch) {
 function sofiPdfText(s, fonts) {
   const have = fonts || {};
   let out = "";
-  for (const ch of String(s == null ? "" : s)) {
+  // NFC first: "e" + a combining accent is one letter (é) in Helvetica, but two characters otherwise
+  for (const ch of String(s == null ? "" : s).normalize("NFC")) {
     // for...of walks code points; an astral one (emoji) is two UTF-16 units, each replaced by "?"
     if (have.raster && sofiCharScript(ch[0]) === "other") { out += ch; continue; }
     for (let i = 0; i < ch.length; i++) {
