@@ -8,8 +8,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"hse-medpost/internal/ratelimit"
 )
 
 // patientID looks a seeded patient up by name.
@@ -153,20 +151,6 @@ func TestSubmitRejectsBadInput(t *testing.T) {
 	}
 }
 
-func TestSubmitIsRateLimitedPerPerson(t *testing.T) {
-	api := newTestAPI(t)
-	c := signedInCookie(t, api)
-	body := `{"weeksOnSite":2,"answers":` + answersJSON(1) + `}`
-	for i := 0; i < submitMax; i++ {
-		if rec := submit(api, c, body); rec.Code != http.StatusOK {
-			t.Fatalf("submit %d: %d", i, rec.Code)
-		}
-	}
-	if rec := submit(api, c, body); rec.Code != http.StatusTooManyRequests {
-		t.Fatalf("over the limit: %d", rec.Code)
-	}
-}
-
 func TestStaffListShowsSavedRecordsWithLevels(t *testing.T) {
 	api := newTestAPI(t)
 	c := signedInCookie(t, api)
@@ -199,9 +183,12 @@ func TestStaffListShowsSavedRecordsWithLevels(t *testing.T) {
 
 func TestWeeksOnSiteAllowsTwoToFiftyThreeAndMoreThanOneYear(t *testing.T) {
 	api := newTestAPI(t)
-	c := signedInCookie(t, api)
 	for _, weeks := range []int{2, 3, 52, 53, WeeksOverYear} {
-		api.lim = ratelimit.New() // the per-person submit limit is not what is tested here
+		// one questionnaire per person per period, so each value starts from a clean table
+		if _, err := api.DB.Exec(`DELETE FROM SofiScreening`); err != nil {
+			t.Fatal(err)
+		}
+		c := signedInCookie(t, api)
 		body := `{"weeksOnSite":` + strconv.Itoa(weeks) + `,"answers":` + answersJSON(1) + `}`
 		if rec := submit(api, c, body); rec.Code != http.StatusOK {
 			t.Fatalf("weeks %d refused: %d %s", weeks, rec.Code, rec.Body.String())

@@ -17,10 +17,6 @@ const (
 	minWeeksOnSite = 2
 	maxWeeksOnSite = 53
 	WeeksOverYear  = maxWeeksOnSite + 1
-	// submitMax completed questionnaires an hour from one person; a retry after a slow network
-	// is fine, a script is not.
-	submitMax    = 5
-	submitWindow = time.Hour
 
 	noMcuStatus  = "No checkup result on record"
 	listLimit    = 500
@@ -148,15 +144,25 @@ func (a *API) Submit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, "Enter the weeks on site and answer every word.")
 		return
 	}
-	key := fmt.Sprintf("sub:%d", s.UserID)
-	if a.lim.Count(key, submitWindow) >= submitMax {
-		writeError(w, r, http.StatusTooManyRequests, "Too many submissions, please try again later.")
-		return
-	}
 	p, err := a.profile(s.UserID)
 	if err != nil {
 		log.Printf("sofi: submit profile: %v", err)
 		writeError(w, r, http.StatusInternalServerError, "Something went wrong.")
+		return
+	}
+	// One questionnaire per person per period. The check and the insert run under one lock, so two
+	// taps (or two tabs) arriving together cannot both pass the check; one server process serves
+	// the site, so a lock in memory is enough.
+	a.submitMu.Lock()
+	defer a.submitMu.Unlock()
+	done, err := a.hasSubmitted(s.UserID, winID)
+	if err != nil {
+		log.Printf("sofi: submit check: %v", err)
+		writeError(w, r, http.StatusInternalServerError, "Something went wrong.")
+		return
+	}
+	if done {
+		writeError(w, r, http.StatusConflict, msgAlreadyDone)
 		return
 	}
 	if err := a.save(s.UserID, p, *in.WeeksOnSite, in.Answers, res, winID); err != nil {
@@ -164,7 +170,6 @@ func (a *API) Submit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusInternalServerError, "Something went wrong.")
 		return
 	}
-	a.lim.Add(key)
 	writeJSON(w, http.StatusOK, res)
 }
 
@@ -288,4 +293,14 @@ func (a *API) StaffList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, out)
+}
+
+// hasSubmitted tells whether the person already sent a questionnaire in this window.
+func (a *API) hasSubmitted(patientID, windowID int64) (bool, error) {
+	var n int
+	err := a.DB.QueryRow(`SELECT COUNT(*) FROM SofiScreening WHERE FK_PatientID = ? AND FK_WindowID = ?`, patientID, windowID).Scan(&n)
+	if err != nil {
+		return false, fmt.Errorf("count submissions: %w", err)
+	}
+	return n > 0, nil
 }
