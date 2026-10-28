@@ -3183,6 +3183,9 @@ body:has(.app-shell.is-form-focus) .app-dev-credit p {
     margin-top: 52px;
     padding: 0 8px 16px;
   }
+  .app-shell:has(> .app-sidebar) {
+    align-content: start; /* stacked, the sidebar and panel rows would share .app-shell's min-height and open a tall gap between them; mcu.html has no sidebar and needs its row to stretch */
+  }
   .app-sidebar {
     position: static;
     max-height: none;
@@ -5676,6 +5679,15 @@ tr.detail-row > td .detail-group {
 .scr-bar-moderate { fill: #d97706; }
 .scr-swatch--moderate { background: #d97706; }
 .scr-stat--moderate strong { color: #d97706; }
+.sofi-window-status { margin: 0; padding: 8px 16px; font-size: 0.85rem; color: var(--text-2); }
+.sofi-window-status.is-open { color: #067647; font-weight: 600; }
+.sofi-summary { margin: 8px 16px 0; padding: 12px 16px; font-size: 0.9rem; line-height: 1.55; color: var(--text-1); border: 1px solid var(--border); }
+.sofi-note-box { margin: 8px 16px 0; }
+.sofi-note-label { display: block; margin-bottom: 6px; font-size: 0.8rem; font-weight: 600; color: var(--text-2); }
+.sofi-note-box textarea { display: block; width: 100%; box-sizing: border-box; padding: 10px 12px; font: inherit; line-height: 1.5; color: var(--text-1); border: 1px solid var(--border); resize: vertical; }
+.sofi-note-box textarea[readonly] { background: transparent; }
+.sofi-note-box .sofi-note { padding-left: 0; padding-right: 0; }
+.sofi-report-actions { display: flex; align-items: center; gap: 12px; margin: 8px 16px 0; font-size: 0.85rem; color: var(--text-2); }
 .sofi-dash-title { margin: 8px 16px 0; padding-top: 16px; border-top: 1px solid var(--border); font-size: 1.05rem; font-weight: 700; color: var(--text-1); }
 #sofi-dim-bars .dash-bar-row span, #sofi-group-bars .dash-bar-row span { width: 200px; }
 #sofi-dim-bars .dash-bar-row b, #sofi-group-bars .dash-bar-row b { min-width: 150px; }

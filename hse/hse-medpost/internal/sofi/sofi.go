@@ -17,10 +17,11 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"hse-medpost/internal/auth"
+	"hse-medpost/internal/ratelimit"
+	"hse-medpost/internal/turnstile"
 )
 
 const (
@@ -58,10 +59,10 @@ type API struct {
 	DB           *sql.DB
 	store        *auth.Store
 	pages        *template.Template
-	lim          *limiter
+	lim          *ratelimit.Limiter
 	trustCF      bool // read the visitor address from CF-Connecting-IP (only when the port is reachable through the tunnel alone)
 	secureCookie bool
-	verifier     Verifier
+	verifier     turnstile.Verifier
 	now          func() time.Time // replaced in tests
 	sitekey      string
 	devCheck     bool // show a stub button instead of the Cloudflare box
@@ -76,6 +77,7 @@ func New(database *sql.DB, sessionSecret, templateDir string) (*API, error) {
 	pages, err := template.New("sofi").Funcs(template.FuncMap{"tr": tr}).ParseFiles(
 		filepath.Join(templateDir, "sofi", "sofi_signin.html"),
 		filepath.Join(templateDir, "sofi", "sofi_home.html"),
+		filepath.Join(templateDir, "sofi", "sofi_closed.html"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("sofi templates: %w", err)
@@ -85,7 +87,7 @@ func New(database *sql.DB, sessionSecret, templateDir string) (*API, error) {
 		DB:    database,
 		store: auth.NewStore(hex.EncodeToString(sum[:])),
 		pages: pages,
-		lim:   newLimiter(),
+		lim:   ratelimit.New(),
 		now:   time.Now,
 	}, nil
 }
@@ -98,7 +100,7 @@ func (a *API) TrustCloudflareHeader(on bool) {
 
 // SetTurnstile sets how the Cloudflare check is shown and verified. Without it nothing can pass
 // the check, so name search and sign-in stay closed.
-func (a *API) SetTurnstile(v Verifier, sitekey string, dev bool) {
+func (a *API) SetTurnstile(v turnstile.Verifier, sitekey string, dev bool) {
 	a.verifier, a.sitekey, a.devCheck = v, sitekey, dev
 }
 
@@ -204,12 +206,15 @@ func (a *API) checked(r *http.Request) bool {
 // Check verifies the Cloudflare token. Until it passes, name search and sign-in stay closed.
 func (a *API) Check(w http.ResponseWriter, r *http.Request) {
 	const failed = "Check failed, please try again."
+	if _, ok := a.requireOpen(w, r); !ok {
+		return
+	}
 	ip := a.clientIP(r)
-	if a.lim.count("c:"+ip, checkTTL) >= checkMax {
+	if a.lim.Count("c:"+ip, checkTTL) >= checkMax {
 		writeError(w, r, http.StatusTooManyRequests, "Please wait a moment and try again.")
 		return
 	}
-	a.lim.add("c:" + ip)
+	a.lim.Add("c:" + ip)
 	var in struct {
 		Token string `json:"token"`
 	}
@@ -246,6 +251,9 @@ func (a *API) SignInPage(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/sofi/start", http.StatusSeeOther)
 		return
 	}
+	if !a.pageOpen(w, r, "/sofi") {
+		return
+	}
 	d := a.pageData(r, "/sofi")
 	d.Sitekey, d.DevCheck = a.sitekey, a.devCheck
 	_ = a.pages.ExecuteTemplate(w, "sofi_signin.html", d)
@@ -257,6 +265,9 @@ func (a *API) Start(w http.ResponseWriter, r *http.Request) {
 	s := a.session(r)
 	if s == nil {
 		http.Redirect(w, r, "/sofi", http.StatusSeeOther)
+		return
+	}
+	if !a.startAllowed(w, r, s) {
 		return
 	}
 	p, err := a.profile(s.UserID)
@@ -280,6 +291,9 @@ type namePick struct {
 // Names lists employees whose name contains the typed text. Only name and company leave the
 // server; the ref is a signed, short-lived pointer to the person, not the patient number.
 func (a *API) Names(w http.ResponseWriter, r *http.Request) {
+	if _, ok := a.requireOpen(w, r); !ok {
+		return
+	}
 	if !a.checked(r) {
 		writeError(w, r, http.StatusForbidden, "Please complete the check first.")
 		return
@@ -290,11 +304,11 @@ func (a *API) Names(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ip := a.clientIP(r)
-	if a.lim.count("s:"+ip, searchWindow) >= searchMax {
+	if a.lim.Count("s:"+ip, searchWindow) >= searchMax {
 		writeError(w, r, http.StatusTooManyRequests, "Too many searches, please wait a minute.")
 		return
 	}
-	a.lim.add("s:" + ip)
+	a.lim.Add("s:" + ip)
 
 	out, err := a.findNames(q)
 	if err != nil {
@@ -343,12 +357,17 @@ func likeEscape(s string) string {
 // date of birth is compared and dropped: it is never stored, logged or echoed back.
 func (a *API) SignIn(w http.ResponseWriter, r *http.Request) {
 	fail := func() { writeError(w, r, http.StatusUnauthorized, msgNotFound) }
+	// The window is recorded in the session so the person can finish even if it closes meanwhile.
+	win, ok := a.requireOpen(w, r)
+	if !ok {
+		return
+	}
 	if !a.checked(r) {
 		writeError(w, r, http.StatusForbidden, "Please complete the check first.")
 		return
 	}
 	ip := a.clientIP(r)
-	if a.lim.count("ip:"+ip, failWindow) >= failMax {
+	if a.lim.Count("ip:"+ip, failWindow) >= failMax {
 		fail()
 		return
 	}
@@ -362,12 +381,12 @@ func (a *API) SignIn(w http.ResponseWriter, r *http.Request) {
 	}
 	pick, err := a.store.Verify(in.Ref)
 	if err != nil || pick.Role != rolePick || pick.UserID == 0 {
-		a.lim.add("ip:" + ip)
+		a.lim.Add("ip:" + ip)
 		fail()
 		return
 	}
 	person := fmt.Sprintf("p:%d", pick.UserID)
-	if a.lim.count(person, failWindow) >= failMax {
+	if a.lim.Count(person, failWindow) >= failMax {
 		fail()
 		return
 	}
@@ -378,12 +397,12 @@ func (a *API) SignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !sameDate(stored, in.DOB) {
-		a.lim.add("ip:" + ip)
-		a.lim.add(person)
+		a.lim.Add("ip:" + ip)
+		a.lim.Add(person)
 		fail()
 		return
 	}
-	token, err := a.store.IssueFor(auth.Session{UserID: pick.UserID, Name: name, Role: roleSession}, sessionTTL)
+	token, err := a.store.IssueFor(auth.Session{UserID: pick.UserID, Name: name, Role: roleSession, WindowID: win.ID}, sessionTTL)
 	if err != nil {
 		writeError(w, r, http.StatusInternalServerError, "Something went wrong.")
 		return
@@ -419,36 +438,4 @@ func sameDate(stored, given string) bool {
 func (a *API) SignOut(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{Name: CookieName, Value: "", Path: "/sofi", HttpOnly: true, MaxAge: -1})
 	http.Redirect(w, r, "/sofi", http.StatusSeeOther)
-}
-
-// limiter counts events per key inside a sliding window; it keeps only what it still needs.
-type limiter struct {
-	mu     sync.Mutex
-	events map[string][]time.Time
-}
-
-func newLimiter() *limiter { return &limiter{events: map[string][]time.Time{}} }
-
-func (l *limiter) add(key string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.events[key] = append(l.events[key], time.Now())
-}
-
-func (l *limiter) count(key string, window time.Duration) int {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	cutoff := time.Now().Add(-window)
-	var kept []time.Time
-	for _, t := range l.events[key] {
-		if t.After(cutoff) {
-			kept = append(kept, t)
-		}
-	}
-	if len(kept) == 0 {
-		delete(l.events, key)
-		return 0
-	}
-	l.events[key] = kept
-	return len(kept)
 }

@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"hse-medpost/internal/ratelimit"
 )
 
 // patientID looks a seeded patient up by name.
@@ -199,7 +201,7 @@ func TestWeeksOnSiteAllowsTwoToFiftyThreeAndMoreThanOneYear(t *testing.T) {
 	api := newTestAPI(t)
 	c := signedInCookie(t, api)
 	for _, weeks := range []int{2, 3, 52, 53, WeeksOverYear} {
-		api.lim = newLimiter() // the per-person submit limit is not what is tested here
+		api.lim = ratelimit.New() // the per-person submit limit is not what is tested here
 		body := `{"weeksOnSite":` + strconv.Itoa(weeks) + `,"answers":` + answersJSON(1) + `}`
 		if rec := submit(api, c, body); rec.Code != http.StatusOK {
 			t.Fatalf("weeks %d refused: %d %s", weeks, rec.Code, rec.Body.String())

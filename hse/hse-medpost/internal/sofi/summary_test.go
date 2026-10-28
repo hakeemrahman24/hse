@@ -16,7 +16,7 @@ func addSurvey(t *testing.T, api *API, patientID int64, company, position, submi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := api.saveAt(patientID, Profile{Company: company, WorkPosition: position, MCUReviewStatus: "Fit"}, 12, answers(value), res, submittedAt); err != nil {
+	if err := api.saveAt(patientID, Profile{Company: company, WorkPosition: position, MCUReviewStatus: "Fit"}, 12, answers(value), res, submittedAt, 0); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -102,16 +102,42 @@ func TestSummaryGroupsByCompanyOrPosition(t *testing.T) {
 	}
 }
 
-func TestSummaryDateFilterUsesTheSubmitDate(t *testing.T) {
+// The days typed in From / To are GMT+9 days, the same zone the table shows, so October is
+// 2026-09-30T15:00:00 UTC (inclusive) up to 2026-10-31T15:00:00 UTC (exclusive).
+func TestDateFilterUsesTheGMT9Day(t *testing.T) {
 	api := newTestAPI(t)
 	andi := patientID(t, api, "Andi Pratama")
-	addSurvey(t, api, andi, "PT A", "Welder", "2026-09-30T23:59:59", 1)
-	addSurvey(t, api, andi, "PT A", "Welder", "2026-10-01T00:00:00", 1)
-	addSurvey(t, api, andi, "PT A", "Welder", "2026-10-31T23:59:59", 1)
-	addSurvey(t, api, andi, "PT A", "Welder", "2026-11-01T00:00:00", 1)
+	addSurvey(t, api, andi, "PT A", "Welder", "2026-09-30T14:59:59", 1) // 23:59:59 on 30 Sep in GMT+9: out
+	addSurvey(t, api, andi, "PT A", "Welder", "2026-09-30T15:00:00", 1) // 00:00:00 on 1 Oct: in
+	addSurvey(t, api, andi, "PT A", "Welder", "2026-10-31T14:59:59", 1) // 23:59:59 on 31 Oct: in
+	addSurvey(t, api, andi, "PT A", "Welder", "2026-10-31T15:00:00", 1) // 00:00:00 on 1 Nov: out
 	_, s := getSummary(t, api, "from=2026-10-01&to=2026-10-31")
 	if s.Total != 2 {
-		t.Fatalf("total in October = %d", s.Total)
+		t.Fatalf("summary total in October = %d, want 2", s.Total)
+	}
+	rec := httptest.NewRecorder()
+	api.StaffList(rec, httptest.NewRequest(http.MethodGet, "/api/sofi-log?from=2026-10-01&to=2026-10-31", nil))
+	var list []Record
+	_ = json.Unmarshal(rec.Body.Bytes(), &list)
+	if len(list) != 2 {
+		t.Fatalf("list in October = %d, want 2", len(list))
+	}
+	// One open end: everything from the 1st on, or everything up to the 31st.
+	if _, s := getSummary(t, api, "from=2026-10-01"); s.Total != 3 {
+		t.Errorf("from only = %d, want 3", s.Total)
+	}
+	if _, s := getSummary(t, api, "to=2026-10-31"); s.Total != 3 {
+		t.Errorf("to only = %d, want 3", s.Total)
+	}
+	for _, bad := range []string{"from=2026-13-01", "to=yesterday"} {
+		if code, _ := getSummary(t, api, bad); code != http.StatusBadRequest {
+			t.Errorf("summary ?%s = %d", bad, code)
+		}
+		rec := httptest.NewRecorder()
+		api.StaffList(rec, httptest.NewRequest(http.MethodGet, "/api/sofi-log?"+bad, nil))
+		if rec.Code != http.StatusBadRequest {
+			t.Errorf("list ?%s = %d", bad, rec.Code)
+		}
 	}
 }
 

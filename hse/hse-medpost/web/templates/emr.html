@@ -493,18 +493,24 @@
           </div>
 
           <div id="scr-view-sofi" role="tabpanel" aria-labelledby="scr-tab-sofi" hidden>
-            <!-- Filled by sofi-log.js from GET /api/sofi-log: what employees submitted at /sofi. -->
+            <!-- Filled by sofi-log.js from GET /api/sofi-log: what employees submitted at /sofi.
+                 sofi-rounds.js fills the status line and the Round list (GET /api/sofi-windows/status). -->
+            <p class="sofi-window-status" role="status"></p>
             <div class="app-filter">
               <label>
                 <span>Search name</span>
                 <input type="text" id="sofi-search" placeholder="Type a name…" autocomplete="off" aria-label="Search name" />
+              </label>
+              <label>
+                <span>Period</span>
+                <select id="sofi-round" class="sofi-round-select" data-default="all" aria-label="Period"></select>
               </label>
             </div>
             <div class="table-scroll">
               <table class="data-table compact" id="sofi-table">
                 <thead>
                   <tr>
-                    <th>Submitted</th><th>Name</th><th>Position</th><th>Company</th><th>Age</th><th>Weeks on site</th><th>MCU review</th>
+                    <th>Submitted (GMT+9)</th><th>Name</th><th>Position</th><th>Company</th><th>Age</th><th>Weeks on site</th><th>MCU review</th>
                     <th>Lack of energy</th><th>Physical exertion</th><th>Physical discomfort</th><th>Lack of motivation</th><th>Sleepiness</th>
                     <th>Total</th><th>Result</th>
                   </tr>
@@ -557,6 +563,30 @@
                  From / To dates and "Chart by" company or position as the charts above. -->
             <div id="sofi-dash" hidden>
               <h2 class="sofi-dash-title">SOFI Fatigue Survey</h2>
+              <p class="sofi-window-status" role="status"></p>
+              <div class="app-filter">
+                <label>
+                  <span>Period (when the survey was conducted)</span>
+                  <select id="sofi-dash-round" class="sofi-round-select" data-default="latest" aria-label="Period"></select>
+                </label>
+              </div>
+              <p id="sofi-summary" class="sofi-summary" hidden></p>
+              <p class="sofi-note">The From / To dates above do not apply to the SOFI survey: pick the period it was conducted. Dates are GMT+9.</p>
+              <!-- The doctor's note of the chosen period (sofi-report.js, GET/PUT /api/sofi-windows/{id}/note).
+                   Shown only for a real period; only a doctor / CMO gets a text box, others read it. -->
+              <div id="sofi-note-box" class="sofi-note-box" hidden>
+                <label for="sofi-note-text" class="sofi-note-label">Doctor's note for this period</label>
+                <textarea id="sofi-note-text" rows="4" maxlength="2000" placeholder="Interpretation and recommendation for this period"></textarea>
+                <p id="sofi-note-meta" class="sofi-note"></p>
+                <div class="sofi-report-actions">
+                  <button type="button" class="btn-primary" id="sofi-note-save">Save note</button>
+                  <span id="sofi-note-msg" role="status"></span>
+                </div>
+              </div>
+              <div class="sofi-report-actions">
+                <button type="button" class="btn-ghost" id="sofi-pdf">Download PDF report</button>
+                <span id="sofi-pdf-msg" role="status"></span>
+              </div>
               <p id="sofi-dash-error" class="app-empty" hidden></p>
               <div class="mal-stats scr-stats" id="sofi-stats"></div>
               <div class="mal-chart">
@@ -822,8 +852,11 @@
   <script src="/static/date-dmy.js"></script>
   <script src="/static/malaria.js"></script>
   <script src="/static/screening-log.js"></script>
+  <script src="/static/sofi-rounds.js"></script>
   <script src="/static/sofi-log.js"></script>
   <script src="/static/sofi-dashboard.js"></script>
+  <script src="/static/sofi-report-pdf.js"></script>
+  <script src="/static/sofi-report.js"></script>
   <script src="/static/da-form-core.js"></script>
   <script src="/static/da-form-pdf.js"></script>
   <script src="/static/da-form.js"></script>

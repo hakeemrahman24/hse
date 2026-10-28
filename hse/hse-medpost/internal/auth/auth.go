@@ -30,7 +30,14 @@ type Session struct {
 	StaffID int64  `json:"sid"`
 	Role    string `json:"role"`
 	Name    string `json:"name"`
-	Exp     int64  `json:"exp"`
+	// WindowID is only set on a /sofi sign-in: the open window the person signed in under, so
+	// they can still finish the form if it closes by itself while they are filling it in.
+	WindowID int64 `json:"wid,omitempty"`
+	// Ver is only set on a medical checkup portal (/mcu-submit) session: the account's
+	// SessionVersion when it signed in. A password change or Disable bumps the stored version, so
+	// every older cookie stops working on its next request.
+	Ver int   `json:"ver,omitempty"`
+	Exp int64 `json:"exp"`
 }
 
 type Store struct {

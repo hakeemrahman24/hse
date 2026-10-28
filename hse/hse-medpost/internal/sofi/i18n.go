@@ -88,6 +88,13 @@ var messages = [][2]string{
 	{"Your fatigue is moderate. Rest and drink water, and tell your supervisor if it gets worse.", "Kelelahan Anda sedang. Istirahat dan minum air, lalu beri tahu atasan jika bertambah berat."},
 	{"Your fatigue is high. Tell your supervisor and the medical post before doing high-risk work.", "Kelelahan Anda tinggi. Beri tahu atasan dan pos medis sebelum melakukan pekerjaan berisiko tinggi."},
 	{"This is a screening result, not a diagnosis.", "Ini hasil skrining, bukan diagnosis."},
+
+	{msgClosed, "Kuesioner sedang ditutup."},
+	{"The questionnaire is closed", "Kuesioner ditutup"},
+	{"It opens on", "Dibuka pada"},
+	{"Please come back then.", "Silakan kembali pada waktu tersebut."},
+	{"No opening date has been set yet.", "Belum ada jadwal pembukaan."},
+	{"Questions? Ask the medical post.", "Ada pertanyaan? Tanyakan ke pos medis."},
 }
 
 var idText = func() map[string]string {

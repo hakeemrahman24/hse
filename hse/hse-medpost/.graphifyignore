@@ -5,3 +5,5 @@ _reference/
 .cursor/
 # Uploaded photos and PDFs, not source.
 data/
+# Legacy Flask clinic app and spreadsheets the new app replaced; kept on disk for reference only.
+old-data/

@@ -24,6 +24,7 @@ import (
 	"hse-medpost/internal/sofi"
 	"hse-medpost/internal/staff"
 	"hse-medpost/internal/storage"
+	"hse-medpost/internal/turnstile"
 )
 
 func main() {
@@ -42,7 +43,7 @@ func main() {
 		if err := screening.EnsureScreeningTableNames(database); err != nil {
 			log.Fatal(err)
 		}
-		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql"} {
+		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "018_sofi_window.sql", "019_sofi_period_note.sql"} {
 			sqlText, err := db.LoadMigrationFile(filepath.Join("migrations", "sqlite", name))
 			if err != nil {
 				log.Fatal(err)
@@ -50,6 +51,9 @@ func main() {
 			if err := db.Migrate(database, sqlText); err != nil {
 				log.Fatal(err)
 			}
+		}
+		if err := sofi.EnsureWindowColumn(database); err != nil {
+			log.Fatal(err)
 		}
 		if err := emr.EnsureMalariaPurpose(database); err != nil {
 			log.Fatal(err)
@@ -413,21 +417,34 @@ func main() {
 	// The saved questionnaires, for the SOFI tab on the Medical Record page (staff only).
 	mux.Handle("GET /api/sofi-log", middleware.RequireAuth(http.HandlerFunc(sofiAPI.StaffList)))
 	mux.Handle("GET /api/sofi-log/summary", middleware.RequireAuth(http.HandlerFunc(sofiAPI.StaffSummary)))
+	// When /sofi is open (plan/sofi-window-plan.md). Any staff may read the status and the rounds
+	// for the results' filter; only an admin may list the full schedule, add a window or end one.
+	mux.Handle("GET /api/sofi-windows/status", middleware.RequireAuth(http.HandlerFunc(sofiAPI.WindowStatus)))
+	mux.Handle("GET /api/sofi-windows", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminWindows))))
+	mux.Handle("POST /api/sofi-windows", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminCreateWindow))))
+	mux.Handle("POST /api/sofi-windows/{id}/end", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminEndWindow))))
+	// The doctor's note of a test period, printed on the PDF report. Any signed-in staff may read
+	// it; PutNote checks for a doctor, the Chief Medical Officer or the administrator itself.
+	mux.Handle("GET /api/sofi-windows/{id}/note", middleware.RequireAuth(http.HandlerFunc(sofiAPI.GetNote)))
+	mux.Handle("PUT /api/sofi-windows/{id}/note", middleware.RequireAuth(http.HandlerFunc(sofiAPI.PutNote)))
 	// Cloudflare Turnstile, the same keys as hse-register's SOC page. Without keys the page is
 	// only served when SOFI_DEV_STUBS=1 (a fake check); otherwise /sofi is left off, because
 	// a sign-in that anyone could script must not be open.
 	turnstileKey, turnstileSecret := os.Getenv("TURNSTILE_SITEKEY"), os.Getenv("TURNSTILE_SECRET")
 	switch {
 	case turnstileKey != "" && turnstileSecret != "":
-		sofiAPI.SetTurnstile(sofi.NewCloudflareVerifier(turnstileSecret), turnstileKey, false)
+		sofiAPI.SetTurnstile(turnstile.NewCloudflareVerifier(turnstileSecret), turnstileKey, false)
 		sofiAPI.Register(mux)
 	case os.Getenv("SOFI_DEV_STUBS") == "1":
-		sofiAPI.SetTurnstile(sofi.DevVerifier{}, "", true)
+		sofiAPI.SetTurnstile(turnstile.DevVerifier{}, "", true)
 		sofiAPI.Register(mux)
 		log.Print("SOFI: using a FAKE Cloudflare check (SOFI_DEV_STUBS=1)")
 	default:
 		log.Print("SOFI (/sofi) is off: set TURNSTILE_SITEKEY and TURNSTILE_SECRET (or SOFI_DEV_STUBS=1 for development).")
 	}
+
+	// Public medical checkup submission portal (/mcu-submit): its own accounts, cookie and look.
+	startMcuPortal(database, cfg.SessionSecret, mux)
 
 	directoryAPI := &directory.API{DB: database, Token: cfg.DirectoryAPIToken}
 	mux.HandleFunc("GET /api/directory/employees", directoryAPI.List)

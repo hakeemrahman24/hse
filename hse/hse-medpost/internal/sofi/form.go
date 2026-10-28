@@ -125,6 +125,18 @@ func (a *API) Submit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusUnauthorized, "Please sign in first.")
 		return
 	}
+	// The window the person signed in under must not have been ended by an admin (Close now /
+	// Cancel). A window that merely ran out of time still counts: nobody is cut off mid-form.
+	winID, err := a.sessionWindowID(s)
+	if err != nil {
+		log.Printf("sofi: submit window: %v", err)
+		writeError(w, r, http.StatusInternalServerError, "Something went wrong.")
+		return
+	}
+	if winID == 0 {
+		writeError(w, r, http.StatusForbidden, msgClosed)
+		return
+	}
 	var in submission
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in); err != nil ||
 		in.WeeksOnSite == nil || !validWeeks(*in.WeeksOnSite) {
@@ -137,7 +149,7 @@ func (a *API) Submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	key := fmt.Sprintf("sub:%d", s.UserID)
-	if a.lim.count(key, submitWindow) >= submitMax {
+	if a.lim.Count(key, submitWindow) >= submitMax {
 		writeError(w, r, http.StatusTooManyRequests, "Too many submissions, please try again later.")
 		return
 	}
@@ -147,21 +159,22 @@ func (a *API) Submit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusInternalServerError, "Something went wrong.")
 		return
 	}
-	if err := a.save(s.UserID, p, *in.WeeksOnSite, in.Answers, res); err != nil {
+	if err := a.save(s.UserID, p, *in.WeeksOnSite, in.Answers, res, winID); err != nil {
 		log.Printf("sofi: submit save: %v", err)
 		writeError(w, r, http.StatusInternalServerError, "Something went wrong.")
 		return
 	}
-	a.lim.add(key)
+	a.lim.Add(key)
 	writeJSON(w, http.StatusOK, res)
 }
 
-func (a *API) save(patientID int64, p Profile, weeks int, answers []int, res Result) error {
-	return a.saveAt(patientID, p, weeks, answers, res, a.now().UTC().Format(timeLayoutDB))
+func (a *API) save(patientID int64, p Profile, weeks int, answers []int, res Result, windowID int64) error {
+	return a.saveAt(patientID, p, weeks, answers, res, a.now().UTC().Format(timeLayoutDB), windowID)
 }
 
-// saveAt stores one questionnaire with the given submit time (UTC, YYYY-MM-DDTHH:MM:SS).
-func (a *API) saveAt(patientID int64, p Profile, weeks int, answers []int, res Result, submittedAt string) error {
+// saveAt stores one questionnaire with the given submit time (UTC, YYYY-MM-DDTHH:MM:SS) and the
+// window it was submitted in (0 stores NULL, "before windows existed").
+func (a *API) saveAt(patientID int64, p Profile, weeks int, answers []int, res Result, submittedAt string, windowID int64) error {
 	raw, err := json.Marshal(answers)
 	if err != nil {
 		return fmt.Errorf("encode answers: %w", err)
@@ -170,14 +183,18 @@ func (a *API) saveAt(patientID int64, p Profile, weeks int, answers []int, res R
 	if p.Age > 0 {
 		age = p.Age
 	}
+	var win any
+	if windowID > 0 {
+		win = windowID
+	}
 	score := func(i int) int { return res.Dimensions[i].Score }
 	_, err = a.DB.Exec(`
 		INSERT INTO SofiScreening
 		  (FK_PatientID, SubmittedAt, WeeksOnSite, AgeYears, WorkPosition, Company, McuReviewStatus, Answers,
-		   ScoreEnergy, ScoreExertion, ScoreDiscomfort, ScoreMotivation, ScoreSleepiness, ScoreTotal, ResultLevel)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		   ScoreEnergy, ScoreExertion, ScoreDiscomfort, ScoreMotivation, ScoreSleepiness, ScoreTotal, ResultLevel, FK_WindowID)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		patientID, submittedAt, weeks, age, p.WorkPosition, p.Company, p.MCUReviewStatus, string(raw),
-		score(0), score(1), score(2), score(3), score(4), res.Total, res.Level)
+		score(0), score(1), score(2), score(3), score(4), res.Total, res.Level, win)
 	if err != nil {
 		return fmt.Errorf("insert SofiScreening: %w", err)
 	}
@@ -212,13 +229,19 @@ func (a *API) StaffList(w http.ResponseWriter, r *http.Request) {
 		where = append(where, `LOWER(p.Name) LIKE ? ESCAPE '!'`)
 		args = append(args, "%"+likeEscape(strings.ToLower(q))+"%")
 	}
-	if from := r.URL.Query().Get("from"); from != "" {
-		where = append(where, `SUBSTR(s.SubmittedAt, 1, 10) >= ?`)
-		args = append(args, from)
+	dayWhere, dayArgs, derr := siteDayFilter(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
+	if derr != nil {
+		writeError(w, r, http.StatusBadRequest, derr.Error())
+		return
 	}
-	if to := r.URL.Query().Get("to"); to != "" {
-		where = append(where, `SUBSTR(s.SubmittedAt, 1, 10) <= ?`)
-		args = append(args, to)
+	where, args = append(where, dayWhere...), append(args, dayArgs...)
+	clause, wargs, werr := windowFilter(r.URL.Query().Get("window"))
+	if werr != nil {
+		writeError(w, r, http.StatusBadRequest, werr.Error())
+		return
+	}
+	if clause != "" {
+		where, args = append(where, clause), append(args, wargs...)
 	}
 	args = append(args, listLimit)
 	rows, err := a.DB.Query(`

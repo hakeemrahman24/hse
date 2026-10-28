@@ -179,6 +179,14 @@ func (a *API) listEmployees(q, dob, checkUpID string, patientID int64) ([]Employ
 }
 
 func employeeQuery(q, dob, checkUpID string, patientID int64, today string) (string, []any) {
+	// "Latest" means latest real decision. A newer row only hides an older Fit
+	// when it is Close, is not an IncompleteResult, and has not been stamped
+	// "Renewed by <id>". An Open row is an unfinished submission, an
+	// IncompleteResult is a saved-but-undecided one, and a "Renewed by" row was
+	// already replaced by a newer record (a worker's incomplete documents
+	// carried a newer date than the Fit record submitted later, and he vanished
+	// from this API while MCU data still showed him Valid). A newer Close row
+	// with a decision, even Unfit or NeedFollowUp, still wins.
 	query := `
 		SELECT p.PatientID, COALESCE(p.EmployeeID,''), p.Name, COALESCE(p.Gender,''), COALESCE(p.DateOfBirth,''),
 		       COALESCE(n.Name,''), COALESCE(` + db.LatestBloodTypeSQL("p") + `,''),
@@ -197,6 +205,9 @@ func employeeQuery(q, dob, checkUpID string, patientID int64, today string) (str
 		  AND NOT EXISTS (
 		    SELECT 1 FROM McuRecord newer
 		    WHERE newer.FK_PatientID = m.FK_PatientID
+		      AND newer.CheckUpStatus = 'Close'
+		      AND COALESCE(newer.ResultCriteria, '') <> 'IncompleteResult'
+		      AND COALESCE(newer.HcValidityStatus, '') NOT LIKE 'Renewed by %'
 		      AND (
 		        COALESCE(newer.DateCheckUp, '') > COALESCE(m.DateCheckUp, '')
 		        OR (COALESCE(newer.DateCheckUp, '') = COALESCE(m.DateCheckUp, '') AND newer.McuRecordID > m.McuRecordID)
