@@ -41,8 +41,11 @@
       </section>
       {{end}}
 
+      {{if .Done}}<p class="sub" role="status">{{tr .Lang "You have already completed the questionnaire for this period."}}</p>{{end}}
+
       <p id="sofi-error" role="alert" class="sofi-error" hidden></p>
 
+      {{if not .Done}}
       <form id="sofi-form" autocomplete="off" novalidate
         data-lang="{{.Lang}}"
         data-msg-answer-all="{{tr .Lang "Please answer every word."}}"
@@ -92,6 +95,7 @@
           <button type="submit" class="btn-primary">{{tr .Lang "Submit"}}</button>
         </div>
       </form>
+      {{end}}
 
       <section id="sofi-result" hidden>
         <h2>{{tr .Lang "Your result"}}</h2>
@@ -103,6 +107,6 @@
     </div>
   </div>
 
-  <script src="/static/sofi-form.js?v=3" defer></script>
+  {{if not .Done}}<script src="/static/sofi-form.js?v=3" defer></script>{{end}}
 </body>
 </html>

@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"hse-medpost/internal/auth"
@@ -65,7 +66,8 @@ type API struct {
 	verifier     turnstile.Verifier
 	now          func() time.Time // replaced in tests
 	sitekey      string
-	devCheck     bool // show a stub button instead of the Cloudflare box
+	devCheck     bool       // show a stub button instead of the Cloudflare box
+	submitMu     sync.Mutex // makes "already submitted?" and the insert one step
 }
 
 // New builds the handlers. The signing key is derived from the staff session secret, so a staff
@@ -174,6 +176,8 @@ type pageData struct {
 	WeeksOverYear int
 	// The person's own earlier results, newest first (empty the first time).
 	Past []PastResult
+	// Done: they already sent the questionnaire in the period they signed in under, so no form.
+	Done bool
 }
 
 func (a *API) pageData(r *http.Request, path string) pageData {
@@ -281,6 +285,14 @@ func (a *API) Start(w http.ResponseWriter, r *http.Request) {
 	d := a.pageData(r, "/sofi/start")
 	d.Name, d.Profile, d.Items, d.Scale, d.LevelHelp = s.Name, p, Items, scalePoints, levelHelp
 	d.WeekChoices, d.WeeksOverYear = weekChoices, WeeksOverYear
+	if winID, werr := a.sessionWindowID(s); werr == nil && winID > 0 {
+		d.Done, err = a.hasSubmitted(s.UserID, winID)
+		if err != nil {
+			log.Printf("sofi: start submitted check: %v", err)
+			http.Error(w, tr(langOf(r), "Something went wrong."), http.StatusInternalServerError)
+			return
+		}
+	}
 	if d.Past, err = a.pastResults(s.UserID); err != nil {
 		log.Printf("sofi: start past results: %v", err)
 		http.Error(w, tr(langOf(r), "Something went wrong."), http.StatusInternalServerError)

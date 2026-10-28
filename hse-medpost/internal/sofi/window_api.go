@@ -14,6 +14,9 @@ import (
 // msgClosed is shown (and translated) whenever /sofi is used outside an open window.
 const msgClosed = "The questionnaire is closed right now."
 
+// msgAlreadyDone is the answer to a second questionnaire from the same person in one period.
+const msgAlreadyDone = "You have already completed the questionnaire for this period."
+
 // requireOpen lets a /sofi request go on only while a window is open. It answers 403 itself and
 // returns false otherwise. Every public route calls it, not just the landing page, because the
 // JSON routes can be called directly without ever seeing the page.
