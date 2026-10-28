@@ -74,7 +74,7 @@ type API struct {
 // The templates live in web/templates/sofi/, not beside the staff pages: the staff server parses
 // every web/templates/*.html with one set of functions, and these need the "tr" function.
 func New(database *sql.DB, sessionSecret, templateDir string) (*API, error) {
-	pages, err := template.New("sofi").Funcs(template.FuncMap{"tr": tr}).ParseFiles(
+	pages, err := template.New("sofi").Funcs(template.FuncMap{"tr": tr, "lower": strings.ToLower}).ParseFiles(
 		filepath.Join(templateDir, "sofi", "sofi_signin.html"),
 		filepath.Join(templateDir, "sofi", "sofi_home.html"),
 		filepath.Join(templateDir, "sofi", "sofi_closed.html"),
@@ -172,6 +172,8 @@ type pageData struct {
 	// The choices for "weeks on site": WeekChoices, then one more option worth WeeksOverYear.
 	WeekChoices   []int
 	WeeksOverYear int
+	// The person's own earlier results, newest first (empty the first time).
+	Past []PastResult
 }
 
 func (a *API) pageData(r *http.Request, path string) pageData {
@@ -279,6 +281,11 @@ func (a *API) Start(w http.ResponseWriter, r *http.Request) {
 	d := a.pageData(r, "/sofi/start")
 	d.Name, d.Profile, d.Items, d.Scale, d.LevelHelp = s.Name, p, Items, scalePoints, levelHelp
 	d.WeekChoices, d.WeeksOverYear = weekChoices, WeeksOverYear
+	if d.Past, err = a.pastResults(s.UserID); err != nil {
+		log.Printf("sofi: start past results: %v", err)
+		http.Error(w, tr(langOf(r), "Something went wrong."), http.StatusInternalServerError)
+		return
+	}
 	_ = a.pages.ExecuteTemplate(w, "sofi_home.html", d)
 }
 

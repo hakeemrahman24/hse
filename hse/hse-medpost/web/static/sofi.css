@@ -81,3 +81,10 @@
 @media (max-width: 520px) {
   .sofi-bar { grid-template-columns: 1fr; gap: 4px; }
 }
+
+/* "Your earlier results" on /sofi/start: the person's own earlier questionnaires */
+.sofi-past { margin: 0 0 1.5rem; }
+.sofi-past h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
+.sofi-past-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.sofi-past-table th, .sofi-past-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border, #d9dee5); }
+.sofi-past-table small { color: var(--text-2); }

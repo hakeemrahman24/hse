@@ -315,7 +315,7 @@ _Convention: every session that changes code or makes a design decision appends 
 
 - The PDF report now prints Chinese, Japanese, Korean and Arabic (company names, doctor's note). Noto fonts in `web/static/fonts/` are fetched only when the report text needs them; text is drawn in per-script runs with its own wrapper. Details: `plan/sofi-window-plan.md` section 11. Why: names and notes in those scripts printed as `?`.
 - Thai, emoji and any other script now print too: the browser draws those runs on a canvas and the PDF embeds them as pictures (not selectable; depends on the viewer's system fonts).
-- Still open: a person seeing their own SOFI score after sign-in (today only right after submitting) is not built, pending the owner's answer; mysql `029_sofi_period_note.sql` must be run by hand before deploying the note/PDF build.
+- A person who signs in at `/sofi` now sees their own earlier results above the form (plan section 12). Still open: mysql `029` was run on prod via Adminer (owner, 2026-10-29); the work so far is committed (150a44d), this addition is not.
 
 ### 2026-10-28 — Phone layout: gap between the sidebar and the panel on stacked pages
 - **Found:** on a phone (375px) `/emr` showed about 280px of empty space between the "Medical record" menu card and the "Medical Record" content card. Below 900px `.app-shell` becomes one column, but it keeps `min-height: calc(100vh - 52px)`, so the grid shared the spare height between its two rows (sidebar, panel) instead of leaving it at the bottom.
