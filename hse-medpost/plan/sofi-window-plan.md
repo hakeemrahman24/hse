@@ -115,3 +115,7 @@ Company names and the doctor's note can be Chinese, Japanese, Korean or Arabic, 
 - **Limits:** the page layout stays left to right, so a mostly Arabic note is not right-aligned. Rare characters outside the national sets show as an empty box. Fonts add about 4 MB to the repo.
 - **Ghostscript** is not involved: it is only used on the server to compress uploads; the report is drawn in the browser.
 - Verified in headless Chromium with a mixed Latin / Chinese / Japanese / Arabic note and company names; `node --test web/*.test.js` green.
+
+## 12. A person sees their own earlier results (owner, 2026-10-29)
+
+When someone signs in at `/sofi` (a window must be open to sign in) the start page lists their own earlier questionnaires above the form: date and time in GMT+9, total score out of 150 and the overall band, newest first, at most 20 (`past.go`, `sofi_home.html`). The person comes from the sign-in session only. Scores are worked out again from the stored answers, like the staff table. A result is still shown straight after submitting, as before. While no window is open nobody can sign in, so earlier results are not visible then; a personal PDF was not asked for.

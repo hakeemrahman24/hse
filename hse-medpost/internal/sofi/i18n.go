@@ -80,6 +80,8 @@ var messages = [][2]string{
 	{"More than 1 year", "Lebih dari 1 tahun"},
 	{"Choose", "Pilih"},
 	{"Your result", "Hasil Anda"},
+	{"Your earlier results", "Hasil Anda sebelumnya"},
+	{"Date", "Tanggal"},
 	{"Total score", "Skor total"},
 	{"Low", "Rendah"},
 	{"Moderate", "Sedang"},
