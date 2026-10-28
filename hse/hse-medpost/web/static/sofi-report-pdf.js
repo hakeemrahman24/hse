@@ -131,6 +131,12 @@ function sofiSetRunFont(doc, fonts, script, style) {
   }
 }
 
+// Width of an Arabic run as jsPDF draws it: doc.text with lang "ar" first joins the letters into their
+// shaped forms (processArabic), and those glyphs are not as wide as the plain letters.
+function sofiArabicWidth(doc, text) {
+  return doc.getTextWidth(typeof doc.processArabic === "function" ? doc.processArabic(text) : text);
+}
+
 // Width of text in the current font size, run by run.
 function sofiTextWidth(doc, fonts, text, style) {
   let w = 0;
@@ -141,7 +147,7 @@ function sofiTextWidth(doc, fonts, text, style) {
     } else if (run.script === "cjk") {
       for (const ch of run.text) { w += doc.getTextWidth(ch); }
     } else {
-      w += doc.getTextWidth(run.text);
+      w += run.script === "arabic" ? sofiArabicWidth(doc, run.text) : doc.getTextWidth(run.text);
     }
   });
   return w;
@@ -165,7 +171,7 @@ function sofiDrawText(doc, fonts, text, x, y, style, align) {
       }
     } else if (run.script === "arabic") {
       doc.text(run.text, cx, y, { lang: "ar" });
-      cx += doc.getTextWidth(run.text);
+      cx += sofiArabicWidth(doc, run.text);
     } else {
       doc.text(run.text, cx, y);
       cx += doc.getTextWidth(run.text);

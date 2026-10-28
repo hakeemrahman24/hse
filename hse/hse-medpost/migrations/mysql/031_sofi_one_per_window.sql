@@ -1,0 +1,23 @@
+-- One SOFI questionnaire per person per test window (MariaDB). SQLite gets the same unique index from
+-- sofi.EnsureWindowColumn at startup.
+--
+-- Not loaded by cmd/server: when DB_DRIVER=mysql the app skips migrations/ entirely, so this runs
+-- by hand, once, against the production database. Take a mysqldump backup first.
+--
+-- Run 028_sofi_window.sql first (it adds FK_WindowID). Run this BEFORE or AFTER deploying the build
+-- that enforces one questionnaire per period: the app checks it by itself too, the index is the
+-- backstop for two server processes running at once.
+--
+-- Step 1: look for people who already have two results in one window. The index cannot be created
+-- while there are any. The query must return no rows:
+--
+--   SELECT FK_PatientID, FK_WindowID, COUNT(*) AS n, GROUP_CONCAT(SofiID) AS sofi_ids
+--   FROM SofiScreening WHERE FK_WindowID IS NOT NULL
+--   GROUP BY FK_PatientID, FK_WindowID HAVING COUNT(*) > 1;
+--
+-- If it returns rows, decide with the doctor which result to keep and delete the others by SofiID
+-- (the results are health records: do not delete without that decision), then run step 2.
+--
+-- Step 2: rows with FK_WindowID NULL (before windows existed) never count as duplicates.
+
+ALTER TABLE SofiScreening ADD UNIQUE INDEX IF NOT EXISTS uq_sofi_one_per_window (FK_PatientID, FK_WindowID);

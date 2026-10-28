@@ -1,8 +1,11 @@
 package sofi
 
 import (
+	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -146,5 +149,64 @@ func TestConcurrentSubmitsSaveOnlyOne(t *testing.T) {
 	_ = api.DB.QueryRow(`SELECT COUNT(*) FROM SofiScreening`).Scan(&n)
 	if ok != 1 || n != 1 {
 		t.Fatalf("%d accepted, %d rows saved; codes %v", ok, n, codes)
+	}
+}
+
+// The database refuses a second questionnaire for the same person and window even if the in-memory
+// lock is bypassed (a second server process); old rows without a window are not affected.
+func TestDatabaseRefusesADuplicatePersonAndWindow(t *testing.T) {
+	api := newTestAPI(t)
+	me := patientID(t, api, "Andi Pratama")
+	res, _ := Score(answers(1))
+	save := func(win int64) error {
+		return api.saveAt(me, Profile{}, 12, answers(1), res, "2026-10-20T00:00:00", win)
+	}
+	if err := save(1); err != nil {
+		t.Fatal(err)
+	}
+	err := save(1)
+	if err == nil || !isDuplicateKey(err) {
+		t.Fatalf("second row for the same window: err = %v", err)
+	}
+	if err := save(0); err != nil || save(0) != nil {
+		t.Fatalf("rows without a window must stay allowed: %v", err)
+	}
+}
+
+func TestIsDuplicateKeyRecognisesBothDatabases(t *testing.T) {
+	for _, msg := range []string{"UNIQUE constraint failed: SofiScreening.FK_PatientID", "Error 1062 (23000): Duplicate entry '5-2' for key 'uq_sofi_one_per_window'"} {
+		if !isDuplicateKey(errors.New(msg)) {
+			t.Errorf("not recognised: %s", msg)
+		}
+	}
+	if isDuplicateKey(errors.New("disk full")) || isDuplicateKey(nil) {
+		t.Error("recognised something that is not a duplicate")
+	}
+}
+
+// The staff table shows at most listLimit rows; it says how many there are in all.
+func TestStaffListReportsWhenItShowsOnlyTheFirstRows(t *testing.T) {
+	api := newTestAPI(t)
+	me := patientID(t, api, "Andi Pratama")
+	res, _ := Score(answers(1))
+	for i := 0; i < listLimit+1; i++ { // window 0 (before windows) allows several rows per person
+		if err := api.saveAt(me, Profile{}, 12, answers(1), res, "2026-10-20T00:00:00", 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rec := httptest.NewRecorder()
+	api.StaffList(rec, httptest.NewRequest(http.MethodGet, "/api/sofi-log", nil))
+	var rows []Record
+	if err := json.Unmarshal(rec.Body.Bytes(), &rows); err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != listLimit || rec.Header().Get("X-Total-Count") != strconv.Itoa(listLimit+1) {
+		t.Fatalf("%d rows, X-Total-Count %q", len(rows), rec.Header().Get("X-Total-Count"))
+	}
+	// a search that matches nobody is not a truncation
+	rec = httptest.NewRecorder()
+	api.StaffList(rec, httptest.NewRequest(http.MethodGet, "/api/sofi-log?q=nobody", nil))
+	if rec.Header().Get("X-Total-Count") != "0" {
+		t.Fatalf("X-Total-Count %q", rec.Header().Get("X-Total-Count"))
 	}
 }

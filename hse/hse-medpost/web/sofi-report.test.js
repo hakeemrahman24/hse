@@ -10,7 +10,7 @@ vm.createContext(context);
 vm.runInContext(readFileSync("web/static/sofi-report-pdf.js", "utf8"), context);
 const {
   sofiPdfText, sofiReportSegments, sofiReportModel, sofiReportFileName, sofiReportDraw,
-  sofiTextRuns, sofiWrapText, sofiReportScripts,
+  sofiTextRuns, sofiWrapText, sofiReportScripts, sofiTextWidth,
 } = context;
 
 // The font names the report registers for the two on-demand fonts; passed to the drawing code.
@@ -256,4 +256,12 @@ test("a long unbroken run is wrapped but a mark stays with its letter", () => {
 
 test("a name typed with a combining accent is composed, so it prints as one letter", () => {
   assert.equal(sofiPdfText("José Peña", {}), "José Peña", "e + combining acute becomes é, not ?");
+});
+
+test("Arabic is measured as shaped, the way jsPDF draws it", () => {
+  const doc = fakeDoc();
+  doc.processArabic = (s) => "#".repeat(Math.ceil(s.length / 2)); // shaping joins letters: fewer glyphs
+  assert.equal(sofiTextWidth(doc, FONTS, ARABIC), Math.ceil(ARABIC.length / 2) * 5);
+  const plain = fakeDoc(); // an older jsPDF without processArabic: measure the text as it is
+  assert.equal(sofiTextWidth(plain, FONTS, ARABIC), ARABIC.length * 5);
 });

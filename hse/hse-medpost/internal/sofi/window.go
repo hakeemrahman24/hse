@@ -135,18 +135,32 @@ func EnsureWindowColumn(database *sql.DB) error {
 		return err
 	}
 	rows.Close()
-	if has {
-		return nil
-	}
-	for _, q := range []string{
-		`ALTER TABLE SofiScreening ADD COLUMN FK_WindowID INTEGER NULL REFERENCES SofiWindow(WindowID)`,
-		`CREATE INDEX IF NOT EXISTS idx_sofi_window ON SofiScreening(FK_WindowID)`,
-	} {
-		if _, err := database.Exec(q); err != nil {
-			return fmt.Errorf("add FK_WindowID: %w", err)
+	if !has {
+		for _, q := range []string{
+			`ALTER TABLE SofiScreening ADD COLUMN FK_WindowID INTEGER NULL REFERENCES SofiWindow(WindowID)`,
+			`CREATE INDEX IF NOT EXISTS idx_sofi_window ON SofiScreening(FK_WindowID)`,
+		} {
+			if _, err := database.Exec(q); err != nil {
+				return fmt.Errorf("add FK_WindowID: %w", err)
+			}
 		}
 	}
+	// One questionnaire per person per window, enforced by the database as well as by Submit's lock.
+	// Rows without a window (NULL) are never equal to each other, so old results are unaffected.
+	if _, err := database.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS uq_sofi_one_per_window ON SofiScreening(FK_PatientID, FK_WindowID)`); err != nil {
+		return fmt.Errorf("one questionnaire per person per window (does a person have two results in one window? remove the extra row): %w", err)
+	}
 	return nil
+}
+
+// isDuplicateKey tells a unique-index violation from other database errors. SQLite says "UNIQUE
+// constraint failed"; MariaDB says "Duplicate entry" (error 1062).
+func isDuplicateKey(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "UNIQUE constraint failed") || strings.Contains(msg, "Duplicate entry")
 }
 
 // openWindow is the window that is open at now, or nil when /sofi is closed.

@@ -270,8 +270,13 @@ func TestResultsCanBeFilteredByRound(t *testing.T) {
 	}
 	andi := patientID(t, api, "Andi Pratama")
 	score, _ := Score(answers(1))
-	for _, w := range []int64{0, w1, w1, w2} {
-		if err := api.saveAt(andi, Profile{}, 12, answers(1), score, "2026-11-11T00:00:00", w); err != nil {
+	// one result per person per window, so the second row of window 1 belongs to another person
+	andini := patientID(t, api, "Andini Putri")
+	for _, row := range []struct {
+		who int64
+		win int64
+	}{{andi, 0}, {andi, w1}, {andini, w1}, {andi, w2}} {
+		if err := api.saveAt(row.who, Profile{}, 12, answers(1), score, "2026-11-11T00:00:00", row.win); err != nil {
 			t.Fatal(err)
 		}
 	}

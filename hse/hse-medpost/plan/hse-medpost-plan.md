@@ -315,6 +315,7 @@ _Convention: every session that changes code or makes a design decision appends 
 
 - The PDF report now prints Chinese, Japanese, Korean and Arabic (company names, doctor's note). Noto fonts in `web/static/fonts/` are fetched only when the report text needs them; text is drawn in per-script runs with its own wrapper. Details: `plan/sofi-window-plan.md` section 11. Why: names and notes in those scripts printed as `?`.
 - Thai, emoji and any other script now print too: the browser draws those runs on a canvas and the PDF embeds them as pictures (not selectable; depends on the viewer's system fonts).
+- Follow-ups from the review: unique index one result per person per window (mysql `031`, run by hand after checking for duplicates; SQLite does it at startup), "showing the newest 500 of N" notice on the SOFI table, Arabic width via `processArabic` (plan section 14.1).
 - Review fixes: a session from an earlier window saves into the open window; the note box locks while another period loads; PDF text is NFC-normalised (plan section 14, which also lists what is left open). README and graphify updated.
 - One questionnaire per person per test period is enforced on submit (plan section 13); the start page then shows the earlier results instead of the form.
 - A person who signs in at `/sofi` now sees their own earlier results above the form (plan section 12). Still open: mysql `029` was run on prod via Adminer (owner, 2026-10-29); the work so far is committed (150a44d), this addition is not.

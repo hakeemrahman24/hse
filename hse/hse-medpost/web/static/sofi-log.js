@@ -12,6 +12,7 @@
   var bodyEl = document.getElementById("sofi-body");
   var emptyEl = document.getElementById("sofi-empty");
   var errorEl = document.getElementById("sofi-error");
+  var truncatedEl = document.getElementById("sofi-truncated");
   var timer = null;
   var seq = 0;
 
@@ -40,6 +41,14 @@
     td.classList.add("sofi-cell-" + d.level.toLowerCase());
     td.title = d.level;
     return td;
+  }
+
+  // The server shows the newest rows only; say so, with the real total, so the table is not mistaken
+  // for everything (the dashboard and the PDF count every survey).
+  function showTruncation(shown, total) {
+    var more = total > shown;
+    truncatedEl.hidden = !more;
+    truncatedEl.textContent = more ? "Showing the newest " + shown + " of " + total + " questionnaires. Narrow the search or pick a period to see the rest." : "";
   }
 
   function render(rows) {
@@ -71,15 +80,17 @@
     fetch("/api/sofi-log?" + params, { credentials: "same-origin" })
       .then(function (res) {
         if (res.status === 401) { location.href = "/"; return Promise.reject(new Error("signed out")); }
+        var total = parseInt(res.headers.get("X-Total-Count"), 10);
         return res.json().then(function (data) {
           if (!res.ok) { throw new Error(data.error || "Something went wrong (" + res.status + ")"); }
-          return data;
+          return { rows: data, total: isNaN(total) ? data.length : total };
         });
       })
-      .then(function (rows) {
+      .then(function (result) {
         if (mine !== seq) { return; } // a newer search is already on its way
         errorEl.hidden = true;
-        render(rows);
+        render(result.rows);
+        showTruncation(result.rows.length, result.total);
       })
       .catch(function (err) {
         if (mine !== seq) { return; }
