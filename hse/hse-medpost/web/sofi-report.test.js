@@ -253,3 +253,7 @@ test("a long unbroken run is wrapped but a mark stays with its letter", () => {
   assert.ok(lines.length > 1);
   assert.ok(lines.every((l) => !/^[\u0e31\u0e34-\u0e3a\u0e47-\u0e4e]/.test(l)), "no line starts with a combining mark");
 });
+
+test("a name typed with a combining accent is composed, so it prints as one letter", () => {
+  assert.equal(sofiPdfText("José Peña", {}), "José Peña", "e + combining acute becomes é, not ?");
+});

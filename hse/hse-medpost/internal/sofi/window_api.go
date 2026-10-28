@@ -36,24 +36,27 @@ func (a *API) requireOpen(w http.ResponseWriter, r *http.Request) (*windowRow, b
 
 // sessionWindowID is the window a signed-in person may submit under, or 0 when none.
 //
-// The window recorded at sign-in counts until an admin ends it, even after its closing time, so
-// someone halfway through the form is not cut off. A cookie from before windows existed has no
-// window; it is accepted only if some window is open right now.
+// A window that is open right now always wins, even when the person signed in under an earlier
+// one: a result must land in the period it was really sent in, not in one that has closed (and may
+// already be reported). Only when no window is open does the window recorded at sign-in count, until
+// an admin ends it, so someone halfway through the form is not cut off by the closing time.
+// A cookie from before windows existed has no window and so needs an open one.
 func (a *API) sessionWindowID(s *auth.Session) (int64, error) {
-	if s.WindowID != 0 {
-		ok, err := a.windowUsable(s.WindowID)
-		if err != nil {
-			return 0, err
-		}
-		if ok {
-			return s.WindowID, nil
-		}
-	}
 	win, err := a.openWindow(a.now())
-	if err != nil || win == nil {
+	if err != nil {
 		return 0, err
 	}
-	return win.ID, nil
+	if win != nil {
+		return win.ID, nil
+	}
+	if s.WindowID == 0 {
+		return 0, nil
+	}
+	ok, err := a.windowUsable(s.WindowID)
+	if err != nil || !ok {
+		return 0, err
+	}
+	return s.WindowID, nil
 }
 
 // closedData is what sofi_closed.html needs.
