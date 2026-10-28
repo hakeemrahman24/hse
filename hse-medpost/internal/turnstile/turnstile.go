@@ -1,4 +1,6 @@
-package sofi
+// Package turnstile verifies Cloudflare Turnstile tokens on the server. It is shared by the public
+// pages (/sofi and the medical checkup submission portal) so both check the same way.
+package turnstile
 
 import (
 	"context"
@@ -20,11 +22,12 @@ type Verifier interface {
 type cloudflareVerifier struct {
 	secret string
 	client *http.Client
+	url    string // siteVerifyURL; a field only so tests can point it at a fake server
 }
 
 // NewCloudflareVerifier verifies tokens against Cloudflare with the site's secret key.
 func NewCloudflareVerifier(secret string) Verifier {
-	return &cloudflareVerifier{secret: secret, client: &http.Client{Timeout: 5 * time.Second}}
+	return &cloudflareVerifier{secret: secret, client: &http.Client{Timeout: 5 * time.Second}, url: siteVerifyURL}
 }
 
 func (c *cloudflareVerifier) Verify(ctx context.Context, token, ip string) (bool, error) {
@@ -35,7 +38,7 @@ func (c *cloudflareVerifier) Verify(ctx context.Context, token, ip string) (bool
 	if ip != "" {
 		form.Set("remoteip", ip)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, siteVerifyURL, strings.NewReader(form.Encode()))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url, strings.NewReader(form.Encode()))
 	if err != nil {
 		return false, fmt.Errorf("build siteverify request: %w", err)
 	}

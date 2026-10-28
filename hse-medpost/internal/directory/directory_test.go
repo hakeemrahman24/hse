@@ -200,6 +200,68 @@ func TestDirectoryReturnsLatestFitReviewOnly(t *testing.T) {
 	}
 }
 
+// An unfinished (Open) checkup with a newer document date must not hide an
+// older closed Fit one that was submitted later. A newer CLOSED Unfit still
+// does, because that is a real decision that replaces the older Fit.
+func TestDirectoryIgnoresNewerOpenCheckups(t *testing.T) {
+	database := openDirectoryTestDB(t)
+	seedDirectoryFixture(t, database)
+	mustExec(t, database, `INSERT INTO Patient (PatientID, Name, Gender, DateOfBirth, FK_NationalityID, EmployeeID, FK_CompanyID, WorkPosition) VALUES
+		(5, 'Wang Laizhong', 'Male', '1985-05-05', 1, 'E-5', 2, 'Construction Engineer'),
+		(6, 'Tono Berubah', 'Male', '1986-06-06', 1, 'E-6', 2, 'Driver')`)
+	insertMCU(t, database, 5, "MedC-wang-fit", "2026-08-01", "FitWithNote", "2027-08-01", "valid", "Close")
+	insertMCU(t, database, 5, "MedC-wang-open1", "2026-09-01", "NeedFollowUp", "", "", "Open")
+	insertMCU(t, database, 5, "MedC-wang-open2", "2026-09-15", "NeedFollowUp", "", "", "Open")
+	insertMCU(t, database, 6, "MedC-tono-fit", "2026-08-01", "Fit", "2027-08-01", "", "Close")
+	insertMCU(t, database, 6, "MedC-tono-unfit", "2026-09-01", "Unfit", "2027-09-01", "", "Close")
+
+	api := &API{DB: database, Token: "secret", Now: fixedNow}
+
+	got := getDirectory(t, api, "/api/directory/employees?q=wang%20laizhong")
+	if len(got) != 1 || got[0]["checkUpId"] != "MedC-wang-fit" {
+		t.Fatalf("open checkups hid the closed Fit one: %v", got)
+	}
+	if got := getDirectory(t, api, "/api/directory/employees?q=tono"); len(got) != 0 {
+		t.Fatalf("newer closed Unfit did not hide the older Fit: %v", got)
+	}
+}
+
+// The real Wang Laizhong case: the newer-dated checkup was saved as Close but
+// with an IncompleteResult, and the system had already stamped it
+// "Renewed by <the Fit one>". Neither a superseded row nor an IncompleteResult
+// is a decision, so the older closed Fit must still be returned.
+func TestDirectoryIgnoresIncompleteAndRenewedCheckups(t *testing.T) {
+	database := openDirectoryTestDB(t)
+	seedDirectoryFixture(t, database)
+	mustExec(t, database, `INSERT INTO Patient (PatientID, Name, Gender, DateOfBirth, FK_NationalityID, EmployeeID, FK_CompanyID, WorkPosition) VALUES
+		(7, 'Wang Laizhong', 'Male', '1985-05-05', 1, 'E-7', 2, 'Construction Engineer'),
+		(8, 'Citra Belum Lengkap', 'Female', '1990-01-01', 1, 'E-8', 2, 'Clerk'),
+		(9, 'Dedi Tindak Lanjut', 'Male', '1991-02-02', 1, 'E-9', 2, 'Cook')`)
+	insertMCU(t, database, 7, "MedC-wang-fit", "2026-09-30", "FitWithNote", "2027-09-25", "valid", "Close")
+	insertMCU(t, database, 7, "MedC-wang-incomplete", "2026-10-16", "IncompleteResult", "", "", "Close")
+	mustExec(t, database, `UPDATE McuRecord SET HcValidityStatus = 'Renewed by MedC-wang-fit' WHERE CheckUpID = 'MedC-wang-incomplete'`)
+	// Same shape without the Renewed by stamp: IncompleteResult alone is enough.
+	insertMCU(t, database, 8, "MedC-citra-fit", "2026-09-30", "Fit", "2027-09-30", "", "Close")
+	insertMCU(t, database, 8, "MedC-citra-incomplete", "2026-10-16", "IncompleteResult", "", "", "Close")
+	// A newer closed NeedFollowUp is a clinical decision and still hides the older Fit.
+	insertMCU(t, database, 9, "MedC-dedi-fit", "2026-09-30", "Fit", "2027-09-30", "", "Close")
+	insertMCU(t, database, 9, "MedC-dedi-follow", "2026-10-16", "NeedFollowUp", "", "", "Close")
+
+	api := &API{DB: database, Token: "secret", Now: fixedNow}
+
+	got := getDirectory(t, api, "/api/directory/employees?q=wang%20laizhong")
+	if len(got) != 1 || got[0]["checkUpId"] != "MedC-wang-fit" {
+		t.Fatalf("renewed / incomplete row hid the Fit one: %v", got)
+	}
+	got = getDirectory(t, api, "/api/directory/employees?q=citra")
+	if len(got) != 1 || got[0]["checkUpId"] != "MedC-citra-fit" {
+		t.Fatalf("IncompleteResult hid the Fit one: %v", got)
+	}
+	if got := getDirectory(t, api, "/api/directory/employees?q=dedi"); len(got) != 0 {
+		t.Fatalf("newer closed NeedFollowUp did not hide the older Fit: %v", got)
+	}
+}
+
 func TestFitnessOmitsOverdueArchivedAndUnfit(t *testing.T) {
 	database := openDirectoryTestDB(t)
 	seedDirectoryFixture(t, database)
@@ -323,6 +385,8 @@ func openDirectoryTestDB(t *testing.T) *sql.DB {
 		entrymcu.EnsurePhysicalExamNotesColumn,
 		entrymcu.EnsureBloodTypeColumn,
 		entrymcu.EnsureMcuRecordPersonalIDColumn,
+		// Lets the test database store IncompleteResult like production does.
+		entrymcu.EnsureResultCriteriaEditable,
 	} {
 		if err := step(database); err != nil {
 			t.Fatal(err)

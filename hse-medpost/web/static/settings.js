@@ -283,6 +283,10 @@ const sectionMeta = {
     title: "Employee API",
     hint: "Token other databases send when they search employees and the latest Fit or Fit with note review. Update replaces it. Give the new value to each database server.",
   },
+  "sofi-schedule": {
+    title: "SOFI schedule",
+    hint: "When the public fatigue questionnaire (/sofi) is open. Times are GMT+9. Windows are never deleted: cancelling or closing one keeps it in the list for audit.",
+  },
   "mcu-notifications": {
     title: "Email notifications",
     hint: "SMTP account, recipients (To/Cc), and schedule for the near-expiry MCU fitness certificate warning email. Archived/closed patients are never included.",

@@ -12,16 +12,18 @@ import (
 
 	"hse-medpost/internal/auth"
 	"hse-medpost/internal/db"
+	"hse-medpost/internal/turnstile"
 )
 
-func newTestAPI(t *testing.T) *API {
+// newBareTestAPI is the API with no SOFI window scheduled, so /sofi is closed.
+func newBareTestAPI(t *testing.T) *API {
 	t.Helper()
 	database, err := db.Open("sqlite", filepath.Join(t.TempDir(), "t.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { database.Close() })
-	for _, name := range []string{"004_company.sql", "005_patient.sql", "006_entrymcu.sql", "015_sofi.sql"} {
+	for _, name := range []string{"004_company.sql", "005_patient.sql", "006_entrymcu.sql", "015_sofi.sql", "018_sofi_window.sql", "019_sofi_period_note.sql"} {
 		sqlText, err := db.LoadMigrationFile(filepath.Join("..", "..", "migrations", "sqlite", name))
 		if err != nil {
 			t.Fatal(err)
@@ -30,12 +32,28 @@ func newTestAPI(t *testing.T) *API {
 			t.Fatalf("%s: %v", name, err)
 		}
 	}
+	if err := EnsureWindowColumn(database); err != nil {
+		t.Fatal(err)
+	}
 	seed(t, database)
 	api, err := New(database, "test-secret", filepath.Join("..", "..", "web", "templates"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	api.SetTurnstile(DevVerifier{}, "", true)
+	api.SetTurnstile(turnstile.DevVerifier{}, "", true)
+	return api
+}
+
+// newTestAPI is newBareTestAPI plus one window that is open for all practical time, so the older
+// tests (sign-in, submit, lists) run as if /sofi were open. The window tests use the bare one.
+func newTestAPI(t *testing.T) *API {
+	t.Helper()
+	api := newBareTestAPI(t)
+	_, err := api.DB.Exec(`INSERT INTO SofiWindow (Label, OpensAt, ClosesAt, CreatedAt, CreatedBy)
+		VALUES ('test', '2000-01-01T00:00:00', '2999-01-01T00:00:00', '2000-01-01T00:00:00', 'test')`)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return api
 }
 

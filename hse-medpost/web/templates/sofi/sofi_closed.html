@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @view-transition { navigation: auto; }
+    html { background: #E8F4F2; }
+    ::view-transition-group(root) { animation-duration: 120ms; }
+    @media (prefers-reduced-motion: reduce) { ::view-transition-group(root) { animation: none; } }
+  </style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{tr .Lang "The questionnaire is closed"}} · SOFI</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <link rel="stylesheet" href="/static/sofi.css?v=4" />
+</head>
+<body>
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/sofi" class="nav-logo">hse <span>medpost</span></a>
+      <div class="lang-switch" role="group" aria-label="{{tr .Lang "Language"}}">
+        {{range .Langs}}<a href="/sofi/lang?l={{.Code}}&amp;next={{$.Path}}" lang="{{.Code}}" title="{{.Label}}"{{if eq .Code $.Lang}} class="active" aria-current="true"{{end}}>{{.Short}}</a>{{end}}
+      </div>
+    </div>
+  </nav>
+
+  <div class="login-wrap">
+    <div class="login-card">
+      <h1>{{tr .Lang "The questionnaire is closed"}}</h1>
+      <p class="sub"><i>Swedish Occupational Fatigue Inventory</i> (SOFI)</p>
+      {{if .Next}}
+      <p class="sub" style="margin-top:24px">{{tr .Lang "It opens on"}} <b>{{.Next}} (GMT+9)</b>. {{tr .Lang "Please come back then."}}</p>
+      {{else}}
+      <p class="sub" style="margin-top:24px">{{tr .Lang "No opening date has been set yet."}}</p>
+      {{end}}
+      <p class="sub">{{tr .Lang "Questions? Ask the medical post."}}</p>
+    </div>
+  </div>
+</body>
+</html>

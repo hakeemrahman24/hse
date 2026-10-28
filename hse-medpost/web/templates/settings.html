@@ -88,6 +88,13 @@
             <span class="app-program-item-title">Occupational health risks</span>
           </button>
         </div>
+
+        <div class="app-sidebar-label">Fatigue survey</div>
+        <div class="app-program-list">
+          <button type="button" class="app-program-item" data-section="sofi-schedule">
+            <span class="app-program-item-title">SOFI schedule</span>
+          </button>
+        </div>
         {{end}}
 
         <div class="app-sidebar-label">Activity log</div>
@@ -532,6 +539,48 @@
           </div>
         </div>
         -->
+
+        <div class="settings-panel" data-panel="sofi-schedule">
+          <div class="settings-panel-body">
+            <p id="sofi-sched-status" class="app-empty" role="status"></p>
+            <form id="sofi-window-form" class="settings-grid">
+              <label>
+                <span>Name (optional)</span>
+                <input name="label" maxlength="100" placeholder="e.g. Round 3, November crew" />
+              </label>
+              <label>
+                <span>Opens (GMT+9)</span>
+                <input type="datetime-local" name="opens" required />
+              </label>
+              <label>
+                <span>Closes (GMT+9)</span>
+                <input type="datetime-local" name="closes" required />
+              </label>
+              <div style="grid-column:1/-1">
+                <button type="submit" class="btn-primary">Schedule window</button>
+                <button type="button" class="btn-ghost" id="sofi-open-now">Open now for 7 days</button>
+              </div>
+              <p id="sofi-window-msg" class="settings-edit-error" style="grid-column:1/-1" role="alert" hidden></p>
+            </form>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Opens (GMT+9)</th>
+                    <th>Closes (GMT+9)</th>
+                    <th>State</th>
+                    <th>Scheduled</th>
+                    <th>Ended</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="sofi-window-body"></tbody>
+              </table>
+            </div>
+            <p id="sofi-window-empty" class="app-empty" hidden>No window has been scheduled yet.</p>
+          </div>
+        </div>
         {{end}}
 
         <div class="settings-panel" data-panel="programs">
@@ -663,6 +712,7 @@
   <script src="/static/clearwave/app-nav.js"></script>
   <script src="/static/presence.js"></script>
   <script src="/static/settings.js?v=20261003-full-token"></script>
+  {{if eq .Role "admin"}}<script src="/static/sofi-schedule.js"></script>{{end}}
 
   <footer class="app-dev-credit">
     <p>Developed by dr. Arif Rahman Hakim.</p>

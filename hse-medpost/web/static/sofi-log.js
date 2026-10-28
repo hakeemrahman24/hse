@@ -4,6 +4,7 @@
   "use strict";
 
   var SEARCH_DELAY_MS = 250;
+  var ROUND_ID = "sofi-round"; // this tab's Period dropdown (sofi-rounds.js)
   var tab = document.getElementById("scr-tab-sofi");
   if (!tab) { return; }
 
@@ -23,11 +24,15 @@
 
   function two(n) { return (n < 10 ? "0" : "") + n; }
 
-  // "2026-10-21T07:30:00" is UTC; show it in the viewer's own time as dd/mm/yyyy hh:mm.
+  var GMT9_MS = 9 * 60 * 60 * 1000;
+
+  // "2026-10-21T07:30:00" is UTC; show it in GMT+9 (the site's time, the same as the SOFI
+  // schedule) as dd/mm/yyyy hh:mm, whatever the viewer's own time zone is.
   function showTime(utc) {
     var d = new Date(utc + "Z");
     if (isNaN(d.getTime())) { return utc; }
-    return two(d.getDate()) + "/" + two(d.getMonth() + 1) + "/" + d.getFullYear() + " " + two(d.getHours()) + ":" + two(d.getMinutes());
+    var s = new Date(d.getTime() + GMT9_MS);
+    return two(s.getUTCDate()) + "/" + two(s.getUTCMonth() + 1) + "/" + s.getUTCFullYear() + " " + two(s.getUTCHours()) + ":" + two(s.getUTCMinutes());
   }
 
   function scoreCell(d) {
@@ -62,6 +67,7 @@
     var mine = ++seq;
     var params = new URLSearchParams();
     if (searchEl.value.trim()) { params.set("q", searchEl.value.trim()); }
+    if (window.SofiRounds && window.SofiRounds.param(ROUND_ID)) { params.set("window", window.SofiRounds.param(ROUND_ID)); }
     fetch("/api/sofi-log?" + params, { credentials: "same-origin" })
       .then(function (res) {
         if (res.status === 401) { location.href = "/"; return Promise.reject(new Error("signed out")); }
@@ -83,6 +89,9 @@
   }
 
   tab.addEventListener("click", load);
+  document.addEventListener("sofi-round-change", function (e) {
+    if (e.detail.id === ROUND_ID) { load(); }
+  });
   searchEl.addEventListener("input", function () {
     clearTimeout(timer);
     timer = setTimeout(load, SEARCH_DELAY_MS);

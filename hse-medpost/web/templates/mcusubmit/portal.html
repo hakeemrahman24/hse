@@ -1,0 +1,319 @@
+{{/*
+  Pages of the medical checkup submission portal (/mcu-submit). One define per page, so the whole
+  set reads in one place. Same components as the rest of the app (clearwave CSS); the black and pink
+  palette comes from /static/mcu-portal.css. html/template escapes every value: names and emails
+  are written as text, never as markup.
+*/}}
+
+{{define "head"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex" />
+  <title>{{.Title}} · Medical checkup submission</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=1" />
+</head>
+<body class="mp">
+  <a class="mp-skip" href="#main">Skip to content</a>
+  <nav class="nav scrolled" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/mcu-submit" class="nav-logo">checkup <span>portal</span></a>
+      <div class="mp-nav-links">
+        {{if .User}}
+          <a href="/mcu-submit/home">Home</a>
+          {{if ne .User.Role "Admin"}}<a href="/mcu-submit/batch">New batch</a>
+          <a href="/mcu-submit/documents">My documents</a>{{end}}
+          {{if eq .User.Role "Admin"}}<a href="/mcu-submit/admin">Admin</a>{{end}}
+          <form method="post" action="/mcu-submit/signout" class="mp-inline"><button class="btn-ghost" type="submit">Sign out</button></form>
+        {{else}}
+          <a href="/mcu-submit/signin">Sign in</a>
+          <a class="btn-primary" href="/mcu-submit/register">Request an account</a>
+        {{end}}
+      </div>
+    </div>
+  </nav>
+  <main id="main" class="mp-main">
+{{end}}
+
+{{define "foot"}}  </main>
+</body>
+</html>
+{{end}}
+
+{{define "turnstile"}}{{if .DevCheck}}<input type="hidden" name="cf-turnstile-response" value="dev-pass" />
+<p class="mp-hint">Development build: the security check is skipped.</p>{{else}}<div class="cf-turnstile" data-sitekey="{{.Sitekey}}" data-theme="dark"></div>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{{end}}{{end}}
+
+{{define "error"}}{{if .Error}}<p class="mp-error" role="alert"><strong>Error:</strong> {{.Error}}</p>{{end}}{{end}}
+
+{{define "landing.html"}}{{template "head" .}}
+    <section class="mp-hero">
+      <h1>Medical checkup <span>submission</span></h1>
+      <p class="mp-lead">Send a worker's medical checkup result to the medical post as a PDF, and follow what happens to it.</p>
+      <div class="mp-actions">
+        <a class="btn-primary" href="/mcu-submit/signin">Sign in</a>
+        <a class="btn-ghost" href="/mcu-submit/register">Request an account</a>
+      </div>
+    </section>
+    <section class="mp-steps" aria-label="How it works">
+      <ol>
+        <li><strong>Request an account.</strong> Confirm your email; a medical post administrator approves it.</li>
+        <li><strong>Choose a login.</strong> You get a link to pick a username and password.</li>
+        <li><strong>Send results.</strong> One PDF per worker. You can see the status of each one.</li>
+      </ol>
+    </section>
+{{template "foot" .}}{{end}}
+
+{{define "message.html"}}{{template "head" .}}
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1>{{.Heading}}</h1>
+        <p class="sub">{{.Message}}</p>
+        <p class="mp-actions">{{if .User}}<a class="btn-ghost" href="/mcu-submit/home">Back to Home</a>{{else}}<a class="btn-ghost" href="/mcu-submit/signin">Sign in</a>{{end}}</p>
+      </div>
+    </div>
+{{template "foot" .}}{{end}}
+
+{{define "register.html"}}{{template "head" .}}
+    <div class="login-wrap">
+      <div class="login-card mp-wide">
+        <h1>Request an <span>account</span></h1>
+        <p class="sub">For company HR contacts and clinics who send medical checkup results.</p>
+        {{template "error" .}}
+        <form method="post" action="/mcu-submit/register" autocomplete="on">
+          <div class="field"><label for="name"><span>Full name</span></label>
+            <input id="name" name="name" type="text" maxlength="150" required autocomplete="name" value="{{.Form.name}}" /></div>
+          <div class="field"><label for="email"><span>Work email</span></label>
+            <input id="email" name="email" type="email" maxlength="254" required autocomplete="email" value="{{.Form.email}}" />
+            <p class="mp-hint">We send a link to confirm this address.</p></div>
+          <div class="field"><label for="company"><span>Company</span></label>
+            <select id="company" name="company_id" required>
+              <option value="">Choose your company</option>
+              {{range .Companies}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) $.Form.company_id}} selected{{end}}>{{.Name}}</option>{{end}}
+            </select>
+            <p class="mp-hint">Company not listed? Ask the medical post administrator to add it.</p></div>
+          <div class="field"><label for="position"><span>Position</span></label>
+            <input id="position" name="position" type="text" maxlength="128" required value="{{.Form.position}}" /></div>
+          <div class="field">{{template "turnstile" .}}</div>
+          <div class="submit-row"><button type="submit" class="btn-primary">Request account</button></div>
+        </form>
+        <p class="mp-hint">Already have a login? <a href="/mcu-submit/signin">Sign in</a></p>
+      </div>
+    </div>
+{{template "foot" .}}{{end}}
+
+{{define "verify.html"}}{{template "head" .}}
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1>Confirm your <span>email</span></h1>
+        <p class="sub">Press the button to confirm that this address is yours.</p>
+        <form method="post" action="/mcu-submit/verify">
+          <input type="hidden" name="token" value="{{.Token}}" />
+          <div class="submit-row"><button type="submit" class="btn-primary">Confirm</button></div>
+        </form>
+      </div>
+    </div>
+{{template "foot" .}}{{end}}
+
+{{define "signin.html"}}{{template "head" .}}
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1>Sign <span>in</span></h1>
+        <p class="sub">Medical checkup submission portal</p>
+        {{template "error" .}}
+        <form method="post" action="/mcu-submit/signin" autocomplete="on">
+          <div class="field"><label for="username"><span>Username</span></label>
+            <input id="username" name="username" type="text" maxlength="40" required autocomplete="username" autocapitalize="none" spellcheck="false" value="{{.Form.username}}" /></div>
+          <div class="field"><label for="password"><span>Password</span></label>
+            <input id="password" name="password" type="password" maxlength="72" required autocomplete="current-password" /></div>
+          <div class="field">{{template "turnstile" .}}</div>
+          <div class="submit-row"><button type="submit" class="btn-primary">Sign in</button></div>
+        </form>
+        <p class="mp-hint">No login yet? <a href="/mcu-submit/register">Request an account</a></p>
+      </div>
+    </div>
+{{template "foot" .}}{{end}}
+
+{{define "setup.html"}}{{template "head" .}}
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1>Create your <span>login</span></h1>
+        <p class="sub">Your request was approved. Choose a username and a password.</p>
+        {{template "error" .}}
+        <form method="post" action="/mcu-submit/setup" autocomplete="off">
+          <input type="hidden" name="token" value="{{.Token}}" />
+          <div class="field"><label for="username"><span>Username</span></label>
+            <input id="username" name="username" type="text" maxlength="40" required autocapitalize="none" spellcheck="false" value="{{.Form.username}}" />
+            <p class="mp-hint">3 to 40 letters, digits, dots or underscores.</p></div>
+          <div class="field"><label for="password"><span>Password</span></label>
+            <input id="password" name="password" type="password" maxlength="72" required autocomplete="new-password" />
+            <p class="mp-hint">At least 10 characters. Not your username or email, and not a common password.</p></div>
+          <div class="field"><label for="confirm"><span>Repeat the password</span></label>
+            <input id="confirm" name="confirm" type="password" maxlength="72" required autocomplete="new-password" /></div>
+          <div class="submit-row"><button type="submit" class="btn-primary">Create login</button></div>
+        </form>
+      </div>
+    </div>
+{{template "foot" .}}{{end}}
+
+{{define "home.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1>Welcome, <span>{{.User.Name}}</span></h1>
+      <p class="mp-lead">Your documents by status.</p>
+      <div class="mp-cards">
+        <div class="mp-card"><span class="mp-count">{{index .Counts "Draft"}}</span><span>Draft</span></div>
+        <div class="mp-card"><span class="mp-count">{{index .Counts "Pending"}}</span><span>Pending</span></div>
+        <div class="mp-card"><span class="mp-count">{{index .Counts "Reviewed"}}</span><span>Reviewed</span></div>
+        <div class="mp-card"><span class="mp-count">{{index .Counts "Closed"}}</span><span>Closed</span></div>
+        <div class="mp-card"><span class="mp-count">{{index .Counts "Rejected"}}</span><span>Rejected</span></div>
+        <div class="mp-card"><span class="mp-count">{{index .Counts "Withdrawn"}}</span><span>Withdrawn</span></div>
+      </div>
+      <p class="mp-actions"><a class="btn-primary" href="/mcu-submit/batch">Start or continue a batch</a> <a class="btn-ghost" href="/mcu-submit/documents">My documents</a></p>
+    </section>
+{{template "foot" .}}{{end}}
+
+{{define "doctable"}}
+      <div class="mp-scroll"><table class="mp-table">
+        <caption>{{.Caption}}</caption>
+        <thead><tr><th scope="col">Sent</th><th scope="col">Worker</th><th scope="col">Date of birth</th><th scope="col">Position</th><th scope="col">Company</th><th scope="col">Nationality</th><th scope="col">Status</th><th scope="col">File</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+        {{range .Docs}}<tr>
+          <td>{{if .SentAt}}{{.SentAt}}{{else}}Draft{{end}}</td><td>{{.PatName}}</td><td>{{.PatDateOfBirth}}</td><td>{{.PatPosition}}</td><td>{{.PatCompanyText}}</td><td>{{.PatNationality}}</td>
+          <td><span class="mp-badge">{{.Status}}</span>{{if .RejectReason}} {{.RejectReason}}{{end}}</td>
+          <td>{{if and .HasFile (eq .ScanStatus "Clean")}}<a href="/mcu-submit/documents/{{.ID}}/file" target="_blank" rel="noopener">Open PDF</a>{{else}}<span class="mp-hint">No file</span>{{end}}</td>
+          <td class="mp-decide">
+            {{if eq .Status "Review"}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/review">Review</a>{{end}}
+            {{if or (eq .Status "Draft") (eq .Status "Review")}}<form method="post" action="/mcu-submit/documents/{{.ID}}/remove" class="mp-inline"><button type="submit" class="btn-ghost">{{if eq .Status "Draft"}}Remove{{else}}Discard{{end}}</button></form>{{end}}
+            {{if eq .Status "Pending"}}<form method="post" action="/mcu-submit/documents/{{.ID}}/withdraw" class="mp-inline"><button type="submit" class="btn-ghost">Withdraw</button></form>{{end}}
+          </td></tr>{{end}}
+        </tbody></table></div>
+{{end}}
+
+{{define "batch.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1>New <span>batch</span></h1>
+      <p class="mp-lead">Add the workers one by one. Each document is checked by you first. When all are confirmed, send the batch to the medical post. Nothing is visible to the medical post until you press Send.</p>
+      <div class="login-card mp-wide">
+        <form method="post" action="/mcu-submit/batch/add" enctype="multipart/form-data">
+          {{template "error" .}}
+          <div class="field" id="picker" data-search="/mcu-submit/workers">
+            <label for="worker-q"><span>Find the worker (type at least 3 letters of the name)</span></label>
+            <input id="worker-q" type="search" autocomplete="off" />
+            <ul id="worker-results" class="mp-results" aria-label="Matching workers"></ul>
+            <input type="hidden" name="patient_id" id="patient-id" value="{{index .Form "patient_id"}}" />
+            <p id="worker-chosen" class="mp-chosen" hidden></p>
+            <button type="button" id="worker-clear" class="btn-ghost" hidden>Choose another worker</button>
+            <noscript><p class="mp-hint">Search needs JavaScript. Without it, use the new employee form below.</p></noscript>
+          </div>
+          <details id="new-employee" class="mp-new"{{if and (not (index .Form "patient_id")) (index .Form "name")}} open{{end}}>
+            <summary>The worker is not in the list (new employee)</summary>
+            <div class="field"><label for="name"><span>Worker's name</span></label><input id="name" name="name" type="text" maxlength="128" value="{{index .Form "name"}}" /></div>
+            <div class="field"><label for="dob"><span>Date of birth</span></label><input id="dob" name="dob" type="date" value="{{index .Form "dob"}}" /></div>
+            <div class="field"><label for="position"><span>Position</span></label><input id="position" name="position" type="text" maxlength="128" value="{{index .Form "position"}}" /></div>
+            <div class="field"><label for="company_id"><span>Company</span></label>
+              <select id="company_id" name="company_id">
+                <option value="">Choose a company</option>
+                {{range .Companies}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) (index $.Form "company_id")}} selected{{end}}>{{.Name}}</option>{{end}}
+              </select></div>
+            <div class="field"><label for="nationality"><span>Nationality</span></label>
+              <select id="nationality" name="nationality">
+                <option value="">Choose a nationality</option>
+                {{range .Nationalities}}<option value="{{.}}"{{if eq . (index $.Form "nationality")}} selected{{end}}>{{.}}</option>{{end}}
+              </select></div>
+            <div class="field"><label for="id_number"><span>NIK or passport number</span></label><input id="id_number" name="id_number" type="text" maxlength="32" autocomplete="off" value="{{index .Form "id_number"}}" />
+              <p class="mp-hint">Indonesian citizens: the 16-digit NIK. Everyone else: the passport number (6 to 12 letters or digits).</p></div>
+          </details>
+          <div class="field"><label for="file"><span>Checkup result (PDF, up to 15 MB)</span></label><input id="file" name="file" type="file" accept="application/pdf,.pdf" required />
+            <p class="mp-hint">The file is rebuilt and compressed when it is uploaded. Password-protected PDFs and PDFs with scripts or attachments are refused.</p></div>
+          <button type="submit" class="btn-primary">Upload and review</button>
+        </form>
+      </div>
+      <script src="/static/mcu-worker-picker.js?v=1"></script>
+
+      <h2>Documents in this <span>batch</span></h2>
+      {{if .Docs}}
+        {{template "doctable" .}}
+        {{if gt .Unconfirmed 0}}
+          <p class="mp-hint">{{.Unconfirmed}} document(s) still need your review. Confirm or discard them, then you can send the batch.</p>
+        {{else}}
+          <form method="post" action="/mcu-submit/batch/send" class="mp-actions"><input type="hidden" name="batch" value="{{.BatchID}}" /><button type="submit" class="btn-primary">Send batch of {{len .Docs}} for review</button></form>
+        {{end}}
+      {{else}}<p class="mp-hint">No documents yet.</p>{{end}}
+    </section>
+{{template "foot" .}}{{end}}
+
+{{define "review.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1>Review <span>document</span></h1>
+      {{range .Docs}}
+      <p class="mp-lead">Check that this is the right worker and the right file. This is exactly what the medical post will see.</p>
+      <div class="login-card mp-wide">
+        <dl class="mp-review">
+          <dt>Worker</dt><dd>{{.PatName}}</dd>
+          <dt>Date of birth</dt><dd>{{.PatDateOfBirth}}</dd>
+          <dt>Position</dt><dd>{{.PatPosition}}</dd>
+          <dt>Company</dt><dd>{{.PatCompanyText}}</dd>
+          <dt>Nationality</dt><dd>{{.PatNationality}}</dd>
+          <dt>Worker record</dt><dd>{{if .IsNewEmployee}}New employee (not on file yet){{else}}Existing worker on file{{end}}</dd>
+          <dt>File</dt><dd><a href="/mcu-submit/documents/{{.ID}}/file" target="_blank" rel="noopener">Open the PDF in a new tab</a></dd>
+        </dl>
+        <div class="mp-actions">
+          {{if eq .Status "Review"}}
+          <form method="post" action="/mcu-submit/documents/{{.ID}}/confirm" class="mp-inline"><button type="submit" class="btn-primary">Confirm and add to batch</button></form>
+          <form method="post" action="/mcu-submit/documents/{{.ID}}/remove" class="mp-inline"><button type="submit" class="btn-ghost">Discard</button></form>
+          {{else}}<p class="mp-hint">Already confirmed.</p><a class="btn-ghost" href="/mcu-submit/batch">Back to the batch</a>{{end}}
+        </div>
+      </div>
+      {{end}}
+    </section>
+{{template "foot" .}}{{end}}
+
+{{define "documents.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1>My <span>documents</span></h1>
+      {{if .Docs}}{{template "doctable" .}}
+      {{else}}<p class="mp-hint">You have not uploaded anything yet.</p>{{end}}
+      <p class="mp-actions"><a class="btn-primary" href="/mcu-submit/batch">New batch</a></p>
+    </section>
+{{template "foot" .}}{{end}}
+
+{{define "admin.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1>Account <span>requests</span></h1>
+      {{if .Pending}}
+      <div class="mp-scroll"><table class="mp-table">
+        <caption>Waiting for a decision (email confirmed)</caption>
+        <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Company</th><th scope="col">Position</th><th scope="col">Requested</th><th scope="col">Decide</th></tr></thead>
+        <tbody>
+        {{range .Pending}}<tr>
+          <td>{{.Name}}</td><td>{{.Email}}</td><td>{{.Company}}</td><td>{{.Position}}</td><td>{{.CreatedAt}}</td>
+          <td class="mp-decide">
+            <form method="post" action="/mcu-submit/admin/approve" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-primary">Approve</button></form>
+            <form method="post" action="/mcu-submit/admin/reject" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" />
+              <label class="mp-sr" for="reason-{{.ID}}">Reason for rejecting {{.Name}}</label>
+              <input id="reason-{{.ID}}" name="reason" type="text" maxlength="128" placeholder="Reason" required />
+              <button type="submit" class="btn-ghost">Reject</button></form>
+          </td></tr>{{end}}
+        </tbody></table></div>
+      {{else}}<p class="mp-hint">No requests are waiting.</p>{{end}}
+
+      <h2>All <span>accounts</span></h2>
+      {{if .Accounts}}
+      <div class="mp-scroll"><table class="mp-table">
+        <caption>Approved, active, rejected and disabled accounts</caption>
+        <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Company</th><th scope="col">Status</th><th scope="col">Note</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+        {{range .Accounts}}<tr>
+          <td>{{.Name}}</td><td>{{.Email}}</td><td>{{.Company}}</td><td><span class="mp-badge">{{.Status}}</span></td>
+          <td>{{if .RejectReason}}{{.RejectReason}}{{end}}{{if .BouncedAt}}Email bounced {{.BouncedAt}}{{end}}</td>
+          <td>{{if or (eq .Status "Active") (eq .Status "Approved")}}
+            <form method="post" action="/mcu-submit/admin/disable" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Disable</button></form>{{end}}</td>
+        </tr>{{end}}
+        </tbody></table></div>
+      {{else}}<p class="mp-hint">No other accounts yet.</p>{{end}}
+    </section>
+{{template "foot" .}}{{end}}

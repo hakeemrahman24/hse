@@ -142,9 +142,32 @@ func compressFile(dir, in string) (string, bool) {
 	return best, true
 }
 
+// PDFPassCount is how many shrinking passes there are, gentlest first (see GhostscriptCommand).
+func PDFPassCount() int { return len(pdfPasses) }
+
+// GhostscriptCommand builds the Ghostscript command for shrinking pass number pass (0 is the
+// gentlest). It is exported so the medical checkup portal runs exactly the same rewrite as the
+// activity uploads, but inside its own sandbox and failing closed instead of keeping the upload.
+func GhostscriptCommand(ctx context.Context, gs, in, out string, pass int) *exec.Cmd {
+	return gsCommand(ctx, gs, in, out, pdfPasses[pass])
+}
+
 func runGhostscript(gs, in, out string, p pdfPass) error {
 	ctx, cancel := context.WithTimeout(context.Background(), compressTimeout)
 	defer cancel()
+	cmd := gsCommand(ctx, gs, in, out, p)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		output = bytes.TrimSpace(output)
+		if len(output) > 300 {
+			output = output[:300]
+		}
+		return fmt.Errorf("%w: %s", err, output)
+	}
+	return nil
+}
+
+func gsCommand(ctx context.Context, gs, in, out string, p pdfPass) *exec.Cmd {
 	dpi := strconv.Itoa(p.dpi)
 	monoDPI := strconv.Itoa(p.dpi * 2)
 	jpeg := "/QFactor " + p.qFactor + " /Blend 1 /HSamples [2 1 1 2] /VSamples [2 1 1 2]"
@@ -163,15 +186,7 @@ func runGhostscript(gs, in, out string, p pdfPass) error {
 		"-sOutputFile="+out,
 		"-c", ps, "-f", in,
 	)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		output = bytes.TrimSpace(output)
-		if len(output) > 300 {
-			output = output[:300]
-		}
-		return fmt.Errorf("%w: %s", err, output)
-	}
-	return nil
+	return cmd
 }
 
 // pdfPageCount asks Ghostscript for a file's page count. The path goes in as

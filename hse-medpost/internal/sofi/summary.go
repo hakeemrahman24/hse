@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"sort"
 	"strings"
-	"time"
 )
 
 // summaryGroupLimit is how many company or position bars the dashboard shows.
@@ -61,18 +60,20 @@ func (a *API) StaffSummary(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, "by must be company or position")
 		return
 	}
-	where, args := []string{"1 = 1"}, []any{}
-	for _, f := range []struct{ param, op string }{{"from", ">="}, {"to", "<="}} {
-		v := q.Get(f.param)
-		if v == "" {
-			continue
-		}
-		if _, err := time.Parse("2006-01-02", v); err != nil {
-			writeError(w, r, http.StatusBadRequest, f.param+" must be yyyy-mm-dd")
-			return
-		}
-		where = append(where, "SUBSTR(s.SubmittedAt, 1, 10) "+f.op+" ?")
-		args = append(args, v)
+	dayWhere, dayArgs, derr := siteDayFilter(q.Get("from"), q.Get("to"))
+	if derr != nil {
+		writeError(w, r, http.StatusBadRequest, derr.Error())
+		return
+	}
+	where, args := append([]string{"1 = 1"}, dayWhere...), dayArgs
+
+	clause, wargs, werr := windowFilter(q.Get("window"))
+	if werr != nil {
+		writeError(w, r, http.StatusBadRequest, werr.Error())
+		return
+	}
+	if clause != "" {
+		where, args = append(where, clause), append(args, wargs...)
 	}
 
 	rows, err := a.DB.Query(`SELECT s.FK_PatientID, TRIM(`+column+`), s.Answers FROM SofiScreening s WHERE `+strings.Join(where, " AND "), args...)
