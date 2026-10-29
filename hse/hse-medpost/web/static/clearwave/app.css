@@ -2851,7 +2851,8 @@ body:has(.app-shell.is-form-focus) .app-dev-credit p {
   font-weight: 700;
 }
 
-#tab-mcu-data .data-table tr.is-list-hidden {
+#tab-mcu-data .data-table tr.is-list-hidden,
+#sofi-table tr.is-list-hidden {
   display: none !important;
 }
 

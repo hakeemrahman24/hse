@@ -311,6 +311,12 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
 
+### 2026-10-29 — SOFI table shows general values; the name opens the details
+
+- Medical Record > Screening > Fatigue > SOFI table now has six columns (Submitted, Name, Position, Company, Total, Result). Clicking a name opens a row below it with age, weeks on site, MCU review and the five dimension scores, hides the other rows (focus), and turns the name bold red; clicking it again closes the row and puts the table back at its old scroll position. Clicking another name switches the focus. Code: `web/static/sofi-log.js`, header in `emr.html`, one `#sofi-table tr.is-list-hidden` rule in `clearwave/app.css`.
+- Why: the 14 columns were too wide to read. The look reuses the checkup list's classes (`detail-row`, `ro-grid`, `ro-value`, `is-expanded-link`) so fonts and colours match the other pages; no new styles. No server change.
+- Verified in headless Chromium with the real stylesheet and script and fake rows (open, close, switch). Not checked against the signed-in EMR page. Still open: the search or Period change reloads the table and closes any open row (intended).
+
 ### 2026-10-29 — Unfit is an open result: only Fit and Fit with note close a checkup
 
 - Owner decision: "unfit, temporary unfit, need follow up, incomplete is open". This reverses the earlier rule that Fit, Fit with note and Unfit close. `isTerminalResult` (validity.go) is now Fit and FitWithNote only, so a new or edited Unfit record saves as `CheckUpStatus = Open`, `IsTerminal = 0`; the checkup form's Open/Close preview (`TERMINAL_RESULTS` in mcu.js) and the Unfit notice text follow.
