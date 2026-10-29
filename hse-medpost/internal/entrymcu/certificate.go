@@ -151,10 +151,15 @@ func (a *API) activeChiefMedicalOfficer() string {
 // certificate exist", not this log, so a logging failure shouldn't turn a
 // successful generate/download into a user-facing error.
 func (a *API) logCertificateAction(mcuRecordID, patientID int64, staffID int64, action, filePath string) {
+	// 0 means "not a staff member" (a submitter on the portal): NULL, not a staff id that does not exist.
+	var staff any
+	if staffID != 0 {
+		staff = staffID
+	}
 	_, _ = a.DB.Exec(
 		`INSERT INTO McuCertificateLog (FK_McuRecordID, FK_PatientID, FK_StaffID, Action, FilePath, CreatedAt)
 		 VALUES (?, ?, ?, ?, ?, ?)`,
-		mcuRecordID, patientID, staffID, action, filePath, time.Now().Format("2006-01-02 15:04:05"),
+		mcuRecordID, patientID, staff, action, filePath, time.Now().Format("2006-01-02 15:04:05"),
 	)
 }
 
@@ -268,92 +273,106 @@ func (a *API) DownloadCertificate(cfg CertConfig) http.HandlerFunc {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad id"})
 			return
 		}
-		d, ok := a.fetchCertData(id)
-		if !ok {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
-			return
-		}
-		if adverseResult(d.ResultCriteria) {
-			// Red written opinion. Open (Temporarily Unfit) and Archived /
-			// Exit (Unfit) both still need a document the company can keep.
-		} else if !certifiableResult(d.ResultCriteria) {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "certificate is only available for Fit and Fit with note"})
-			return
-		} else if d.CheckUpStatus != "Close" {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "certificate is only available for closed records"})
-			return
-		}
-
-		// A closed record can still be "Archived / Exit" (Unfit, or a
-		// closed record gone stale >180 days) or "ReEvaluate / Overdue"
-		// (past ResultValidUntil but not yet 180 days stale) — see
-		// displayHcValidityStatus, validity.go. Neither should be able to
-		// mint a fresh certificate: an archived/exited record has no
-		// business getting a new HC, and an overdue one needs a new
-		// checkup before it can honestly claim current validity.
-		if !adverseResult(d.ResultCriteria) {
-			checkUpStatus, resultCriteria, resultValidUntil, storedHcValidity := d.CheckUpStatus, d.ResultCriteria, d.ValidUntil, d.HcValidityStatus
-			liveStatus := displayHcValidityStatus(&storedHcValidity, &checkUpStatus, &resultValidUntil, &resultCriteria, dates.ClinicNow())
-			if liveStatus == "Archived / Exit" || liveStatus == "ReEvaluate / Overdue" || strings.HasPrefix(liveStatus, "Renewed by ") {
-				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "certificate is not available for records marked " + liveStatus})
-				return
-			}
-		}
-
 		var staffID int64
 		if sess := middleware.Session(r); sess != nil {
 			staffID = sess.StaffID
 		}
-
-		// d.CertFilePath is "" the first time, or after UpdateMcuRecord
-		// invalidates it on any edit (see mcurecord.go) — so a typo fix
-		// always regenerates fresh content on next download instead of
-		// silently re-serving a stale cached PDF.
-		if d.CertFilePath != "" {
-			if _, statErr := os.Stat(d.CertFilePath); statErr == nil {
-				a.logCertificateAction(id, d.PatientID, staffID, "downloaded", d.CertFilePath)
-				w.Header().Set("Content-Type", "application/pdf")
-				w.Header().Set("Cache-Control", "no-store")
-				w.Header().Set("Content-Disposition", certificateContentDisposition(certificateOpenFilename(d.CheckUpID, d.CompanyAbbrev, d.Name, d.ValidUntil)))
-				http.ServeFile(w, r, d.CertFilePath)
+		path, filename, err := a.CertificateFile(id, staffID, cfg)
+		if err != nil {
+			var ce *CertificateError
+			if errors.As(err, &ce) {
+				writeJSON(w, ce.Status, map[string]string{"error": ce.Message})
 				return
 			}
-		}
-
-		pdfBytes, err := GenerateCertificatePDF(d, cfg)
-		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "pdf generation failed"})
 			return
 		}
-		pdfBytes, err = a.signCertificatePDF(cfg, d.Reviewer, pdfBytes)
-		if errors.Is(err, staff.ErrNoSigningCertificate) {
-			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-			return
-		}
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "could not sign certificate"})
-			return
-		}
-
-		dir := storage.McuCertificateDir(cfg.UploadDir)
-		filename := storage.McuCertificateFilename(dates.Today(), d.CheckUpID, d.Name, d.ValidUntil)
-		savedPath, err := storage.Save(dir, filename, bytes.NewReader(pdfBytes))
-		if err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to save certificate"})
-			return
-		}
-		if _, err := a.DB.Exec(`UPDATE McuRecord SET HealthCertificateFileName = ? WHERE McuRecordID = ?`, savedPath, id); err != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})
-			return
-		}
-		a.logCertificateAction(id, d.PatientID, staffID, "generated", savedPath)
-		a.logCertificateAction(id, d.PatientID, staffID, "downloaded", savedPath)
-
 		w.Header().Set("Content-Type", "application/pdf")
 		w.Header().Set("Cache-Control", "no-store")
-		w.Header().Set("Content-Disposition", certificateContentDisposition(certificateOpenFilename(d.CheckUpID, d.CompanyAbbrev, d.Name, d.ValidUntil)))
-		_, _ = w.Write(pdfBytes)
+		w.Header().Set("Content-Disposition", certificateContentDisposition(filename))
+		http.ServeFile(w, r, path)
 	}
+}
+
+// CertificateError is a reason a certificate cannot be given. Status is the HTTP status the staff
+// route answers with; Message is safe to show to the person asking.
+type CertificateError struct {
+	Status  int
+	Message string
+}
+
+func (e *CertificateError) Error() string { return e.Message }
+
+// CertificateFile makes sure the saved, signed certificate PDF for one record exists and returns
+// where it is and the name to offer it under. staffID is who asked (0 when it is not a staff
+// member, as for a submitter on the portal); it only goes into the certificate log. The rules are
+// the same for everyone: a refusal is a *CertificateError, anything else is a server fault.
+func (a *API) CertificateFile(id, staffID int64, cfg CertConfig) (path, filename string, err error) {
+	d, ok := a.fetchCertData(id)
+	if !ok {
+		return "", "", &CertificateError{http.StatusNotFound, "not found"}
+	}
+	if adverseResult(d.ResultCriteria) {
+		// Red written opinion. Open (Temporarily Unfit) and Archived /
+		// Exit (Unfit) both still need a document the company can keep.
+	} else if !certifiableResult(d.ResultCriteria) {
+		return "", "", &CertificateError{http.StatusBadRequest, "certificate is only available for Fit and Fit with note"}
+	} else if d.CheckUpStatus != "Close" {
+		return "", "", &CertificateError{http.StatusBadRequest, "certificate is only available for closed records"}
+	}
+
+	// A closed record can still be "Archived / Exit" (Unfit, or a
+	// closed record gone stale >180 days) or "ReEvaluate / Overdue"
+	// (past ResultValidUntil but not yet 180 days stale) — see
+	// displayHcValidityStatus, validity.go. Neither should be able to
+	// mint a fresh certificate: an archived/exited record has no
+	// business getting a new HC, and an overdue one needs a new
+	// checkup before it can honestly claim current validity.
+	if !adverseResult(d.ResultCriteria) {
+		checkUpStatus, resultCriteria, resultValidUntil, storedHcValidity := d.CheckUpStatus, d.ResultCriteria, d.ValidUntil, d.HcValidityStatus
+		liveStatus := displayHcValidityStatus(&storedHcValidity, &checkUpStatus, &resultValidUntil, &resultCriteria, dates.ClinicNow())
+		if liveStatus == "Archived / Exit" || liveStatus == "ReEvaluate / Overdue" || strings.HasPrefix(liveStatus, "Renewed by ") {
+			return "", "", &CertificateError{http.StatusBadRequest, "certificate is not available for records marked " + liveStatus}
+		}
+	}
+
+	filename = certificateOpenFilename(d.CheckUpID, d.CompanyAbbrev, d.Name, d.ValidUntil)
+
+	// d.CertFilePath is "" the first time, or after UpdateMcuRecord
+	// invalidates it on any edit (see mcurecord.go) — so a typo fix
+	// always regenerates fresh content on next download instead of
+	// silently re-serving a stale cached PDF.
+	if d.CertFilePath != "" {
+		if _, statErr := os.Stat(d.CertFilePath); statErr == nil {
+			a.logCertificateAction(id, d.PatientID, staffID, "downloaded", d.CertFilePath)
+			return d.CertFilePath, filename, nil
+		}
+	}
+
+	pdfBytes, err := GenerateCertificatePDF(d, cfg)
+	if err != nil {
+		return "", "", fmt.Errorf("generate certificate: %w", err)
+	}
+	pdfBytes, err = a.signCertificatePDF(cfg, d.Reviewer, pdfBytes)
+	if errors.Is(err, staff.ErrNoSigningCertificate) {
+		return "", "", &CertificateError{http.StatusBadRequest, err.Error()}
+	}
+	if err != nil {
+		return "", "", fmt.Errorf("sign certificate: %w", err)
+	}
+
+	dir := storage.McuCertificateDir(cfg.UploadDir)
+	savedName := storage.McuCertificateFilename(dates.Today(), d.CheckUpID, d.Name, d.ValidUntil)
+	savedPath, err := storage.Save(dir, savedName, bytes.NewReader(pdfBytes))
+	if err != nil {
+		return "", "", fmt.Errorf("save certificate: %w", err)
+	}
+	if _, err := a.DB.Exec(`UPDATE McuRecord SET HealthCertificateFileName = ? WHERE McuRecordID = ?`, savedPath, id); err != nil {
+		return "", "", fmt.Errorf("record certificate path: %w", err)
+	}
+	a.logCertificateAction(id, d.PatientID, staffID, "generated", savedPath)
+	a.logCertificateAction(id, d.PatientID, staffID, "downloaded", savedPath)
+	return savedPath, filename, nil
 }
 
 // certificateOpenFilename is CheckUpID-CompanyAbbrev-JohnDoe-yyyymmdd.pdf.

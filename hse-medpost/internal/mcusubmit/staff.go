@@ -42,6 +42,19 @@ func (s *Store) stateError(ctx context.Context, id int64) error {
 	return ErrBadState
 }
 
+// StaffDoc is one document as staff see it. Draft and Review are unsent work, so they are
+// ErrNotFound, the same as for the list.
+func (s *Store) StaffDoc(ctx context.Context, id int64) (Submission, error) {
+	docs, err := s.querySubmissions(ctx, `WHERE s.SubmissionID = ? AND s.Status NOT IN (?, ?)`, id, SubDraft, SubReview)
+	if err != nil {
+		return Submission{}, err
+	}
+	if len(docs) == 0 {
+		return Submission{}, ErrNotFound
+	}
+	return docs[0], nil
+}
+
 // MarkReviewed records that staff looked at a sent document. Only a Pending document can be
 // reviewed: a Draft or a document under Review is unsent work that staff must not touch. The
 // guarded UPDATE makes two staff members racing each other safe: the second one gets ErrBadState.
@@ -160,6 +173,27 @@ type staffRow struct {
 	SentAt        string `json:"sentAt"`
 	HasFile       bool   `json:"hasFile"`
 	IsNewEmployee bool   `json:"isNewEmployee"`
+	ReviewedAt    string `json:"reviewedAt"`
+	ReviewedBy    string `json:"reviewedBy"`
+}
+
+// staffDetail is what the checkup form pre-fills from: the row plus the identity the submitter
+// typed. It is only sent to a signed-in staff member, and the NIK is blank after retention.
+type staffDetail struct {
+	staffRow
+	Nationality string `json:"nationality"`
+	Gender      string `json:"gender"`     // Male or Female, "" when unknown
+	PersonalID  string `json:"personalId"` // the NIK, or the passport number when there is no NIK
+	PatientID   int64  `json:"patientId"`  // 0 = not on file yet
+	CompanyID   int64  `json:"companyId"`  // 0 = not picked
+}
+
+func rowOf(d Submission) staffRow {
+	return staffRow{
+		ID: d.ID, Worker: d.PatName, DateOfBirth: d.PatDateOfBirth, Position: d.PatPosition, Company: d.PatCompanyText,
+		Nationality: d.PatNationality, Submitter: d.SubmitterName, Status: d.Status, RejectReason: d.RejectReason,
+		SentAt: d.SentAt, HasFile: d.HasFile, IsNewEmployee: d.IsNewEmployee, ReviewedAt: d.ReviewedAt, ReviewedBy: d.ReviewedBy,
+	}
 }
 
 var reviewStatuses = map[string]bool{"": true, SubPending: true, SubReviewed: true, SubClosed: true, SubRejected: true, SubWithdrawn: true}
@@ -198,11 +232,7 @@ func (a *StaffAPI) List(w http.ResponseWriter, r *http.Request) {
 	docs := result.Rows
 	rows := make([]staffRow, 0, len(docs))
 	for _, d := range docs {
-		rows = append(rows, staffRow{
-			ID: d.ID, Worker: d.PatName, DateOfBirth: d.PatDateOfBirth, Position: d.PatPosition, Company: d.PatCompanyText,
-			Nationality: d.PatNationality, Submitter: d.SubmitterName, Status: d.Status, RejectReason: d.RejectReason,
-			SentAt: d.SentAt, HasFile: d.HasFile, IsNewEmployee: d.IsNewEmployee,
-		})
+		rows = append(rows, rowOf(d))
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
@@ -256,6 +286,36 @@ func (a *StaffAPI) File(w http.ResponseWriter, r *http.Request) {
 // MarkReviewed marks a Pending document Reviewed.
 func (a *StaffAPI) MarkReviewed(w http.ResponseWriter, r *http.Request) {
 	a.act(w, r, func(ctx context.Context, id, staff int64) error { return a.Store.MarkReviewed(ctx, id, staff) })
+}
+
+// Get returns one sent document for the checkup form to pre-fill from. Drafts and documents still
+// under Review are not staff's to see, so they are 404 here exactly as they are missing from List.
+func (a *StaffAPI) Get(w http.ResponseWriter, r *http.Request) {
+	if _, ok := staffID(w, r); !ok {
+		return
+	}
+	id, ok := parseID(r.PathValue("id"))
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	d, err := a.Store.StaffDoc(r.Context(), id)
+	if errors.Is(err, ErrNotFound) {
+		http.NotFound(w, r)
+		return
+	}
+	if err != nil {
+		log.Printf("mcusubmit: staff get: %v", err)
+		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
+		return
+	}
+	out := staffDetail{staffRow: rowOf(d), Nationality: d.PatNationality, Gender: d.PatGender, PersonalID: d.PatNik, PatientID: d.PatientID, CompanyID: d.CompanyID}
+	if out.PersonalID == "" {
+		out.PersonalID = d.PatPassportNo
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(out)
 }
 
 // Reject refuses a document; the JSON body is {"reason": "..."}.

@@ -2187,6 +2187,10 @@ checkupForm?.addEventListener("submit", async (e) => {
     return;
   }
   showFormMessage(msg, "");
+  // Opened from the Submitted page: link the record just saved to that document and close it, so
+  // staff never type the Checkup ID. The checkup is already saved at this point; a failed link is
+  // reported with the ID so it can still be closed by hand on the Submitted page.
+  if (linkedSubmission && !isEdit) await closeLinkedSubmission(String(body.checkUpId || "").trim());
   if (isNewPatient) {
     const pRes = await fetch(`/api/patients`, { credentials: "same-origin" });
     const patients = await pRes.json();
@@ -2977,5 +2981,120 @@ document.getElementById("mcu-data-reset")?.addEventListener("click", () => {
 
 refreshPresence = startPresence(() => mcuSection);
 
-loadLookups();
+loadLookups().then(openSubmissionFromLink);
 showMcuTab("employee");
+
+// --- Opened from the Submitted page (/mcu?submission=ID) --------------------------------------
+// The Submitted page already asked "continue to review?" and marked the document Reviewed. Here the
+// checkup form opens filled in from what the submitter typed; saving it links and closes the document.
+let linkedSubmission = null;
+
+function submissionBanner(text, kind, withPdf) {
+  const box = document.getElementById("submission-banner");
+  if (!box) return;
+  box.hidden = false;
+  box.className = "submission-banner" + (kind ? ` ${kind}` : "");
+  const msg = document.getElementById("submission-banner-text");
+  msg.textContent = text;
+  const pdf = document.getElementById("submission-banner-pdf");
+  pdf.hidden = !withPdf;
+  if (withPdf && linkedSubmission) pdf.href = `/api/mcu-submissions/${linkedSubmission.id}/file`;
+}
+
+function sameDay(a, b) {
+  return !!a && !!b && a === b;
+}
+
+// The submitter never chooses a Patient, so a new employee may already be on file under their NIK
+// or name and birth date. Ask before reusing them: two people can share a name and a birth date.
+async function findPatientForSubmission(sub) {
+  const res = await fetch("/api/patients", { credentials: "same-origin" });
+  if (!res.ok) return null;
+  const patients = await res.json();
+  if (sub.patientId) return patients.find((p) => p.patientId === sub.patientId) || null;
+  const nik = (sub.personalId || "").trim();
+  const name = (sub.worker || "").trim().toLowerCase();
+  const match =
+    (nik && patients.find((p) => (p.personalId || "").trim() === nik)) ||
+    patients.find((p) => (p.name || "").trim().toLowerCase() === name && sameDay(p.dateOfBirth, sub.dob));
+  if (!match) return null;
+  const ok = confirm(
+    `${match.name} (born ${match.dateOfBirth || "unknown"}) is already on file and looks like this worker.\n\n` +
+      "OK = add the checkup to that employee.\nCancel = create a new employee.",
+  );
+  return ok ? match : null;
+}
+
+function prefillNewEmployee(sub) {
+  patientForm.querySelector('[name="name"]').value = sub.worker || "";
+  patientForm.querySelector('[name="dateOfBirth"]').value = sub.dob || "";
+  syncDateDisplays(patientForm);
+  const nat = nationalityCache.find((n) => n.name.trim().toLowerCase() === (sub.nationality || "").trim().toLowerCase());
+  if (nat) patientForm.querySelector('[name="nationalityId"]').value = nat.nationalityId;
+  if (sub.gender) patientForm.querySelector('[name="gender"]').value = sub.gender;
+  updatePersonalIdFormat();
+  patientForm.querySelector('[name="personalId"]').value = sub.personalId || "";
+}
+
+// Only fills what is still empty: an employee on file keeps their own company and position.
+function prefillVisitFromSubmission(sub) {
+  const position = checkupForm.querySelector('[name="workPosition"]');
+  if (position && !position.value && sub.position) position.value = sub.position;
+  if (sub.companyId && !document.getElementById("checkup-company-select").value) {
+    setCompanyField("checkup-company-select", "checkup-company-input", sub.companyId);
+    updateCheckupCompanyRelationField();
+  }
+}
+
+async function openSubmissionFromLink() {
+  const raw = new URLSearchParams(location.search).get("submission");
+  if (!raw) return;
+  const id = Number(raw);
+  if (!Number.isInteger(id) || id < 1) return;
+  const res = await fetch(`/api/mcu-submissions/${id}`, { credentials: "same-origin" });
+  if (!res.ok) {
+    submissionBanner("That submitted document could not be opened. Go back to the Submitted page.", "err", false);
+    return;
+  }
+  const sub = await res.json();
+  if (sub.status !== "Pending" && sub.status !== "Reviewed") {
+    submissionBanner(`This document is ${sub.status.toLowerCase()} and cannot be reviewed again.`, "err", false);
+    return;
+  }
+  linkedSubmission = sub;
+  submissionBanner(
+    `Reviewing ${sub.worker} (sent by ${sub.submitter}). Fill in the result and save: the document closes by itself.`,
+    "",
+    sub.hasFile,
+  );
+  const patient = await findPatientForSubmission(sub);
+  if (patient) {
+    await newCheckupForPatientInline(patient);
+  } else {
+    openBlankPatientCheckup();
+    prefillNewEmployee(sub);
+  }
+  prefillVisitFromSubmission(sub);
+}
+
+async function closeLinkedSubmission(checkUpId) {
+  const sub = linkedSubmission;
+  const res = await fetch(`/api/mcu-submissions/${sub.id}/close`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ checkUpId }),
+  });
+  linkedSubmission = null;
+  if (res.ok) {
+    submissionBanner(`Saved. ${sub.worker}'s submitted document is closed and linked to ${checkUpId}.`, "ok", false);
+    return;
+  }
+  const why = (await res.text().catch(() => "")).trim() || `error ${res.status}`;
+  submissionBanner(
+    `The checkup was saved as ${checkUpId}, but linking it to the submitted document failed: ${why} ` +
+      "Close it on the Submitted page by entering that Checkup ID.",
+    "err",
+    false,
+  );
+}

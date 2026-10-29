@@ -5701,3 +5701,10 @@ a.app-tab {
   text-decoration: none;
   display: inline-block;
 }
+
+/* Banner on /mcu while a checkup is opened from the Submitted page. */
+.submission-banner { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 10px 0; padding: 10px 14px; border: 1px solid #1a7f73; background: #e7f4f1; }
+.submission-banner.ok { border-color: #1a7f73; background: #dff3e8; }
+.submission-banner.err { border-color: #a12a1b; background: #fbe9e6; color: #6e1c12; }
+.submission-banner a { color: #12695f; text-decoration: underline; font-weight: 600; }
+.submission-banner[hidden] { display: none; }

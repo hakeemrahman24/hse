@@ -32,6 +32,15 @@ func newTestStore(t *testing.T) (*Store, *fixedClock, int64) {
 			t.Fatalf("%s: %v", name, err)
 		}
 	}
+	// Patient.PersonalID (the NIK or passport) is added to Patient by the entrymcu startup, not by 005.
+	if _, err := database.Exec(`ALTER TABLE Patient ADD COLUMN PersonalID TEXT NULL`); err != nil {
+		t.Fatal(err)
+	}
+	// The reviewer's name is read from the staff table (001, not loaded here): a minimal copy.
+	if _, err := database.Exec(`CREATE TABLE MedpostStaffTable (StaffID INTEGER PRIMARY KEY, StaffName TEXT NOT NULL);
+		INSERT INTO MedpostStaffTable (StaffID, StaffName) VALUES (7, 'Dr Test')`); err != nil {
+		t.Fatal(err)
+	}
 	res, err := database.Exec(`INSERT INTO Company (Name) VALUES ('PT Example')`)
 	if err != nil {
 		t.Fatal(err)

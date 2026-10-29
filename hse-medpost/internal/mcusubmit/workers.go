@@ -25,18 +25,20 @@ type Worker struct {
 	Position    string
 	Company     string
 	Nationality string
-	CompanyID   int64 // 0 when the patient has no company
+	Gender      string
+	PersonalID  string // NIK or passport number as stored on the patient, "" when none
+	CompanyID   int64  // 0 when the patient has no company
 }
 
 const workerSelect = `SELECT p.PatientID, p.Name, COALESCE(p.DateOfBirth, ''), COALESCE(p.WorkPosition, ''),
-	COALESCE(p.FK_CompanyID, 0), COALESCE(c.Name, ''), COALESCE(n.Name, '')
+	COALESCE(p.FK_CompanyID, 0), COALESCE(c.Name, ''), COALESCE(n.Name, ''), COALESCE(p.Gender, ''), COALESCE(p.PersonalID, '')
 	FROM Patient p
 	LEFT JOIN Company c ON c.CompanyID = p.FK_CompanyID
 	LEFT JOIN NationalityTable n ON n.NationalityID = p.FK_NationalityID`
 
 func scanWorker(row interface{ Scan(...any) error }) (Worker, error) {
 	var w Worker
-	err := row.Scan(&w.PatientID, &w.Name, &w.DateOfBirth, &w.Position, &w.CompanyID, &w.Company, &w.Nationality)
+	err := row.Scan(&w.PatientID, &w.Name, &w.DateOfBirth, &w.Position, &w.CompanyID, &w.Company, &w.Nationality, &w.Gender, &w.PersonalID)
 	return w, err
 }
 

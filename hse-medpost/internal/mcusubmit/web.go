@@ -78,9 +78,10 @@ type API struct {
 	baseURL      string
 	trustCF      bool
 	secureCookie bool
-	pipeline     *Pipeline     // nil = uploads are off
-	bounceSecret string        // empty = the Brevo webhook is off
-	mailCfg      *ConfigMailer // nil = no mail settings page, sign-up never closed for lack of mail
+	pipeline     *Pipeline         // nil = uploads are off
+	bounceSecret string            // empty = the Brevo webhook is off
+	mailCfg      *ConfigMailer     // nil = no mail settings page, sign-up never closed for lack of mail
+	certs        CertificateSource // nil = no certificate download for submitters
 }
 
 // New builds the handlers. The cookie key is derived from the staff session secret with its own
@@ -155,6 +156,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("GET "+basePath+"/documents/{id}/review", a.ReviewPage)
 	in.HandleFunc("POST "+basePath+"/documents/{id}/confirm", a.ConfirmDocument)
 	in.HandleFunc("GET "+basePath+"/documents/{id}/file", a.DocumentFile)
+	in.HandleFunc("GET "+basePath+"/documents/{id}/certificate", a.DocumentCertificate)
 	in.HandleFunc("POST "+basePath+"/documents/{id}/remove", a.RemoveDocument)
 	in.HandleFunc("POST "+basePath+"/documents/{id}/withdraw", a.WithdrawDocument)
 	in.HandleFunc("POST "+basePath+"/webhooks/brevo", a.BrevoWebhook)
