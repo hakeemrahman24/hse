@@ -22,13 +22,14 @@ func normalizeKey(s string) string {
 }
 
 // isTerminalResult reports whether a checkup's ResultCriteria is a finished
-// decision. Fit, FitWithNote, and Unfit close the checkup. Temporarily
-// unfit, need follow up, and incomplete stay open because a later visit is
-// still expected on this record. CheckUpStatus is that same fact stored as
-// Open or Close. A decision counts as soon as it's entered.
+// decision. Only Fit and FitWithNote close the checkup. Unfit, temporarily
+// unfit, need follow up, and incomplete all stay open (owner decision,
+// 2026-10-29) because a later visit is still expected on this record.
+// CheckUpStatus is that same fact stored as Open or Close. A decision counts
+// as soon as it's entered.
 func isTerminalResult(resultCriteria string) bool {
 	switch resultCriteria {
-	case "Fit", "FitWithNote", "Unfit":
+	case "Fit", "FitWithNote":
 		return true
 	default:
 		return false
@@ -48,7 +49,7 @@ func certifiableResult(resultCriteria string) bool {
 }
 
 // adverseResult is a written opinion that the worker is not cleared.
-// Temporarily Unfit stays an open checkup. Unfit stays closed.
+// Unfit and Temporarily Unfit both stay open checkups.
 func adverseResult(resultCriteria string) bool {
 	switch resultCriteria {
 	case "TemporaryUnfit", "Unfit":
@@ -115,14 +116,14 @@ func hcValidityLadder(daysLeft int) string {
 // <id>" (closeParentRecord's supersede stamp) — both are returned verbatim
 // here since neither should be replaced by a ladder band.
 //
-// Two more legacy auto-archive rules are ported here rather than as a
-// stored-column mutation, for the same no-scheduler reason: R-Unfit (Code.js
-// ~3926-3945) archives a "Unfit" result immediately, independent of any day
-// count, since it's a terminal exit decision, not a pending one; R2
-// (Code.js ~4038-4066) archives any other decided (CheckUpStatus="Close")
+// One more legacy auto-archive rule is ported here rather than as a
+// stored-column mutation, for the same no-scheduler reason: R2
+// (Code.js ~4038-4066) archives any decided (CheckUpStatus="Close")
 // record whose ResultValidUntil is more than checkupMaxAgeDays (180) days in
 // the past, instead of showing a stale "ReEvaluate / Overdue" band forever.
-// Both are safe to leave undone here specifically because supersession
+// (The legacy R-Unfit rule, which archived an Unfit result at once, was
+// dropped on 2026-10-29 when Unfit became an open result like Temporarily
+// Unfit: it is no longer a terminal exit decision.) It is safe to leave undone here specifically because supersession
 // (a renewal linking back via parentRecordId) is already handled at
 // save-time by closeParentRecord, which stamps "Renewed by <id>" into the
 // stored column before this function ever runs — so by the time a record
@@ -137,15 +138,12 @@ func displayHcValidityStatus(stored, checkUpStatus, resultValidUntil, resultCrit
 			return s
 		}
 	}
-	if resultCriteria != nil && *resultCriteria == "Unfit" {
-		return "Archived / Exit"
-	}
 	// Open results have no firm decision to expire. This is read from the
-	// result, not the stored CheckUpStatus, so an older Temporarily Unfit
-	// row that was saved as Close does not keep a validity ladder.
+	// result, not the stored CheckUpStatus, so an older Unfit or Temporarily
+	// Unfit row that was saved as Close does not keep a validity ladder.
 	if resultCriteria != nil {
 		switch *resultCriteria {
-		case "TemporaryUnfit", "NeedFollowUp", "IncompleteResult":
+		case "Unfit", "TemporaryUnfit", "NeedFollowUp", "IncompleteResult":
 			return ""
 		}
 	}
@@ -164,8 +162,9 @@ func displayHcValidityStatus(stored, checkUpStatus, resultValidUntil, resultCrit
 }
 
 // ShownValidity is the standing a reader sees for one checkup. Stored
-// Archived / Exit and Renewed by stay as written. Unfit is Archived / Exit.
-// A closed Fit or Fit with note date falls on the validity ladder.
+// Archived / Exit and Renewed by stay as written. Open results (Unfit
+// included) show no standing. A closed Fit or Fit with note date falls on
+// the validity ladder.
 func ShownValidity(stored, status, until, result string, today time.Time) string {
 	return displayHcValidityStatus(textPtr(stored), textPtr(status), textPtr(until), textPtr(result), today)
 }

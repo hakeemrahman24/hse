@@ -339,6 +339,7 @@ body:has(.app-shell--full) {
 
 .app-shell--full #tab-data-entry,
 .app-shell--full #tab-mcu-data,
+.app-shell--full #tab-submitted,
 .app-shell--full #tab-dashboard {
   grid-column: 1 / -1;
   grid-row: 2;
@@ -350,6 +351,7 @@ body:has(.app-shell--full) {
 
 .app-shell--full #tab-data-entry[hidden],
 .app-shell--full #tab-mcu-data[hidden],
+.app-shell--full #tab-submitted[hidden],
 .app-shell--full #tab-dashboard[hidden] {
   display: none;
 }
@@ -439,6 +441,7 @@ body:has(.app-shell--full) {
 
   .app-shell--full #tab-data-entry,
   .app-shell--full #tab-mcu-data,
+  .app-shell--full #tab-submitted,
   .app-shell--full #tab-dashboard {
     grid-row: 3;
   }
@@ -5708,3 +5711,22 @@ a.app-tab {
 .submission-banner.err { border-color: #a12a1b; background: #fbe9e6; color: #6e1c12; }
 .submission-banner a { color: #12695f; text-decoration: underline; font-weight: 600; }
 .submission-banner[hidden] { display: none; }
+
+/* Submitted tab on /mcu (mcu-submitted.js): same table as the other tabs, its own filter row. */
+#tab-submitted .mcu-data-filter-row { flex-wrap: wrap; align-items: flex-end; gap: 8px 12px; }
+#tab-submitted .mcu-data-filter-row > label { display: flex; flex-direction: column; }
+#tab-submitted .mcu-data-filter-row input[type="text"] { width: 9rem; }
+#tab-submitted .mcu-data-filter-row select,
+#tab-submitted .mcu-data-filter-row input { box-sizing: border-box; height: 26px; font-size: 0.75rem; padding: 0 6px; }
+#tab-submitted .mcu-data-filter-row .btn-primary,
+#tab-submitted .mcu-data-filter-row .btn-ghost { height: 26px; padding: 0 12px !important; font-size: 0.75rem !important; line-height: 1; }
+.sub-msg { margin: 8px 0; min-height: 1.4em; }
+.sub-msg.err { color: #a12a1b; }
+.sub-badge { display: inline-block; padding: 1px 8px; border: 1px solid #1a7f73; font-size: 0.75rem; font-weight: 600; }
+.sub-new { color: #8a4b00; font-weight: 600; font-size: 0.75rem; }
+.sub-act { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; }
+.sub-act details { width: 100%; font-size: 0.75rem; }
+.sub-act summary { cursor: pointer; color: #12695f; }
+.sub-act input { padding: 3px 6px; width: 9rem; margin: 4px 4px 0 0; }
+.sub-act details .btn-ghost { margin-top: 4px; }
+.sub-pager { display: flex; gap: 12px; align-items: center; margin: 12px 0; }

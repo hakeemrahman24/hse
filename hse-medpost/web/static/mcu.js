@@ -1617,7 +1617,7 @@ function toParagraphNote(value) {
 // before they save, so it doesn't drift from what actually gets stored.
 // Archived/Exit is a separate field (HcValidityStatus) and doesn't affect
 // this display — see the checkbox's own label for that state.
-const TERMINAL_RESULTS = ["Fit", "FitWithNote", "Unfit"];
+const TERMINAL_RESULTS = ["Fit", "FitWithNote"];
 
 function setCheckupStatusDisplay(status) {
   const el = document.getElementById("checkup-status-display");
@@ -2200,6 +2200,12 @@ checkupForm?.addEventListener("submit", async (e) => {
   checkupForm.hidden = true;
   patientForm.hidden = true;
   patientFormInline = false;
+  if (returnToSubmitted) {
+    returnToSubmitted = false;
+    patientDetail.hidden = true;
+    showMcuTab("submitted");
+    return;
+  }
   if (checkupReturnTo === "table") {
     patientDetail.hidden = true;
     setDataEntryListVisible(true);
@@ -2220,6 +2226,7 @@ checkupForm?.addEventListener("submit", async (e) => {
 // {{if eq .Role "admin"}} guard in mcu.html), so tab === "dashboard" is
 // unreachable for other roles.
 const MCU_SECTION_LABELS = {
+  submitted: "Submitted",
   employee: "Employee",
   "data-entry": "Data entry",
   "mcu-data": "MCU data",
@@ -2238,6 +2245,15 @@ function showMcuTab(tab) {
   const dataEntryPane = document.getElementById("tab-data-entry");
   if (dataEntryPane) dataEntryPane.hidden = tab !== "data-entry";
   document.getElementById("tab-mcu-data").hidden = !listTab;
+  const submittedPane = document.getElementById("tab-submitted");
+  if (submittedPane) submittedPane.hidden = tab !== "submitted";
+  if (tab === "submitted") {
+    // An open checkup form belongs to the Employee view; leave it behind.
+    if (newPatientCombined) setNewPatientCombined(false);
+    checkupForm.hidden = true;
+    patientForm.hidden = true;
+    patientDetail.hidden = true;
+  }
   const dashboardPane = document.getElementById("tab-dashboard");
   if (dashboardPane) dashboardPane.hidden = tab !== "dashboard";
   mcuSection = MCU_SECTION_LABELS[tab] || "MCU data";
@@ -2253,6 +2269,7 @@ function showMcuTab(tab) {
     loadMcuDataTable();
   }
   if (tab === "dashboard") loadReport();
+  if (tab === "submitted" && window.loadSubmittedTab) window.loadSubmittedTab();
 }
 document.getElementById("mcu-tabs")?.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-tab]");
@@ -2988,6 +3005,9 @@ showMcuTab("employee");
 // The Submitted page already asked "continue to review?" and marked the document Reviewed. Here the
 // checkup form opens filled in from what the submitter typed; saving it links and closes the document.
 let linkedSubmission = null;
+// Set once the document is closed (or the link failed after the save): the form then returns to the
+// Submitted tab instead of the Employee list.
+let returnToSubmitted = false;
 
 function submissionBanner(text, kind, withPdf) {
   const box = document.getElementById("submission-banner");
@@ -3046,18 +3066,28 @@ function prefillVisitFromSubmission(sub) {
   }
 }
 
-async function openSubmissionFromLink() {
-  const raw = new URLSearchParams(location.search).get("submission");
-  if (!raw) return;
+// Deep links: /mcu?view=submitted opens the Submitted tab, /mcu?submission=ID opens that review.
+function openSubmissionFromLink() {
+  const params = new URLSearchParams(location.search);
+  if (params.get("view") === "submitted") showMcuTab("submitted");
+  const raw = params.get("submission");
   const id = Number(raw);
-  if (!Number.isInteger(id) || id < 1) return;
+  if (raw && Number.isInteger(id) && id > 0) openSubmission(id);
+}
+
+// Opens the checkup form for one submitted document, in place: the Employee view with the form
+// filled in from what the submitter typed. Called by the Submitted tab's Review button.
+async function openSubmission(id) {
+  showMcuTab("employee");
   const res = await fetch(`/api/mcu-submissions/${id}`, { credentials: "same-origin" });
   if (!res.ok) {
-    submissionBanner("That submitted document could not be opened. Go back to the Submitted page.", "err", false);
+    showMcuTab("submitted");
+    submissionBanner("That submitted document could not be opened.", "err", false);
     return;
   }
   const sub = await res.json();
   if (sub.status !== "Pending" && sub.status !== "Reviewed") {
+    showMcuTab("submitted");
     submissionBanner(`This document is ${sub.status.toLowerCase()} and cannot be reviewed again.`, "err", false);
     return;
   }
@@ -3086,6 +3116,7 @@ async function closeLinkedSubmission(checkUpId) {
     body: JSON.stringify({ checkUpId }),
   });
   linkedSubmission = null;
+  returnToSubmitted = true;
   if (res.ok) {
     submissionBanner(`Saved. ${sub.worker}'s submitted document is closed and linked to ${checkUpId}.`, "ok", false);
     return;
