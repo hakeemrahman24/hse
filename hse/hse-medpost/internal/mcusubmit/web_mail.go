@@ -55,3 +55,40 @@ Reason: %s
 If you think this is a mistake, contact the medpost administrator.
 `, reason)
 }
+
+func resetMail(baseURL, token string) string {
+	return fmt.Sprintf(`Hello,
+
+Someone asked to reset the password of your account on the medical checkup submission portal.
+
+Open this link to choose a new password (it works for 1 hour and only once):
+
+%s/mcu-submit/reset?token=%s
+
+If you did not ask for this, ignore this email: your password stays as it is.
+`, baseURL, token)
+}
+
+func emailChangeMail(baseURL, token string) string {
+	return fmt.Sprintf(`Hello,
+
+A request was made to use this address as the login email of an account on the medical checkup submission portal.
+
+To confirm, open this link and press Confirm (it works for 24 hours and only once):
+
+%s/mcu-submit/email-change?token=%s
+
+If you did not ask for this, ignore this email: nothing changes.
+`, baseURL, token)
+}
+
+func emailChangeNoticeMail(baseURL string) string {
+	return fmt.Sprintf(`Hello,
+
+A request was made to change the login email of your account on the medical checkup submission portal to another address. Nothing changes until that address confirms.
+
+If this was you, you can ignore this message. If it was not you, someone may have your password: reset it now at
+
+%s/mcu-submit/forgot
+`, baseURL)
+}

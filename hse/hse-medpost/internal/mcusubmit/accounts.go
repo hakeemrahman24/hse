@@ -219,3 +219,37 @@ func (s *Store) ResetBuiltInAdmin(ctx context.Context, password string) error {
 	}
 	return nil
 }
+
+// ChangeEmail replaces the login email after the person opened the link sent to the new address.
+// A bounce flag belonged to the old address, so it is cleared. Two accounts can never share an
+// address: a duplicate gives ErrEmailTaken.
+func (s *Store) ChangeEmail(ctx context.Context, id int64, newEmail string) error {
+	res, err := s.DB.ExecContext(ctx, `UPDATE Submitter SET Email = ?, EmailBouncedAt = NULL WHERE SubmitterID = ? AND IsBuiltIn = 0`,
+		normalizeEmail(newEmail), id)
+	if isUniqueViolation(err) {
+		return ErrEmailTaken
+	}
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// SetReminders switches the expiry reminder mails on or off for one submitter.
+func (s *Store) SetReminders(ctx context.Context, id int64, on bool) error {
+	v := 0
+	if on {
+		v = 1
+	}
+	res, err := s.DB.ExecContext(ctx, `UPDATE Submitter SET RemindersEnabled = ? WHERE SubmitterID = ?`, v, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}

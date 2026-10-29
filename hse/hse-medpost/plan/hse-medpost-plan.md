@@ -311,6 +311,26 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
 
+### 2026-10-29 — Medical checkup portal: digest, reminders, retention, bounces, language, record linking
+
+Built in `internal/mcusubmit` (all with tests; the staff and portal pages are not yet seen in the real app, which still cannot start because of the uncommitted SOFI templates):
+- **Send confirmation**: the first Send POST shows a confirm page (`sendconfirm.html`); only `confirm=yes` sends.
+- **Reviewer digest** (replaces plan section 8's "one mail per batch", owner 2026-10-29): `digest.go`, `web_digest.go`, page `/mcu-submit/admin/digest`. One mail lists every `Pending` document (name, position, company, submitter, sent time; no NIK or date of birth, capped at 100 lines), every 24, 36 or 48 hours (admin radio buttons). An hourly job checks; the clock (`McuDigestSetting.LastSentAt`) moves only when a mail went out, and an empty list never starts it. Reviewers live in `McuReviewerEmail` (add, pause, remove). Migrations: sqlite `020`, mysql `030` (**run `030_mcu_portal_digest.sql` on MariaDB by hand before deploying**).
+- **Expiry reminders**: `reminders.go`, `web_reminders.go`, page `/mcu-submit/admin/reminders` (switch, days before, repeat days, preview, Send now); one mail per active submitter about workers they submitted (sent, not withdrawn or rejected), daily at 08:00 WIB, `LastReminderAt` per submitter, `ReminderSent` event with a count only; the submitter's Home shows "Expiring soon".
+- **Retention**: `retention.go`, daily job. Files past `FileExpiresAt` are deleted (file first, then `FilePath = NULL`, so a failed delete retries; event `FileExpired`). Accounts inactive 2 years with no file are blanked (`Erased`, email becomes `erased-<id>@invalid`).
+- **Brevo bounce webhook**: `web_bounce.go`, `POST /mcu-submit/webhooks/brevo`, off unless `MCU_BREVO_WEBHOOK_SECRET` is set; Brevo must send `Authorization: Bearer <secret>`. Hard bounce, invalid, blocked, spam and unsubscribed flag `EmailBouncedAt` on submitters and reviewers.
+- **Language switcher** (EN / ID buttons in the portal header, cookie `mcu_lang`): `lang.go` translates the finished HTML through the dictionary in `lang_id.go`; unknown text stays English. **The Indonesian wording needs the owner's read-through.**
+- **Staff**: a "Submitted" tab on the Medical Checkups page links to `/mcu-submissions`; staff create the patient and checkup record on the normal form, then type its Checkup ID on the submission row ("Close with record"). `CloseWithRecord` checks the record exists, is not linked elsewhere and belongs to the same patient; a new employee gets that patient, so reminders can find them.
+- New env: `MCU_STAFF_BASE_URL` (link in the digest), `MCU_BREVO_WEBHOOK_SECRET`.
+
+Filters and paging (added later the same day): `search.go` `SearchDocs` serves both lists, 25 per page; My documents filters by worker, company, status and upload dates, and the staff list adds submitter (the API keeps its array body and sends `X-Total-Count`, `X-Page`, `X-Pages`); the waiting (Pending) queue reads oldest first.
+
+Retention now also blanks the worker's name, date of birth, NIK and passport number on a document once its file is gone and its date has passed (`ErasePersonalData`, name becomes "(erased)"; position, company, status, dates and hash stay), including withdrawn documents; the clinic's own checkup record keeps the clinical identity.
+
+Seen in headless Chromium against the real app (SQLite, dev switches): sign-in and landing in both languages, the admin, digest and reminder pages, My documents (filter and paging, desktop and 390 px, no sideways page scroll), the staff list and the Submitted tab. The look check found and fixed two things: split headings stayed English in Indonesian (dictionary keys ending in a space never matched), and the digest/reminder pages were unstyled.
+
+Still open: the checkup form is **not** pre-filled from the submission (staff retype the worker; a `/mcu?submission=ID` deep link in `mcu.js` is the next step); possible-duplicate suggestions for new employees; Pi checks (Ghostscript 10.00, bubblewrap), MariaDB run of the new SQL, real Brevo mail, a look in Firefox and Safari.
+
 ### 2026-10-29 — SOFI PDF report: East Asian and Arabic fonts
 
 - The PDF report now prints Chinese, Japanese, Korean and Arabic (company names, doctor's note). Noto fonts in `web/static/fonts/` are fetched only when the report text needs them; text is drawn in per-script runs with its own wrapper. Details: `plan/sofi-window-plan.md` section 11. Why: names and notes in those scripts printed as `?`.

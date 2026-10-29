@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -93,14 +93,53 @@ func (a *API) Documents(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		return
 	}
-	docs, err := a.Store.ListOwn(r.Context(), u.ID)
-	if err != nil {
-		a.serverError(w, "list own", err)
-		return
+	q := r.URL.Query()
+	page, _ := strconv.Atoi(q.Get("page")) // not a number becomes 0, which SearchDocs moves to page 1
+	filter := DocFilter{
+		OwnerID: u.ID, Status: q.Get("status"), Worker: q.Get("worker"), Company: q.Get("company"),
+		From: q.Get("from"), To: q.Get("to"), Page: page,
 	}
 	p := a.newPage("My documents")
-	p.User, p.Docs, p.Caption = u, docs, "Every document you uploaded, newest first"
+	p.User, p.Caption = u, "Every document you uploaded, newest first"
+	p.Form = map[string]string{"status": filter.Status, "worker": filter.Worker, "company": filter.Company, "from": filter.From, "to": filter.To}
+	p.Statuses = documentStatuses
+	result, err := a.Store.SearchDocs(r.Context(), filter)
+	if errors.Is(err, ErrBadFilter) {
+		p.Error = "Check the status and the dates you chose."
+		a.render(w, http.StatusBadRequest, "documents.html", p)
+		return
+	}
+	if err != nil {
+		a.serverError(w, "search own", err)
+		return
+	}
+	p.Docs, p.Result = result.Rows, result
+	p.PrevURL, p.NextURL = pagerLinks(basePath+"/documents", p.Form, result)
 	a.render(w, http.StatusOK, "documents.html", p)
+}
+
+// documentStatuses are the choices of the status filter, in the order a submitter thinks of them.
+var documentStatuses = []string{SubDraft, SubReview, SubPending, SubReviewed, SubClosed, SubRejected, SubWithdrawn}
+
+// pagerLinks builds the Previous and Next addresses for a list, keeping the filter the person typed.
+// Empty means there is no such page. url.Values.Encode sorts the keys, so the links are stable.
+func pagerLinks(base string, filter map[string]string, r DocPage) (prev, next string) {
+	link := func(page int) string {
+		q := url.Values{"page": {strconv.Itoa(page)}}
+		for k, v := range filter {
+			if v != "" {
+				q.Set(k, v)
+			}
+		}
+		return base + "?" + q.Encode()
+	}
+	if r.Page > 1 {
+		prev = link(r.Page - 1)
+	}
+	if r.Page < r.Pages {
+		next = link(r.Page + 1)
+	}
+	return prev, next
 }
 
 func (a *API) nationalities(ctx context.Context) ([]string, error) {
@@ -443,6 +482,12 @@ func (a *API) SendBatchSubmit(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, u)
 		return
 	}
+	// Sending is the one step that cannot be taken back (the batch locks), so the first POST only
+	// shows what would be sent; the second one, carrying confirm=yes, sends it.
+	if r.PostFormValue("confirm") != "yes" {
+		a.sendConfirmPage(w, r, u, id)
+		return
+	}
 	switch _, err := a.Store.SendBatch(r.Context(), u.ID, id); {
 	case err == nil:
 		http.Redirect(w, r, basePath+"/documents", http.StatusSeeOther)
@@ -453,6 +498,35 @@ func (a *API) SendBatchSubmit(w http.ResponseWriter, r *http.Request) {
 	default:
 		a.serverError(w, "send batch", err)
 	}
+}
+
+// sendConfirmPage lists the documents of an unsent batch and asks once more. A batch that cannot be
+// sent (empty, or a document still in Review) gets the same refusal as the real send would give.
+func (a *API) sendConfirmPage(w http.ResponseWriter, r *http.Request, u *Submitter, batchID int64) {
+	docs, err := a.Store.ListOwn(r.Context(), u.ID)
+	if err != nil {
+		a.serverError(w, "list own", err)
+		return
+	}
+	var inBatch []Submission
+	for _, d := range docs {
+		if d.BatchID == batchID && (d.Status == SubDraft || d.Status == SubReview) {
+			inBatch = append(inBatch, d)
+		}
+	}
+	if len(inBatch) == 0 {
+		a.message(w, http.StatusConflict, "Cannot send", "This batch is empty or was already sent.", u)
+		return
+	}
+	for _, d := range inBatch {
+		if d.Status == SubReview {
+			a.message(w, http.StatusConflict, "Cannot send", "Confirm or discard the documents that still need your review first.", u)
+			return
+		}
+	}
+	p := a.newPage("Send the batch")
+	p.User, p.Docs, p.BatchID, p.Caption = u, inBatch, batchID, "These documents will be sent"
+	a.render(w, http.StatusOK, "sendconfirm.html", p)
 }
 
 // RemoveDocument deletes one Draft (row and file).
@@ -526,11 +600,5 @@ func (a *API) DocumentFile(w http.ResponseWriter, r *http.Request) {
 	if err := a.Store.LogEvent(r.Context(), Event{ActorType: ActorSubmitter, ActorID: u.ID, EntityType: EntitySubmission, EntityID: id, Action: "FileViewed"}); err != nil {
 		log.Printf("mcusubmit: log file view: %v", err)
 	}
-	h := w.Header()
-	h.Set("Content-Type", "application/pdf")
-	h.Set("Content-Disposition", "inline")
-	h.Set("Content-Security-Policy", "sandbox")
-	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Cache-Control", "no-store")
-	_, _ = io.Copy(w, rc)
+	servePDF(w, rc)
 }

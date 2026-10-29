@@ -43,10 +43,11 @@ type Limits struct {
 	RegisterPerIP, RegisterPerEmail int // per hour
 	SignInPerIP, SignInPerUser      int // per 15 minutes
 	WorkerSearchPerUser             int // per minute
+	ForgotPerIP, ForgotPerEmail     int // per hour
 }
 
 func defaultLimits() Limits {
-	return Limits{RegisterPerIP: 5, RegisterPerEmail: 3, SignInPerIP: 20, SignInPerUser: 10, WorkerSearchPerUser: 60}
+	return Limits{RegisterPerIP: 5, RegisterPerEmail: 3, SignInPerIP: 20, SignInPerUser: 10, WorkerSearchPerUser: 60, ForgotPerIP: 5, ForgotPerEmail: 3}
 }
 
 const (
@@ -78,6 +79,7 @@ type API struct {
 	trustCF      bool
 	secureCookie bool
 	pipeline     *Pipeline // nil = uploads are off
+	bounceSecret string    // empty = the Brevo webhook is off
 }
 
 // New builds the handlers. The cookie key is derived from the staff session secret with its own
@@ -127,11 +129,22 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("POST "+basePath+"/register", a.RegisterSubmit)
 	in.HandleFunc("GET "+basePath+"/verify", a.VerifyPage)
 	in.HandleFunc("POST "+basePath+"/verify", a.VerifySubmit)
+	in.HandleFunc("POST "+basePath+"/lang", a.SetLanguage)
 	in.HandleFunc("GET "+basePath+"/signin", a.SignInPage)
 	in.HandleFunc("POST "+basePath+"/signin", a.SignInSubmit)
 	in.HandleFunc("POST "+basePath+"/signout", a.SignOut)
 	in.HandleFunc("GET "+basePath+"/setup", a.SetupPage)
 	in.HandleFunc("POST "+basePath+"/setup", a.SetupSubmit)
+	in.HandleFunc("GET "+basePath+"/forgot", a.ForgotPage)
+	in.HandleFunc("POST "+basePath+"/forgot", a.ForgotSubmit)
+	in.HandleFunc("GET "+basePath+"/reset", a.ResetPage)
+	in.HandleFunc("POST "+basePath+"/reset", a.ResetSubmit)
+	in.HandleFunc("GET "+basePath+"/settings", a.SettingsPage)
+	in.HandleFunc("POST "+basePath+"/settings/password", a.ChangePassword)
+	in.HandleFunc("POST "+basePath+"/settings/email", a.RequestEmailChange)
+	in.HandleFunc("POST "+basePath+"/settings/reminders", a.SaveReminders)
+	in.HandleFunc("GET "+basePath+"/email-change", a.EmailChangePage)
+	in.HandleFunc("POST "+basePath+"/email-change", a.EmailChangeSubmit)
 	in.HandleFunc("GET "+basePath+"/home", a.Home)
 	in.HandleFunc("GET "+basePath+"/batch", a.BatchPage)
 	in.HandleFunc("POST "+basePath+"/batch/add", a.AddDocument)
@@ -143,15 +156,24 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("GET "+basePath+"/documents/{id}/file", a.DocumentFile)
 	in.HandleFunc("POST "+basePath+"/documents/{id}/remove", a.RemoveDocument)
 	in.HandleFunc("POST "+basePath+"/documents/{id}/withdraw", a.WithdrawDocument)
+	in.HandleFunc("POST "+basePath+"/webhooks/brevo", a.BrevoWebhook)
 	in.HandleFunc("GET "+basePath+"/admin", a.AdminPage)
 	in.HandleFunc("POST "+basePath+"/admin/approve", a.AdminApprove)
 	in.HandleFunc("POST "+basePath+"/admin/reject", a.AdminReject)
 	in.HandleFunc("POST "+basePath+"/admin/disable", a.AdminDisable)
+	in.HandleFunc("GET "+basePath+"/admin/reminders", a.ReminderPage)
+	in.HandleFunc("POST "+basePath+"/admin/reminders", a.ReminderSave)
+	in.HandleFunc("POST "+basePath+"/admin/reminders/send", a.ReminderSendNow)
+	in.HandleFunc("GET "+basePath+"/admin/digest", a.DigestPage)
+	in.HandleFunc("POST "+basePath+"/admin/digest", a.DigestSave)
+	in.HandleFunc("POST "+basePath+"/admin/reviewers/add", a.ReviewerAdd)
+	in.HandleFunc("POST "+basePath+"/admin/reviewers/toggle", a.ReviewerToggle)
+	in.HandleFunc("POST "+basePath+"/admin/reviewers/delete", a.ReviewerDelete)
 
 	// CrossOriginProtection refuses a state-changing request that another site caused, by reading
 	// Sec-Fetch-Site and Origin (owner's choice, plan section 9). With the SameSite=Lax cookie and
 	// POST-only changes it replaces form tokens.
-	h := a.secure(http.NewCrossOriginProtection().Handler(in))
+	h := a.secure(a.withLanguage(http.NewCrossOriginProtection().Handler(in)))
 	mux.Handle(basePath, h)
 	mux.Handle(basePath+"/", h)
 }
@@ -205,8 +227,23 @@ type page struct {
 	Docs          []Submission
 	BatchID       int64 // the open batch; 0 when it has no documents
 	Nationalities []string
-	Caption       string // table caption
-	Unconfirmed   int    // documents of the open batch still in Review
+	Caption       string   // table caption
+	Notice        string   // a success message on a form page
+	Unconfirmed   int      // documents of the open batch still in Review
+	Statuses      []string // choices of the status filter
+	Result        DocPage  // paging numbers of the list on screen
+	PrevURL       string
+	NextURL       string
+
+	// Reviewer digest settings page.
+	Digest    DigestConfig
+	Reviewers []Reviewer
+	Intervals []int
+
+	// Reminders: the admin's settings page and the submitter's Expiring soon list.
+	Reminder ReminderConfig
+	Preview  string
+	Expiring []Expiring
 }
 
 type companyOption struct {
@@ -356,6 +393,17 @@ func (a *API) Home(w http.ResponseWriter, r *http.Request) {
 	p.User, p.Counts = u, map[string]int{}
 	for _, d := range docs {
 		p.Counts[d.Status]++
+	}
+	// Shown whether or not reminder mails are on (plan section 8); the admin has no workers of
+	// their own, so the list is only for submitters.
+	if u.Role != RoleAdmin {
+		cfg, err := a.Store.ReminderSettings(r.Context())
+		if err == nil {
+			p.Expiring, err = a.Store.ExpiringFor(r.Context(), u.ID, cfg.DaysBefore)
+		}
+		if err != nil {
+			log.Printf("mcusubmit: expiring soon: %v", err)
+		}
 	}
 	a.render(w, http.StatusOK, "home.html", p)
 }

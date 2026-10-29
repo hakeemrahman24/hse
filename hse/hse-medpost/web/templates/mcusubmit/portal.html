@@ -27,12 +27,18 @@
           <a href="/mcu-submit/home">Home</a>
           {{if ne .User.Role "Admin"}}<a href="/mcu-submit/batch">New batch</a>
           <a href="/mcu-submit/documents">My documents</a>{{end}}
+          <a href="/mcu-submit/settings">Settings</a>
           {{if eq .User.Role "Admin"}}<a href="/mcu-submit/admin">Admin</a>{{end}}
           <form method="post" action="/mcu-submit/signout" class="mp-inline"><button class="btn-ghost" type="submit">Sign out</button></form>
         {{else}}
           <a href="/mcu-submit/signin">Sign in</a>
           <a class="btn-primary" href="/mcu-submit/register">Request an account</a>
         {{end}}
+        <form method="post" action="/mcu-submit/lang" class="mp-inline mp-lang">
+          <input type="hidden" name="next" value="@@NEXT@@" />
+          <button class="btn-ghost" type="submit" name="lang" value="en" lang="en" aria-label="English">EN</button>
+          <button class="btn-ghost" type="submit" name="lang" value="id" lang="id" aria-label="Bahasa Indonesia">ID</button>
+        </form>
       </div>
     </div>
   </nav>
@@ -133,6 +139,7 @@
           <div class="field">{{template "turnstile" .}}</div>
           <div class="submit-row"><button type="submit" class="btn-primary">Sign in</button></div>
         </form>
+        <p class="mp-hint"><a href="/mcu-submit/forgot">Forgot your password?</a></p>
         <p class="mp-hint">No login yet? <a href="/mcu-submit/register">Request an account</a></p>
       </div>
     </div>
@@ -160,6 +167,99 @@
     </div>
 {{template "foot" .}}{{end}}
 
+{{define "forgot.html"}}{{template "head" .}}
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1>Forgot your <span>password</span></h1>
+        <p class="sub">Enter the email address of your account. If it has one, we send a link to choose a new password.</p>
+        {{template "error" .}}
+        <form method="post" action="/mcu-submit/forgot">
+          <div class="field"><label for="email"><span>Email</span></label>
+            <input id="email" name="email" type="email" maxlength="254" required autocomplete="email" value="{{.Form.email}}" /></div>
+          <div class="field">{{template "turnstile" .}}</div>
+          <div class="submit-row"><button type="submit" class="btn-primary">Send the link</button></div>
+        </form>
+        <p class="mp-hint"><a href="/mcu-submit/signin">Back to sign in</a></p>
+      </div>
+    </div>
+{{template "foot" .}}{{end}}
+
+{{define "reset.html"}}{{template "head" .}}
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1>Choose a new <span>password</span></h1>
+        {{template "error" .}}
+        <form method="post" action="/mcu-submit/reset" autocomplete="off">
+          <input type="hidden" name="token" value="{{.Token}}" />
+          <div class="field"><label for="password"><span>New password</span></label>
+            <input id="password" name="password" type="password" maxlength="72" required autocomplete="new-password" />
+            <p class="mp-hint">At least 10 characters. Not your username or email, and not a common password.</p></div>
+          <div class="field"><label for="confirm"><span>Repeat the password</span></label>
+            <input id="confirm" name="confirm" type="password" maxlength="72" required autocomplete="new-password" /></div>
+          <div class="submit-row"><button type="submit" class="btn-primary">Change password</button></div>
+        </form>
+      </div>
+    </div>
+{{template "foot" .}}{{end}}
+
+{{define "emailchange.html"}}{{template "head" .}}
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1>Confirm your new <span>login email</span></h1>
+        <p class="sub">Use <strong>{{.Message}}</strong> as the login email of your account?</p>
+        <form method="post" action="/mcu-submit/email-change">
+          <input type="hidden" name="token" value="{{.Token}}" />
+          <div class="submit-row"><button type="submit" class="btn-primary">Confirm</button></div>
+        </form>
+      </div>
+    </div>
+{{template "foot" .}}{{end}}
+
+{{define "settings.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1><span>Settings</span></h1>
+      {{template "error" .}}
+      {{if .Notice}}<p class="mp-notice" role="status">{{.Notice}}</p>{{end}}
+
+      <h2>Change <span>password</span></h2>
+      <div class="login-card mp-wide">
+        <form method="post" action="/mcu-submit/settings/password" autocomplete="off">
+          <div class="field"><label for="current"><span>Current password</span></label>
+            <input id="current" name="current" type="password" maxlength="72" required autocomplete="current-password" /></div>
+          <div class="field"><label for="password"><span>New password</span></label>
+            <input id="password" name="password" type="password" maxlength="72" required autocomplete="new-password" />
+            <p class="mp-hint">At least 10 characters. Not your username or email, and not a common password. Your other devices are signed out.</p></div>
+          <div class="field"><label for="confirm"><span>Repeat the new password</span></label>
+            <input id="confirm" name="confirm" type="password" maxlength="72" required autocomplete="new-password" /></div>
+          <button type="submit" class="btn-primary">Change password</button>
+        </form>
+      </div>
+
+      {{if not .User.IsBuiltIn}}
+      <h2>Change <span>email</span></h2>
+      <div class="login-card mp-wide">
+        <p class="sub">Now: {{.User.Email}}</p>
+        <form method="post" action="/mcu-submit/settings/email" autocomplete="off">
+          <div class="field"><label for="email"><span>New email address</span></label>
+            <input id="email" name="email" type="email" maxlength="254" required autocomplete="email" /></div>
+          <div class="field"><label for="email-current"><span>Current password</span></label>
+            <input id="email-current" name="current" type="password" maxlength="72" required autocomplete="current-password" />
+            <p class="mp-hint">We send a link to the new address. The login email changes when you open it. The old address gets a warning.</p></div>
+          <button type="submit" class="btn-primary">Send the link</button>
+        </form>
+      </div>
+
+      <h2>Reminder <span>mails</span></h2>
+      <div class="login-card mp-wide">
+        <form method="post" action="/mcu-submit/settings/reminders">
+          <div class="field"><label><input type="checkbox" name="reminders" value="on"{{if .User.RemindersEnabled}} checked{{end}} /> <span>Email me when a medical checkup I submitted is about to expire</span></label></div>
+          <button type="submit" class="btn-primary">Save</button>
+        </form>
+      </div>
+      {{end}}
+    </section>
+{{template "foot" .}}{{end}}
+
 {{define "home.html"}}{{template "head" .}}
     <section class="mp-section">
       <h1>Welcome, <span>{{.User.Name}}</span></h1>
@@ -172,6 +272,13 @@
         <div class="mp-card"><span class="mp-count">{{index .Counts "Rejected"}}</span><span>Rejected</span></div>
         <div class="mp-card"><span class="mp-count">{{index .Counts "Withdrawn"}}</span><span>Withdrawn</span></div>
       </div>
+      {{if .Expiring}}
+      <h2>Expiring <span>soon</span></h2>
+      <div class="mp-scroll"><table class="mp-table">
+        <caption>Workers you submitted whose checkup is about to expire</caption>
+        <thead><tr><th scope="col">Worker</th><th scope="col">Position</th><th scope="col">Company</th><th scope="col">Valid until</th></tr></thead>
+        <tbody>{{range .Expiring}}<tr><td>{{.Name}}</td><td>{{.Position}}</td><td>{{.Company}}</td><td>{{.ValidUntil}}</td></tr>{{end}}</tbody></table></div>
+      {{end}}
       <p class="mp-actions"><a class="btn-primary" href="/mcu-submit/batch">Start or continue a batch</a> <a class="btn-ghost" href="/mcu-submit/documents">My documents</a></p>
     </section>
 {{template "foot" .}}{{end}}
@@ -246,6 +353,18 @@
     </section>
 {{template "foot" .}}{{end}}
 
+{{define "sendconfirm.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1>Send the <span>batch</span>?</h1>
+      <p class="mp-lead">The medical post will see these {{len .Docs}} documents. After sending you cannot add more to this batch or take a document back, except by withdrawing it while it is waiting for review.</p>
+      {{template "doctable" .}}
+      <div class="mp-actions">
+        <form method="post" action="/mcu-submit/batch/send" class="mp-inline"><input type="hidden" name="batch" value="{{.BatchID}}" /><input type="hidden" name="confirm" value="yes" /><button type="submit" class="btn-primary">Yes, send {{len .Docs}}</button></form>
+        <a class="btn-ghost" href="/mcu-submit/batch">Back to the batch</a>
+      </div>
+    </section>
+{{template "foot" .}}{{end}}
+
 {{define "review.html"}}{{template "head" .}}
     <section class="mp-section">
       <h1>Review <span>document</span></h1>
@@ -275,14 +394,36 @@
 {{define "documents.html"}}{{template "head" .}}
     <section class="mp-section">
       <h1>My <span>documents</span></h1>
-      {{if .Docs}}{{template "doctable" .}}
-      {{else}}<p class="mp-hint">You have not uploaded anything yet.</p>{{end}}
+      {{template "error" .}}
+      <form method="get" action="/mcu-submit/documents" class="mp-filter" aria-label="Filter your documents">
+        <div class="field"><label for="f-worker"><span>Worker</span></label>
+          <input id="f-worker" name="worker" type="text" maxlength="60" value="{{.Form.worker}}" /></div>
+        <div class="field"><label for="f-company"><span>Company</span></label>
+          <input id="f-company" name="company" type="text" maxlength="60" value="{{.Form.company}}" /></div>
+        <div class="field"><label for="f-status"><span>Status</span></label>
+          <select id="f-status" name="status"><option value="">All</option>
+            {{range .Statuses}}<option value="{{.}}"{{if eq . $.Form.status}} selected{{end}}>{{.}}</option>{{end}}
+          </select></div>
+        <div class="field"><label for="f-from"><span>Uploaded from</span></label>
+          <input id="f-from" name="from" type="date" value="{{.Form.from}}" /></div>
+        <div class="field"><label for="f-to"><span>Until</span></label>
+          <input id="f-to" name="to" type="date" value="{{.Form.to}}" /></div>
+        <div class="submit-row"><button type="submit" class="btn-primary">Filter</button> <a class="btn-ghost" href="/mcu-submit/documents">Clear</a></div>
+      </form>
+      {{if .Docs}}
+      <p class="mp-hint" role="status">{{.Result.Total}} documents, page {{.Result.Page}} of {{.Result.Pages}}</p>
+      {{template "doctable" .}}
+      {{if or .PrevURL .NextURL}}<p class="mp-actions">
+        {{if .PrevURL}}<a class="btn-ghost" href="{{.PrevURL}}" rel="prev">Previous</a>{{end}}
+        {{if .NextURL}}<a class="btn-ghost" href="{{.NextURL}}" rel="next">Next</a>{{end}}</p>{{end}}
+      {{else if not .Error}}<p class="mp-hint">{{if .Form.worker}}No document matches this filter.{{else if .Form.company}}No document matches this filter.{{else if .Form.status}}No document matches this filter.{{else if .Form.from}}No document matches this filter.{{else if .Form.to}}No document matches this filter.{{else}}You have not uploaded anything yet.{{end}}</p>{{end}}
       <p class="mp-actions"><a class="btn-primary" href="/mcu-submit/batch">New batch</a></p>
     </section>
 {{template "foot" .}}{{end}}
 
 {{define "admin.html"}}{{template "head" .}}
     <section class="mp-section">
+      <p class="mp-hint"><a href="/mcu-submit/admin/digest">Reviewer mail settings</a> · <a href="/mcu-submit/admin/reminders">Reminder settings</a></p>
       <h1>Account <span>requests</span></h1>
       {{if .Pending}}
       <div class="mp-scroll"><table class="mp-table">
@@ -315,5 +456,74 @@
         </tr>{{end}}
         </tbody></table></div>
       {{else}}<p class="mp-hint">No other accounts yet.</p>{{end}}
+    </section>
+{{template "foot" .}}{{end}}
+
+{{define "digest.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1>Reviewer <span>mail</span></h1>
+      <p class="mp-hint">Reviewers get one mail listing every medical checkup document that has been sent and not yet reviewed. It holds no ID numbers or birth dates, and no mail goes out while nothing is waiting.</p>
+      {{template "error" .}}
+
+      <h2>How <span>often</span></h2>
+      <div class="login-card mp-wide">
+        <form method="post" action="/mcu-submit/admin/digest">
+          <fieldset class="mp-choices">
+            <legend class="mp-sr">How often is the mail sent?</legend>
+            {{range .Intervals}}<label class="mp-check"><input type="radio" name="hours" value="{{.}}"{{if eq . $.Digest.IntervalHours}} checked{{end}} /> <span>Every {{.}} hours</span></label>
+            {{end}}
+          </fieldset>
+          <p class="mp-hint">{{if .Digest.LastSentAt}}Last sent {{.Digest.LastSentAt}} (UTC).{{else}}Not sent yet.{{end}}</p>
+          <button type="submit" class="btn-primary">Save</button>
+        </form>
+      </div>
+
+      <h2>Who <span>receives it</span></h2>
+      {{if .Reviewers}}
+      <div class="mp-scroll"><table class="mp-table">
+        <caption>Digest recipients</caption>
+        <thead><tr><th scope="col">Email</th><th scope="col">Name</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
+        <tbody>
+        {{range .Reviewers}}<tr>
+          <td>{{.Email}}</td><td>{{.Name}}</td>
+          <td>{{if .BouncedAt}}<span class="mp-badge">Bounced {{.BouncedAt}}</span>{{else if .Active}}<span class="mp-badge">Active</span>{{else}}<span class="mp-badge">Paused</span>{{end}}</td>
+          <td>
+            <form method="post" action="/mcu-submit/admin/reviewers/toggle" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><input type="hidden" name="on" value="{{if .Active}}0{{else}}1{{end}}" /><button type="submit" class="btn-ghost">{{if .Active}}Pause{{else}}Resume{{end}}</button></form>
+            <form method="post" action="/mcu-submit/admin/reviewers/delete" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Remove</button></form>
+          </td></tr>{{end}}
+        </tbody></table></div>
+      {{else}}<p class="mp-hint">Nobody receives the mail yet. Add an address below.</p>{{end}}
+
+      <div class="login-card mp-wide">
+        <form method="post" action="/mcu-submit/admin/reviewers/add">
+          <div class="field"><label for="rv-email"><span>Email address</span></label>
+            <input id="rv-email" name="email" type="email" maxlength="254" required /></div>
+          <div class="field"><label for="rv-name"><span>Name (optional)</span></label>
+            <input id="rv-name" name="name" type="text" maxlength="150" /></div>
+          <button type="submit" class="btn-primary">Add</button>
+        </form>
+      </div>
+    </section>
+{{template "foot" .}}{{end}}
+
+{{define "reminders.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1>Expiry <span>reminders</span></h1>
+      <p class="mp-hint">Each submitter gets one mail listing the workers they submitted whose checkup is about to expire. The mail holds no ID numbers or birth dates. Submitters can switch it off in their own Settings.</p>
+      {{template "error" .}}
+      {{if .Notice}}<p class="mp-notice" role="status">{{.Notice}}</p>{{end}}
+      <div class="login-card mp-wide">
+        <form method="post" action="/mcu-submit/admin/reminders">
+          <div class="field"><label class="mp-check"><input type="checkbox" name="enabled"{{if .Reminder.Enabled}} checked{{end}} /> <span>Send reminder mails (checked every day at 08:00 WIB)</span></label></div>
+          <div class="field"><label for="rm-days"><span>Remind when a checkup expires within (days)</span></label>
+            <input id="rm-days" name="days_before" type="number" min="1" max="365" value="{{.Reminder.DaysBefore}}" required /></div>
+          <div class="field"><label for="rm-repeat"><span>Do not mail the same person again within (days)</span></label>
+            <input id="rm-repeat" name="repeat_days" type="number" min="1" max="365" value="{{.Reminder.RepeatDays}}" required /></div>
+          <button type="submit" class="btn-primary">Save</button>
+        </form>
+      </div>
+      <h2>Right <span>now</span></h2>
+      <p class="mp-hint">{{.Preview}}</p>
+      <form method="post" action="/mcu-submit/admin/reminders/send"><button type="submit" class="btn-ghost">Send now</button></form>
     </section>
 {{template "foot" .}}{{end}}

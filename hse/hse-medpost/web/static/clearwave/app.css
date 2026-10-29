@@ -5695,3 +5695,9 @@ tr.detail-row > td .detail-group {
   #sofi-dim-bars .dash-bar-row b, #sofi-group-bars .dash-bar-row b { min-width: 90px; }
   #sofi-dim-bars .dash-bar-row span, #sofi-group-bars .dash-bar-row span { width: 110px; }
 }
+
+/* A tab that opens another page (the Submitted tab on /mcu) looks like the button tabs. */
+a.app-tab {
+  text-decoration: none;
+  display: inline-block;
+}
