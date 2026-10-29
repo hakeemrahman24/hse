@@ -28,31 +28,41 @@
     });
   }
 
+  // Review is the normal way in: it asks first, marks the document Reviewed so a colleague can see it
+  // is taken, then opens the checkup form filled in from the submission (mcu.js). That form closes
+  // the document when the record is saved, so nobody types a Checkup ID.
+  // Times are stored as UTC text "YYYY-MM-DDTHH:MM:SS"; show them with a space and say UTC.
+  function when(t) { return t ? t.replace('T', ' ') + ' UTC' : ''; }
+
+  function reviewPrompt(d) {
+    if (d.reviewedBy || d.reviewedAt) {
+      return (d.reviewedBy || 'Someone') + ' started reviewing ' + d.worker + (d.reviewedAt ? ' on ' + when(d.reviewedAt) : '') +
+        '. Open it anyway?';
+    }
+    return 'Review ' + d.worker + "'s checkup now? This opens the checkup form filled in from the submission.";
+  }
+
+  function startReview(d) {
+    if (!window.confirm(reviewPrompt(d))) return;
+    var open = function () { window.location.href = '/mcu?submission=' + encodeURIComponent(d.id); };
+    if (d.status !== 'Pending') { open(); return; }
+    call('/api/mcu-submissions/' + d.id + '/review', 'POST').then(open).catch(function (e) {
+      // Someone else marked it a moment ago: not an error for the reviewer, just reload the list.
+      say(e.message, true);
+      load();
+    });
+  }
+
   function actions(d, td) {
     var box = document.createElement('div');
     box.className = 'ms-act';
-    if (d.status === 'Pending') {
-      var ok = document.createElement('button');
-      ok.type = 'button'; ok.className = 'btn-primary'; ok.textContent = 'Mark reviewed';
-      ok.addEventListener('click', function () {
-        call('/api/mcu-submissions/' + d.id + '/review', 'POST').then(load).catch(function (e) { say(e.message, true); });
-      });
-      box.appendChild(ok);
-    }
     if (d.status === 'Pending' || d.status === 'Reviewed') {
-      // The checkup record itself is made on the Medical Checkups page (for a new employee, the
-      // patient too). Typing its Checkup ID here links it and closes this document.
-      var rec = document.createElement('input');
-      rec.type = 'text'; rec.maxLength = 64; rec.placeholder = 'Checkup ID';
-      rec.setAttribute('aria-label', 'Checkup ID of the record made for ' + d.worker);
-      var close = document.createElement('button');
-      close.type = 'button'; close.className = 'btn-primary'; close.textContent = 'Close with record';
-      close.addEventListener('click', function () {
-        if (!rec.value.trim()) { say('Create the checkup record first, then enter its Checkup ID.', true); rec.focus(); return; }
-        call('/api/mcu-submissions/' + d.id + '/close', 'POST', { checkUpId: rec.value })
-          .then(load).catch(function (e) { say(e.message, true); });
-      });
-      box.appendChild(rec); box.appendChild(close);
+      var go = document.createElement('button');
+      go.type = 'button'; go.className = 'btn-primary'; go.textContent = 'Review';
+      go.setAttribute('aria-label', 'Review the checkup of ' + d.worker);
+      go.addEventListener('click', function () { startReview(d); });
+      box.appendChild(go);
+
       var reason = document.createElement('input');
       reason.type = 'text'; reason.maxLength = 200; reason.placeholder = 'Reason';
       reason.setAttribute('aria-label', 'Reason for rejecting ' + d.worker);
@@ -64,6 +74,24 @@
           .then(load).catch(function (e) { say(e.message, true); });
       });
       box.appendChild(reason); box.appendChild(no);
+
+      // For a record that was entered by hand before the document was opened from here.
+      var more = document.createElement('details');
+      var sum = document.createElement('summary');
+      sum.textContent = 'Link an existing record';
+      more.appendChild(sum);
+      var rec = document.createElement('input');
+      rec.type = 'text'; rec.maxLength = 64; rec.placeholder = 'Checkup ID';
+      rec.setAttribute('aria-label', 'Checkup ID of the record made for ' + d.worker);
+      var close = document.createElement('button');
+      close.type = 'button'; close.className = 'btn-ghost'; close.textContent = 'Close with record';
+      close.addEventListener('click', function () {
+        if (!rec.value.trim()) { say('Enter the Checkup ID of the record first.', true); rec.focus(); return; }
+        call('/api/mcu-submissions/' + d.id + '/close', 'POST', { checkUpId: rec.value })
+          .then(load).catch(function (e) { say(e.message, true); });
+      });
+      more.appendChild(rec); more.appendChild(close);
+      box.appendChild(more);
     }
     td.appendChild(box);
   }
@@ -85,6 +113,7 @@
       badge.className = 'ms-badge'; badge.textContent = d.status;
       st.appendChild(badge);
       if (d.rejectReason) st.appendChild(document.createTextNode(' ' + d.rejectReason));
+      cell(tr, d.reviewedBy || d.reviewedAt ? [d.reviewedBy, when(d.reviewedAt)].filter(Boolean).join(', ') : '');
       var file = cell(tr, '');
       if (d.hasFile) {
         var a = document.createElement('a');

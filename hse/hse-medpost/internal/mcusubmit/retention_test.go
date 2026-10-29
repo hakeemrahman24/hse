@@ -186,12 +186,12 @@ func TestRetentionBlanksTheWorkersIdentityOnceTheFileIsGone(t *testing.T) {
 	}
 	for _, id := range []int64{oldID, withdrawn} {
 		var name, dob, position string
-		var nik *string
-		if err := s.DB.QueryRow(`SELECT PatName, PatDateOfBirth, PatPosition, PatNik FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&name, &dob, &position, &nik); err != nil {
+		var nik, gender *string
+		if err := s.DB.QueryRow(`SELECT PatName, PatDateOfBirth, PatPosition, PatNik, PatGender FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&name, &dob, &position, &nik, &gender); err != nil {
 			t.Fatal(err)
 		}
-		if name != erasedName || dob != "" || nik != nil {
-			t.Errorf("submission %d keeps identity: %q %q %v", id, name, dob, nik)
+		if name != erasedName || dob != "" || nik != nil || gender != nil {
+			t.Errorf("submission %d keeps identity: %q %q %v %v", id, name, dob, nik, gender)
 		}
 		if position != "Welder" {
 			t.Errorf("submission %d lost its position: %q", id, position)

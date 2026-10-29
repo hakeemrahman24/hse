@@ -184,7 +184,7 @@ func (a *API) AddDocument(w http.ResponseWriter, r *http.Request) {
 		defer r.MultipartForm.RemoveAll()
 	}
 	form := map[string]string{}
-	for _, k := range []string{"patient_id", "name", "dob", "position", "company_id", "nationality", "id_number"} {
+	for _, k := range []string{"patient_id", "name", "dob", "position", "company_id", "nationality", "gender", "id_number"} {
 		form[k] = strings.TrimSpace(r.FormValue(k))
 	}
 	in, msg := a.workerDetails(r.Context(), form)
@@ -272,10 +272,21 @@ func (a *API) workerDetails(ctx context.Context, f map[string]string) (NewSubmis
 		if err != nil {
 			return NewSubmission{}, "Choose the worker from the list."
 		}
-		return NewSubmission{
+		in := NewSubmission{
 			PatientID: w.PatientID, PatName: w.Name, PatDateOfBirth: w.DateOfBirth, PatPosition: w.Position,
-			PatCompanyText: w.Company, PatNationality: w.Nationality, CompanyID: w.CompanyID,
-		}, ""
+			PatCompanyText: w.Company, PatNationality: w.Nationality, PatGender: cleanGender(w.Gender), CompanyID: w.CompanyID,
+		}
+		// The ID number is copied from the patient when there is one, so every submission carries it.
+		// It is stored as the same kind the new-employee form would: NIK for an Indonesian citizen,
+		// passport otherwise. An older patient with none simply has none.
+		if id := strings.ToUpper(strings.NewReplacer(" ", "", "-", "").Replace(w.PersonalID)); id != "" {
+			if isIndonesian(w.Nationality) {
+				in.PatNik = id
+			} else {
+				in.PatPassportNo = id
+			}
+		}
+		return in, ""
 	}
 	if f["name"] == "" {
 		return NewSubmission{}, "Choose the worker from the list, or fill in the new employee details."
@@ -426,6 +437,11 @@ func (a *API) parseWorker(ctx context.Context, f map[string]string) (NewSubmissi
 		return in, "Choose the nationality from the list."
 	}
 	in.PatNationality = nat
+
+	in.PatGender = cleanGender(f["gender"])
+	if in.PatGender == "" {
+		return in, "Choose the gender."
+	}
 	return parseIdentity(in, f["id_number"])
 }
 

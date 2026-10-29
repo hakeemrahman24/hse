@@ -51,7 +51,7 @@ const (
 //	                               uploads stay off without it, the rest of the portal still works)
 //
 // A failure here is logged and leaves the portal off; it never stops the staff app.
-func startMcuPortal(database *sql.DB, sessionSecret string, mux *http.ServeMux, files mcusubmit.FileStore) {
+func startMcuPortal(database *sql.DB, sessionSecret string, mux *http.ServeMux, files mcusubmit.FileStore, certs mcusubmit.CertificateSource) {
 	ctx := context.Background()
 	store := mcusubmit.NewStore(database)
 
@@ -106,6 +106,7 @@ func startMcuPortal(database *sql.DB, sessionSecret string, mux *http.ServeMux, 
 	api.SetTurnstile(verifier, sitekey, devCheck)
 	api.SetMailer(mailer, baseURL)
 	api.SetMailConfig(mailer)
+	api.SetCertificates(certs)
 	api.SetBounceSecret(os.Getenv("MCU_BREVO_WEBHOOK_SECRET"))
 	api.TrustCloudflareHeader(os.Getenv("MCU_PORTAL_TRUST_CF_HEADER") == "1")
 	api.Register(mux)
@@ -206,7 +207,7 @@ func nextReminderRun(now time.Time) time.Time {
 	return next
 }
 
-// runReminders mails the expiring-checkup reminders once a day. RunReminders does nothing while
+// runReminders mails the expiring-checkup reminders, then the completed-checkup mails, once a day. RunReminders does nothing while
 // the admin's master switch is off, and skips anyone mailed within the repeat period, so running
 // it daily is safe.
 func runReminders(ctx context.Context, store *mcusubmit.Store, mailer mcusubmit.Mailer, baseURL string) {
@@ -218,6 +219,14 @@ func runReminders(ctx context.Context, store *mcusubmit.Store, mailer mcusubmit.
 		}
 		if subs > 0 {
 			log.Printf("MCU portal: sent expiry reminders to %d submitters about %d workers", subs, workers)
+		}
+		// One mail per submitter about everything that closed since their last one.
+		mails, docs, err := store.RunClosedNotices(ctx, mailer, baseURL)
+		if err != nil {
+			log.Printf("MCU portal: completed-checkup mails: %v", err)
+		}
+		if mails > 0 {
+			log.Printf("MCU portal: told %d submitters about %d completed checkups", mails, docs)
 		}
 	}
 }

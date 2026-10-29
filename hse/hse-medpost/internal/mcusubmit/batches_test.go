@@ -21,7 +21,7 @@ func activeSubmitter(t *testing.T, s *Store, companyID int64, email string) int6
 func sampleDoc(name string) NewSubmission {
 	return NewSubmission{
 		PatName: name, PatDateOfBirth: "1990-04-12", PatPosition: "Welder", PatCompanyText: "PT Example",
-		PatNationality: "Indonesia", PatNik: "3201011204900001",
+		PatNationality: "Indonesia", PatNik: "3201011204900001", PatGender: "Male",
 		FilePath: "/quarantine/" + strings.ReplaceAll(name, " ", "_") + ".pdf", FileSha256: strings.Repeat("a", 64), FileBytes: 500000,
 	}
 }

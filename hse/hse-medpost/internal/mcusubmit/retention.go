@@ -77,7 +77,7 @@ const erasedName = "(erased)"
 // One set-based UPDATE; it returns how many rows were blanked.
 func (s *Store) ErasePersonalData(ctx context.Context) (int, error) {
 	res, err := s.DB.ExecContext(ctx,
-		`UPDATE McuSubmission SET PatName = ?, PatDateOfBirth = '', PatNik = NULL, PatPassportNo = NULL
+		`UPDATE McuSubmission SET PatName = ?, PatDateOfBirth = '', PatNik = NULL, PatPassportNo = NULL, PatGender = NULL
 		 WHERE FileExpiresAt IS NOT NULL AND FileExpiresAt <= ? AND FilePath IS NULL AND PatName <> ?`,
 		erasedName, s.stamp(), erasedName)
 	if err != nil {

@@ -109,6 +109,7 @@ func newStaffEnv(t *testing.T) *staffEnv {
 	api := &StaffAPI{Store: s, Files: files}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/mcu-submissions", api.List)
+	mux.HandleFunc("GET /api/mcu-submissions/{id}", api.Get)
 	mux.HandleFunc("GET /api/mcu-submissions/{id}/file", api.File)
 	mux.HandleFunc("POST /api/mcu-submissions/{id}/review", api.MarkReviewed)
 	mux.HandleFunc("POST /api/mcu-submissions/{id}/reject", api.Reject)
@@ -401,5 +402,77 @@ func TestTheDatabaseRefusesTwoDocumentsOnOneRecord(t *testing.T) {
 	d := addClean(t, s, sub, "Worker Four")
 	if c == d {
 		t.Fatal("setup")
+	}
+}
+
+func TestStaffGetGivesTheFormWhatItNeedsAndHidesUnsentWork(t *testing.T) {
+	e := newStaffEnv(t)
+	sent := e.doc(t, "Sent Worker", true)
+	draft := e.doc(t, "Draft Worker", false)
+
+	if rec := e.do("GET", fmt.Sprintf("/api/mcu-submissions/%d", sent), "", true); rec.Code != http.StatusUnauthorized {
+		t.Errorf("anonymous get = %d, want 401", rec.Code)
+	}
+	if rec := e.do("GET", fmt.Sprintf("/api/mcu-submissions/%d", draft), "", false); rec.Code != http.StatusNotFound {
+		t.Errorf("a Draft = %d, want 404", rec.Code)
+	}
+	if rec := e.do("GET", "/api/mcu-submissions/99999", "", false); rec.Code != http.StatusNotFound {
+		t.Errorf("a missing id = %d, want 404", rec.Code)
+	}
+	_, _ = e.store.DB.Exec(`UPDATE McuSubmission SET PatNik = '3201010101010001', FK_PatientID = NULL WHERE SubmissionID = ?`, sent)
+	rec := e.do("GET", fmt.Sprintf("/api/mcu-submissions/%d", sent), "", false)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("get = %d: %s", rec.Code, rec.Body.String())
+	}
+	var got staffDetail
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Worker != "Sent Worker" || got.PersonalID != "3201010101010001" || got.Status != SubPending || got.PatientID != 0 {
+		t.Errorf("detail = %+v", got)
+	}
+	if strings.Contains(rec.Body.String(), "FilePath") || strings.Contains(rec.Body.String(), "filePath") {
+		t.Error("the detail leaks a file path")
+	}
+}
+
+func TestStaffListNamesWhoReviewedAndWhen(t *testing.T) {
+	e := newStaffEnv(t)
+	id := e.doc(t, "Sent Worker", true)
+	if rec := e.do("POST", fmt.Sprintf("/api/mcu-submissions/%d/review", id), "", false); rec.Code != http.StatusNoContent {
+		t.Fatalf("review = %d", rec.Code)
+	}
+	rec := e.do("GET", "/api/mcu-submissions", "", false)
+	var rows []staffRow
+	if err := json.Unmarshal(rec.Body.Bytes(), &rows); err != nil || len(rows) != 1 {
+		t.Fatalf("list = %v, %s", err, rec.Body.String())
+	}
+	if rows[0].ReviewedBy != "Dr Test" || rows[0].ReviewedAt == "" {
+		t.Errorf("reviewed by %q at %q, want Dr Test and a time", rows[0].ReviewedBy, rows[0].ReviewedAt)
+	}
+}
+
+func TestStaffDetailCarriesTheGenderAndEnsureGenderColumnUpgradesAnOldTable(t *testing.T) {
+	e := newStaffEnv(t)
+	id := e.doc(t, "Sent Worker", true)
+	rec := e.do("GET", fmt.Sprintf("/api/mcu-submissions/%d", id), "", false)
+	var got staffDetail
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || got.Gender != "Male" {
+		t.Fatalf("gender = %q, %v; want Male (sampleDoc)", got.Gender, err)
+	}
+	// Running it on a database that already has the column is a no-op, not an error.
+	if err := EnsureGenderColumn(e.store.DB); err != nil {
+		t.Fatalf("second run: %v", err)
+	}
+	// A table from before the column gets it, and old rows read back as an empty gender.
+	if _, err := e.store.DB.Exec(`ALTER TABLE McuSubmission DROP COLUMN PatGender`); err != nil {
+		t.Fatal(err)
+	}
+	if err := EnsureGenderColumn(e.store.DB); err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	docs, err := e.store.querySubmissions(context.Background(), `WHERE s.SubmissionID = ?`, id)
+	if err != nil || len(docs) != 1 || docs[0].PatGender != "" {
+		t.Fatalf("after upgrade: %+v, %v", docs, err)
 	}
 }

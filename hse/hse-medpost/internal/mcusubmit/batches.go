@@ -39,7 +39,8 @@ var ErrDailyLimit = errors.New("mcusubmit: daily upload limit reached")
 type NewSubmission struct {
 	PatName, PatDateOfBirth, PatPosition, PatCompanyText, PatNationality string
 	PatNik, PatPassportNo                                                string
-	CompanyID, PatientID                                                 int64 // 0 = not set
+	PatGender                                                            string // Male or Female, "" = unknown
+	CompanyID, PatientID                                                 int64  // 0 = not set
 	IsNewEmployee                                                        bool
 	// NeedsReview stores the document as Review: the submitter must confirm the details and the
 	// file once before it can join the batch that is sent (owner, 2026-10-29).
@@ -61,16 +62,27 @@ type Submission struct {
 	IsNewEmployee, HasFile                               bool
 	ScanStatus, Status, RejectReason                     string
 	SubmittedAt, SentAt, WithdrawnAt, FileExpiresAt      string
+	// Staff-side facts. ReviewedBy is the reviewer's name, never shown to a submitter. PatientID and
+	// CompanyID are 0 when not set; PatNik and PatPassportNo are what the submitter typed and are
+	// blank after retention.
+	ReviewedAt, ReviewedBy string
+	PatNik, PatPassportNo  string
+	PatGender              string
+	RecordID               int64 // the checkup record a Closed document was linked to, 0 = none
+	PatientID, CompanyID   int64
 }
 
 const submissionColumns = `s.SubmissionID, s.FK_BatchID, s.FK_SubmitterID, COALESCE(u.Name, ''),
 	s.PatName, s.PatDateOfBirth, s.PatPosition, s.PatCompanyText, s.PatNationality,
 	s.IsNewEmployee, CASE WHEN s.FilePath IS NULL THEN 0 ELSE 1 END, s.ScanStatus, s.Status, COALESCE(s.RejectReason, ''),
-	s.SubmittedAt, COALESCE(b.SentAt, ''), COALESCE(s.WithdrawnAt, ''), COALESCE(s.FileExpiresAt, '')`
+	s.SubmittedAt, COALESCE(b.SentAt, ''), COALESCE(s.WithdrawnAt, ''), COALESCE(s.FileExpiresAt, ''),
+	COALESCE(s.ReviewedAt, ''), COALESCE(rs.StaffName, ''), COALESCE(s.PatNik, ''), COALESCE(s.PatPassportNo, ''), COALESCE(s.PatGender, ''),
+	COALESCE(s.FK_PatientID, 0), COALESCE(s.FK_CompanyID, 0), COALESCE(s.FK_McuRecordID, 0)`
 
 const submissionFrom = ` FROM McuSubmission s
 	JOIN McuBatch b ON b.BatchID = s.FK_BatchID
-	JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID`
+	JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID
+	LEFT JOIN MedpostStaffTable rs ON rs.StaffID = s.FK_ReviewerStaffID`
 
 func nullInt(v int64) sql.NullInt64 { return sql.NullInt64{Int64: v, Valid: v != 0} }
 
@@ -86,7 +98,8 @@ func (s *Store) querySubmissions(ctx context.Context, where string, args ...any)
 		var isNew, hasFile int
 		if err := rows.Scan(&d.ID, &d.BatchID, &d.SubmitterID, &d.SubmitterName, &d.PatName, &d.PatDateOfBirth,
 			&d.PatPosition, &d.PatCompanyText, &d.PatNationality, &isNew, &hasFile, &d.ScanStatus, &d.Status,
-			&d.RejectReason, &d.SubmittedAt, &d.SentAt, &d.WithdrawnAt, &d.FileExpiresAt); err != nil {
+			&d.RejectReason, &d.SubmittedAt, &d.SentAt, &d.WithdrawnAt, &d.FileExpiresAt,
+			&d.ReviewedAt, &d.ReviewedBy, &d.PatNik, &d.PatPassportNo, &d.PatGender, &d.PatientID, &d.CompanyID, &d.RecordID); err != nil {
 			return nil, err
 		}
 		d.IsNewEmployee, d.HasFile = isNew == 1, hasFile == 1
@@ -171,11 +184,11 @@ func (s *Store) AddSubmission(ctx context.Context, submitterID int64, in NewSubm
 	}
 	res, err := s.DB.ExecContext(ctx,
 		`INSERT INTO McuSubmission (FK_SubmitterID, FK_BatchID, FK_PatientID, PatName, PatDateOfBirth, PatPosition,
-		   PatCompanyText, PatNationality, PatNik, PatPassportNo, FK_CompanyID, IsNewEmployee, FilePath, FileSha256,
+		   PatCompanyText, PatNationality, PatNik, PatPassportNo, PatGender, FK_CompanyID, IsNewEmployee, FilePath, FileSha256,
 		   FileBytes, FileExpiresAt, ScanStatus, Status, SubmittedAt)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULLIF(?, ''), NULLIF(?, ''), NULLIF(?, ''), ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		submitterID, batchID, nullInt(in.PatientID), in.PatName, in.PatDateOfBirth, in.PatPosition,
-		in.PatCompanyText, in.PatNationality, in.PatNik, in.PatPassportNo, nullInt(in.CompanyID), isNew, in.FilePath,
+		in.PatCompanyText, in.PatNationality, in.PatNik, in.PatPassportNo, in.PatGender, nullInt(in.CompanyID), isNew, in.FilePath,
 		in.FileSha256, in.FileBytes, stampOf(now.AddDate(retentionYears, 0, 0)), ScanScanning, startStatus, stampOf(now))
 	if err != nil {
 		return 0, err

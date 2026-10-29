@@ -28,6 +28,7 @@ func registerMcuStaff(mux *http.ServeMux, guard func(http.Handler) http.Handler,
 		}
 	})))
 	mux.Handle("GET /api/mcu-submissions", guard(http.HandlerFunc(api.List)))
+	mux.Handle("GET /api/mcu-submissions/{id}", guard(http.HandlerFunc(api.Get)))
 	mux.Handle("GET /api/mcu-submissions/{id}/file", guard(http.HandlerFunc(api.File)))
 	mux.Handle("POST /api/mcu-submissions/{id}/review", guard(http.HandlerFunc(api.MarkReviewed)))
 	mux.Handle("POST /api/mcu-submissions/{id}/reject", guard(http.HandlerFunc(api.Reject)))

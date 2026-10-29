@@ -295,6 +295,7 @@
           <td class="mp-decide">
             {{if eq .Status "Review"}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/review">Review</a>{{end}}
             {{if or (eq .Status "Draft") (eq .Status "Review")}}<form method="post" action="/mcu-submit/documents/{{.ID}}/remove" class="mp-inline"><button type="submit" class="btn-ghost">{{if eq .Status "Draft"}}Remove{{else}}Discard{{end}}</button></form>{{end}}
+            {{if and (eq .Status "Closed") .RecordID}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/certificate">Download certificate</a>{{end}}
             {{if eq .Status "Pending"}}<form method="post" action="/mcu-submit/documents/{{.ID}}/withdraw" class="mp-inline"><button type="submit" class="btn-ghost">Withdraw</button></form>{{end}}
           </td></tr>{{end}}
         </tbody></table></div>
@@ -331,7 +332,13 @@
                 <option value="">Choose a nationality</option>
                 {{range .Nationalities}}<option value="{{.}}"{{if eq . (index $.Form "nationality")}} selected{{end}}>{{.}}</option>{{end}}
               </select></div>
-            <div class="field"><label for="id_number"><span>NIK or passport number</span></label><input id="id_number" name="id_number" type="text" maxlength="32" autocomplete="off" value="{{index .Form "id_number"}}" />
+            <div class="field"><label for="gender"><span>Gender</span></label>
+              <select id="gender" name="gender">
+                <option value="">Choose the gender</option>
+                <option value="Male"{{if eq (index $.Form "gender") "Male"}} selected{{end}}>Male</option>
+                <option value="Female"{{if eq (index $.Form "gender") "Female"}} selected{{end}}>Female</option>
+              </select></div>
+            <div class="field"><label for="id_number"><span>NIK or passport number (required)</span></label><input id="id_number" name="id_number" type="text" maxlength="32" autocomplete="off" value="{{index .Form "id_number"}}" />
               <p class="mp-hint">Indonesian citizens: the 16-digit NIK. Everyone else: the passport number (6 to 12 letters or digits).</p></div>
           </details>
           <div class="field"><label for="file"><span>Checkup result (PDF, up to 15 MB)</span></label><input id="file" name="file" type="file" accept="application/pdf,.pdf" required />
@@ -376,6 +383,7 @@
           <dt>Date of birth</dt><dd>{{.PatDateOfBirth}}</dd>
           <dt>Position</dt><dd>{{.PatPosition}}</dd>
           <dt>Company</dt><dd>{{.PatCompanyText}}</dd>
+          <dt>Gender</dt><dd>{{if .PatGender}}{{.PatGender}}{{else}}Not given{{end}}</dd>
           <dt>Nationality</dt><dd>{{.PatNationality}}</dd>
           <dt>Worker record</dt><dd>{{if .IsNewEmployee}}New employee (not on file yet){{else}}Existing worker on file{{end}}</dd>
           <dt>File</dt><dd><a href="/mcu-submit/documents/{{.ID}}/file" target="_blank" rel="noopener">Open the PDF in a new tab</a></dd>

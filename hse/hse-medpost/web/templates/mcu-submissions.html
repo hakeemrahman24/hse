@@ -25,6 +25,8 @@
     .ms-badge { display: inline-block; padding: 1px 8px; border: 1px solid #1a7f73; font-size: 0.75rem; font-weight: 600; }
     .ms-table a { color: #12695f; text-decoration: underline; }
     .ms-act .btn-ghost { border: 1px solid #1a7f73; color: #12695f; padding: 4px 10px; background: transparent; cursor: pointer; }
+    .ms-act details { width: 100%; }
+    .ms-act summary { cursor: pointer; color: #12695f; }
     .ms-new { color: #8a4b00; font-weight: 600; }
     .ms-msg { margin: 8px 0; min-height: 1.4em; }
     .ms-msg.err { color: #a12a1b; }
@@ -52,7 +54,7 @@
 
   <main class="ms-wrap">
     <h1>Submitted <span>checkups</span></h1>
-    <p>Medical checkup results sent through the submission portal. Open the PDF, then mark it reviewed or reject it with a reason the submitter will see.</p>
+    <p>Medical checkup results sent through the submission portal. Press Review to open the checkup form filled in from the submission: saving it closes the document. Reject only a file that cannot be used (wrong worker, unreadable), with a reason the submitter will see.</p>
     <div class="ms-bar">
       <label for="ms-status">Status</label>
       <select id="ms-status">
@@ -74,7 +76,7 @@
     <p id="ms-msg" class="ms-msg" role="status"></p>
     <div class="ms-scroll">
       <table class="ms-table">
-        <thead><tr><th scope="col">Sent</th><th scope="col">Worker</th><th scope="col">Date of birth</th><th scope="col">Position</th><th scope="col">Company</th><th scope="col">Submitter</th><th scope="col">Status</th><th scope="col">File</th><th scope="col">Action</th></tr></thead>
+        <thead><tr><th scope="col">Sent</th><th scope="col">Worker</th><th scope="col">Date of birth</th><th scope="col">Position</th><th scope="col">Company</th><th scope="col">Submitter</th><th scope="col">Status</th><th scope="col">Reviewed</th><th scope="col">File</th><th scope="col">Action</th></tr></thead>
         <tbody id="ms-rows"></tbody>
       </table>
     </div>
@@ -89,7 +91,7 @@
   <script src="/static/busy.js"></script>
   <script src="/static/presence.js"></script>
   <script src="/static/page-shell.js"></script>
-  <script src="/static/mcu-submissions.js?v=1"></script>
+  <script src="/static/mcu-submissions.js?v=3"></script>
   <script>startPresence(() => "Submitted checkups");</script>
 
   <footer class="app-dev-credit">

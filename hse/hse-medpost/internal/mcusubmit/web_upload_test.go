@@ -49,7 +49,7 @@ func newUploadEnv(t *testing.T) *uploadEnv {
 func (u *uploadEnv) fields(over map[string]string) map[string]string {
 	f := map[string]string{
 		"name": "Siti Aminah", "dob": "1990-05-17", "position": "Welder",
-		"company_id": itoa(u.companyID), "nationality": "Indonesia", "id_number": "3201012345678901",
+		"company_id": itoa(u.companyID), "nationality": "Indonesia", "gender": "Female", "id_number": "3201012345678901",
 	}
 	for k, v := range over {
 		f[k] = v
@@ -199,12 +199,18 @@ func TestUploadRefusesBadFieldsAndStoresNothing(t *testing.T) {
 		"over 80":                 {"dob": "1930-01-01"},
 		"not a date":              {"dob": "17/05/1990"},
 		"empty name":              {"name": "   "},
+		"empty NIK":               {"id_number": ""},
+		"blank NIK":               {"id_number": "   "},
+		"empty passport":          {"nationality": "Philippines", "id_number": ""},
 		"NIK too short":           {"id_number": "12345"},
 		"NIK with letters":        {"id_number": "32010123456789AB"},
 		"passport for Indonesian": {"id_number": "P1234567"},
 		"NIK for foreigner":       {"nationality": "Philippines", "id_number": "3201012345678901"},
 		"passport too short":      {"nationality": "Philippines", "id_number": "P12"},
 		"unknown nationality":     {"nationality": "Atlantis"},
+		"no gender":               {"gender": ""},
+		"gender not on the list":  {"gender": "Other"},
+		"gender in lower case":    {"gender": "male"},
 		"company not in the list": {"company_id": "99999"},
 		"company is not a number": {"company_id": "abc"},
 	}
@@ -221,6 +227,72 @@ func TestUploadRefusesBadFieldsAndStoresNothing(t *testing.T) {
 	}
 	if u.rowCount() != 0 || u.files.count() != 0 {
 		t.Fatalf("refused uploads left %d rows and %d files", u.rowCount(), u.files.count())
+	}
+}
+
+func TestUploadStoresTheGenderTheSubmitterChose(t *testing.T) {
+	u := newUploadEnv(t)
+	if rec := u.upload(u.cookie, u.fields(map[string]string{"gender": "Male"}), plainPDF("", "")); rec.Code != http.StatusSeeOther {
+		t.Fatalf("= %d\n%s", rec.Code, rec.Body)
+	}
+	var gender string
+	if err := u.store.DB.QueryRow(`SELECT PatGender FROM McuSubmission`).Scan(&gender); err != nil || gender != "Male" {
+		t.Fatalf("stored gender = %q, %v; want Male", gender, err)
+	}
+	// The review page shows it, so the submitter can check it before confirming.
+	id := u.lastSubmissionID()
+	if body := u.get(fmt.Sprintf("/mcu-submit/documents/%d/review", id), u.cookie).Body.String(); !strings.Contains(body, "<dt>Gender</dt><dd>Male</dd>") {
+		t.Errorf("the review page does not show the gender\n%s", body)
+	}
+}
+
+func TestAPickedWorkersIDNumberIsCopiedWhenThePatientHasOne(t *testing.T) {
+	u := newUploadEnv(t)
+	with := u.patient("Joko Widodo", "1982-03-04")
+	without := u.patient("Dewi Sartika", "1985-06-07")
+	if _, err := u.store.DB.Exec(`UPDATE Patient SET PersonalID = '3201 0123-4567 8901' WHERE PatientID = ?`, with); err != nil {
+		t.Fatal(err)
+	}
+	for _, pid := range []int64{with, without} {
+		if rec := u.upload(u.cookie, map[string]string{"patient_id": itoa(pid)}, plainPDF("", "")); rec.Code != http.StatusSeeOther {
+			t.Fatalf("= %d\n%s", rec.Code, rec.Body)
+		}
+	}
+	got := map[int64]string{}
+	rows, err := u.store.DB.Query(`SELECT FK_PatientID, COALESCE(PatNik, '') || '|' || COALESCE(PatPassportNo, '') FROM McuSubmission`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var pid int64
+		var ids string
+		if err := rows.Scan(&pid, &ids); err != nil {
+			t.Fatal(err)
+		}
+		got[pid] = ids
+	}
+	if got[with] != "3201012345678901|" {
+		t.Errorf("a patient with an ID number: stored %q, want the NIK without spaces or dashes", got[with])
+	}
+	if got[without] != "|" {
+		t.Errorf("a patient with no ID number: stored %q, want nothing", got[without])
+	}
+}
+
+func TestAPickedWorkersGenderComesFromTheirPatientRecord(t *testing.T) {
+	u := newUploadEnv(t)
+	pid := u.patient("Joko Widodo", "1982-03-04")
+	if _, err := u.store.DB.Exec(`UPDATE Patient SET Gender = 'Male' WHERE PatientID = ?`, pid); err != nil {
+		t.Fatal(err)
+	}
+	// A tampered form cannot change it: the picker sends no gender at all, and one sent is ignored.
+	if rec := u.upload(u.cookie, map[string]string{"patient_id": itoa(pid), "gender": "Female"}, plainPDF("", "")); rec.Code != http.StatusSeeOther {
+		t.Fatalf("= %d\n%s", rec.Code, rec.Body)
+	}
+	var gender string
+	if err := u.store.DB.QueryRow(`SELECT COALESCE(PatGender, '') FROM McuSubmission`).Scan(&gender); err != nil || gender != "Male" {
+		t.Fatalf("stored gender = %q, %v; want the patient's Male", gender, err)
 	}
 }
 

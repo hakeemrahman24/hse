@@ -16,6 +16,7 @@ import (
 	"hse-medpost/internal/directory"
 	"hse-medpost/internal/emr"
 	"hse-medpost/internal/entrymcu"
+	"hse-medpost/internal/mcusubmit"
 	"hse-medpost/internal/middleware"
 	"hse-medpost/internal/patient"
 	"hse-medpost/internal/presence"
@@ -51,6 +52,12 @@ func main() {
 			if err := db.Migrate(database, sqlText); err != nil {
 				log.Fatal(err)
 			}
+		}
+		if err := mcusubmit.EnsureGenderColumn(database); err != nil {
+			log.Fatal(err)
+		}
+		if err := mcusubmit.EnsureNoticeColumn(database); err != nil {
+			log.Fatal(err)
 		}
 		if err := sofi.EnsureWindowColumn(database); err != nil {
 			log.Fatal(err)
@@ -445,7 +452,7 @@ func main() {
 
 	// Public medical checkup submission portal (/mcu-submit): its own accounts, cookie and look.
 	mcuFiles := openMcuFiles()
-	startMcuPortal(database, cfg.SessionSecret, mux, mcuFiles)
+	startMcuPortal(database, cfg.SessionSecret, mux, mcuFiles, portalCertificates{api: entrymcuAPI, cfg: certConfig})
 	registerMcuStaff(mux, clinician, pages.Templates, database, mcuFiles)
 
 	directoryAPI := &directory.API{DB: database, Token: cfg.DirectoryAPIToken}

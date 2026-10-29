@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS McuSubmission (
     PatNationality      TEXT NOT NULL DEFAULT '',
     PatNik              TEXT NULL,
     PatPassportNo       TEXT NULL,
+    CertNotifiedAt      TEXT NULL,                        -- when the daily "your checkups are done" mail covered this Closed document; older databases get it from mcusubmit.EnsureNoticeColumn
+    PatGender           TEXT NULL,                        -- Male | Female; older databases get it from mcusubmit.EnsureGenderColumn
     FK_CompanyID        INTEGER NULL REFERENCES Company(CompanyID),
     IsNewEmployee       INTEGER NOT NULL DEFAULT 0,
     FilePath            TEXT NULL,                        -- NULL once deleted (withdrawn or expired)

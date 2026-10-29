@@ -56,6 +56,13 @@
           <button type="button" id="new-patient-header-cancel" class="btn-outline" hidden>Cancel</button>
         </div>
 
+        <!-- Shown when a checkup is opened from the Submitted page (/mcu?submission=ID). -->
+        <div id="submission-banner" class="submission-banner" role="status" hidden>
+          <span id="submission-banner-text"></span>
+          <a id="submission-banner-pdf" href="#" target="_blank" rel="noopener" hidden>Open PDF</a>
+          <a href="/mcu-submissions">Back to Submitted</a>
+        </div>
+
 
         <!-- Shared list for the Employee tab (one latest checkup per
              person) and the MCU data tab (every visit). Search, company,
@@ -792,7 +799,7 @@
   <script src="/static/certificate-name.js"></script>
   <script src="/static/clearwave/app-nav.js"></script>
   <script src="/static/presence.js"></script>
-  <script src="/static/mcu.js"></script>
+  <script src="/static/mcu.js?v=3"></script>
   <script src="/static/dashboard.js"></script>
 
   <footer class="app-dev-credit">
