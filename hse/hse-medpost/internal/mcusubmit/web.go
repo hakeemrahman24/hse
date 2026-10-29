@@ -78,8 +78,9 @@ type API struct {
 	baseURL      string
 	trustCF      bool
 	secureCookie bool
-	pipeline     *Pipeline // nil = uploads are off
-	bounceSecret string    // empty = the Brevo webhook is off
+	pipeline     *Pipeline     // nil = uploads are off
+	bounceSecret string        // empty = the Brevo webhook is off
+	mailCfg      *ConfigMailer // nil = no mail settings page, sign-up never closed for lack of mail
 }
 
 // New builds the handlers. The cookie key is derived from the staff session secret with its own
@@ -164,6 +165,9 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("GET "+basePath+"/admin/reminders", a.ReminderPage)
 	in.HandleFunc("POST "+basePath+"/admin/reminders", a.ReminderSave)
 	in.HandleFunc("POST "+basePath+"/admin/reminders/send", a.ReminderSendNow)
+	in.HandleFunc("GET "+basePath+"/admin/mail", a.MailPage)
+	in.HandleFunc("POST "+basePath+"/admin/mail", a.MailSave)
+	in.HandleFunc("POST "+basePath+"/admin/mail/test", a.MailTest)
 	in.HandleFunc("GET "+basePath+"/admin/digest", a.DigestPage)
 	in.HandleFunc("POST "+basePath+"/admin/digest", a.DigestSave)
 	in.HandleFunc("POST "+basePath+"/admin/reviewers/add", a.ReviewerAdd)
@@ -244,6 +248,10 @@ type page struct {
 	Reminder ReminderConfig
 	Preview  string
 	Expiring []Expiring
+
+	// Mail settings page.
+	MailCfg    MailConfig
+	MailSource string
 }
 
 type companyOption struct {

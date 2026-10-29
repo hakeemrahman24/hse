@@ -23,6 +23,9 @@ func (a *API) registerForm(w http.ResponseWriter, r *http.Request, status int, f
 
 // RegisterPage shows the request form.
 func (a *API) RegisterPage(w http.ResponseWriter, r *http.Request) {
+	if a.signUpClosed(w, r) {
+		return
+	}
 	a.registerForm(w, r, http.StatusOK, map[string]string{}, "")
 }
 
@@ -30,6 +33,9 @@ func (a *API) RegisterPage(w http.ResponseWriter, r *http.Request) {
 // well-formed request, the visitor sees the same "check your email" page, so the form cannot be
 // used to find out which addresses already have an account.
 func (a *API) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
+	if a.signUpClosed(w, r) {
+		return
+	}
 	if !parseForm(w, r) {
 		a.message(w, http.StatusBadRequest, "Invalid request", "The form could not be read.", nil)
 		return

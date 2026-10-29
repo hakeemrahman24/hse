@@ -16,6 +16,9 @@ import (
 // or 48 hours (owner decision, 2026-10-29; it replaces "one mail per batch" in the plan). The list
 // of readers is a plain table managed by the portal admin, because reviewers have no portal login.
 
+// maxBounceReason is the size of Submitter.EmailBounceReason (VARCHAR(100)); MariaDB refuses a longer value.
+const maxBounceReason = 100
+
 // DigestIntervals are the only choices the settings page offers. Anything else is refused in Go so
 // the migration stays valid on both SQLite and MariaDB.
 var DigestIntervals = []int{24, 36, 48}
@@ -231,7 +234,7 @@ func (s *Store) RunDigest(ctx context.Context, m Mailer, staffURL string) (int, 
 	if err := s.oneRow(ctx, `UPDATE McuDigestSetting SET LastSentAt = ? WHERE McuDigestSettingID = 1`, s.stamp()); err != nil {
 		return sent, err
 	}
-	_ = s.LogEvent(ctx, Event{ActorType: ActorSystem, EntityType: EntityBatch, Action: "DigestSent",
+	_ = s.LogEvent(ctx, Event{ActorType: ActorSystem, EntityType: EntitySystem, Action: "DigestSent",
 		Detail: fmt.Sprintf("%d waiting, %d mails", len(lines), sent)})
 	return sent, nil
 }
@@ -286,13 +289,13 @@ func (s *Store) MarkEmailBounced(ctx context.Context, email, reason string) (int
 		return total, err
 	}
 	if err == nil {
-		if _, err := s.DB.ExecContext(ctx, `UPDATE Submitter SET EmailBouncedAt = ? WHERE SubmitterID = ?`, now, id); err != nil {
+		if len(reason) > maxBounceReason {
+			reason = reason[:maxBounceReason]
+		}
+		if _, err := s.DB.ExecContext(ctx, `UPDATE Submitter SET EmailBouncedAt = ?, EmailBounceReason = ? WHERE SubmitterID = ?`, now, reason, id); err != nil {
 			return total, err
 		}
 		total++
-		if len(reason) > 60 {
-			reason = reason[:60]
-		}
 		_ = s.LogEvent(ctx, Event{ActorType: ActorSystem, EntityType: EntitySubmitter, EntityID: id, Action: "EmailBounced", Detail: reason})
 	}
 	return total, nil

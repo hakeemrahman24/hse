@@ -423,7 +423,7 @@
 
 {{define "admin.html"}}{{template "head" .}}
     <section class="mp-section">
-      <p class="mp-hint"><a href="/mcu-submit/admin/digest">Reviewer mail settings</a> · <a href="/mcu-submit/admin/reminders">Reminder settings</a></p>
+      <p class="mp-hint"><a href="/mcu-submit/admin/digest">Reviewer mail settings</a> · <a href="/mcu-submit/admin/reminders">Reminder settings</a> · <a href="/mcu-submit/admin/mail">Mail settings</a></p>
       <h1>Account <span>requests</span></h1>
       {{if .Pending}}
       <div class="mp-scroll"><table class="mp-table">
@@ -525,5 +525,39 @@
       <h2>Right <span>now</span></h2>
       <p class="mp-hint">{{.Preview}}</p>
       <form method="post" action="/mcu-submit/admin/reminders/send"><button type="submit" class="btn-ghost">Send now</button></form>
+    </section>
+{{template "foot" .}}{{end}}
+
+{{define "mail.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1>Mail <span>settings</span></h1>
+      <p class="mp-hint">The portal sends sign-up links, password resets, reviewer digests and reminders through this mail login (Brevo). Now in use: {{.MailSource}}.</p>
+      {{template "error" .}}
+      {{if .Notice}}<p class="mp-notice" role="status">{{.Notice}}</p>{{end}}
+      <div class="login-card mp-wide">
+        <form method="post" action="/mcu-submit/admin/mail" autocomplete="off">
+          <div class="field"><label for="ml-host"><span>Mail server</span></label>
+            <input id="ml-host" name="host" type="text" maxlength="253" required placeholder="smtp-relay.brevo.com" value="{{.Form.host}}" /></div>
+          <div class="field"><label for="ml-port"><span>Port</span></label>
+            <input id="ml-port" name="port" type="number" min="1" max="65535" placeholder="587" value="{{.Form.port}}" /></div>
+          <div class="field"><label for="ml-user"><span>SMTP login</span></label>
+            <input id="ml-user" name="username" type="text" maxlength="254" value="{{.Form.username}}" /></div>
+          <div class="field"><label for="ml-pass"><span>SMTP key</span></label>
+            <input id="ml-pass" name="password" type="password" maxlength="200" autocomplete="new-password" placeholder="{{if .MailCfg.HasPassword}}Leave blank to keep the stored key{{else}}No key stored yet{{end}}" />
+            <p class="mp-hint">In Brevo: SMTP &amp; API, SMTP tab. The login is the SMTP login shown there and the key is an SMTP key, not your account password. The key is stored encrypted and is never shown again.</p></div>
+          <div class="field"><label for="ml-from"><span>Sender address</span></label>
+            <input id="ml-from" name="from" type="text" maxlength="254" required placeholder="Medpost &lt;no-reply@yourcompany.com&gt;" value="{{.Form.from}}" />
+            <p class="mp-hint">Its domain must be verified in Brevo or sends are rejected.</p></div>
+          <button type="submit" class="btn-primary">Save</button>
+        </form>
+      </div>
+      <h2>Send a <span>test mail</span></h2>
+      <div class="login-card mp-wide">
+        <form method="post" action="/mcu-submit/admin/mail/test">
+          <div class="field"><label for="ml-to"><span>Send to</span></label>
+            <input id="ml-to" name="to" type="email" maxlength="254" required /></div>
+          <button type="submit" class="btn-ghost">Send test mail</button>
+        </form>
+      </div>
     </section>
 {{template "foot" .}}{{end}}

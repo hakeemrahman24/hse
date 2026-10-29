@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS McuSubmission (
     FileBytes           INTEGER NULL,
     FileExpiresAt       TEXT NULL,
     ScanStatus          TEXT NOT NULL DEFAULT 'Scanning', -- Scanning | Clean | ScanError (Infected rows are deleted)
-    Status              TEXT NOT NULL DEFAULT 'Draft',    -- Draft | Pending | Reviewed | Closed | Rejected | Withdrawn
+    Status              TEXT NOT NULL DEFAULT 'Draft',    -- Draft | Review | Pending | Reviewed | Closed | Rejected | Withdrawn (Review = uploaded, not yet confirmed by the submitter)
     RejectReason        TEXT NULL,
     WithdrawnAt         TEXT NULL,
     SubmittedAt         TEXT NOT NULL,

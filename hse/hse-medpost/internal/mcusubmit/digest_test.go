@@ -67,6 +67,9 @@ func TestDigestListsOnlyPendingDocumentsAndNoSensitiveData(t *testing.T) {
 	if !strings.Contains(m.sent[0].Subject, "1") {
 		t.Errorf("subject %q should carry the count", m.sent[0].Subject)
 	}
+	if !hasEvent(t, s, EntitySystem, 0, "DigestSent") {
+		t.Error("the digest left no DigestSent event under the System entity")
+	}
 }
 
 func TestDigestRespectsTheIntervalAndOnlyMarksWhenSent(t *testing.T) {
