@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" class="vt-cover">
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @view-transition { navigation: auto; }
+    html { background: #E8F4F2; }
+    html.vt-cover { visibility: hidden; }
+    ::view-transition-group(root) { animation-duration: 120ms; }
+    @media (prefers-reduced-motion: reduce) {
+      ::view-transition-group(root) { animation: none; }
+    }
+    .ms-wrap { max-width: 1200px; margin: 0 auto; padding: 96px 16px 48px; }
+    .ms-wrap h1 { margin-bottom: 8px; }
+    .ms-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 16px 0; }
+    .ms-bar select, .ms-bar input { padding: 6px 10px; }
+    .ms-bar input[type=text] { width: 9rem; }
+    .ms-pager { display: flex; gap: 12px; align-items: center; margin: 12px 0; }
+    .ms-scroll { overflow-x: auto; }
+    .ms-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; background: #fff; }
+    .ms-table th { text-align: left; padding: 8px; background: #d9eeea; white-space: nowrap; }
+    .ms-table td { padding: 8px; border-top: 1px solid #cfe3df; vertical-align: top; }
+    .ms-act { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .ms-act input { padding: 4px 8px; width: 160px; }
+    .ms-badge { display: inline-block; padding: 1px 8px; border: 1px solid #1a7f73; font-size: 0.75rem; font-weight: 600; }
+    .ms-table a { color: #12695f; text-decoration: underline; }
+    .ms-act .btn-ghost { border: 1px solid #1a7f73; color: #12695f; padding: 4px 10px; background: transparent; cursor: pointer; }
+    .ms-new { color: #8a4b00; font-weight: 600; }
+    .ms-msg { margin: 8px 0; min-height: 1.4em; }
+    .ms-msg.err { color: #a12a1b; }
+  </style>
+  <noscript><style>html.vt-cover { visibility: visible; }</style></noscript>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submitted checkups · hse-medpost</title>
+  <link rel="icon" type="image/png" href="/static/favicon.png" />
+  <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <script>
+    document.documentElement.classList.remove("vt-cover");
+  </script>
+</head>
+<body>
+  <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
+    <div class="nav-inner">
+      <a href="/start" class="nav-logo">hse <span>medpost</span></a>
+      <div class="nav-cta">
+        <a href="/mcu" class="btn-outline">&larr; Medical checkups</a>
+        <button type="button" id="logout" class="btn-primary">Log out</button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="ms-wrap">
+    <h1>Submitted <span>checkups</span></h1>
+    <p>Medical checkup results sent through the submission portal. Open the PDF, then mark it reviewed or reject it with a reason the submitter will see.</p>
+    <div class="ms-bar">
+      <label for="ms-status">Status</label>
+      <select id="ms-status">
+        <option value="">All sent</option>
+        <option value="Pending">Pending</option>
+        <option value="Reviewed">Reviewed</option>
+        <option value="Rejected">Rejected</option>
+        <option value="Closed">Closed</option>
+        <option value="Withdrawn">Withdrawn</option>
+      </select>
+      <label for="ms-worker">Worker</label><input id="ms-worker" type="text" maxlength="60" />
+      <label for="ms-company">Company</label><input id="ms-company" type="text" maxlength="60" />
+      <label for="ms-submitter">Submitter</label><input id="ms-submitter" type="text" maxlength="60" />
+      <label for="ms-from">From</label><input id="ms-from" type="date" />
+      <label for="ms-to">To</label><input id="ms-to" type="date" />
+      <button type="button" id="ms-apply" class="btn-primary">Filter</button>
+      <button type="button" id="ms-clear" class="btn-ghost">Clear</button>
+    </div>
+    <p id="ms-msg" class="ms-msg" role="status"></p>
+    <div class="ms-scroll">
+      <table class="ms-table">
+        <thead><tr><th scope="col">Sent</th><th scope="col">Worker</th><th scope="col">Date of birth</th><th scope="col">Position</th><th scope="col">Company</th><th scope="col">Submitter</th><th scope="col">Status</th><th scope="col">File</th><th scope="col">Action</th></tr></thead>
+        <tbody id="ms-rows"></tbody>
+      </table>
+    </div>
+    <p class="ms-pager">
+      <button type="button" id="ms-prev" class="btn-ghost">Previous</button>
+      <span id="ms-page" role="status"></span>
+      <button type="button" id="ms-next" class="btn-ghost">Next</button>
+    </p>
+  </main>
+
+  <script src="/static/session-guard.js"></script>
+  <script src="/static/busy.js"></script>
+  <script src="/static/presence.js"></script>
+  <script src="/static/page-shell.js"></script>
+  <script src="/static/mcu-submissions.js?v=1"></script>
+  <script>startPresence(() => "Submitted checkups");</script>
+
+  <footer class="app-dev-credit">
+    <p>Developed by dr. Arif Rahman Hakim.</p>
+    <p>Internal HSE record-keeping only. This does not replace clinical judgment, and the developer is not liable for data-entry errors or decisions based on this system.</p>
+  </footer>
+</body>
+</html>

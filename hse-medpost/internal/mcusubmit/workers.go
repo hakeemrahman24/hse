@@ -45,13 +45,7 @@ func scanWorker(row interface{ Scan(...any) error }) (Worker, error) {
 // clause with a backslash behaves differently on SQLite and MariaDB (see CLAUDE.md), and a name
 // never contains them.
 func searchWords(q string) []string {
-	clean := strings.Map(func(r rune) rune {
-		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.' || r == '-' || r == '\'' {
-			return r
-		}
-		return ' '
-	}, q)
-	words := strings.Fields(clean)
+	words := splitWords(q)
 	letters := 0
 	for _, w := range words {
 		letters += len([]rune(w))
@@ -60,6 +54,18 @@ func searchWords(q string) []string {
 		return nil
 	}
 	return words
+}
+
+// splitWords is the cleaning step alone, with no minimum length. The document filters use it
+// directly: a filter may be one letter, because it narrows a list the person already has.
+func splitWords(q string) []string {
+	clean := strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '.' || r == '-' || r == '\'' {
+			return r
+		}
+		return ' '
+	}, q)
+	return strings.Fields(clean)
 }
 
 // SearchWorkers finds patients whose name contains every word of the query, for the picker.

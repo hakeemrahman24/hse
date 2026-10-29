@@ -53,6 +53,7 @@ type Submitter struct {
 	RejectReason     string
 	CreatedAt        string
 	LastLoginAt      string
+	ErasedAt         string // set once the retention job blanked the account
 }
 
 // Store reads and writes the portal tables.
@@ -70,7 +71,7 @@ func (s *Store) stamp() string { return dates.Stamp(s.now()) }
 const submitterColumns = `SubmitterID, Email, COALESCE(Username, ''), Name, COALESCE(FK_CompanyID, 0),
 	PositionText, Role, Status, IsBuiltIn, SessionVersion, RemindersEnabled,
 	COALESCE(EmailVerifiedAt, ''), COALESCE(EmailBouncedAt, ''), COALESCE(RejectReason, ''),
-	CreatedAt, COALESCE(LastLoginAt, '')`
+	CreatedAt, COALESCE(LastLoginAt, ''), COALESCE(ErasedAt, '')`
 
 type rowScanner interface{ Scan(dest ...any) error }
 
@@ -79,7 +80,7 @@ func scanSubmitter(r rowScanner) (Submitter, error) {
 	var builtIn, reminders int
 	err := r.Scan(&u.ID, &u.Email, &u.Username, &u.Name, &u.CompanyID, &u.Position, &u.Role, &u.Status,
 		&builtIn, &u.SessionVersion, &reminders, &u.EmailVerifiedAt, &u.EmailBouncedAt, &u.RejectReason,
-		&u.CreatedAt, &u.LastLoginAt)
+		&u.CreatedAt, &u.LastLoginAt, &u.ErasedAt)
 	u.IsBuiltIn, u.RemindersEnabled = builtIn == 1, reminders == 1
 	return u, err
 }

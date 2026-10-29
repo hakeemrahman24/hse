@@ -142,7 +142,7 @@ func (u *uploadEnv) sendBatch() {
 	if err := u.store.DB.QueryRow(`SELECT FK_BatchID FROM McuSubmission ORDER BY SubmissionID DESC LIMIT 1`).Scan(&batch); err != nil {
 		u.t.Fatal(err)
 	}
-	if rec := u.post("/mcu-submit/batch/send", url.Values{"batch": {itoa(batch)}}, u.cookie); rec.Code != http.StatusSeeOther {
+	if rec := u.post("/mcu-submit/batch/send", url.Values{"batch": {itoa(batch)}, "confirm": {"yes"}}, u.cookie); rec.Code != http.StatusSeeOther {
 		u.t.Fatalf("send = %d\n%s", rec.Code, rec.Body)
 	}
 }
@@ -583,5 +583,29 @@ func TestWorkerSearchIsRateLimitedPerAccount(t *testing.T) {
 	}
 	if rec := u.get("/mcu-submit/workers?q=abc", u.cookie); rec.Code != http.StatusTooManyRequests {
 		t.Fatalf("over the limit = %d, want 429", rec.Code)
+	}
+}
+
+func TestSendAsksForConfirmationFirstAndSendsNothingUntilConfirmed(t *testing.T) {
+	u := newUploadEnv(t)
+	id := u.uploadConfirmed()
+	var batch int64
+	_ = u.store.DB.QueryRow(`SELECT FK_BatchID FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&batch)
+
+	rec := u.post("/mcu-submit/batch/send", url.Values{"batch": {itoa(batch)}}, u.cookie)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Yes, send 1") || !strings.Contains(rec.Body.String(), "Siti Aminah") {
+		t.Fatalf("first POST = %d, want the confirmation page\n%s", rec.Code, rec.Body)
+	}
+	var status string
+	_ = u.store.DB.QueryRow(`SELECT Status FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&status)
+	if status != SubDraft {
+		t.Fatalf("status = %s: asking must not send", status)
+	}
+	if rec := u.post("/mcu-submit/batch/send", url.Values{"batch": {itoa(batch)}, "confirm": {"yes"}}, u.cookie); rec.Code != http.StatusSeeOther {
+		t.Fatalf("confirmed send = %d", rec.Code)
+	}
+	_ = u.store.DB.QueryRow(`SELECT Status FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&status)
+	if status != SubPending {
+		t.Fatalf("status = %s after confirming", status)
 	}
 }

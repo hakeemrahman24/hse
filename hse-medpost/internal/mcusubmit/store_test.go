@@ -23,7 +23,7 @@ func newTestStore(t *testing.T) (*Store, *fixedClock, int64) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { database.Close() })
-	for _, name := range []string{"004_company.sql", "005_patient.sql", "006_entrymcu.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql"} {
+	for _, name := range []string{"004_company.sql", "005_patient.sql", "006_entrymcu.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "020_mcu_portal_digest.sql"} {
 		sqlText, err := db.LoadMigrationFile(filepath.Join("..", "..", "migrations", "sqlite", name))
 		if err != nil {
 			t.Fatal(err)

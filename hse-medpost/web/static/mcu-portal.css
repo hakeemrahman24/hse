@@ -90,13 +90,13 @@ body.mp {
 .mp .login-card.mp-wide { max-width: 460px; }
 .mp .login-card .sub { color: var(--text-2); margin-bottom: 16px; }
 .mp .login-card label > span, .mp .login-card legend { color: var(--text-2); }
-.mp .login-card input, .mp .login-card select, .mp-table input {
+.mp .login-card input, .mp .login-card select, .mp-table input, .mp-filter input, .mp-filter select {
   background: var(--bg-alt);
   color: var(--text-1);
   border: 1px solid rgba(255, 255, 255, 0.35);
 }
-.mp .login-card input:focus, .mp .login-card select:focus, .mp-table input:focus { border-color: var(--accent); }
-.mp .login-card input::placeholder, .mp-table input::placeholder { color: var(--text-3); }
+.mp .login-card input:focus, .mp .login-card select:focus, .mp-table input:focus, .mp-filter input:focus, .mp-filter select:focus { border-color: var(--accent); }
+.mp .login-card input::placeholder, .mp-table input::placeholder, .mp-filter input::placeholder { color: var(--text-3); }
 .mp .login-card .field { margin-bottom: 16px; }
 .mp-hint { color: var(--text-3); font-size: 0.8rem; margin-top: 6px; }
 .mp-error {
@@ -123,6 +123,8 @@ body.mp {
 .mp-badge { display: inline-block; border: 1px solid var(--accent-border); background: var(--accent-ghost); color: var(--accent-light); padding: 1px 8px; font-size: 0.75rem; font-weight: 700; }
 .mp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
+.mp-notice { background: var(--accent-ghost); border: 1px solid var(--accent-border); padding: 8px 10px; margin: 12px 0; }
+
 /* Worker picker and review page */
 .mp-results { list-style: none; margin: 6px 0 0; padding: 0; }
 .mp-results li { margin: 0 0 4px; }
@@ -141,3 +143,20 @@ body.mp {
   .mp-hero { padding-top: 88px; }
   .mp-section { padding-top: 72px; }
 }
+
+/* Filter bar above My documents: fields wrap on a phone instead of scrolling the page sideways. */
+.mp-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  align-items: flex-end;
+  margin: 16px 0;
+}
+.mp-filter .field { margin: 0; }
+.mp-filter .field label { display: block; margin-bottom: 4px; }
+
+/* Radio and checkbox rows on the admin settings pages. */
+.mp-choices { border: 0; padding: 0; margin: 0 0 12px; }
+.mp-check { display: flex; align-items: center; gap: 10px; margin: 6px 0; cursor: pointer; }
+.mp-check input { width: auto; }
+
