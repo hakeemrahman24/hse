@@ -122,6 +122,11 @@ func (s *Store) CloseWithRecord(ctx context.Context, id, staffID int64, checkUpI
 		   ReviewedAt = COALESCE(ReviewedAt, ?), FK_ReviewerStaffID = COALESCE(FK_ReviewerStaffID, ?)
 		 WHERE SubmissionID = ? AND Status IN (?, ?)`,
 		SubClosed, recordID, recordPatient, now, staffID, id, SubPending, SubReviewed)
+	// The count above gives the friendly answer; the unique index uq_mcusub_mcurecord is the real
+	// guard when two staff members link the same record in the same instant.
+	if isUniqueViolation(err) {
+		return ErrRecordTaken
+	}
 	if err != nil {
 		return err
 	}

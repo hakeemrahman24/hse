@@ -71,6 +71,10 @@ func TestBounceWebhookFlagsSubmittersAndReviewers(t *testing.T) {
 	if !found {
 		t.Error("no EmailBounced event")
 	}
+	var reason string
+	if err := e.store.DB.QueryRow(`SELECT COALESCE(EmailBounceReason, '') FROM Submitter WHERE SubmitterID = ?`, id).Scan(&reason); err != nil || reason != "hard_bounce" {
+		t.Errorf("EmailBounceReason = %q (%v), want hard_bounce", reason, err)
+	}
 }
 
 func TestBounceWebhookIgnoresSoftEventsUnknownAddressesAndBadBodies(t *testing.T) {

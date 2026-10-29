@@ -27,6 +27,9 @@ func (a *API) forgotForm(w http.ResponseWriter, status int, email, errMsg string
 
 // ForgotPage asks for the email address of the account.
 func (a *API) ForgotPage(w http.ResponseWriter, r *http.Request) {
+	if a.signUpClosed(w, r) {
+		return
+	}
 	a.forgotForm(w, http.StatusOK, "", "")
 }
 
@@ -34,6 +37,9 @@ func (a *API) ForgotPage(w http.ResponseWriter, r *http.Request) {
 // known or not, so the form cannot be used to find out who has an account (same rule as
 // registration); the work behind it is rate-limited per address and per visitor.
 func (a *API) ForgotSubmit(w http.ResponseWriter, r *http.Request) {
+	if a.signUpClosed(w, r) {
+		return
+	}
 	if !parseForm(w, r) {
 		a.forgotForm(w, http.StatusBadRequest, "", "The form could not be read.")
 		return

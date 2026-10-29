@@ -15,6 +15,7 @@ const (
 	EntitySubmitter  = "Submitter"
 	EntityBatch      = "Batch"
 	EntitySubmission = "Submission"
+	EntitySystem     = "System" // jobs that belong to no one row (EntityID is 0), such as the reviewer digest
 
 	maxActionLen = 30
 	maxDetailLen = 255
@@ -42,7 +43,7 @@ func (s *Store) LogEvent(ctx context.Context, e Event) error {
 		return errors.New("mcusubmit: unknown actor type")
 	}
 	switch e.EntityType {
-	case EntitySubmitter, EntityBatch, EntitySubmission:
+	case EntitySubmitter, EntityBatch, EntitySubmission, EntitySystem:
 	default:
 		return errors.New("mcusubmit: unknown entity type")
 	}

@@ -375,3 +375,31 @@ func TestCloseRouteMapsEachRefusalToAClearStatus(t *testing.T) {
 		t.Errorf("closing twice = %d, want 409", rec.Code)
 	}
 }
+
+// The count in CloseWithRecord is only the friendly first line; two staff members closing at the
+// same instant both pass it. The unique index is what must stop the second link.
+func TestTheDatabaseRefusesTwoDocumentsOnOneRecord(t *testing.T) {
+	s, _, co := newTestStore(t)
+	sub := activeSubmitter(t, s, co, "hrone@example.com")
+	w1 := seedWorker(t, s, "Worker One", "1990-04-12", co)
+	addRecord(t, s, w1, "MedC-1", "Fit", "2027-01-01", "Open", 1)
+	var recordID int64
+	if err := s.DB.QueryRow(`SELECT McuRecordID FROM McuRecord WHERE CheckUpID = 'MedC-1'`).Scan(&recordID); err != nil {
+		t.Fatal(err)
+	}
+	a, b := sentDocIn(t, s, sub, "Worker One", "Worker Two")
+
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_McuRecordID = ? WHERE SubmissionID = ?`, recordID, a); err != nil {
+		t.Fatal(err)
+	}
+	_, err := s.DB.Exec(`UPDATE McuSubmission SET FK_McuRecordID = ? WHERE SubmissionID = ?`, recordID, b)
+	if !isUniqueViolation(err) {
+		t.Fatalf("a second document on the same record = %v, want a unique violation", err)
+	}
+	// Documents with no record yet must stay allowed: NULLs do not collide.
+	c := addClean(t, s, sub, "Worker Three")
+	d := addClean(t, s, sub, "Worker Four")
+	if c == d {
+		t.Fatal("setup")
+	}
+}

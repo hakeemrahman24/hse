@@ -37,8 +37,9 @@ const (
 //
 //	MCU_PORTAL_BASE_URL            public address used in mail links, e.g. https://medpost.example.com
 //	TURNSTILE_SITEKEY / _SECRET    the same Cloudflare keys as /sofi (or MCU_PORTAL_DEV_STUBS=1: fake check)
-//	MCU_SMTP_HOST/_PORT/_USER/_PASS/_FROM   the mail relay, Brevo's smtp-relay.brevo.com:587 (or
-//	                               MCU_PORTAL_DEV_MAIL=1: write mails to the log, development only)
+//	MCU_SMTP_HOST/_PORT/_USER/_PASS/_FROM   optional fallback mail login (Brevo's smtp-relay.brevo.com:587);
+//	                               the page-edited login in the database wins when it is set
+//	                               (MCU_PORTAL_DEV_MAIL=1: write mails to the log, development only)
 //	MCU_PORTAL_ADMIN_PASSWORD      password of the hidden built-in portal admin, set on the first start
 //	MCU_PORTAL_ADMIN_RESET=1       replace that password once (the admin has no email for "forgot")
 //	MCU_PORTAL_TRUST_CF_HEADER=1   read the visitor address from CF-Connecting-IP (tunnel-only port)
@@ -81,21 +82,15 @@ func startMcuPortal(database *sql.DB, sessionSecret string, mux *http.ServeMux, 
 		return
 	}
 
-	var mailer mcusubmit.Mailer
-	switch {
-	case os.Getenv("MCU_SMTP_HOST") != "":
-		port, _ := strconv.Atoi(os.Getenv("MCU_SMTP_PORT"))
-		mailer = &mcusubmit.SMTPMailer{
-			Host: os.Getenv("MCU_SMTP_HOST"), Port: port, Username: os.Getenv("MCU_SMTP_USER"),
-			Password: os.Getenv("MCU_SMTP_PASS"), From: os.Getenv("MCU_SMTP_FROM"),
-		}
-	case os.Getenv("MCU_PORTAL_DEV_MAIL") == "1":
-		mailer = mcusubmit.LogMailer{}
-		log.Print("MCU portal: mails are written to the log, NOT sent (MCU_PORTAL_DEV_MAIL=1)")
-	default:
-		log.Print("MCU portal (/mcu-submit) is off: set MCU_SMTP_HOST, MCU_SMTP_FROM and the login (or MCU_PORTAL_DEV_MAIL=1 for development).")
-		return
+	// The mail login normally lives in the database, set on the portal admin's Mail settings page.
+	// The MCU_SMTP_* variables only fill in until someone has used that page.
+	// Without either, the portal still starts so the admin can sign in and set mail up, but
+	// sign-up and "forgot password" stay closed.
+	envMailer := mcuEnvMailer()
+	if envMailer == nil {
+		log.Print("MCU portal: no MCU_SMTP_* variables. Sign-up stays closed until the portal admin sets the mail login on the Mail settings page (/mcu-submit/admin/mail).")
 	}
+	mailer := &mcusubmit.ConfigMailer{Store: store, Key: mcusubmit.MailKey(sessionSecret), Fallback: envMailer}
 	baseURL := os.Getenv("MCU_PORTAL_BASE_URL")
 	if baseURL == "" {
 		log.Print("MCU portal (/mcu-submit) is off: set MCU_PORTAL_BASE_URL, the public address that mail links point at.")
@@ -110,6 +105,7 @@ func startMcuPortal(database *sql.DB, sessionSecret string, mux *http.ServeMux, 
 	startMcuUploads(ctx, api, files)
 	api.SetTurnstile(verifier, sitekey, devCheck)
 	api.SetMailer(mailer, baseURL)
+	api.SetMailConfig(mailer)
 	api.SetBounceSecret(os.Getenv("MCU_BREVO_WEBHOOK_SECRET"))
 	api.TrustCloudflareHeader(os.Getenv("MCU_PORTAL_TRUST_CF_HEADER") == "1")
 	api.Register(mux)
@@ -224,4 +220,21 @@ func runReminders(ctx context.Context, store *mcusubmit.Store, mailer mcusubmit.
 			log.Printf("MCU portal: sent expiry reminders to %d submitters about %d workers", subs, workers)
 		}
 	}
+}
+
+// mcuEnvMailer is the mail login from the environment, or the log-only mailer in development, or
+// nil. It is the fallback of the login stored on the portal admin's Mail settings page.
+func mcuEnvMailer() mcusubmit.Mailer {
+	switch {
+	case os.Getenv("MCU_SMTP_HOST") != "":
+		port, _ := strconv.Atoi(os.Getenv("MCU_SMTP_PORT"))
+		return &mcusubmit.SMTPMailer{
+			Host: os.Getenv("MCU_SMTP_HOST"), Port: port, Username: os.Getenv("MCU_SMTP_USER"),
+			Password: os.Getenv("MCU_SMTP_PASS"), From: os.Getenv("MCU_SMTP_FROM"),
+		}
+	case os.Getenv("MCU_PORTAL_DEV_MAIL") == "1":
+		log.Print("MCU portal: mails are written to the log, NOT sent (MCU_PORTAL_DEV_MAIL=1)")
+		return mcusubmit.LogMailer{}
+	}
+	return nil
 }

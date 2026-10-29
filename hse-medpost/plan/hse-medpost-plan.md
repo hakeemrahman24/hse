@@ -311,6 +311,24 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
 
+### 2026-10-29 — One checkup record can close only one portal document
+
+- Added a UNIQUE index `uq_mcusub_mcurecord` on `McuSubmission.FK_McuRecordID` (sqlite `022`, mysql `033`). Why: `CloseWithRecord` only did a read before the write, so two staff members closing different documents against the same record at the same instant could both succeed. Many documents with no record (NULL) stay allowed on both engines. `CloseWithRecord` now maps the unique violation to `ErrRecordTaken` (the count stays as the friendly first line). New test `TestTheDatabaseRefusesTwoDocumentsOnOneRecord`; full `go test -race ./...` passes.
+- **Owner action:** run `migrations/mysql/033_mcu_submission_record_unique.sql` on MariaDB by hand, after mysqldump and BEFORE deploying this build (the file has a duplicate check query at the top). Also still pending by hand: `032_mcu_mail_setting.sql` (not 031).
+- Open: not run on real MariaDB; `CREATE UNIQUE INDEX IF NOT EXISTS` needs MariaDB 10.1.4+ (the Pi's 10.x is fine, confirm with `SELECT VERSION()`).
+
+### 2026-10-29 — Portal data structure consistency check
+
+Compared every portal table across `migrations/sqlite` and `migrations/mysql` (same columns and nullability, column sizes against the limits the Go code enforces, status and action values against their VARCHAR sizes). Found and fixed: two MariaDB files numbered `031` (mine renamed to `032_mcu_mail_setting.sql`); `Submitter.EmailBounceReason` was never written (the webhook now stores it, at most 100 characters); the stored sender address could exceed its column once normalised (checked after normalising); the reviewer digest event used a fake Batch entity with id 0 (new `System` entity type); a stale status list in the sqlite batches migration comment (`Review` missing). Recommended, not done: a UNIQUE index on `McuSubmission.FK_McuRecordID` so a checkup record can close only one document (today only a read-before-write check stops a double link).
+
+### 2026-10-29 — Portal mail login (Brevo) moves from environment variables to the portal admin's Mail settings
+
+- One stored login in `McuMailSetting` (sqlite `021`, mysql `032`, **run `032_mcu_mail_setting.sql` on MariaDB by hand first**; `031` was already taken by `031_sofi_one_per_window.sql`), edited **only** on the medical checkup portal admin's **Mail settings** page (`/mcu-submit/admin/mail`, linked from the Admin page; Send test mail button included). It is deliberately not in the staff app's Settings (owner, 2026-10-29): the portal admin owns the portal's mail.
+- The SMTP key is sealed with AES-256-GCM under a key derived from `SESSION_SECRET` and is never sent back to a browser (only "key stored"). Changing `SESSION_SECRET` makes it unreadable: enter it again.
+- The page login wins; `MCU_SMTP_*` stays only as a fallback. A broken page login is an error, never a silent fallback to another sender. With no login anywhere the portal still starts (so the admin can sign in) but **sign-up and forgot-password return 503** until mail is set up.
+- The shelved clinic expiry-warning panel in the staff Settings (`McuEmailNotificationConfig`, plaintext SMTP password, To/Cc lists) is untouched. If it is ever revived, it should send through this login instead of keeping its own SMTP fields.
+- Seen in Chromium against the real app: the page shows the saved login, sign-up is 503 before and 200 after saving, the key is not in the database in clear, and a test mail to a dead port reports the failure.
+
 ### 2026-10-29 — Medical checkup portal: digest, reminders, retention, bounces, language, record linking
 
 Built in `internal/mcusubmit` (all with tests; the staff and portal pages are not yet seen in the real app, which still cannot start because of the uncommitted SOFI templates):
