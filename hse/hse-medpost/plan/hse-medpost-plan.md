@@ -311,6 +311,21 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
 
+### 2026-10-29 — Unfit is an open result: only Fit and Fit with note close a checkup
+
+- Owner decision: "unfit, temporary unfit, need follow up, incomplete is open". This reverses the earlier rule that Fit, Fit with note and Unfit close. `isTerminalResult` (validity.go) is now Fit and FitWithNote only, so a new or edited Unfit record saves as `CheckUpStatus = Open`, `IsTerminal = 0`; the checkup form's Open/Close preview (`TERMINAL_RESULTS` in mcu.js) and the Unfit notice text follow.
+- Consequence decided with it: the legacy "R-Unfit" rule that archived an Unfit result at once is gone, because it assumed Unfit was a final exit decision. Unfit now shows no validity standing, like Temporarily Unfit. An explicit Archived / Exit stamp and the 180-day stale rule still apply as before. Unchanged: Unfit still gets the red written opinion (never a clearance), no new certificate for Archived records, no validity date computed for Unfit.
+- **Stored rows revised (owner, same day: "revise the stored value").** `migrations/sqlite/023_unfit_is_open.sql` (runs at every start, idempotent) and `migrations/mysql/036_unfit_is_open.sql` (by hand, after a mysqldump) set `CheckUpStatus = 'Open'`, `IsTerminal = 0` for every Unfit record still saved as Close; Fit, Fit with note and the other open results are untouched. Test `TestUnfitIsOpenMigrationRevisesOnlyStoredUnfitRows` runs it twice. Not touched: the one-off legacy import tools (`migrate.go`, `reference_sync.go`) still use the old terminal list for the old workbook.
+- Submissions are unaffected: a document closes when linked to its record, for any result.
+- Tests: `validity_status_test.go` updated; `entrymcu` and `mcusubmit` suites pass. Not yet deployed. **Owner action:** run `036` on MariaDB by hand (the row counts to expect are in its header).
+
+### 2026-10-29 — Submitted is a tab on /mcu, first in the row, same table format
+
+- Owner request: on the Medical Checkups page the **Submitted** tab comes before Employee, uses the same table format as the other tabs, and never leaves the page. It was a link to the separate page `/mcu-submissions`. Now `mcu.html` has a `#tab-submitted` pane (filters, `data-table compact` table, pager) driven by `web/static/mcu-submitted.js`; the Review button opens the checkup form **in place** (`openSubmission` in `mcu.js`) and saving the record returns to the Submitted tab with the "closed and linked" banner. The default tab is still Employee.
+- `/mcu-submissions` stays as a redirect to `/mcu?view=submitted` (the reviewer digest mail links to it); `/mcu?view=submitted` and `/mcu?submission=ID` are the deep links. The old page template and script are deleted. The reject box and the "link an existing record" fallback moved under a **More** fold in the Action column.
+- No Go logic or schema change (`registerMcuStaff` lost its template argument). Checked in headless Chromium: tab order, table, Review confirm and in-place form, save returns to the Submitted tab, redirect. Not checked: the phone-width card layout for this table (it scrolls sideways there), Firefox/Safari.
+- **Not deployed yet**: the Pi still runs the previous commit (`e37fd7c`); this needs `deploy/deploy.sh full`.
+
 ### 2026-10-29 — One mail a day tells a submitter which checkups were completed
 
 - Owner decision: not one mail per closed document, but **one mail per submitter per day** ("inside one day"). The daily 08:00 Jakarta job (the one that sends expiry reminders) now also calls `RunClosedNotices`: each submitter with Closed documents not yet announced gets a single mail listing them (worker, position, company; capped at 100 lines), with a link to My documents where the certificates can be downloaded. The mail holds no result, ID number or birth date.

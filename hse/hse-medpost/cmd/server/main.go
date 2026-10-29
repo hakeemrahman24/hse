@@ -44,7 +44,7 @@ func main() {
 		if err := screening.EnsureScreeningTableNames(database); err != nil {
 			log.Fatal(err)
 		}
-		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "020_mcu_portal_digest.sql", "021_mcu_mail_setting.sql", "022_mcu_submission_record_unique.sql"} {
+		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "020_mcu_portal_digest.sql", "021_mcu_mail_setting.sql", "022_mcu_submission_record_unique.sql", "023_unfit_is_open.sql"} {
 			sqlText, err := db.LoadMigrationFile(filepath.Join("migrations", "sqlite", name))
 			if err != nil {
 				log.Fatal(err)
@@ -453,7 +453,7 @@ func main() {
 	// Public medical checkup submission portal (/mcu-submit): its own accounts, cookie and look.
 	mcuFiles := openMcuFiles()
 	startMcuPortal(database, cfg.SessionSecret, mux, mcuFiles, portalCertificates{api: entrymcuAPI, cfg: certConfig})
-	registerMcuStaff(mux, clinician, pages.Templates, database, mcuFiles)
+	registerMcuStaff(mux, clinician, database, mcuFiles)
 
 	directoryAPI := &directory.API{DB: database, Token: cfg.DirectoryAPIToken}
 	mux.HandleFunc("GET /api/directory/employees", directoryAPI.List)

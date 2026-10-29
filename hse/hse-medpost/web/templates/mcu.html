@@ -49,10 +49,10 @@
 
         <div id="mcu-tabs" class="app-tabs">
           <a href="/programs" id="mcu-back-to-activities" class="btn-outline" hidden>&larr; Back to Activities</a>
+          <button type="button" class="app-tab" data-tab="submitted" title="Checkup results that companies sent through the public portal">Submitted</button>
           <button type="button" class="app-tab active" data-tab="employee">Employee</button>
           <button type="button" class="app-tab" data-tab="mcu-data">MCU data</button>
           <button type="button" class="app-tab" data-tab="dashboard">Dashboard</button>
-          <a href="/mcu-submissions" class="app-tab" title="Checkup results that companies sent through the public portal">Submitted</a>
           <button type="button" id="new-patient-header-cancel" class="btn-outline" hidden>Cancel</button>
         </div>
 
@@ -60,9 +60,53 @@
         <div id="submission-banner" class="submission-banner" role="status" hidden>
           <span id="submission-banner-text"></span>
           <a id="submission-banner-pdf" href="#" target="_blank" rel="noopener" hidden>Open PDF</a>
-          <a href="/mcu-submissions">Back to Submitted</a>
+          <a href="/mcu?view=submitted">Back to Submitted</a>
         </div>
 
+
+        <!-- Submitted tab: documents sent through the public portal. Same table format as the lists
+             below; wired in mcu-submitted.js. Review opens the checkup form in place (mcu.js). -->
+        <div id="tab-submitted" hidden>
+          <div id="sub-toolbar" class="app-filter">
+            <div class="mcu-data-filter-row">
+              <label><span>Status</span>
+                <select id="sub-status">
+                  <option value="">All sent</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Reviewed">Reviewed</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Closed">Closed</option>
+                  <option value="Withdrawn">Withdrawn</option>
+                </select></label>
+              <label><span>Worker</span><input id="sub-worker" type="text" maxlength="60" autocomplete="off" /></label>
+              <label><span>Company</span><input id="sub-company" type="text" maxlength="60" autocomplete="off" /></label>
+              <label><span>Submitter</span><input id="sub-submitter" type="text" maxlength="60" autocomplete="off" /></label>
+              <label><span>From</span><input id="sub-from" type="date" /></label>
+              <label><span>To</span><input id="sub-to" type="date" /></label>
+              <button type="button" id="sub-apply" class="btn-primary">Filter</button>
+              <button type="button" id="sub-clear" class="btn-ghost">Reset</button>
+            </div>
+          </div>
+          <p id="sub-msg" class="sub-msg" role="status"></p>
+          <div id="sub-list" class="mcu-pane-scroll">
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead>
+                  <tr>
+                    <th>Sent</th><th>Name</th><th>Company</th><th>Work position</th><th>Submitter</th>
+                    <th>Status</th><th>Reviewed</th><th>File</th><th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="sub-body"></tbody>
+              </table>
+            </div>
+          </div>
+          <p class="sub-pager">
+            <button type="button" id="sub-prev" class="btn-ghost">Previous</button>
+            <span id="sub-page" role="status"></span>
+            <button type="button" id="sub-next" class="btn-ghost">Next</button>
+          </p>
+        </div>
 
         <!-- Shared list for the Employee tab (one latest checkup per
              person) and the MCU data tab (every visit). Search, company,
@@ -692,14 +736,14 @@
                    above (see isTerminalResult/checkUpStatusFor in
                    validity.go). Archived/Exit (HcValidityStatus) isn't a
                    decision made at data-entry time — it's system-derived
-                   (displayHcValidityStatus, validity.go) from the Unfit
-                   result / a >180-day-stale record / closeParentRecord's
+                   (displayHcValidityStatus, validity.go) from a
+                   >180-day-stale record / closeParentRecord's
                    "Renewed by <id>" supersession stamp — so there's no
                    manual control for it here; it still shows read-only in
                    the Data entry table's detail view and the MCU data tab's
                    "HC validity" column. -->
             </label>
-            <p id="unfit-notice" class="unfit-notice" hidden>Unfit closes this checkup as Archived / Exit. On MCU data the Open link is red. The certificate stays black, with only the review result in red. It is not a clearance to work. A later visit is a new record. If this person may return once results are back in range, choose Temporarily Unfit or Need Follow Up — those stay open.</p>
+            <p id="unfit-notice" class="unfit-notice" hidden>Unfit keeps this checkup open. On MCU data the Open link is red. The certificate stays black, with only the review result in red. It is not a clearance to work. Only Fit and Fit with note close a checkup.</p>
             <div class="result-notes-grid" style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:5px">
               <label>
                 <span>Result notes</span>
@@ -799,7 +843,8 @@
   <script src="/static/certificate-name.js"></script>
   <script src="/static/clearwave/app-nav.js"></script>
   <script src="/static/presence.js"></script>
-  <script src="/static/mcu.js?v=3"></script>
+  <script src="/static/mcu.js?v=5"></script>
+  <script src="/static/mcu-submitted.js?v=1"></script>
   <script src="/static/dashboard.js"></script>
 
   <footer class="app-dev-credit">
