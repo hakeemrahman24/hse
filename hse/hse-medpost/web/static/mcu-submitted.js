@@ -34,12 +34,13 @@
     });
   }
 
-  // Times are stored as UTC text "YYYY-MM-DDTHH:MM:SS"; show them with a space and say UTC.
-  function when(t) { return t ? t.replace('T', ' ') + ' UTC' : ''; }
+  // Times are stored as UTC text "YYYY-MM-DDTHH:MM:SS"; the table shows "YYYY-MM-DD HH:MM" under
+  // a "(UTC)" heading, and the prompt spells the zone out.
+  function when(t) { return t ? t.replace('T', ' ').slice(0, 16) : ''; }
 
   function reviewPrompt(d) {
     if (d.reviewedBy || d.reviewedAt) {
-      return (d.reviewedBy || 'Someone') + ' started reviewing ' + d.worker + (d.reviewedAt ? ' on ' + when(d.reviewedAt) : '') +
+      return (d.reviewedBy || 'Someone') + ' started reviewing ' + d.worker + (d.reviewedAt ? ' on ' + when(d.reviewedAt) + ' UTC' : '') +
         '. Open it anyway?';
     }
     return 'Review ' + d.worker + "'s checkup now? This opens the checkup form filled in from the submission.";
@@ -109,15 +110,16 @@
       var worker = cell(tr, d.worker);
       if (d.isNewEmployee) {
         var tag = document.createElement('div');
-        tag.className = 'sub-new'; tag.textContent = 'New employee';
+        tag.className = 'sub-note'; tag.textContent = 'New employee';
         worker.appendChild(tag);
       }
       cell(tr, d.company); cell(tr, d.position); cell(tr, d.submitter);
-      var st = cell(tr, '');
-      var badge = document.createElement('span');
-      badge.className = 'sub-badge'; badge.textContent = d.status;
-      st.appendChild(badge);
-      if (d.rejectReason) st.appendChild(document.createTextNode(' ' + d.rejectReason));
+      var st = cell(tr, d.status);
+      if (d.rejectReason) {
+        var why = document.createElement('div');
+        why.className = 'sub-note'; why.textContent = d.rejectReason;
+        st.appendChild(why);
+      }
       cell(tr, [d.reviewedBy, when(d.reviewedAt)].filter(Boolean).join(', '));
       var file = cell(tr, '');
       if (d.hasFile) {
@@ -126,7 +128,7 @@
         a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Open PDF';
         file.appendChild(a);
       } else {
-        file.textContent = 'No file';
+        file.textContent = '—';
       }
       actions(d, cell(tr, ''));
       body.appendChild(tr);

@@ -5721,13 +5721,28 @@ a.app-tab {
 #tab-submitted .mcu-data-filter-row input { box-sizing: border-box; height: 26px; font-size: 0.75rem; padding: 0 6px; }
 #tab-submitted .mcu-data-filter-row .btn-primary,
 #tab-submitted .mcu-data-filter-row .btn-ghost { height: 26px; padding: 0 12px !important; font-size: 0.75rem !important; line-height: 1; }
-.sub-msg { margin: 8px 0; min-height: 1.4em; }
+.sub-msg { margin: 6px 12px; min-height: 0; font-size: 0.8125rem; color: var(--text-2); }
+.sub-msg:empty { display: none; }
 .sub-msg.err { color: #a12a1b; }
-.sub-badge { display: inline-block; padding: 1px 8px; border: 1px solid #1a7f73; font-size: 0.75rem; font-weight: 600; }
-.sub-new { color: #8a4b00; font-weight: 600; font-size: 0.75rem; }
-.sub-act { display: flex; gap: 6px; flex-wrap: wrap; align-items: flex-start; }
-.sub-act details { width: 100%; font-size: 0.75rem; }
-.sub-act summary { cursor: pointer; color: #12695f; }
-.sub-act input { padding: 3px 6px; width: 9rem; margin: 4px 4px 0 0; }
+/* Rows follow the other tabs: plain cells at .data-table's size and colours, no badges. */
+.sub-note { font-size: 0.7rem; color: var(--text-3); }
+#tab-submitted .data-table.compact th,
+#tab-submitted .data-table.compact td { white-space: nowrap; padding: 3px 4px; }
+#tab-submitted .data-table.compact th {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: #6b3a2c;
+  background: #ead5cb;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+#tab-submitted .data-table.compact td { font-size: 0.75rem; }
+.sub-act { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+#tab-submitted .sub-act .btn-primary,
+#tab-submitted .sub-act .btn-ghost { box-sizing: border-box; height: 24px; padding: 0 10px !important; font-size: 0.75rem !important; line-height: 1; }
+.sub-act details { font-size: 0.75rem; }
+.sub-act summary { cursor: pointer; color: var(--accent); font-weight: 500; }
+.sub-act input { box-sizing: border-box; height: 24px; font-size: 0.75rem; padding: 0 6px; width: 9rem; margin: 4px 4px 0 0; }
 .sub-act details .btn-ghost { margin-top: 4px; }
-.sub-pager { display: flex; gap: 12px; align-items: center; margin: 12px 0; }
+.sub-pager { display: flex; gap: 12px; align-items: center; margin: 8px 12px; font-size: 0.8125rem; color: var(--text-2); }
