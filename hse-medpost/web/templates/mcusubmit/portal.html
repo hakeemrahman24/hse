@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=12" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=14" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
   <script src="/static/mcu-portal-name.js?v=2" defer></script>
 </head>
@@ -316,7 +316,7 @@
         <tbody>
         {{range .Docs}}<tr>
           <td>{{if .SentAt}}{{.SentAt}}{{else}}Draft{{end}}</td><td>{{.PatName}}</td><td>{{.PatDateOfBirth}}</td><td>{{.PatPosition}}</td><td>{{.PatCompanyText}}</td><td>{{.PatNationality}}</td>
-          <td><span class="mp-badge">{{.Status}}</span>{{if .RejectReason}} {{.RejectReason}}{{end}}</td>
+          <td><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span>{{if .RejectReason}} {{.RejectReason}}{{end}}</td>
           <td>{{if and .HasFile (eq .ScanStatus "Clean")}}<a href="/mcu-submit/documents/{{.ID}}/file" target="_blank" rel="noopener">Open PDF</a>{{else}}<span class="mp-hint">No file</span>{{end}}</td>
           <td class="mp-decide">
             {{if eq .Status "Review"}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/review">Review</a>{{end}}
@@ -482,7 +482,7 @@
         <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Company</th><th scope="col">Status</th><th scope="col">Note</th><th scope="col">Action</th></tr></thead>
         <tbody>
         {{range .Accounts}}<tr>
-          <td>{{.Name}}</td><td>{{.Email}}</td><td>{{.Company}}</td><td><span class="mp-badge">{{.Status}}</span></td>
+          <td>{{.Name}}</td><td>{{.Email}}</td><td>{{.Company}}</td><td><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span></td>
           <td>{{if .RejectReason}}{{.RejectReason}}{{end}}{{if .BouncedAt}}Email bounced {{.BouncedAt}}{{end}}</td>
           <td>{{if or (eq .Status "Active") (eq .Status "Approved")}}
             <form method="post" action="/mcu-submit/admin/disable" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Disable</button></form>{{end}}</td>
@@ -535,7 +535,7 @@
         <tbody>
         {{range .Reviewers}}<tr>
           <td>{{.Email}}</td><td>{{.Name}}</td>
-          <td>{{if .BouncedAt}}<span class="mp-badge">Bounced {{.BouncedAt}}</span>{{else if .Active}}<span class="mp-badge">Active</span>{{else}}<span class="mp-badge">Paused</span>{{end}}</td>
+          <td>{{if .BouncedAt}}<span class="mp-badge" data-s="Bounced">Bounced {{.BouncedAt}}</span>{{else if .Active}}<span class="mp-badge" data-s="Active">Active</span>{{else}}<span class="mp-badge" data-s="Paused">Paused</span>{{end}}</td>
           <td>
             <form method="post" action="/mcu-submit/admin/reviewers/toggle" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><input type="hidden" name="on" value="{{if .Active}}0{{else}}1{{end}}" /><button type="submit" class="btn-ghost">{{if .Active}}Pause{{else}}Resume{{end}}</button></form>
             <form method="post" action="/mcu-submit/admin/reviewers/delete" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Remove</button></form>
