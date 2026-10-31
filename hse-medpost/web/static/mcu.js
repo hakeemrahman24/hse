@@ -3007,8 +3007,8 @@ loadLookups().then(openSubmissionFromLink);
 showMcuTab("employee");
 
 // --- Opened from the Submitted page (/mcu?submission=ID) --------------------------------------
-// The Submitted page already asked "continue to review?" and marked the document Reviewed. Here the
-// checkup form opens filled in from what the submitter typed; saving it links and closes the document.
+// The Submitted page already asked "continue to review?" and did not change the document. Here the
+// checkup form opens filled in from what the submitter typed; saving it links the document (Reviewed when the checkup has a result).
 let linkedSubmission = null;
 // Set once the document is closed (or the link failed after the save): the form then returns to the
 // Submitted tab instead of the Employee list.
@@ -3146,7 +3146,7 @@ async function closeLinkedSubmission(checkUpId, savedPatientId) {
   }
   let res;
   try {
-    res = await fetch(`/api/mcu-submissions/${sub.id}/close`, {
+    res = await fetch(`/api/mcu-submissions/${sub.id}/link`, {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
@@ -3157,7 +3157,7 @@ async function closeLinkedSubmission(checkUpId, savedPatientId) {
     return;
   }
   if (res.ok) {
-    submissionBanner(`Saved. ${sub.worker}'s submitted document is closed and linked to ${checkUpId}.`, "ok", false);
+    submissionBanner(`Saved. ${sub.worker}'s submitted document is linked to ${checkUpId}. Press Notify submitter on the Submitted tab when the submitter has been told.`, "ok", false);
     return;
   }
   const why = (await res.text().catch(() => "")).trim() || `error ${res.status}`;

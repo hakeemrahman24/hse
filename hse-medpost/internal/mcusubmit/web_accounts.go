@@ -50,6 +50,7 @@ func (a *API) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	form := map[string]string{
 		"name": r.PostFormValue("name"), "email": r.PostFormValue("email"),
 		"position": r.PostFormValue("position"), "company_id": r.PostFormValue("company_id"),
+		"romif_name": r.PostFormValue("romif_name"),
 	}
 	if !a.passedCheck(r) {
 		a.registerForm(w, r, http.StatusBadRequest, form, "The security check failed. Please try again.")
@@ -70,6 +71,12 @@ func (a *API) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	case !okCompany:
 		a.registerForm(w, r, http.StatusBadRequest, form, "Choose your company from the list.")
+		return
+	case r.PostFormValue("romif_accepted") != "1":
+		a.registerForm(w, r, http.StatusBadRequest, form, "Read the ROMIF statement and tick the box to agree.")
+		return
+	case !signedAs(form["romif_name"], name):
+		a.registerForm(w, r, http.StatusBadRequest, form, "Sign by typing your full name exactly as entered above.")
 		return
 	}
 	if _, err := a.companyName(r.Context(), companyID); err != nil {
@@ -96,6 +103,7 @@ func (a *API) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	case err == nil:
 		a.mailVerifyLink(r, id, email)
 		a.audit(r, ActorSubmitter, id, EntitySubmitter, id, "Registered")
+		a.auditRomif(r, id, name)
 	case errors.Is(err, ErrEmailTaken):
 		existing, lookupErr := a.Store.ByEmail(r.Context(), email)
 		switch {
@@ -328,4 +336,26 @@ func (a *API) SignInSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	a.audit(r, ActorSubmitter, u.ID, EntitySubmitter, u.ID, "LoggedIn")
 	http.Redirect(w, r, basePath+"/home", http.StatusSeeOther)
+}
+
+// romifVersion names the wording the person agreed to. Change it whenever the ROMIF text in
+// register.html changes, so the audit trail says which text each person signed.
+const romifVersion = "2026-10-31"
+
+// signedAs says whether the typed signature is the same name as the account's full name, ignoring
+// case and the spacing. It is the same cleaning the name gets, so "budi  santoso" signs "Budi Santoso".
+func signedAs(typed, name string) bool {
+	return strings.EqualFold(SanitizeName(typed), name)
+}
+
+// auditRomif records the signed ROMIF: who, which wording, which language they read it in, and the
+// name they typed. It sits in the append-only event log (Detail holds a signature name), so no
+// schema change is needed and it cannot be edited afterwards.
+func (a *API) auditRomif(r *http.Request, id int64, signedName string) {
+	detail := "ROMIF " + romifVersion + " " + languageOf(r) + ": " + signedName
+	if err := a.Store.LogEvent(r.Context(), Event{
+		ActorType: ActorSubmitter, ActorID: id, EntityType: EntitySubmitter, EntityID: id, Action: "RomifSigned", Detail: detail,
+	}); err != nil {
+		log.Printf("mcusubmit: audit RomifSigned: %v", err)
+	}
 }

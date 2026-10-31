@@ -112,8 +112,10 @@ func newStaffEnv(t *testing.T) *staffEnv {
 	mux.HandleFunc("GET /api/mcu-submissions", api.List)
 	mux.HandleFunc("GET /api/mcu-submissions/{id}", api.Get)
 	mux.HandleFunc("GET /api/mcu-submissions/{id}/file", api.File)
+	mux.HandleFunc("GET /api/mcu-submissions/{id}/records", api.Records)
 	mux.HandleFunc("POST /api/mcu-submissions/{id}/review", api.MarkReviewed)
 	mux.HandleFunc("POST /api/mcu-submissions/{id}/reject", api.Reject)
+	mux.HandleFunc("POST /api/mcu-submissions/{id}/link", api.Link)
 	mux.HandleFunc("POST /api/mcu-submissions/{id}/close", api.Close)
 	// The real route wraps these in RequireAuth, which puts the session in the context.
 	withSession := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -274,10 +276,10 @@ func TestCloseWithRecordLinksTheRecordAndClosesFromPendingOrReviewed(t *testing.
 	}
 	_ = s.MarkReviewed(ctx, b, testStaffID) // one Reviewed, one still Pending
 
-	if err := s.CloseWithRecord(ctx, a, testStaffID, " MedC-1 "); err != nil {
+	if err := closeWithRecord(s, ctx, a, testStaffID, " MedC-1 "); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CloseWithRecord(ctx, b, testStaffID, "MedC-2"); err != nil {
+	if err := closeWithRecord(s, ctx, b, testStaffID, "MedC-2"); err != nil {
 		t.Fatal(err)
 	}
 	var status string
@@ -309,26 +311,26 @@ func TestCloseWithRecordRefusesWhatWouldLinkTheWrongThing(t *testing.T) {
 	_, _ = s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w1, a)
 	draft := addClean(t, s, sub, "Worker Three")
 
-	if err := s.CloseWithRecord(ctx, a, testStaffID, "NOPE"); !errors.Is(err, ErrRecordUnknown) {
+	if err := closeWithRecord(s, ctx, a, testStaffID, "NOPE"); !errors.Is(err, ErrRecordUnknown) {
 		t.Errorf("unknown checkup id = %v, want ErrRecordUnknown", err)
 	}
-	if err := s.CloseWithRecord(ctx, a, testStaffID, "MedC-2"); !errors.Is(err, ErrRecordMismatch) {
+	if err := closeWithRecord(s, ctx, a, testStaffID, "MedC-2"); !errors.Is(err, ErrRecordMismatch) {
 		t.Errorf("another patient's record = %v, want ErrRecordMismatch", err)
 	}
-	if err := s.CloseWithRecord(ctx, draft, testStaffID, "MedC-1"); !errors.Is(err, ErrBadState) {
+	if err := closeWithRecord(s, ctx, draft, testStaffID, "MedC-1"); !errors.Is(err, ErrBadState) {
 		t.Errorf("a Draft = %v, want ErrBadState", err)
 	}
-	if err := s.CloseWithRecord(ctx, 9999, testStaffID, "MedC-1"); !errors.Is(err, ErrNotFound) {
+	if err := closeWithRecord(s, ctx, 9999, testStaffID, "MedC-1"); !errors.Is(err, ErrNotFound) {
 		t.Errorf("missing submission = %v, want ErrNotFound", err)
 	}
-	if err := s.CloseWithRecord(ctx, a, testStaffID, "MedC-1"); err != nil {
+	if err := closeWithRecord(s, ctx, a, testStaffID, "MedC-1"); err != nil {
 		t.Fatal(err)
 	}
 	// b has no patient yet (a new employee); the same record cannot close a second document.
-	if err := s.CloseWithRecord(ctx, b, testStaffID, "MedC-1"); !errors.Is(err, ErrRecordTaken) {
+	if err := closeWithRecord(s, ctx, b, testStaffID, "MedC-1"); !errors.Is(err, ErrRecordTaken) {
 		t.Errorf("a record already linked = %v, want ErrRecordTaken", err)
 	}
-	if err := s.CloseWithRecord(ctx, a, testStaffID, "MedC-1"); !errors.Is(err, ErrBadState) {
+	if err := closeWithRecord(s, ctx, a, testStaffID, "MedC-1"); !errors.Is(err, ErrBadState) {
 		t.Errorf("closing twice = %v, want ErrBadState", err)
 	}
 }
@@ -341,7 +343,7 @@ func TestCloseWithRecordGivesANewEmployeeTheirPatient(t *testing.T) {
 	w := seedWorker(t, s, "New Person", "1990-04-12", co) // staff created the patient and record on the checkup page
 	addRecord(t, s, w, "MedC-9", "Fit", "2027-01-01", "Open", 1)
 
-	if err := s.CloseWithRecord(ctx, id, testStaffID, "MedC-9"); err != nil {
+	if err := closeWithRecord(s, ctx, id, testStaffID, "MedC-9"); err != nil {
 		t.Fatal(err)
 	}
 	var patient int64
@@ -351,12 +353,12 @@ func TestCloseWithRecordGivesANewEmployeeTheirPatient(t *testing.T) {
 	}
 }
 
-func TestCloseRouteMapsEachRefusalToAClearStatus(t *testing.T) {
+func TestLinkRouteMapsEachRefusalToAClearStatus(t *testing.T) {
 	e := newStaffEnv(t)
 	id := e.doc(t, "Worker One", true)
 	w := seedWorker(t, e.store, "Worker One", "1990-04-12", 0)
 	addRecord(t, e.store, w, "MedC-1", "Fit", "2027-01-01", "Open", 1)
-	path := fmt.Sprintf("/api/mcu-submissions/%d/close", id)
+	path := fmt.Sprintf("/api/mcu-submissions/%d/link", id)
 
 	if rec := e.do("POST", path, `{"checkUpId":"MedC-1"}`, true); rec.Code != http.StatusUnauthorized {
 		t.Errorf("anonymous = %d, want 401", rec.Code)
@@ -367,18 +369,25 @@ func TestCloseRouteMapsEachRefusalToAClearStatus(t *testing.T) {
 	if rec := e.do("POST", path, `{"checkUpId":"NOPE"}`, false); rec.Code != http.StatusBadRequest {
 		t.Errorf("unknown record = %d, want 400", rec.Code)
 	}
-	if rec := e.do("POST", "/api/mcu-submissions/9999/close", `{"checkUpId":"MedC-1"}`, false); rec.Code != http.StatusNotFound {
+	if rec := e.do("POST", "/api/mcu-submissions/9999/link", `{"checkUpId":"MedC-1"}`, false); rec.Code != http.StatusNotFound {
 		t.Errorf("missing document = %d, want 404", rec.Code)
 	}
 	if rec := e.do("POST", path, `{"checkUpId":"MedC-1"}`, false); rec.Code != http.StatusNoContent {
-		t.Fatalf("close = %d: %s", rec.Code, rec.Body.String())
+		t.Fatalf("link = %d: %s", rec.Code, rec.Body.String())
 	}
 	if rec := e.do("POST", path, `{"checkUpId":"MedC-1"}`, false); rec.Code != http.StatusConflict {
-		t.Errorf("closing twice = %d, want 409", rec.Code)
+		t.Errorf("linking twice = %d, want 409", rec.Code)
+	}
+	closePath := fmt.Sprintf("/api/mcu-submissions/%d/close", id)
+	if rec := e.do("POST", closePath, ``, false); rec.Code != http.StatusNoContent {
+		t.Errorf("notify = %d: %s", rec.Code, rec.Body.String())
+	}
+	if rec := e.do("POST", closePath, ``, false); rec.Code != http.StatusConflict {
+		t.Errorf("notifying twice = %d, want 409", rec.Code)
 	}
 }
 
-// The count in CloseWithRecord is only the friendly first line; two staff members closing at the
+// The count in LinkRecord is only the friendly first line; two staff members closing at the
 // same instant both pass it. The unique index is what must stop the second link.
 func TestTheDatabaseRefusesTwoDocumentsOnOneRecord(t *testing.T) {
 	s, _, co := newTestStore(t)
@@ -488,7 +497,7 @@ func TestCloseWithRecordRefusesAnotherPersonsRecordForANewEmployee(t *testing.T)
 	other := seedWorker(t, s, "Someone Else", "1985-01-01", co)
 	addRecord(t, s, other, "MedC-OTHER", "Fit", "2027-01-01", "Open", 1)
 
-	if err := s.CloseWithRecord(ctx, id, testStaffID, "MedC-OTHER"); !errors.Is(err, ErrRecordMismatch) {
+	if err := closeWithRecord(s, ctx, id, testStaffID, "MedC-OTHER"); !errors.Is(err, ErrRecordMismatch) {
 		t.Fatalf("another person's record = %v, want ErrRecordMismatch", err)
 	}
 	var status string
@@ -512,7 +521,7 @@ func TestCloseWithRecordAcceptsTheSameIDNumberWhenTheBirthDateWasMistyped(t *tes
 		t.Fatal(err)
 	}
 	addRecord(t, s, w, "MedC-NIK", "Fit", "2027-01-01", "Open", 1)
-	if err := s.CloseWithRecord(ctx, id, testStaffID, "MedC-NIK"); err != nil {
+	if err := closeWithRecord(s, ctx, id, testStaffID, "MedC-NIK"); err != nil {
 		t.Fatalf("same NIK, other birth date = %v, want nil", err)
 	}
 }
@@ -535,6 +544,157 @@ func TestSameWorker(t *testing.T) {
 	for _, c := range cases {
 		if got := sameWorker(c.dob, c.nik, c.pass, c.patientDOB, c.patientID); got != c.want {
 			t.Errorf("%s: sameWorker = %v, want %v", c.name, got, c.want)
+		}
+	}
+}
+
+// The Submitted tab's "Link a checkup" list: only this worker's checkups that no document has yet.
+func TestCandidateRecordsListsOnlyThisWorkersUnlinkedCheckups(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrone@example.com")
+	id := sentDoc(t, s, sub, "Agus Prasetyo") // typed date of birth 1990-04-12
+	other := sentDoc(t, s, sub, "Another Person")
+
+	same := seedWorker(t, s, "Agus Prasetyo", "1990-04-12", co)
+	stranger := seedWorker(t, s, "Someone Else", "1985-01-01", co)
+	addRecord(t, s, same, "MedC-OLD", "Fit", "2027-01-01", "Open", 1)
+	addRecord(t, s, same, "MedC-NEW", "Fit", "2027-06-01", "Open", 1)
+	addRecord(t, s, same, "MedC-USED", "Fit", "2027-06-01", "Open", 1)
+	addRecord(t, s, stranger, "MedC-STRANGER", "Fit", "2027-01-01", "Open", 1)
+	if err := closeWithRecord(s, ctx, other, testStaffID, "MedC-USED"); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.CandidateRecords(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, c := range got {
+		ids = append(ids, c.CheckUpID)
+	}
+	if strings.Join(ids, ",") != "MedC-NEW,MedC-OLD" {
+		t.Fatalf("candidates = %v, want [MedC-NEW MedC-OLD]: newest first, no stranger, none already linked", ids)
+	}
+	// Whatever the list offers, a close accepts.
+	if err := closeWithRecord(s, ctx, id, testStaffID, ids[0]); err != nil {
+		t.Fatalf("closing with an offered record = %v", err)
+	}
+}
+
+func TestCandidateRecordsForAPickedPatientAndTheRefusals(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrone@example.com")
+	id := sentDoc(t, s, sub, "Worker One")
+	w := seedWorker(t, s, "Worker One", "1990-04-12", co)
+	twin := seedWorker(t, s, "Twin", "1990-04-12", co) // same birth date, different patient
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w, id); err != nil {
+		t.Fatal(err)
+	}
+	addRecord(t, s, w, "MedC-1", "Fit", "2027-01-01", "Open", 1)
+	addRecord(t, s, twin, "MedC-TWIN", "Fit", "2027-01-01", "Open", 1)
+
+	got, err := s.CandidateRecords(ctx, id)
+	if err != nil || len(got) != 1 || got[0].CheckUpID != "MedC-1" {
+		t.Fatalf("picked patient candidates = %v, %v; want only MedC-1 (a picked patient is matched by id, not by birth date)", got, err)
+	}
+	draft := addClean(t, s, sub, "Worker Three")
+	if _, err := s.CandidateRecords(ctx, draft); !errors.Is(err, ErrBadState) {
+		t.Errorf("a Draft = %v, want ErrBadState", err)
+	}
+	if _, err := s.CandidateRecords(ctx, 9999); !errors.Is(err, ErrNotFound) {
+		t.Errorf("missing = %v, want ErrNotFound", err)
+	}
+}
+
+func TestRecordsRouteReturnsTheListAsJSON(t *testing.T) {
+	e := newStaffEnv(t)
+	id := e.doc(t, "Worker One", true)
+	w := seedWorker(t, e.store, "Worker One", "1990-04-12", 0)
+	addRecord(t, e.store, w, "MedC-1", "Fit", "2027-01-01", "Open", 1)
+	path := fmt.Sprintf("/api/mcu-submissions/%d/records", id)
+	if rec := e.do("GET", path, "", true); rec.Code != http.StatusUnauthorized {
+		t.Errorf("anonymous = %d, want 401", rec.Code)
+	}
+	rec := e.do("GET", path, "", false)
+	var list []CandidateRecord
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &list) != nil || len(list) != 1 || list[0].CheckUpID != "MedC-1" {
+		t.Fatalf("records = %d %s", rec.Code, rec.Body.String())
+	}
+	if rec := e.do("GET", "/api/mcu-submissions/9999/records", "", false); rec.Code != http.StatusNotFound {
+		t.Errorf("missing = %d, want 404", rec.Code)
+	}
+}
+
+// closeWithRecord is the whole staff path in one call: link the checkup, then notify (close).
+func closeWithRecord(s *Store, ctx context.Context, id, staff int64, checkUpID string) error {
+	if err := s.LinkRecord(ctx, id, staff, checkUpID); err != nil {
+		return err
+	}
+	return s.CloseReviewed(ctx, id, staff)
+}
+
+func TestLinkRecordReviewsOnlyWhenTheCheckupHasAResultAndCloseNeedsReviewed(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrlink@example.com")
+	w1 := seedWorker(t, s, "Has Result", "1990-04-12", co)
+	w2 := seedWorker(t, s, "No Result", "1991-04-12", co)
+	addRecord(t, s, w1, "MedC-R1", "Fit", "2027-01-01", "Open", 1)
+	addRecord(t, s, w2, "MedC-R2", "Fit", "2027-01-01", "Open", 1)
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = NULL WHERE CheckUpID = 'MedC-R2'`); err != nil {
+		t.Fatal(err)
+	}
+	a, b := sentDocIn(t, s, sub, "Has Result", "No Result")
+	for id, p := range map[int64]int64{a: w1, b: w2} {
+		if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, p, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := s.CloseReviewed(ctx, a, testStaffID); !errors.Is(err, ErrBadState) {
+		t.Fatalf("closing an unlinked Pending document: %v, want ErrBadState", err)
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-R1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LinkRecord(ctx, b, testStaffID, "MedC-R2"); err != nil {
+		t.Fatal(err)
+	}
+	status := func(id int64) string {
+		var st string
+		_ = s.DB.QueryRow(`SELECT Status FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&st)
+		return st
+	}
+	if status(a) != SubReviewed || status(b) != SubPending {
+		t.Fatalf("after linking: %s and %s, want Reviewed and Pending", status(a), status(b))
+	}
+	if err := s.CloseReviewed(ctx, b, testStaffID); !errors.Is(err, ErrBadState) {
+		t.Fatalf("closing a checkup with no result: %v, want ErrBadState", err)
+	}
+	if err := s.CloseReviewed(ctx, a, testStaffID); err != nil {
+		t.Fatal(err)
+	}
+	if status(a) != SubClosed {
+		t.Fatalf("status %s, want Closed", status(a))
+	}
+}
+
+func TestResultMessageShownToTheSubmitterOnlyOnceClosed(t *testing.T) {
+	cases := []struct {
+		status, result, want string
+	}{
+		{SubClosed, "NeedFollowUp", "REC"},
+		{SubClosed, "TemporaryUnfit", "NOTES"},
+		{SubClosed, "Unfit", "NOTES"},
+		{SubClosed, "Fit", ""},
+		{SubReviewed, "Unfit", ""}, // not told yet
+	}
+	for _, c := range cases {
+		d := Submission{Status: c.status, Result: c.result, ResultNotes: "NOTES", Recommendation: "REC"}
+		if got := d.ResultMessage(); got != c.want {
+			t.Errorf("%s/%s = %q, want %q", c.status, c.result, got, c.want)
 		}
 	}
 }
