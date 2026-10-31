@@ -55,7 +55,7 @@ func (a *API) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 		a.registerForm(w, r, http.StatusBadRequest, form, "The security check failed. Please try again.")
 		return
 	}
-	name, position := SanitizeName(form["name"]), SanitizePosition(form["position"])
+	name, position := SanitizeName(form["name"]), SanitizeJobTitle(form["position"])
 	email, emailErr := ParseEmail(form["email"])
 	companyID, okCompany := parseID(form["company_id"])
 	switch {

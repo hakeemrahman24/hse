@@ -65,9 +65,9 @@ var indonesianText = map[string]string{
 	// Setup
 	"Create your ": "Buat ",
 	"login":        "login Anda",
-	"Your request was approved. Choose a username and a password.":                   "Permintaan Anda disetujui. Pilih username dan kata sandi.",
-	"3 to 40 letters, digits, dots or underscores.":                                  "3 sampai 40 huruf, angka, titik, atau garis bawah.",
-	"At least 10 characters. Not your username or email, and not a common password.": "Minimal 10 karakter. Bukan username atau email Anda, dan bukan kata sandi yang umum.",
+	"Your request was approved. Choose a username and a password.":                  "Permintaan Anda disetujui. Pilih username dan kata sandi.",
+	"3 to 40 letters, digits, dots or underscores.":                                 "3 sampai 40 huruf, angka, titik, atau garis bawah.",
+	"At least 6 characters. Not your username or email, and not a common password.": "Minimal 6 karakter. Bukan username atau email Anda, dan bukan kata sandi yang umum.",
 	"Repeat the password": "Ulangi kata sandi",
 	"Create login":        "Buat login",
 

@@ -12,7 +12,9 @@ import (
 )
 
 const (
-	minPasswordLen = 10
+	// 6 characters, the same length hse-medpost's staff login uses (owner decision, 2026-10-29; it
+	// was 10). The lockout, rate limit and common-password check below are what protect a short one.
+	minPasswordLen = 6
 	// bcrypt only reads the first 72 bytes. A longer password would be accepted but silently
 	// truncated, so two different long passwords could match; refuse it instead.
 	maxPasswordBytes = 72
@@ -33,13 +35,40 @@ var commonPasswords = map[string]bool{
 	"admin12345": true, "administrator": true, "welcome123": true, "letmein123": true,
 	"passw0rd123": true, "abcdefghij": true, "1111111111": true, "0000000000": true,
 	"qwerty12345": true, "password01": true, "changeme123": true,
+	// With a 6 character minimum the short, guessed-first ones matter. "101112" is the staff app's
+	// development seed password and must never be a portal password.
+	"123456": true, "1234567": true, "12345678": true, "123456789": true, "654321": true,
+	"111111": true, "000000": true, "222222": true, "666666": true, "888888": true,
+	"121212": true, "123123": true, "112233": true, "159753": true, "101112": true,
+	"qwerty": true, "qwerty1": true, "abc123": true, "abcdef": true, "passwd": true,
+	"123abc": true, "admin1": true, "secret": true, "iloveu": true, "letmein": true,
+	"welcome": true, "monkey": true, "dragon": true, "master": true, "sunshine": true,
+	"p@ss12": true, "pass12": true, "pass123": true, "admin123": true, "admin1234": true,
 }
 
-// ValidatePassword applies the portal's password rules (plan section 4): at least 10 characters,
+// ValidatePassword applies the portal's password rules (plan section 4): at least 6 characters,
 // at most 72 bytes, not the username or email, and not a very common password.
 func ValidatePassword(password, username, email string) error {
+	if err := validatePasswordShape(password, username, email); err != nil {
+		return err
+	}
+	if commonPasswords[strings.ToLower(password)] {
+		return errors.New("password is too common")
+	}
+	return nil
+}
+
+// ValidateOperatorPassword is for the built-in admin, whose password the owner sets in the server
+// environment (owner decision 2026-10-29: 101112 is allowed there). It keeps the length and
+// username rules but skips the common-password list, which stays on for every sign-up and reset
+// by a portal user.
+func ValidateOperatorPassword(password, username, email string) error {
+	return validatePasswordShape(password, username, email)
+}
+
+func validatePasswordShape(password, username, email string) error {
 	if len([]rune(password)) < minPasswordLen {
-		return errors.New("password must be at least 10 characters")
+		return errors.New("password must be at least 6 characters")
 	}
 	if len(password) > maxPasswordBytes {
 		return errors.New("password must be at most 72 bytes")
@@ -50,9 +79,6 @@ func ValidatePassword(password, username, email string) error {
 	}
 	if email != "" && lower == strings.ToLower(email) {
 		return errors.New("password must not be the same as the email")
-	}
-	if commonPasswords[lower] {
-		return errors.New("password is too common")
 	}
 	return nil
 }

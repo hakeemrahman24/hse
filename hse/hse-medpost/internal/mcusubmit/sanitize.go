@@ -38,18 +38,102 @@ func cleanText(s string, keep func(r rune) bool, max int) string {
 	return out
 }
 
-// SanitizeName keeps letters, combining marks, space, apostrophe, hyphen and dot (plan section 4).
+// SanitizeName keeps letters, combining marks, space, apostrophe, hyphen and dot (plan section 4),
+// collapses extra spaces, and writes the name in title style (owner, 2026-10-31).
 func SanitizeName(s string) string {
-	return cleanText(s, func(r rune) bool {
+	return titleName(cleanText(s, func(r rune) bool {
 		return unicode.IsLetter(r) || unicode.IsMark(r) || strings.ContainsRune("'-.", r)
-	}, maxNameRunes)
+	}, maxNameRunes))
 }
 
-// SanitizePosition is SanitizeName plus digits and the punctuation job titles use.
+// titleName upper-cases the first letter of every word and lower-cases the rest, so "BUDI santoso"
+// and "budi SANTOSO" are one spelling for the unique checks and the search. A word starts after a
+// space, hyphen or dot ("Nur-Aini", "M.Yusuf"). After an apostrophe the next letter is capital only
+// when the apostrophe follows a single letter ("O'Neil", "D'Angelo"); in "Ma'ruf" or "Sa'id" it
+// belongs inside the word and stays lower case. Combining marks never start a word.
+func titleName(s string) string {
+	var b strings.Builder
+	upperNext := true
+	lettersInWord := 0
+	for _, r := range s {
+		switch {
+		case unicode.IsLetter(r):
+			if upperNext {
+				b.WriteRune(unicode.ToUpper(r))
+			} else {
+				b.WriteRune(unicode.ToLower(r))
+			}
+			upperNext = false
+			lettersInWord++
+		case r == '\'':
+			b.WriteRune(r)
+			upperNext = lettersInWord == 1
+		case unicode.IsMark(r):
+			b.WriteRune(r)
+		default: // space, hyphen, dot
+			b.WriteRune(r)
+			upperNext = true
+			lettersInWord = 0
+		}
+	}
+	return b.String()
+}
+
+// SanitizePosition is SanitizeName plus digits and the punctuation job titles use. It does not
+// change the case, so it also serves free text such as the admin's reject reason and the
+// reviewer's optional name.
 func SanitizePosition(s string) string {
 	return cleanText(s, func(r rune) bool {
 		return unicode.IsLetter(r) || unicode.IsMark(r) || unicode.IsDigit(r) || strings.ContainsRune("'-./&,()", r)
 	}, maxPositionRunes)
+}
+
+// SanitizeJobTitle is SanitizePosition written in the same title style as a name (owner,
+// 2026-10-31). It is for the position fields only: a sentence such as a reject reason must keep
+// its own capitals.
+func SanitizeJobTitle(s string) string {
+	return titlePosition(SanitizePosition(s))
+}
+
+// titlePosition applies titleName to every word of a job title, where a word is a run of letters,
+// marks and apostrophes (digits and punctuation end it: "Level 2", "Site-A", "QA/QC"). A word that
+// is already all capitals and 2 to 4 letters long is an acronym and stays as typed, so "HSE Officer"
+// and "IT Support" are not turned into "Hse" and "It". "WELDER" is longer, so it becomes "Welder".
+func titlePosition(s string) string {
+	var out, word strings.Builder
+	flush := func() {
+		w := word.String()
+		word.Reset()
+		if w == "" {
+			return
+		}
+		if isAcronym(w) {
+			out.WriteString(w)
+			return
+		}
+		out.WriteString(titleName(w))
+	}
+	for _, r := range s {
+		if unicode.IsLetter(r) || unicode.IsMark(r) || r == '\'' {
+			word.WriteRune(r)
+			continue
+		}
+		flush()
+		out.WriteRune(r)
+	}
+	flush()
+	return out.String()
+}
+
+func isAcronym(w string) bool {
+	n := 0
+	for _, r := range w {
+		if !unicode.IsUpper(r) {
+			return false
+		}
+		n++
+	}
+	return n >= 2 && n <= 4
 }
 
 // ParseEmail lower-cases and checks the syntax of an address. It accepts only a bare address: a

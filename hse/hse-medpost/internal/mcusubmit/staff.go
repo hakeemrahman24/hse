@@ -92,16 +92,22 @@ func (s *Store) RejectSubmission(ctx context.Context, id, staffID int64, reason 
 
 // CloseWithRecord closes a Pending or Reviewed document with the checkup record staff made for it
 // on the Medical Checkups page, found by its CheckUpID. The record must belong to the document's
-// worker when the worker is already known; for a new employee the record's patient becomes the
-// document's patient, which is what later lets the expiry reminders find them. A record can close
-// only one document. (The "already linked" check is a read before the write: two staff linking the
-// same record in the same instant could both pass. MariaDB does not allow the update to look at its
-// own table in a subquery, and this is a rare, manual action.)
+// worker. When the worker is already known (a picked patient) that is a plain patient-id match.
+// For a new employee there is no patient yet, so the record's patient must be the same person by
+// the facts the submitter typed: the same date of birth, or the same ID number. Without that check
+// any record could be linked to any new-employee document, and the submitter could then download
+// somebody else's certificate. On success the record's patient becomes the document's patient,
+// which is what later lets the expiry reminders find them. A record can close only one document.
+// (The "already linked" check is a read before the write: two staff linking the same record in the
+// same instant could both pass. MariaDB does not allow the update to look at its own table in a
+// subquery, and this is a rare, manual action.)
 func (s *Store) CloseWithRecord(ctx context.Context, id, staffID int64, checkUpID string) error {
 	checkUpID = strings.TrimSpace(checkUpID)
-	var status string
+	var status, dob, nik, passport string
 	var patient sql.NullInt64
-	err := s.DB.QueryRowContext(ctx, `SELECT Status, FK_PatientID FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&status, &patient)
+	err := s.DB.QueryRowContext(ctx,
+		`SELECT Status, FK_PatientID, PatDateOfBirth, COALESCE(PatNik, ''), COALESCE(PatPassportNo, '') FROM McuSubmission WHERE SubmissionID = ?`, id).
+		Scan(&status, &patient, &dob, &nik, &passport)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
 	}
@@ -112,14 +118,22 @@ func (s *Store) CloseWithRecord(ctx context.Context, id, staffID int64, checkUpI
 		return ErrBadState
 	}
 	var recordID, recordPatient int64
-	err = s.DB.QueryRowContext(ctx, `SELECT McuRecordID, FK_PatientID FROM McuRecord WHERE CheckUpID = ?`, checkUpID).Scan(&recordID, &recordPatient)
+	var recordDOB, recordPersonalID string
+	err = s.DB.QueryRowContext(ctx,
+		`SELECT r.McuRecordID, r.FK_PatientID, COALESCE(p.DateOfBirth, ''), COALESCE(p.PersonalID, '')
+		 FROM McuRecord r JOIN Patient p ON p.PatientID = r.FK_PatientID WHERE r.CheckUpID = ?`, checkUpID).
+		Scan(&recordID, &recordPatient, &recordDOB, &recordPersonalID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrRecordUnknown
 	}
 	if err != nil {
 		return err
 	}
-	if patient.Valid && patient.Int64 != recordPatient {
+	if patient.Valid {
+		if patient.Int64 != recordPatient {
+			return ErrRecordMismatch
+		}
+	} else if !sameWorker(dob, nik, passport, recordDOB, recordPersonalID) {
 		return ErrRecordMismatch
 	}
 	var taken int
@@ -147,6 +161,21 @@ func (s *Store) CloseWithRecord(ctx context.Context, id, staffID int64, checkUpI
 		return s.stateError(ctx, id)
 	}
 	return s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "Closed", Detail: checkUpID})
+}
+
+// sameWorker says whether the patient of a checkup record is the person a new-employee document is
+// about: the same date of birth, or the same ID number (NIK or passport, spaces and hyphens
+// ignored). Names are not compared, because staff correct the spelling the submitter typed.
+func sameWorker(dob, nik, passport, patientDOB, patientPersonalID string) bool {
+	if len(dob) >= 10 && len(patientDOB) >= 10 && dob[:10] == patientDOB[:10] {
+		return true
+	}
+	have := idKey(patientPersonalID)
+	return have != "" && (have == idKey(nik) || have == idKey(passport))
+}
+
+func idKey(s string) string {
+	return strings.ToUpper(strings.NewReplacer(" ", "", "-", "").Replace(s))
 }
 
 // ---- HTTP for staff ---------------------------------------------------------------------------

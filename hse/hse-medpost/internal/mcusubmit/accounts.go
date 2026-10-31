@@ -183,7 +183,7 @@ func (s *Store) EnsureBuiltInAdmin(ctx context.Context, password string) (bool, 
 	if n > 0 || password == "" {
 		return false, nil
 	}
-	if err := ValidatePassword(password, builtInUsername, builtInEmail); err != nil {
+	if err := ValidateOperatorPassword(password, builtInUsername, builtInEmail); err != nil {
 		return false, err
 	}
 	hash, err := HashPassword(password)
@@ -201,7 +201,7 @@ func (s *Store) EnsureBuiltInAdmin(ctx context.Context, password string) (bool, 
 // ResetBuiltInAdmin is the recovery path (MCU_PORTAL_ADMIN_RESET=1 for one start): the hidden
 // admin has no real email, so "forgot password" cannot work for it.
 func (s *Store) ResetBuiltInAdmin(ctx context.Context, password string) error {
-	if err := ValidatePassword(password, builtInUsername, builtInEmail); err != nil {
+	if err := ValidateOperatorPassword(password, builtInUsername, builtInEmail); err != nil {
 		return err
 	}
 	hash, err := HashPassword(password)

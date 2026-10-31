@@ -24,8 +24,11 @@ func TestValidatePassword(t *testing.T) {
 		wantErr  bool
 	}{
 		{"long enough and unusual", "pelican-orbit-77", "budi.s", "budi@example.com", false},
-		{"too short", "abc12345", "budi.s", "budi@example.com", true},
-		{"nine characters is still short", "abcdefghi", "budi.s", "budi@example.com", true},
+		{"too short", "abc12", "budi.s", "budi@example.com", true},
+		{"five characters is still short", "k7m2q", "budi.s", "budi@example.com", true},
+		{"six characters is enough", "k7m2qx", "budi.s", "budi@example.com", false},
+		{"six digits is enough when not common", "482913", "budi.s", "budi@example.com", false},
+		{"a common six digit password is still refused", "123456", "budi.s", "budi@example.com", true},
 		{"equals the username", "budi.s.budi.s", "budi.s.budi.s", "budi@example.com", true},
 		{"equals the email", "budi@example.com", "budi.s", "budi@example.com", true},
 		{"equals the username ignoring case", "Budi.S.Budi.S", "budi.s.budi.s", "x@example.com", true},
@@ -76,5 +79,20 @@ func TestValidUsername(t *testing.T) {
 		if err := ValidUsername(u); err == nil {
 			t.Errorf("ValidUsername(%q) accepted, want error", u)
 		}
+	}
+}
+
+func TestOperatorPasswordAllowsCommonButNotShort(t *testing.T) {
+	if err := ValidateOperatorPassword("101112", "admin", "a@b.c"); err != nil {
+		t.Fatalf("101112 should be allowed for the built-in admin: %v", err)
+	}
+	if err := ValidatePassword("101112", "bob", "b@x.y"); err == nil {
+		t.Fatal("101112 must stay refused for portal users")
+	}
+	if err := ValidateOperatorPassword("12345", "admin", ""); err == nil {
+		t.Fatal("five characters must be refused")
+	}
+	if err := ValidateOperatorPassword("admin", "admin", ""); err == nil {
+		t.Fatal("the username must be refused")
 	}
 }

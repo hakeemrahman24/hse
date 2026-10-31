@@ -1,71 +1,92 @@
 /* /mcu-submit: the medical checkup submission portal. Same components as the rest of the app
-   (clearwave cards, buttons, tables); only the palette differs: near-black with a pink accent.
+   (clearwave cards, buttons, tables); only the palette differs: a light pink-white page with a
+   pink accent and dark plum text (owner, 2026-10-29: no black background).
+   Type sizes follow the staff app (clearwave/app.css): body 0.875rem, card h1 1.35rem, labels
+   0.75rem, fields 0.9rem, buttons 0.8125rem, tables 0.8125rem, hints 0.75rem. Only colours differ.
 
-   Contrast (WCAG AA needs 4.5:1 for normal text), measured against the card colour #1b1b24:
-     text-1 #f5f5f7 ~15:1   text-2 #c9c9d3 ~10:1   text-3 #a3a3b3 ~6.6:1   pink #ff4fa3 ~5.5:1
-   Text on a pink fill is dark (#0b0b0f, ~6.5:1), never white (white on pink is ~3:1).
+   Contrast (WCAG AA needs 4.5:1 for normal text), measured on white and on the page colour #fdf6fa:
+     text-1 #2a1320 ~16:1   text-2 #5a3a4c ~9:1   text-3 #7a5a6c ~6:1   pink text #c4126b ~5.7:1
+   The bright pink #ff4fa3 is only ever a fill or a border, never small text: it is ~3:1 on white.
+   Text on a pink fill is dark plum (#2a1320, ~7:1), never white (white on pink is ~3:1).
    Status badges carry their word, so colour is never the only signal. Errors keep a different hue
-   (salmon) and the word "Error:" so they are not mistaken for the accent. */
+   (red) and the word "Error:" so they are not mistaken for the accent. */
 
-html { background: #0b0b0f; }
+html { background: #fdf6fa; }
 
 body.mp {
-  --bg: #0b0b0f;
-  --bg-alt: #14141a;
-  --surface: #15151c;
-  --surface-2: #1b1b24;
+  --bg: #fdf6fa;
+  --bg-alt: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #ffffff;
   --accent: #ff4fa3;
   --accent-mid: #ff6db3;
-  --accent-light: #ff8cc6;
-  --accent-ghost: rgba(255, 79, 163, 0.12);
-  --accent-border: rgba(255, 79, 163, 0.4);
-  --text-1: #f5f5f7;
-  --text-2: #c9c9d3;
-  --text-3: #a3a3b3;
-  --border: rgba(255, 255, 255, 0.14);
+  --accent-hover: #ff7bb8;
+  --accent-light: #c4126b; /* pink for text and links: dark enough to read on white */
+  --accent-ghost: rgba(255, 79, 163, 0.1);
+  --accent-border: rgba(255, 79, 163, 0.55);
+  --hl: rgba(42, 19, 32, 0.06); /* neutral plum tint for sidebar headings and the current item: pink stays for actions */
+  --text-1: #2a1320;
+  --text-2: #5a3a4c;
+  --text-3: #7a5a6c;
+  --border: rgba(42, 19, 32, 0.16);
   --shadow-sm: none;
   --shadow-md: none;
   --shadow-lg: none;
   background: var(--bg);
   color: var(--text-1);
+  font-size: 0.875rem;
   /* No web font: the portal loads nothing from Google, and a system font is quick on a phone. */
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 .mp a { color: var(--accent-light); }
-.mp a:hover { color: #fff; }
+.mp a:hover { color: var(--text-1); }
 .mp :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.mp-skip { position: absolute; left: -9999px; top: 0; background: var(--accent); color: #0b0b0f; padding: 8px 12px; z-index: 100; }
+.mp-skip { position: absolute; left: -9999px; top: 0; background: var(--accent); color: #2a1320; padding: 8px 12px; z-index: 100; }
 .mp-skip:focus { left: 8px; top: 8px; }
 
 /* Header */
 .mp .nav, .mp .nav.scrolled {
-  background: rgba(11, 11, 15, 0.94) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
   border-bottom: 1px solid var(--border) !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
 }
 .mp .nav-logo, .mp .nav-logo span { color: var(--text-1) !important; }
-.mp .nav-logo span { color: var(--accent) !important; }
+.mp .nav-logo span { color: var(--accent-light) !important; }
 .mp-nav-links { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end; }
-.mp-nav-links a:not(.btn-primary) { color: var(--text-2); text-decoration: none; font-size: 0.875rem; }
+.mp-nav-links a:not(.btn-primary) { color: var(--text-2); text-decoration: none; font-size: 0.8125rem; }
 .mp-nav-links a:not(.btn-primary):hover { color: var(--accent-light); }
 .mp-inline { display: inline-flex; gap: 6px; align-items: center; margin: 0; }
 
-/* Buttons: dark text on the pink fill */
+/* Buttons: one size for primary and ghost, links and buttons alike (height 32px, like the fields) */
+.mp .btn-primary, .mp .btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 14px !important;
+  font-family: inherit;
+  font-size: 0.8125rem !important;
+  line-height: 1;
+  white-space: nowrap;
+}
+.mp .btn-primary[hidden], .mp .btn-ghost[hidden] { display: none; } /* display:inline-flex above must not beat the hidden attribute */
+/* Buttons: dark plum text on the pink fill */
 .mp .btn-primary {
   background: var(--accent) !important;
-  color: #0b0b0f !important;
+  color: #2a1320 !important;
   border: 1px solid var(--accent) !important;
   font-weight: 700;
   text-decoration: none;
 }
-.mp .btn-primary:hover { background: var(--accent-light) !important; color: #0b0b0f !important; }
+.mp .btn-primary:hover { background: var(--accent-hover) !important; color: #2a1320 !important; }
 .mp .btn-ghost {
   background: transparent !important;
   color: var(--text-1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  border: 1px solid rgba(42, 19, 32, 0.4) !important;
   text-decoration: none;
   cursor: pointer;
 }
@@ -74,63 +95,88 @@ body.mp {
 /* Layout */
 .mp-main { min-height: 100vh; }
 .mp-hero { max-width: 760px; margin: 0 auto; padding: 120px 16px 24px; }
-.mp-hero h1, .mp-section h1 { font-size: clamp(1.8rem, 5vw, 2.6rem); letter-spacing: -0.02em; line-height: 1.15; }
-.mp-hero h1 span, .mp-section h1 span, .mp-section h2 span, .mp .login-card h1 span { color: var(--accent); }
-.mp-lead { color: var(--text-2); margin-top: 12px; font-size: 1.05rem; max-width: 60ch; }
+.mp-hero h1, .mp-section h1 { font-size: 1.35rem; letter-spacing: -0.02em; line-height: 1.2; }
+.mp-hero h1 { font-size: clamp(1.5rem, 4vw, 1.9rem); }
+.mp-hero h1 span, .mp-section h1 span, .mp-section h2 span, .mp .login-card h1 span { color: var(--accent-light); }
+.mp-lead { color: var(--text-2); margin-top: 10px; font-size: 0.9rem; max-width: 60ch; }
 .mp-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
-.mp-actions .btn-primary, .mp-actions .btn-ghost { display: inline-block; padding: 9px 16px !important; font-size: 0.9rem !important; }
 .mp-steps { max-width: 760px; margin: 0 auto; padding: 8px 16px 64px; }
 .mp-steps ol { margin-left: 1.2rem; color: var(--text-2); line-height: 1.7; }
 .mp-steps strong { color: var(--text-1); }
-.mp-section { max-width: 1100px; margin: 0 auto; padding: 96px 16px 48px; }
-.mp-section h2 { margin-top: 36px; font-size: 1.3rem; }
+.mp-section { max-width: 1100px; margin: 0 auto; padding: 72px 16px 40px; }
+.mp-section h2 { margin: 20px 0 8px; font-size: 1rem; }
 
 /* Forms (the app's .login-card, recoloured) */
 .mp .login-card { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-1); }
-.mp .login-card.mp-wide { max-width: 460px; }
-.mp .login-card .sub { color: var(--text-2); margin-bottom: 16px; }
-.mp .login-card label > span, .mp .login-card legend { color: var(--text-2); }
-.mp .login-card input, .mp .login-card select, .mp-table input, .mp-filter input, .mp-filter select {
+.mp .login-card.mp-wide { max-width: 420px; }
+.mp .login-card .sub { color: var(--text-2); margin-bottom: 16px; font-size: 0.8125rem; }
+.mp .login-card label > span, .mp .login-card legend { color: var(--text-2); font-size: 0.75rem; font-weight: 600; }
+/* Every portal field looks like the staff form fields (clearwave .login-card input: 0.9rem,
+   8px 10px, square corners), whether it sits in a card, the filter bar or a table row. */
+.mp input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
+.mp select, .mp textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  height: 32px;
+  padding: 5px 9px;
+  box-sizing: border-box;
+  border-radius: 2px;
   background: var(--bg-alt);
   color: var(--text-1);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  border: 1px solid rgba(42, 19, 32, 0.4);
 }
-.mp .login-card input:focus, .mp .login-card select:focus, .mp-table input:focus, .mp-filter input:focus, .mp-filter select:focus { border-color: var(--accent); }
-.mp .login-card input::placeholder, .mp-table input::placeholder, .mp-filter input::placeholder { color: var(--text-3); }
-.mp .login-card .field { margin-bottom: 16px; }
-.mp-hint { color: var(--text-3); font-size: 0.8rem; margin-top: 6px; }
+.mp input[type="file"] {
+  width: 100%; height: 32px; box-sizing: border-box; padding: 0; line-height: 30px;
+  font-family: inherit; font-size: 0.8125rem; color: var(--text-2);
+  background: var(--bg-alt); border: 1px solid rgba(42, 19, 32, 0.4); border-radius: 2px;
+}
+.mp input[type="file"]::file-selector-button {
+  height: 30px; margin: 0 10px 0 0; padding: 0 12px; border: 0; border-right: 1px solid rgba(42, 19, 32, 0.4);
+  background: var(--hl); color: var(--text-1); font-family: inherit; font-size: 0.8125rem; cursor: pointer;
+}
+.mp input[type="checkbox"], .mp input[type="radio"] { width: auto; accent-color: var(--accent); }
+.mp input:focus, .mp select:focus, .mp textarea:focus { border-color: var(--accent); outline-offset: 0; }
+.mp input::placeholder { color: var(--text-3); }
+.mp .login-card { padding: 16px 18px; }
+.mp .login-card .field { margin-bottom: 10px; }
+.mp .login-card .field > label > span, .mp .login-card label > span { margin-bottom: 3px; }
+.mp .login-card .sub { margin-bottom: 12px; }
+.mp .login-card .submit-row { margin-top: 4px; }
+.mp-hint { color: var(--text-3); font-size: 0.75rem; margin: 4px 0 8px; }
 .mp-error {
-  color: #ffb4a8;
-  background: rgba(255, 138, 128, 0.1);
-  border: 1px solid rgba(255, 138, 128, 0.5);
+  color: #8f1d12;
+  background: rgba(214, 69, 50, 0.08);
+  border: 1px solid rgba(190, 40, 25, 0.5);
   border-radius: 2px;
   padding: 8px 10px;
   margin: 12px 0;
-  font-size: 0.85rem;
+  font-size: 0.8125rem;
 }
 
 /* Home cards and the admin tables */
 .mp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin: 20px 0; }
 .mp-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 2px; padding: 14px; display: flex; flex-direction: column; gap: 4px; color: var(--text-2); }
-.mp-count { font-size: 1.8rem; font-weight: 700; color: var(--accent); line-height: 1; }
+.mp-count { font-size: 1.5rem; font-weight: 700; color: var(--text-1); line-height: 1; }
 .mp-scroll { overflow-x: auto; margin-top: 12px; }
-.mp-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; background: var(--surface-2); }
-.mp-table caption { text-align: left; color: var(--text-2); padding: 6px 0; font-size: 0.8rem; }
-.mp-table th { text-align: left; background: var(--accent-ghost); color: var(--text-1); font-weight: 700; padding: 8px; border-bottom: 1px solid var(--accent-border); white-space: nowrap; }
+.mp-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; background: var(--surface-2); }
+.mp-table caption { text-align: left; color: var(--text-2); padding: 6px 0; font-size: 0.75rem; }
+.mp-table th { text-align: left; background: var(--hl); color: var(--text-1); font-weight: 700; padding: 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
 .mp-table td { padding: 8px; border-bottom: 1px solid var(--border); color: var(--text-1); vertical-align: top; }
 .mp-decide { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.mp-decide input { padding: 5px 8px; font-size: 0.8rem; width: 150px; border-radius: 2px; }
-.mp-badge { display: inline-block; border: 1px solid var(--accent-border); background: var(--accent-ghost); color: var(--accent-light); padding: 1px 8px; font-size: 0.75rem; font-weight: 700; }
+.mp-decide input { width: 150px; }
+.mp-badge { display: inline-block; border: 1px solid var(--accent-border); background: var(--accent-ghost); color: var(--accent-light); padding: 1px 8px; font-size: 0.7rem; font-weight: 700; }
 .mp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-.mp-notice { background: var(--accent-ghost); border: 1px solid var(--accent-border); padding: 8px 10px; margin: 12px 0; }
+.mp-notice { font-size: 0.8125rem; background: var(--accent-ghost); border: 1px solid var(--accent-border); padding: 8px 10px; margin: 12px 0; }
 
 /* Worker picker and review page */
 .mp-results { list-style: none; margin: 6px 0 0; padding: 0; }
 .mp-results li { margin: 0 0 4px; }
-.mp-results button { width: 100%; text-align: left; background: var(--bg-alt); color: var(--text-1); border: 1px solid var(--border); padding: 8px 10px; cursor: pointer; font: inherit; }
+.mp-results button { width: 100%; text-align: left; background: var(--bg-alt); color: var(--text-1); border: 1px solid var(--border); padding: 8px 10px; cursor: pointer; font: inherit; font-size: 0.875rem; }
 .mp-results button:hover, .mp-results button:focus-visible { border-color: var(--accent); }
-.mp-results small { display: block; color: var(--text-2); }
+.mp-results small { font-size: 0.75rem; display: block; color: var(--text-2); }
 .mp-chosen { background: var(--accent-ghost); border: 1px solid var(--accent-border); padding: 8px 10px; margin: 8px 0; }
 .mp-new { margin: 0 0 16px; border: 1px solid var(--border); padding: 8px 12px; }
 .mp-new summary { cursor: pointer; color: var(--accent-light); }
@@ -141,7 +187,7 @@ body.mp {
 
 @media (max-width: 640px) {
   .mp-hero { padding-top: 88px; }
-  .mp-section { padding-top: 72px; }
+  .mp-section { padding-top: 64px; }
 }
 
 /* Filter bar above My documents: fields wrap on a phone instead of scrolling the page sideways. */
@@ -153,10 +199,76 @@ body.mp {
   margin: 16px 0;
 }
 .mp-filter .field { margin: 0; }
+.mp-filter input, .mp-filter select { width: auto; min-width: 150px; }
 .mp-filter .field label { display: block; margin-bottom: 4px; }
 
 /* Radio and checkbox rows on the admin settings pages. */
 .mp-choices { border: 0; padding: 0; margin: 0 0 12px; }
 .mp-check { display: flex; align-items: center; gap: 10px; margin: 6px 0; cursor: pointer; }
 .mp-check input { width: auto; }
+.mp .login-card .mp-check > span { display: inline; font-size: 0.8125rem; font-weight: 400; color: var(--text-1); }
 
+/* Signed-in pages: the staff app's sidebar (clearwave .app-shell + .app-sidebar) with the portal's
+   own colours. Links, not buttons, so the items are plain anchors styled like .app-program-item. */
+.mp-shell { margin-top: 52px; }
+.mp-shell .mp-main { min-width: 0; min-height: 0; }
+.mp-shell .mp-section { max-width: none; margin: 0; padding: 14px 4px 24px; }
+.mp .app-sidebar { background: var(--surface-2); }
+.mp .app-sidebar-label { margin-top: 10px; }
+.mp .app-sidebar a.app-program-item { color: var(--text-2); text-decoration: none; }
+.mp .app-sidebar a.app-program-item:hover { background: var(--hl); color: var(--text-1); }
+.mp .app-sidebar a.app-program-item.active { background: var(--hl); color: var(--text-1); box-shadow: inset 3px 0 0 var(--accent); }
+.mp .app-sidebar .app-program-item { padding: 6px 8px; }
+.mp .app-sidebar .app-program-item-title { font-size: 0.8125rem; }
+@media (max-width: 760px) {
+  .mp-shell { grid-template-columns: 1fr; margin-top: 44px; }
+  .mp .app-sidebar { position: static; max-height: none; }
+  .mp-side { display: flex; flex-wrap: wrap; gap: 2px; }
+  .mp-side .app-program-item { width: auto; }
+}
+
+/* Sidebar type follows the staff app's grouped sidebars (clearwave .settings-shell): the group
+   heading is a bold 13px pill and the items under it are smaller (0.765rem) and indented, so an
+   item is never bigger than its heading. Home has no heading, so it takes the heading's size. */
+.mp .app-sidebar .app-sidebar-label {
+  font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: none;
+  color: var(--text-2); background: var(--hl);
+  padding: 3px 8px; border-radius: 4px; margin: 10px 4px 6px;
+}
+.mp .app-sidebar .app-program-list { margin: 0 0 2px; }
+.mp .app-sidebar .app-program-item { padding: 2px 6px 2px 22px; line-height: 1.15; }
+.mp .app-sidebar .app-program-item-title { font-size: 0.765rem; line-height: 1.15; }
+.mp .app-sidebar .app-program-list:first-child { margin-top: 4px; }
+.mp .app-sidebar .app-program-list:first-child .app-program-item { padding-left: 12px; }
+.mp .app-sidebar .app-program-list:first-child .app-program-item-title { font-size: 0.8125rem; }
+
+/* Compact settings cards: a heading, then one row of controls. */
+.mp-row { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: flex-start; }
+.mp-row > div { flex: 1 1 320px; max-width: 520px; min-width: 0; }
+.mp-row h2 { margin-top: 12px; }
+.mp .login-card.mp-compact { padding: 10px 12px; max-width: none; }
+.mp-inlineform { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0; }
+.mp-inlineform input[type="email"], .mp-inlineform input[type="text"] { flex: 1 1 140px; min-width: 0; width: auto; }
+.mp-inlineform .mp-choices { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; flex: 1 1 auto; }
+.mp-inlineform .mp-check { margin: 0; }
+
+/* Searchable company dropdown (mcu-portal-combobox.js). The text box is a normal field with a
+   chevron; the popup reuses the staff app's .company-typeahead look in the portal's colours.
+   The real <select> stays in the page as the form value, hidden but not display:none. */
+.mp-cb { position: relative; }
+.mp-cb > input {
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235a3a4c' stroke-width='1.5'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+}
+.mp-cb-native { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.mp .mp-cb-list {
+  background: var(--bg-alt); border: 1px solid var(--border); border-radius: 2px;
+  box-shadow: 0 4px 12px rgba(42, 19, 32, 0.12); margin-top: 2px; max-height: 220px; padding: 2px;
+}
+.mp .mp-cb-list .app-program-item { padding: 6px 8px; }
+.mp .mp-cb-list .app-program-item-title { font-size: 0.8125rem; font-weight: 400; color: var(--text-1); }
+.mp .mp-cb-list .app-program-item:hover, .mp .mp-cb-list .app-program-item.active { background: var(--hl); }
+.mp .mp-cb-list .app-program-item.active { box-shadow: inset 3px 0 0 var(--accent); }
+.mp .mp-cb-none { margin: 0; padding: 6px 8px; }

@@ -3,6 +3,7 @@ package mcusubmit
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -474,5 +475,66 @@ func TestStaffDetailCarriesTheGenderAndEnsureGenderColumnUpgradesAnOldTable(t *t
 	docs, err := e.store.querySubmissions(context.Background(), `WHERE s.SubmissionID = ?`, id)
 	if err != nil || len(docs) != 1 || docs[0].PatGender != "" {
 		t.Fatalf("after upgrade: %+v, %v", docs, err)
+	}
+}
+
+// A new employee has no patient yet, so the record's patient must be the same person by the facts the
+// submitter typed. Before this rule any record could be linked to any new-employee document.
+func TestCloseWithRecordRefusesAnotherPersonsRecordForANewEmployee(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrone@example.com")
+	id := sentDoc(t, s, sub, "Agus Prasetyo") // typed date of birth 1990-04-12
+	other := seedWorker(t, s, "Someone Else", "1985-01-01", co)
+	addRecord(t, s, other, "MedC-OTHER", "Fit", "2027-01-01", "Open", 1)
+
+	if err := s.CloseWithRecord(ctx, id, testStaffID, "MedC-OTHER"); !errors.Is(err, ErrRecordMismatch) {
+		t.Fatalf("another person's record = %v, want ErrRecordMismatch", err)
+	}
+	var status string
+	var patient sql.NullInt64
+	_ = s.DB.QueryRow(`SELECT Status, FK_PatientID FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&status, &patient)
+	if status != SubPending || patient.Valid {
+		t.Fatalf("a refused link changed the document: status %s, patient %v", status, patient)
+	}
+}
+
+func TestCloseWithRecordAcceptsTheSameIDNumberWhenTheBirthDateWasMistyped(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrone@example.com")
+	id := sentDoc(t, s, sub, "Agus Prasetyo")
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET PatNik = '3201010101900001' WHERE SubmissionID = ?`, id); err != nil {
+		t.Fatal(err)
+	}
+	w := seedWorker(t, s, "Agus Prasetyo", "1990-04-21", co) // staff corrected the birth date
+	if _, err := s.DB.Exec(`UPDATE Patient SET PersonalID = '3201 0101-0190 0001' WHERE PatientID = ?`, w); err != nil {
+		t.Fatal(err)
+	}
+	addRecord(t, s, w, "MedC-NIK", "Fit", "2027-01-01", "Open", 1)
+	if err := s.CloseWithRecord(ctx, id, testStaffID, "MedC-NIK"); err != nil {
+		t.Fatalf("same NIK, other birth date = %v, want nil", err)
+	}
+}
+
+func TestSameWorker(t *testing.T) {
+	cases := []struct {
+		name                  string
+		dob, nik, pass        string
+		patientDOB, patientID string
+		want                  bool
+	}{
+		{"same birth date", "1990-04-12", "", "", "1990-04-12", "", true},
+		{"birth date with a time on the patient", "1990-04-12", "", "", "1990-04-12 00:00:00", "", true},
+		{"other birth date, no id", "1990-04-12", "", "", "1985-01-01", "", false},
+		{"same nik formatted differently", "1990-04-12", "3201010101900001", "", "1985-01-01", "3201-0101 0190 0001", true},
+		{"same passport in other case", "1990-04-12", "", "ab123456", "1985-01-01", "AB123456", true},
+		{"other id", "1990-04-12", "3201010101900001", "", "1985-01-01", "3201010101900002", false},
+		{"patient without id never matches an empty one", "", "", "", "", "", false},
+	}
+	for _, c := range cases {
+		if got := sameWorker(c.dob, c.nik, c.pass, c.patientDOB, c.patientID); got != c.want {
+			t.Errorf("%s: sameWorker = %v, want %v", c.name, got, c.want)
+		}
 	}
 }

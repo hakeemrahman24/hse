@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"strconv"
 	"time"
 )
@@ -34,6 +35,14 @@ const (
 // ErrDailyLimit means the submitter has already uploaded the maximum in the last 24 hours.
 var ErrDailyLimit = errors.New("mcusubmit: daily upload limit reached")
 
+// The reasons SendBatch can refuse. Each wraps ErrBadState, so a caller that only cares that the
+// state was wrong still matches it, while the page can say which of them it was.
+var (
+	ErrBatchSent       = fmt.Errorf("%w: the batch was already sent", ErrBadState)
+	ErrBatchEmpty      = fmt.Errorf("%w: the batch has no documents", ErrBadState)
+	ErrBatchUnfinished = fmt.Errorf("%w: a document is still being checked or not yet confirmed", ErrBadState)
+)
+
 // NewSubmission is what the upload pipeline hands over after the file is stored. Pat* fields are a
 // snapshot of what the submitter typed; Patient itself is never written by a submitter.
 type NewSubmission struct {
@@ -44,10 +53,7 @@ type NewSubmission struct {
 	IsNewEmployee                                                        bool
 	// NeedsReview stores the document as Review: the submitter must confirm the details and the
 	// file once before it can join the batch that is sent (owner, 2026-10-29).
-	NeedsReview bool
-	// OwnBatch puts this document in a batch of its own: a person is one document, so the portal
-	// never groups documents. The batch tables stay because staff mail and audit work per batch.
-	OwnBatch             bool
+	NeedsReview          bool
 	FilePath, FileSha256 string
 	FileBytes            int
 }
@@ -305,7 +311,7 @@ func (s *Store) SendBatch(ctx context.Context, submitterID, batchID int64) (int,
 		return 0, err
 	}
 	if sentAt.Valid {
-		return 0, ErrBadState
+		return 0, ErrBatchSent
 	}
 	var total, unfinished int
 	// A document still in Review has not been confirmed by its submitter, so it blocks the send
@@ -315,15 +321,18 @@ func (s *Store) SendBatch(ctx context.Context, submitterID, batchID int64) (int,
 		ScanClean, SubReview, batchID).Scan(&total, &unfinished); err != nil {
 		return 0, err
 	}
-	if total == 0 || unfinished > 0 {
-		return 0, ErrBadState
+	if total == 0 {
+		return 0, ErrBatchEmpty
+	}
+	if unfinished > 0 {
+		return 0, ErrBatchUnfinished
 	}
 	res, err := tx.ExecContext(ctx, `UPDATE McuBatch SET SentAt = ? WHERE BatchID = ? AND SentAt IS NULL`, s.stamp(), batchID)
 	if err != nil {
 		return 0, err
 	}
 	if n, _ := res.RowsAffected(); n != 1 {
-		return 0, ErrBadState
+		return 0, ErrBatchSent // another request sent it between the read and the write
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE McuSubmission SET Status = ? WHERE FK_BatchID = ? AND Status = ?`, SubPending, batchID, SubDraft); err != nil {
 		return 0, err

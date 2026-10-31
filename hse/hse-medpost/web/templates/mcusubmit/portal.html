@@ -1,6 +1,6 @@
 {{/*
   Pages of the medical checkup submission portal (/mcu-submit). One define per page, so the whole
-  set reads in one place. Same components as the rest of the app (clearwave CSS); the black and pink
+  set reads in one place. Same components as the rest of the app (clearwave CSS); the light pink
   palette comes from /static/mcu-portal.css. html/template escapes every value: names and emails
   are written as text, never as markup.
 */}}
@@ -15,20 +15,17 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=1" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=11" />
+  <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
+  <script src="/static/mcu-portal-name.js?v=2" defer></script>
 </head>
 <body class="mp">
   <a class="mp-skip" href="#main">Skip to content</a>
   <nav class="nav scrolled" aria-label="Main navigation">
     <div class="nav-inner">
-      <a href="/mcu-submit" class="nav-logo">checkup <span>portal</span></a>
+      <a href="/mcu-submit" class="nav-logo">medical checkup <span>portal</span></a>
       <div class="mp-nav-links">
         {{if .User}}
-          <a href="/mcu-submit/home">Home</a>
-          {{if ne .User.Role "Admin"}}<a href="/mcu-submit/batch">New batch</a>
-          <a href="/mcu-submit/documents">My documents</a>{{end}}
-          <a href="/mcu-submit/settings">Settings</a>
-          {{if eq .User.Role "Admin"}}<a href="/mcu-submit/admin">Admin</a>{{end}}
           <form method="post" action="/mcu-submit/signout" class="mp-inline"><button class="btn-ghost" type="submit">Sign out</button></form>
         {{else}}
           <a href="/mcu-submit/signin">Sign in</a>
@@ -42,11 +39,40 @@
       </div>
     </div>
   </nav>
-  <main id="main" class="mp-main">
+{{if .User}}  <div class="app-shell mp-shell">
+    <aside class="app-sidebar" aria-label="Portal menu">
+      <div class="app-program-list mp-side">
+        <a class="app-program-item{{if eq .Nav "home"}} active{{end}}" href="/mcu-submit/home"{{if eq .Nav "home"}} aria-current="page"{{end}}><span class="app-program-item-title">Home</span></a>
+      </div>
+      {{if eq .User.Role "Admin"}}
+      <div class="app-sidebar-label">Review</div>
+      <div class="app-program-list mp-side">
+        <a class="app-program-item{{if eq .Nav "admin"}} active{{end}}" href="/mcu-submit/admin"{{if eq .Nav "admin"}} aria-current="page"{{end}}><span class="app-program-item-title">Account requests</span></a>
+      </div>
+      <div class="app-sidebar-label">Mail</div>
+      <div class="app-program-list mp-side">
+        <a class="app-program-item{{if eq .Nav "digest"}} active{{end}}" href="/mcu-submit/admin/digest"{{if eq .Nav "digest"}} aria-current="page"{{end}}><span class="app-program-item-title">Reviewer mail</span></a>
+        <a class="app-program-item{{if eq .Nav "reminders"}} active{{end}}" href="/mcu-submit/admin/reminders"{{if eq .Nav "reminders"}} aria-current="page"{{end}}><span class="app-program-item-title">Reminders</span></a>
+        <a class="app-program-item{{if eq .Nav "mail"}} active{{end}}" href="/mcu-submit/admin/mail"{{if eq .Nav "mail"}} aria-current="page"{{end}}><span class="app-program-item-title">Mail settings</span></a>
+      </div>
+      {{else}}
+      <div class="app-sidebar-label">Medical checkups</div>
+      <div class="app-program-list mp-side">
+        <a class="app-program-item{{if eq .Nav "batch"}} active{{end}}" href="/mcu-submit/batch"{{if eq .Nav "batch"}} aria-current="page"{{end}}><span class="app-program-item-title">New batch</span></a>
+        <a class="app-program-item{{if eq .Nav "documents"}} active{{end}}" href="/mcu-submit/documents"{{if eq .Nav "documents"}} aria-current="page"{{end}}><span class="app-program-item-title">My documents</span></a>
+      </div>
+      {{end}}
+      <div class="app-sidebar-label">Account</div>
+      <div class="app-program-list mp-side">
+        <a class="app-program-item{{if eq .Nav "settings"}} active{{end}}" href="/mcu-submit/settings"{{if eq .Nav "settings"}} aria-current="page"{{end}}><span class="app-program-item-title">Settings</span></a>
+      </div>
+    </aside>
+{{end}}  <main id="main" class="mp-main">
 {{end}}
 
 {{define "foot"}}  </main>
-</body>
+{{if .User}}  </div>
+{{end}}</body>
 </html>
 {{end}}
 
@@ -92,18 +118,18 @@
         {{template "error" .}}
         <form method="post" action="/mcu-submit/register" autocomplete="on">
           <div class="field"><label for="name"><span>Full name</span></label>
-            <input id="name" name="name" type="text" maxlength="150" required autocomplete="name" value="{{.Form.name}}" /></div>
+            <input id="name" name="name" type="text" maxlength="150" required autocomplete="name" data-name value="{{.Form.name}}" /></div>
           <div class="field"><label for="email"><span>Work email</span></label>
             <input id="email" name="email" type="email" maxlength="254" required autocomplete="email" value="{{.Form.email}}" />
             <p class="mp-hint">We send a link to confirm this address.</p></div>
           <div class="field"><label for="company"><span>Company</span></label>
-            <select id="company" name="company_id" required>
+            <select id="company" name="company_id" required data-combobox>
               <option value="">Choose your company</option>
               {{range .Companies}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) $.Form.company_id}} selected{{end}}>{{.Name}}</option>{{end}}
             </select>
             <p class="mp-hint">Company not listed? Ask the medical post administrator to add it.</p></div>
           <div class="field"><label for="position"><span>Position</span></label>
-            <input id="position" name="position" type="text" maxlength="128" required value="{{.Form.position}}" /></div>
+            <input id="position" name="position" type="text" maxlength="128" data-position required value="{{.Form.position}}" /></div>
           <div class="field">{{template "turnstile" .}}</div>
           <div class="submit-row"><button type="submit" class="btn-primary">Request account</button></div>
         </form>
@@ -158,7 +184,7 @@
             <p class="mp-hint">3 to 40 letters, digits, dots or underscores.</p></div>
           <div class="field"><label for="password"><span>Password</span></label>
             <input id="password" name="password" type="password" maxlength="72" required autocomplete="new-password" />
-            <p class="mp-hint">At least 10 characters. Not your username or email, and not a common password.</p></div>
+            <p class="mp-hint">At least 6 characters. Not your username or email, and not a common password.</p></div>
           <div class="field"><label for="confirm"><span>Repeat the password</span></label>
             <input id="confirm" name="confirm" type="password" maxlength="72" required autocomplete="new-password" /></div>
           <div class="submit-row"><button type="submit" class="btn-primary">Create login</button></div>
@@ -193,7 +219,7 @@
           <input type="hidden" name="token" value="{{.Token}}" />
           <div class="field"><label for="password"><span>New password</span></label>
             <input id="password" name="password" type="password" maxlength="72" required autocomplete="new-password" />
-            <p class="mp-hint">At least 10 characters. Not your username or email, and not a common password.</p></div>
+            <p class="mp-hint">At least 6 characters. Not your username or email, and not a common password.</p></div>
           <div class="field"><label for="confirm"><span>Repeat the password</span></label>
             <input id="confirm" name="confirm" type="password" maxlength="72" required autocomplete="new-password" /></div>
           <div class="submit-row"><button type="submit" class="btn-primary">Change password</button></div>
@@ -228,7 +254,7 @@
             <input id="current" name="current" type="password" maxlength="72" required autocomplete="current-password" /></div>
           <div class="field"><label for="password"><span>New password</span></label>
             <input id="password" name="password" type="password" maxlength="72" required autocomplete="new-password" />
-            <p class="mp-hint">At least 10 characters. Not your username or email, and not a common password. Your other devices are signed out.</p></div>
+            <p class="mp-hint">At least 6 characters. Not your username or email, and not a common password. Your other devices are signed out.</p></div>
           <div class="field"><label for="confirm"><span>Repeat the new password</span></label>
             <input id="confirm" name="confirm" type="password" maxlength="72" required autocomplete="new-password" /></div>
           <button type="submit" class="btn-primary">Change password</button>
@@ -252,7 +278,7 @@
       <h2>Reminder <span>mails</span></h2>
       <div class="login-card mp-wide">
         <form method="post" action="/mcu-submit/settings/reminders">
-          <div class="field"><label><input type="checkbox" name="reminders" value="on"{{if .User.RemindersEnabled}} checked{{end}} /> <span>Email me when a medical checkup I submitted is about to expire</span></label></div>
+          <div class="field"><label class="mp-check"><input type="checkbox" name="reminders" value="on"{{if .User.RemindersEnabled}} checked{{end}} /> <span>Email me when a medical checkup I submitted is about to expire</span></label></div>
           <button type="submit" class="btn-primary">Save</button>
         </form>
       </div>
@@ -319,11 +345,11 @@
           </div>
           <details id="new-employee" class="mp-new"{{if and (not (index .Form "patient_id")) (index .Form "name")}} open{{end}}>
             <summary>The worker is not in the list (new employee)</summary>
-            <div class="field"><label for="name"><span>Worker's name</span></label><input id="name" name="name" type="text" maxlength="128" value="{{index .Form "name"}}" /></div>
+            <div class="field"><label for="name"><span>Worker's name</span></label><input id="name" name="name" type="text" maxlength="128" data-name value="{{index .Form "name"}}" /></div>
             <div class="field"><label for="dob"><span>Date of birth</span></label><input id="dob" name="dob" type="date" value="{{index .Form "dob"}}" /></div>
-            <div class="field"><label for="position"><span>Position</span></label><input id="position" name="position" type="text" maxlength="128" value="{{index .Form "position"}}" /></div>
+            <div class="field"><label for="position"><span>Position</span></label><input id="position" name="position" type="text" maxlength="128" data-position value="{{index .Form "position"}}" /></div>
             <div class="field"><label for="company_id"><span>Company</span></label>
-              <select id="company_id" name="company_id">
+              <select id="company_id" name="company_id" data-combobox>
                 <option value="">Choose a company</option>
                 {{range .Companies}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) (index $.Form "company_id")}} selected{{end}}>{{.Name}}</option>{{end}}
               </select></div>
@@ -431,7 +457,6 @@
 
 {{define "admin.html"}}{{template "head" .}}
     <section class="mp-section">
-      <p class="mp-hint"><a href="/mcu-submit/admin/digest">Reviewer mail settings</a> · <a href="/mcu-submit/admin/reminders">Reminder settings</a> · <a href="/mcu-submit/admin/mail">Mail settings</a></p>
       <h1>Account <span>requests</span></h1>
       {{if .Pending}}
       <div class="mp-scroll"><table class="mp-table">
@@ -473,17 +498,33 @@
       <p class="mp-hint">Reviewers get one mail listing every medical checkup document that has been sent and not yet reviewed. It holds no ID numbers or birth dates, and no mail goes out while nothing is waiting.</p>
       {{template "error" .}}
 
-      <h2>How <span>often</span></h2>
-      <div class="login-card mp-wide">
-        <form method="post" action="/mcu-submit/admin/digest">
-          <fieldset class="mp-choices">
-            <legend class="mp-sr">How often is the mail sent?</legend>
-            {{range .Intervals}}<label class="mp-check"><input type="radio" name="hours" value="{{.}}"{{if eq . $.Digest.IntervalHours}} checked{{end}} /> <span>Every {{.}} hours</span></label>
-            {{end}}
-          </fieldset>
+      <div class="mp-row">
+        <div>
+          <h2>How <span>often</span></h2>
+          <div class="login-card mp-compact">
+            <form method="post" action="/mcu-submit/admin/digest" class="mp-inlineform">
+              <fieldset class="mp-choices">
+                <legend class="mp-sr">How often is the mail sent?</legend>
+                {{range .Intervals}}<label class="mp-check"><input type="radio" name="hours" value="{{.}}"{{if eq . $.Digest.IntervalHours}} checked{{end}} /> <span>Every {{.}} h</span></label>
+                {{end}}
+              </fieldset>
+              <button type="submit" class="btn-primary">Save</button>
+            </form>
+          </div>
           <p class="mp-hint">{{if .Digest.LastSentAt}}Last sent {{.Digest.LastSentAt}} (UTC).{{else}}Not sent yet.{{end}}</p>
-          <button type="submit" class="btn-primary">Save</button>
-        </form>
+        </div>
+        <div>
+          <h2>New <span>recipient</span></h2>
+          <div class="login-card mp-compact">
+            <form method="post" action="/mcu-submit/admin/reviewers/add" class="mp-inlineform">
+              <label class="mp-sr" for="rv-email">Email address</label>
+              <input id="rv-email" name="email" type="email" maxlength="254" required placeholder="Email address" />
+              <label class="mp-sr" for="rv-name">Name (optional)</label>
+              <input id="rv-name" name="name" type="text" maxlength="150" placeholder="Name (optional)" />
+              <button type="submit" class="btn-primary">Add</button>
+            </form>
+          </div>
+        </div>
       </div>
 
       <h2>Who <span>receives it</span></h2>
@@ -500,17 +541,7 @@
             <form method="post" action="/mcu-submit/admin/reviewers/delete" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Remove</button></form>
           </td></tr>{{end}}
         </tbody></table></div>
-      {{else}}<p class="mp-hint">Nobody receives the mail yet. Add an address below.</p>{{end}}
-
-      <div class="login-card mp-wide">
-        <form method="post" action="/mcu-submit/admin/reviewers/add">
-          <div class="field"><label for="rv-email"><span>Email address</span></label>
-            <input id="rv-email" name="email" type="email" maxlength="254" required /></div>
-          <div class="field"><label for="rv-name"><span>Name (optional)</span></label>
-            <input id="rv-name" name="name" type="text" maxlength="150" /></div>
-          <button type="submit" class="btn-primary">Add</button>
-        </form>
-      </div>
+      {{else}}<p class="mp-hint">Nobody receives the mail yet. Add an address above.</p>{{end}}
     </section>
 {{template "foot" .}}{{end}}
 

@@ -394,8 +394,9 @@ func TestBuiltInAdminNeedsAStrongPasswordFromTheEnvironment(t *testing.T) {
 	if created, err := s.EnsureBuiltInAdmin(ctx, ""); err != nil || created {
 		t.Fatalf("no password = %v, %v; want false, nil (admin simply not created)", created, err)
 	}
-	if _, err := s.EnsureBuiltInAdmin(ctx, "101112"); err == nil {
-		t.Fatal("the staff seed password must be refused here")
+	// Owner decision 2026-10-29: the admin may use a common password such as 101112, but not a short one.
+	if _, err := s.EnsureBuiltInAdmin(ctx, "12345"); err == nil {
+		t.Fatal("a five character password must be refused here")
 	}
 	if _, err := s.ByUsername(ctx, "admin"); !errors.Is(err, ErrNotFound) {
 		t.Fatal("no admin should exist after refused passwords")

@@ -873,6 +873,7 @@ function setNewPatientCombined(on) {
 }
 
 function closeCombinedPatientCheckup() {
+  clearLinkedSubmission();
   setNewPatientCombined(false);
   checkupForm.hidden = true;
   patientForm.hidden = true;
@@ -1497,6 +1498,7 @@ document.getElementById("new-checkup-btn")?.addEventListener("click", () => {
   openCheckupForm(null);
 });
 document.getElementById("checkup-cancel")?.addEventListener("click", () => {
+  clearLinkedSubmission();
   setNewPatientCombined(false);
   checkupForm.hidden = true;
   patientForm.hidden = true;
@@ -2190,7 +2192,10 @@ checkupForm?.addEventListener("submit", async (e) => {
   // Opened from the Submitted page: link the record just saved to that document and close it, so
   // staff never type the Checkup ID. The checkup is already saved at this point; a failed link is
   // reported with the ID so it can still be closed by hand on the Submitted page.
-  if (linkedSubmission && !isEdit) await closeLinkedSubmission(String(body.checkUpId || "").trim());
+  if (linkedSubmission && !isEdit) {
+    const savedPatientId = isNewPatient ? data.patientId : currentPatient?.patientId;
+    await closeLinkedSubmission(String(body.checkUpId || "").trim(), savedPatientId);
+  }
   if (isNewPatient) {
     const pRes = await fetch(`/api/patients`, { credentials: "same-origin" });
     const patients = await pRes.json();
@@ -3091,13 +3096,24 @@ async function openSubmission(id) {
     submissionBanner(`This document is ${sub.status.toLowerCase()} and cannot be reviewed again.`, "err", false);
     return;
   }
+  const patient = await findPatientForSubmission(sub);
+  if (!patient && sub.patientId) {
+    // The submitter picked an existing worker. Opening a blank form here would create a second
+    // patient for the same person, and the close would then be refused as another patient's record.
+    showMcuTab("submitted");
+    submissionBanner(
+      `${sub.worker} was picked from the patient list but is not in it now (archived or removed). Nothing was opened; check the Employee list first.`,
+      "err",
+      false,
+    );
+    return;
+  }
   linkedSubmission = sub;
   submissionBanner(
     `Reviewing ${sub.worker} (sent by ${sub.submitter}). Fill in the result and save: the document closes by itself.`,
     "",
     sub.hasFile,
   );
-  const patient = await findPatientForSubmission(sub);
   if (patient) {
     await newCheckupForPatientInline(patient);
   } else {
@@ -3107,25 +3123,52 @@ async function openSubmission(id) {
   prefillVisitFromSubmission(sub);
 }
 
-async function closeLinkedSubmission(checkUpId) {
+// Called after the checkup is saved. Two things must hold before the document is linked: the
+// record was saved under the worker the submitter picked (the server checks new employees by date
+// of birth or ID number), and the request reaches the server. When either fails the checkup stays
+// saved and the banner says how to close the document by hand.
+function unlinked(sub, checkUpId, why) {
+  submissionBanner(
+    `The checkup was saved as ${checkUpId}, but it was not linked to the submitted document: ${why} ` +
+      "Close it on the Submitted page by entering that Checkup ID.",
+    "err",
+    false,
+  );
+}
+
+async function closeLinkedSubmission(checkUpId, savedPatientId) {
   const sub = linkedSubmission;
-  const res = await fetch(`/api/mcu-submissions/${sub.id}/close`, {
-    method: "POST",
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ checkUpId }),
-  });
   linkedSubmission = null;
   returnToSubmitted = true;
+  if (sub.patientId && savedPatientId && sub.patientId !== savedPatientId) {
+    unlinked(sub, checkUpId, `it belongs to a different patient than ${sub.worker}.`);
+    return;
+  }
+  let res;
+  try {
+    res = await fetch(`/api/mcu-submissions/${sub.id}/close`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ checkUpId }),
+    });
+  } catch (err) {
+    unlinked(sub, checkUpId, "the connection to the server failed.");
+    return;
+  }
   if (res.ok) {
     submissionBanner(`Saved. ${sub.worker}'s submitted document is closed and linked to ${checkUpId}.`, "ok", false);
     return;
   }
   const why = (await res.text().catch(() => "")).trim() || `error ${res.status}`;
-  submissionBanner(
-    `The checkup was saved as ${checkUpId}, but linking it to the submitted document failed: ${why} ` +
-      "Close it on the Submitted page by entering that Checkup ID.",
-    "err",
-    false,
-  );
+  unlinked(sub, checkUpId, why);
+}
+
+// Forgets the document being reviewed when the form is closed without saving, so the next checkup
+// saved for anybody else is never linked to it.
+function clearLinkedSubmission() {
+  if (!linkedSubmission) return;
+  linkedSubmission = null;
+  const box = document.getElementById("submission-banner");
+  if (box) box.hidden = true;
 }
