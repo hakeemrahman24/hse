@@ -72,10 +72,14 @@ type Submission struct {
 	// CompanyID are 0 when not set; PatNik and PatPassportNo are what the submitter typed and are
 	// blank after retention.
 	ReviewedAt, ReviewedBy string
-	PatNik, PatPassportNo  string
-	PatGender              string
-	RecordID               int64 // the checkup record a Closed document was linked to, 0 = none
-	PatientID, CompanyID   int64
+	// Result is the linked checkup's result (Fit, Unfit, ...), "" until a checkup is linked.
+	Result                string
+	ResultNotes           string // the linked checkup's notes
+	Recommendation        string // the linked checkup's recommendation
+	PatNik, PatPassportNo string
+	PatGender             string
+	RecordID              int64 // the checkup record a Closed document was linked to, 0 = none
+	PatientID, CompanyID  int64
 }
 
 const submissionColumns = `s.SubmissionID, s.FK_BatchID, s.FK_SubmitterID, COALESCE(u.Name, ''),
@@ -83,12 +87,31 @@ const submissionColumns = `s.SubmissionID, s.FK_BatchID, s.FK_SubmitterID, COALE
 	s.IsNewEmployee, CASE WHEN s.FilePath IS NULL THEN 0 ELSE 1 END, s.ScanStatus, s.Status, COALESCE(s.RejectReason, ''),
 	s.SubmittedAt, COALESCE(b.SentAt, ''), COALESCE(s.WithdrawnAt, ''), COALESCE(s.FileExpiresAt, ''),
 	COALESCE(s.ReviewedAt, ''), COALESCE(rs.StaffName, ''), COALESCE(s.PatNik, ''), COALESCE(s.PatPassportNo, ''), COALESCE(s.PatGender, ''),
-	COALESCE(s.FK_PatientID, 0), COALESCE(s.FK_CompanyID, 0), COALESCE(s.FK_McuRecordID, 0)`
+	COALESCE(s.FK_PatientID, 0), COALESCE(s.FK_CompanyID, 0), COALESCE(s.FK_McuRecordID, 0), COALESCE(rec.ResultCriteria, ''), COALESCE(rec.ResultNotes, ''), COALESCE(rec.Recommendation, '')`
 
 const submissionFrom = ` FROM McuSubmission s
 	JOIN McuBatch b ON b.BatchID = s.FK_BatchID
 	JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID
-	LEFT JOIN MedpostStaffTable rs ON rs.StaffID = s.FK_ReviewerStaffID`
+	LEFT JOIN MedpostStaffTable rs ON rs.StaffID = s.FK_ReviewerStaffID
+	LEFT JOIN McuRecord rec ON rec.McuRecordID = s.FK_McuRecordID`
+
+// ResultMessage is what the submitter may read about a result that is not a plain Fit, shown only
+// once the reviewer closed the document (that is the moment the submitter is told). Owner,
+// 2026-10-31: an incomplete result shows the Recommendation, and a temporarily unfit or unfit
+// worker shows the notes, exactly as the reviewer wrote them. Both are free text written for the
+// record, so reviewers must write them knowing the submitter reads them.
+func (d Submission) ResultMessage() string {
+	if d.Status != SubClosed {
+		return ""
+	}
+	switch d.Result {
+	case "NeedFollowUp", "IncompleteResult":
+		return d.Recommendation
+	case "TemporaryUnfit", "Unfit":
+		return d.ResultNotes
+	}
+	return ""
+}
 
 func nullInt(v int64) sql.NullInt64 { return sql.NullInt64{Int64: v, Valid: v != 0} }
 
@@ -105,7 +128,7 @@ func (s *Store) querySubmissions(ctx context.Context, where string, args ...any)
 		if err := rows.Scan(&d.ID, &d.BatchID, &d.SubmitterID, &d.SubmitterName, &d.PatName, &d.PatDateOfBirth,
 			&d.PatPosition, &d.PatCompanyText, &d.PatNationality, &isNew, &hasFile, &d.ScanStatus, &d.Status,
 			&d.RejectReason, &d.SubmittedAt, &d.SentAt, &d.WithdrawnAt, &d.FileExpiresAt,
-			&d.ReviewedAt, &d.ReviewedBy, &d.PatNik, &d.PatPassportNo, &d.PatGender, &d.PatientID, &d.CompanyID, &d.RecordID); err != nil {
+			&d.ReviewedAt, &d.ReviewedBy, &d.PatNik, &d.PatPassportNo, &d.PatGender, &d.PatientID, &d.CompanyID, &d.RecordID, &d.Result, &d.ResultNotes, &d.Recommendation); err != nil {
 			return nil, err
 		}
 		d.IsNewEmployee, d.HasFile = isNew == 1, hasFile == 1

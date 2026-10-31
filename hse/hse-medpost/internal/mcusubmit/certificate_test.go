@@ -34,7 +34,7 @@ func (u *uploadEnv) closedDoc(name string) int64 {
 	u.t.Helper()
 	id := sentDoc(u.t, u.store, u.userID, name)
 	addRecord(u.t, u.store, seedWorker(u.t, u.store, name, "1990-04-12", u.companyID), "MedC-"+itoa(id), "Fit", "2027-01-01", "Open", 1)
-	if err := u.store.CloseWithRecord(context.Background(), id, testStaffID, "MedC-"+itoa(id)); err != nil {
+	if err := closeWithRecord(u.store, context.Background(), id, testStaffID, "MedC-"+itoa(id)); err != nil {
 		u.t.Fatal(err)
 	}
 	return id

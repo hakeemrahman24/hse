@@ -12,7 +12,7 @@ func closeFor(t *testing.T, s *Store, co, submitter int64, name string) int64 {
 	t.Helper()
 	id := sentDoc(t, s, submitter, name)
 	addRecord(t, s, seedWorker(t, s, name, "1990-04-12", co), "MedC-"+itoa(id), "Unfit", "2027-01-01", "Close", 1)
-	if err := s.CloseWithRecord(context.Background(), id, testStaffID, "MedC-"+itoa(id)); err != nil {
+	if err := closeWithRecord(s, context.Background(), id, testStaffID, "MedC-"+itoa(id)); err != nil {
 		t.Fatal(err)
 	}
 	return id

@@ -324,3 +324,23 @@ body.mp {
 /* Page and card titles sit one small step above the 1.05rem header logo (the staff app's 1.35rem
    made the title on a small card look bigger than the whole header). */
 .mp .login-card h1 { font-size: 1.15rem; letter-spacing: -0.01em; }
+
+/* ROMIF statement on the sign-up page: a short scrollable notice, then agree and sign. */
+.mp-romif { border-left: 3px solid var(--accent); padding: 4px 0 4px 14px; margin: 16px 0; }
+.mp-romif h2 { font-size: 0.9375rem; margin: 0 0 8px; }
+.mp-romif-text { max-height: 15rem; overflow-y: auto; font-size: 0.8125rem; line-height: 1.5; margin-bottom: 14px; padding-right: 6px; }
+.mp-romif-text p { margin: 0 0 8px; }
+
+/* Tables on a phone become cards: JS (mcu-portal-cards.js) labels each cell with its column title. */
+@media (max-width: 640px) {
+  .mp-table.mp-cards, .mp-table.mp-cards tbody { display: block; width: 100%; background: transparent; }
+  .mp-table.mp-cards thead { display: none; }
+  .mp-table.mp-cards tr { display: block; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); padding: 8px 12px; margin-bottom: 10px; }
+  .mp-table.mp-cards td { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 4px 0; border-bottom: 0; text-align: right; white-space: normal; }
+  .mp-table.mp-cards td:empty { display: none; }
+  .mp-table.mp-cards td::before { content: attr(data-label); flex: none; text-align: left; font-size: 0.6875rem; font-weight: 700; color: var(--text-2); }
+  .mp-table.mp-cards td:first-child { font-weight: 700; justify-content: flex-start; text-align: left; }
+  .mp-table.mp-cards td:first-child::before { content: none; }
+  .mp-table.mp-cards td.mp-decide, .mp-table.mp-cards td:has(> .mp-inline) { white-space: normal; flex-wrap: wrap; justify-content: flex-start; }
+  .mp-table.mp-cards td.mp-decide::before { content: none; }
+}

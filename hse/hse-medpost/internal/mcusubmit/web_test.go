@@ -121,7 +121,8 @@ func tokenFrom(t *testing.T, m sentMail) string {
 func (e *env) registerForm(email string) url.Values {
 	return url.Values{
 		"name": {"Budi Santoso"}, "email": {email}, "position": {"HR Officer"},
-		"company_id": {itoa(e.companyID)},
+		"company_id":     {itoa(e.companyID)},
+		"romif_accepted": {"1"}, "romif_name": {"Budi Santoso"},
 	}
 }
 
@@ -215,6 +216,9 @@ func TestRegisterRefusesBadInput(t *testing.T) {
 		"missing position":     func(v url.Values) { v.Set("position", "") },
 		"unknown company":      func(v url.Values) { v.Set("company_id", "9999") },
 		"company not a number": func(v url.Values) { v.Set("company_id", "abc") },
+		"romif not ticked":     func(v url.Values) { v.Del("romif_accepted") },
+		"signed another name":  func(v url.Values) { v.Set("romif_name", "Somebody Else") },
+		"no signature":         func(v url.Values) { v.Set("romif_name", "") },
 	}
 	for name, mutate := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -667,5 +671,22 @@ func TestUnknownPortalAddressGivesThePortalsOwnNotFoundPage(t *testing.T) {
 	}
 	if rec := e.get("/mcu-submit"); rec.Code != http.StatusOK {
 		t.Fatalf("landing = %d, want 200", rec.Code)
+	}
+}
+
+func TestRegisterRecordsTheSignedROMIFInTheAuditTrail(t *testing.T) {
+	e := newEnv(t)
+	v := e.registerForm("budi@example.com")
+	v.Set("romif_name", "budi  SANTOSO") // same person, sloppy typing
+	if rec := e.post("/mcu-submit/register", v); rec.Code != http.StatusOK {
+		t.Fatalf("status = %d\n%s", rec.Code, rec.Body)
+	}
+	var detail string
+	err := e.store.DB.QueryRow(`SELECT Detail FROM McuSubmissionEvent WHERE Action = 'RomifSigned'`).Scan(&detail)
+	if err != nil {
+		t.Fatalf("no RomifSigned event: %v", err)
+	}
+	if want := "ROMIF " + romifVersion + " en: Budi Santoso"; detail != want {
+		t.Errorf("detail = %q, want %q", detail, want)
 	}
 }

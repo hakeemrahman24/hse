@@ -90,8 +90,11 @@ func (s *Store) RejectSubmission(ctx context.Context, id, staffID int64, reason 
 	return s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "Rejected", Detail: reason})
 }
 
-// CloseWithRecord closes a Pending or Reviewed document with the checkup record staff made for it
-// on the Medical Checkups page, found by its CheckUpID. The record must belong to the document's
+// LinkRecord links a Pending document to the checkup record staff made for it on the Medical
+// Checkups page, found by its CheckUpID. Owner's rule (2026-10-31): a document counts as Reviewed
+// only when its worker has a checkup WITH a result (fit, unfit, ...), so opening a document
+// changes nothing, and linking a record that has no result leaves it Pending. Closing is a
+// separate step (CloseReviewed), because Closed is what tells the submitter. The record must belong to the document's
 // worker. When the worker is already known (a picked patient) that is a plain patient-id match.
 // For a new employee there is no patient yet, so the record's patient must be the same person by
 // the facts the submitter typed: the same date of birth, or the same ID number. Without that check
@@ -101,7 +104,7 @@ func (s *Store) RejectSubmission(ctx context.Context, id, staffID int64, reason 
 // (The "already linked" check is a read before the write: two staff linking the same record in the
 // same instant could both pass. MariaDB does not allow the update to look at its own table in a
 // subquery, and this is a rare, manual action.)
-func (s *Store) CloseWithRecord(ctx context.Context, id, staffID int64, checkUpID string) error {
+func (s *Store) LinkRecord(ctx context.Context, id, staffID int64, checkUpID string) error {
 	checkUpID = strings.TrimSpace(checkUpID)
 	var status, dob, nik, passport string
 	var patient sql.NullInt64
@@ -118,11 +121,11 @@ func (s *Store) CloseWithRecord(ctx context.Context, id, staffID int64, checkUpI
 		return ErrBadState
 	}
 	var recordID, recordPatient int64
-	var recordDOB, recordPersonalID string
+	var recordDOB, recordPersonalID, recordResult string
 	err = s.DB.QueryRowContext(ctx,
-		`SELECT r.McuRecordID, r.FK_PatientID, COALESCE(p.DateOfBirth, ''), COALESCE(p.PersonalID, '')
+		`SELECT r.McuRecordID, r.FK_PatientID, COALESCE(p.DateOfBirth, ''), COALESCE(p.PersonalID, ''), COALESCE(r.ResultCriteria, '')
 		 FROM McuRecord r JOIN Patient p ON p.PatientID = r.FK_PatientID WHERE r.CheckUpID = ?`, checkUpID).
-		Scan(&recordID, &recordPatient, &recordDOB, &recordPersonalID)
+		Scan(&recordID, &recordPatient, &recordDOB, &recordPersonalID, &recordResult)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrRecordUnknown
 	}
@@ -144,11 +147,13 @@ func (s *Store) CloseWithRecord(ctx context.Context, id, staffID int64, checkUpI
 		return ErrRecordTaken
 	}
 	now := s.stamp()
+	// A result turns Pending into Reviewed; without one the record is linked but the status stays.
+	// AND FK_McuRecordID IS NULL: a document already linked is not silently re-pointed.
 	res, err := s.DB.ExecContext(ctx,
-		`UPDATE McuSubmission SET Status = ?, FK_McuRecordID = ?, FK_PatientID = COALESCE(FK_PatientID, ?),
+		`UPDATE McuSubmission SET Status = CASE WHEN ? <> '' THEN ? ELSE Status END, FK_McuRecordID = ?, FK_PatientID = COALESCE(FK_PatientID, ?),
 		   ReviewedAt = COALESCE(ReviewedAt, ?), FK_ReviewerStaffID = COALESCE(FK_ReviewerStaffID, ?)
-		 WHERE SubmissionID = ? AND Status IN (?, ?)`,
-		SubClosed, recordID, recordPatient, now, staffID, id, SubPending, SubReviewed)
+		 WHERE SubmissionID = ? AND Status IN (?, ?) AND FK_McuRecordID IS NULL`,
+		recordResult, SubReviewed, recordID, recordPatient, now, staffID, id, SubPending, SubReviewed)
 	// The count above gives the friendly answer; the unique index uq_mcusub_mcurecord is the real
 	// guard when two staff members link the same record in the same instant.
 	if isUniqueViolation(err) {
@@ -160,7 +165,24 @@ func (s *Store) CloseWithRecord(ctx context.Context, id, staffID int64, checkUpI
 	if n, _ := res.RowsAffected(); n != 1 {
 		return s.stateError(ctx, id)
 	}
-	return s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "Closed", Detail: checkUpID})
+	return s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "RecordLinked", Detail: checkUpID})
+}
+
+// CloseReviewed closes a Reviewed document at the moment the reviewer notifies the submitter (owner,
+// 2026-10-31: Closed means the submitter was told). The daily "your checkups are done" mail looks
+// for Closed documents. Only a Reviewed document with a
+// linked checkup can close, which is the same as "the worker has a checkup with a result".
+func (s *Store) CloseReviewed(ctx context.Context, id, staffID int64) error {
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ? AND Status = ? AND FK_McuRecordID IS NOT NULL`,
+		SubClosed, id, SubReviewed)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return s.stateError(ctx, id)
+	}
+	return s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "Closed"})
 }
 
 // sameWorker says whether the patient of a checkup record is the person a new-employee document is
@@ -176,6 +198,68 @@ func sameWorker(dob, nik, passport, patientDOB, patientPersonalID string) bool {
 
 func idKey(s string) string {
 	return strings.ToUpper(strings.NewReplacer(" ", "", "-", "").Replace(s))
+}
+
+// CandidateRecord is a checkup record a reviewer could link to a document. The Submitted tab lists
+// these so nobody has to remember or type a Checkup ID.
+type CandidateRecord struct {
+	CheckUpID   string `json:"checkUpId"`
+	DateCheckUp string `json:"dateCheckUp"`
+	Result      string `json:"result"`
+}
+
+// maxCandidateRecords keeps the pick-list short; a worker rarely has more unlinked checkups.
+const maxCandidateRecords = 20
+
+// CandidateRecords lists the checkups of this document's worker that no document is linked to yet,
+// newest first. For a picked patient that is the patient's own records. A new employee has no
+// patient, so it is the patients who are the same person by the same rule LinkRecord applies
+// (same date of birth, or same ID number): anything the list shows, a link will accept.
+func (s *Store) CandidateRecords(ctx context.Context, id int64) ([]CandidateRecord, error) {
+	var status, dob, nik, passport string
+	var patient sql.NullInt64
+	err := s.DB.QueryRowContext(ctx,
+		`SELECT Status, FK_PatientID, PatDateOfBirth, COALESCE(PatNik, ''), COALESCE(PatPassportNo, '') FROM McuSubmission WHERE SubmissionID = ?`, id).
+		Scan(&status, &patient, &dob, &nik, &passport)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	if status != SubPending && status != SubReviewed {
+		return nil, ErrBadState
+	}
+	who := `(p.DateOfBirth = ? OR (? <> '' AND REPLACE(REPLACE(UPPER(COALESCE(p.PersonalID, '')), ' ', ''), '-', '') = ?))`
+	args := []any{dob, idKey(firstNonEmpty(nik, passport)), idKey(firstNonEmpty(nik, passport))}
+	if patient.Valid {
+		who, args = `p.PatientID = ?`, []any{patient.Int64}
+	}
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT r.CheckUpID, COALESCE(r.DateCheckUp, ''), COALESCE(r.ResultCriteria, '')
+		 FROM McuRecord r JOIN Patient p ON p.PatientID = r.FK_PatientID
+		 WHERE `+who+` AND NOT EXISTS (SELECT 1 FROM McuSubmission m WHERE m.FK_McuRecordID = r.McuRecordID)
+		 ORDER BY r.McuRecordID DESC LIMIT `+strconv.Itoa(maxCandidateRecords), args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []CandidateRecord{}
+	for rows.Next() {
+		var c CandidateRecord
+		if err := rows.Scan(&c.CheckUpID, &c.DateCheckUp, &c.Result); err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, rows.Err()
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }
 
 // ---- HTTP for staff ---------------------------------------------------------------------------
@@ -204,6 +288,8 @@ type staffRow struct {
 	IsNewEmployee bool   `json:"isNewEmployee"`
 	ReviewedAt    string `json:"reviewedAt"`
 	ReviewedBy    string `json:"reviewedBy"`
+	Result        string `json:"result"`    // the linked checkup's result, "" when none is linked
+	HasRecord     bool   `json:"hasRecord"` // a checkup is linked (Close needs one)
 }
 
 // staffDetail is what the checkup form pre-fills from: the row plus the identity the submitter
@@ -222,6 +308,7 @@ func rowOf(d Submission) staffRow {
 		ID: d.ID, Worker: d.PatName, DateOfBirth: d.PatDateOfBirth, Position: d.PatPosition, Company: d.PatCompanyText,
 		Nationality: d.PatNationality, Submitter: d.SubmitterName, Status: d.Status, RejectReason: d.RejectReason,
 		SentAt: d.SentAt, HasFile: d.HasFile, IsNewEmployee: d.IsNewEmployee, ReviewedAt: d.ReviewedAt, ReviewedBy: d.ReviewedBy,
+		Result: d.Result, HasRecord: d.RecordID != 0,
 	}
 }
 
@@ -347,6 +434,35 @@ func (a *StaffAPI) Get(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(out)
 }
 
+// Records returns the checkups that could be linked to this document, for the Submitted tab's
+// "Link a checkup" list. It reads the same facts LinkRecord checks.
+func (a *StaffAPI) Records(w http.ResponseWriter, r *http.Request) {
+	if _, ok := staffID(w, r); !ok {
+		return
+	}
+	id, ok := parseID(r.PathValue("id"))
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	list, err := a.Store.CandidateRecords(r.Context(), id)
+	switch {
+	case errors.Is(err, ErrNotFound):
+		http.NotFound(w, r)
+		return
+	case errors.Is(err, ErrBadState):
+		http.Error(w, "This document is not in a status that allows that.", http.StatusConflict)
+		return
+	case err != nil:
+		log.Printf("mcusubmit: candidate records: %v", err)
+		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "no-store")
+	_ = json.NewEncoder(w).Encode(list)
+}
+
 // Reject refuses a document; the JSON body is {"reason": "..."}.
 func (a *StaffAPI) Reject(w http.ResponseWriter, r *http.Request) {
 	if _, ok := staffID(w, r); !ok {
@@ -365,9 +481,8 @@ func (a *StaffAPI) Reject(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Close links the checkup record staff made and closes the document; the JSON body is
-// {"checkUpId": "..."}.
-func (a *StaffAPI) Close(w http.ResponseWriter, r *http.Request) {
+// Link links the checkup record staff made to the document; the JSON body is {"checkUpId": "..."}.
+func (a *StaffAPI) Link(w http.ResponseWriter, r *http.Request) {
 	if _, ok := staffID(w, r); !ok {
 		return
 	}
@@ -380,8 +495,14 @@ func (a *StaffAPI) Close(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.act(w, r, func(ctx context.Context, id, staff int64) error {
-		return a.Store.CloseWithRecord(ctx, id, staff, body.CheckUpID)
+		return a.Store.LinkRecord(ctx, id, staff, body.CheckUpID)
 	})
+}
+
+// Close closes a Reviewed document. The page calls it "Notify submitter": the reviewer closes the
+// document when they tell the submitter the checkup is done, and the daily mail picks it up.
+func (a *StaffAPI) Close(w http.ResponseWriter, r *http.Request) {
+	a.act(w, r, func(ctx context.Context, id, staff int64) error { return a.Store.CloseReviewed(ctx, id, staff) })
 }
 
 func (a *StaffAPI) act(w http.ResponseWriter, r *http.Request, do func(context.Context, int64, int64) error) {

@@ -5752,6 +5752,43 @@ a.app-tab {
 #tab-submitted .sub-act .btn-ghost { box-sizing: border-box; height: 24px; padding: 0 10px !important; font-size: 0.75rem !important; line-height: 1; }
 .sub-act details { font-size: 0.75rem; }
 .sub-act summary { cursor: pointer; color: var(--accent); font-weight: 500; }
-.sub-act input { box-sizing: border-box; height: 24px; font-size: 0.75rem; padding: 0 6px; width: 9rem; margin: 4px 4px 0 0; }
-.sub-act details .btn-ghost { margin-top: 4px; }
+/* The "More" panel: two labelled sections, one control row each, same 24px control height. */
+.sub-more[open] { min-width: 300px; }
+.sub-group { margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--border); }
+.sub-group-title { font-size: 0.6875rem; font-weight: 600; color: var(--text-3); margin-bottom: 4px; }
+.sub-row { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-2); white-space: normal; }
+.sub-row input, .sub-row select { box-sizing: border-box; height: 24px; font-size: 0.75rem; padding: 0 6px; flex: 1 1 auto; min-width: 0; margin: 0; }
+.sub-row .btn-ghost { flex: none; }
+.sub-none { display: block; color: var(--text-3); }
 .sub-pager { display: flex; gap: 12px; align-items: center; margin: 8px 12px; font-size: 0.8125rem; color: var(--text-2); }
+
+/* Submitted tab on a phone: each document is a card, values under their own labels, the actions
+   at the bottom, instead of a table that scrolls sideways with the Action column out of sight. */
+@media (max-width: 640px) {
+  #tab-submitted .table-scroll { overflow-x: visible; }
+  #tab-submitted .data-table thead { display: none; }
+  #tab-submitted .data-table, #tab-submitted .data-table tbody { display: block; width: 100%; }
+  #tab-submitted .data-table tr {
+    display: flex; flex-direction: column;
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 10px 12px; margin-bottom: 8px;
+  }
+  #tab-submitted .data-table td {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
+    padding: 3px 0; border-bottom: none; text-align: right;
+  }
+  #tab-submitted .data-table td:empty { display: none; }
+  #tab-submitted .data-table td::before {
+    content: attr(data-label); flex-shrink: 0; text-align: left;
+    font-size: 0.65rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-3);
+  }
+  #tab-submitted .data-table td[data-label="Name"] {
+    order: -1; justify-content: flex-start; text-align: left; padding-bottom: 6px; margin-bottom: 4px;
+    border-bottom: 1px solid var(--border); font-weight: 700; font-size: 0.9375rem;
+  }
+  #tab-submitted .data-table td[data-label="Name"]::before { content: none; }
+  #tab-submitted .data-table td[data-label="Action"] { display: block; text-align: left; padding-top: 8px; margin-top: 4px; border-top: 1px solid var(--border); }
+  #tab-submitted .data-table td[data-label="Action"]::before { content: none; }
+  .sub-more[open] { min-width: 0; }
+  .sub-row { flex-wrap: wrap; }
+}
