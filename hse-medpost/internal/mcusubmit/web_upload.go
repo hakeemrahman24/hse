@@ -404,7 +404,7 @@ func (a *API) parseWorker(ctx context.Context, f map[string]string) (NewSubmissi
 	if in.PatName == "" {
 		return in, "Enter the worker's name."
 	}
-	in.PatPosition = SanitizePosition(f["position"])
+	in.PatPosition = SanitizeJobTitle(f["position"])
 	if in.PatPosition == "" {
 		return in, "Enter the worker's position."
 	}
@@ -509,8 +509,14 @@ func (a *API) SendBatchSubmit(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, basePath+"/documents", http.StatusSeeOther)
 	case errors.Is(err, ErrNotFound):
 		a.notFound(w, u)
+	case errors.Is(err, ErrBatchSent):
+		a.message(w, http.StatusConflict, "Cannot send", "This batch was already sent.", u)
+	case errors.Is(err, ErrBatchEmpty):
+		a.message(w, http.StatusConflict, "Cannot send", "This batch has no documents.", u)
+	case errors.Is(err, ErrBatchUnfinished):
+		a.message(w, http.StatusConflict, "Cannot send", "Confirm or discard the documents that still need your review first.", u)
 	case errors.Is(err, ErrBadState):
-		a.message(w, http.StatusConflict, "Cannot send", "This batch is empty or was already sent.", u)
+		a.message(w, http.StatusConflict, "Cannot send", "Your account cannot send documents right now. Contact the medical post.", u)
 	default:
 		a.serverError(w, "send batch", err)
 	}

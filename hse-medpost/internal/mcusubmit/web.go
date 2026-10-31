@@ -216,6 +216,7 @@ func (a *API) clientIP(r *http.Request) string {
 // page is everything the templates need.
 type page struct {
 	Title     string
+	Nav       string // which sidebar item is current: the template name without ".html"
 	User      *Submitter
 	Sitekey   string
 	DevCheck  bool
@@ -273,6 +274,8 @@ func (a *API) newPage(title string) page {
 
 // render executes into a buffer first, so a template error gives a clean 500 and not a half page.
 func (a *API) render(w http.ResponseWriter, status int, name string, p page) {
+	// The sidebar marks the current item from the page name, so no handler has to remember to say it.
+	p.Nav = strings.TrimSuffix(name, ".html")
 	var buf bytes.Buffer
 	if err := a.pages.ExecuteTemplate(&buf, name, p); err != nil {
 		log.Printf("mcusubmit: render %s: %v", name, err)

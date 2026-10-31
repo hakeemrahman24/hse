@@ -335,3 +335,30 @@ func TestRemoveInfectedDeletesTheRowAndKeepsOnlyAnEvent(t *testing.T) {
 		}
 	}
 }
+
+func TestSendBatchSaysWhyItRefused(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrone@example.com")
+	id := addClean(t, s, sub, "Worker One")
+	batch := batchOf(t, s, id)
+
+	_, _ = s.DB.Exec(`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ?`, SubReview, id)
+	if _, err := s.SendBatch(ctx, sub, batch); !errors.Is(err, ErrBatchUnfinished) || !errors.Is(err, ErrBadState) {
+		t.Fatalf("a document still in Review = %v, want ErrBatchUnfinished (and ErrBadState)", err)
+	}
+	_, _ = s.DB.Exec(`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ?`, SubDraft, id)
+	if _, err := s.SendBatch(ctx, sub, batch); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.SendBatch(ctx, sub, batch); !errors.Is(err, ErrBatchSent) || !errors.Is(err, ErrBadState) {
+		t.Fatalf("a second send = %v, want ErrBatchSent (and ErrBadState)", err)
+	}
+	empty, err := s.OpenBatch(ctx, sub)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.SendBatch(ctx, sub, empty); !errors.Is(err, ErrBatchEmpty) {
+		t.Fatalf("an empty batch = %v, want ErrBatchEmpty", err)
+	}
+}
