@@ -310,3 +310,11 @@ body.mp {
 
 /* The lead line under a page title uses the same 4px as every other heading in a section. */
 .mp-shell .mp-lead { margin-top: 4px; }
+
+/* Signed-out header on a phone: logo, Sign in and the language buttons on one line. The "Request an
+   account" button is dropped from the header here; the landing page and the sign-in page both carry
+   it, and with it the header was wider than the screen (Sign in wrapped, ID fell off the edge). */
+@media (max-width: 640px) {
+  .mp-nav-links a { white-space: nowrap; }
+  .mp-nav-links > a.btn-primary { display: none; }
+}
