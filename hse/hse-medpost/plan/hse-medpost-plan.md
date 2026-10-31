@@ -311,6 +311,11 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
 
+### 2026-10-31 (audit) — Spacing and badge sizes (`?v=13`, not deployed)
+
+- Measured every field, button and badge in the table pages (admin accounts, reviewer mail, My documents) in headless Chromium: all buttons and fields are 32px at 13px and sit on the row's centre line. The inconsistencies found were spacing (the gap under a heading was 4, 8, 10, 12, 16 or 20px depending on the page) and status badges (19px high, 11px text). Now a heading is followed by 4px on every page, a hint by 12px, a section break above a second heading is 20px, and badges are 24px high with 12px text, same radius as the buttons.
+- Status badges are no longer boxes (a boxed badge next to a 32px button read as a second kind of button, and 24px or 32px boxes both looked inconsistent): a status is now 13px normal-weight text with an 8px dot, pink while live (Active, Approved, Pending), grey when switched off or done (Paused, Disabled, Withdrawn, Closed, Draft), red for Rejected and Bounced. The template passes `data-s` for this. `?v=14`.
+
 ### 2026-10-31 (later) — Admin table alignment and phone layout (`?v=12`, not deployed)
 
 - Table action cells (Approve / Reason / Reject, Disable, Pause / Remove) were misaligned because the `<td>` itself had `display:flex`, which breaks table-cell layout. The cell is a normal table cell again, its forms sit on one centred line, all cells are vertically centred, and the Reason field is 110px so the row fits without sideways scroll at 1100px.
