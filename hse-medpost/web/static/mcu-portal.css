@@ -163,9 +163,14 @@ body.mp {
 .mp-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; background: var(--surface-2); }
 .mp-table caption { text-align: left; color: var(--text-2); padding: 6px 0; font-size: 0.75rem; }
 .mp-table th { text-align: left; background: var(--hl); color: var(--text-1); font-weight: 700; padding: 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
-.mp-table td { padding: 8px; border-bottom: 1px solid var(--border); color: var(--text-1); vertical-align: top; }
-.mp-decide { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.mp-decide input { width: 150px; }
+.mp-table td { padding: 8px; border-bottom: 1px solid var(--border); color: var(--text-1); vertical-align: middle; }
+/* The action cell stays a real table cell (display:flex on a <td> breaks the row). Its forms sit in
+   one line, centred on the same axis, so a button and a field of the same 32px line up. */
+.mp-table td.mp-decide, .mp-table td:has(> .mp-inline) { white-space: nowrap; }
+.mp-table td .mp-inline { vertical-align: middle; margin: 0 6px 0 0; }
+.mp-table td .mp-inline:last-child { margin-right: 0; }
+.mp-decide { display: table-cell; }
+.mp .mp-decide input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]) { width: 110px; }
 .mp-badge { display: inline-block; border: 1px solid var(--accent-border); background: var(--accent-ghost); color: var(--accent-light); padding: 1px 8px; font-size: 0.7rem; font-weight: 700; }
 .mp-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -272,3 +277,27 @@ body.mp {
 .mp .mp-cb-list .app-program-item:hover, .mp .mp-cb-list .app-program-item.active { background: var(--hl); }
 .mp .mp-cb-list .app-program-item.active { box-shadow: inset 3px 0 0 var(--accent); }
 .mp .mp-cb-none { margin: 0; padding: 6px 8px; }
+
+/* Phone width: a short header on one line, and the sidebar as a wrapped row of chips instead of a
+   tall list (the list took half the screen before the page started). */
+@media (max-width: 640px) {
+  .mp .nav-inner { gap: 8px; }
+  .mp .nav-logo { font-size: 0.85rem !important; white-space: nowrap; }
+  .mp-nav-links { flex-wrap: nowrap; gap: 6px; }
+  .mp .btn-primary, .mp .btn-ghost { padding: 0 10px !important; }
+  .mp .mp-lang .btn-ghost { padding: 0 8px !important; min-width: 34px; }
+
+  .mp .app-sidebar { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px; }
+  .mp .app-sidebar .app-sidebar-label { display: none; }
+  .mp .app-sidebar .app-program-list { flex-direction: row; flex-wrap: wrap; gap: 4px; margin: 0; }
+  .mp .app-sidebar .app-program-list .app-program-item,
+  .mp .app-sidebar .app-program-list:first-child .app-program-item {
+    width: auto; padding: 6px 10px; border: 1px solid var(--border); border-radius: 2px;
+  }
+  .mp .app-sidebar .app-program-list .app-program-item-title { font-size: 0.8125rem; }
+  .mp .app-sidebar a.app-program-item.active { border-color: var(--accent); box-shadow: none; }
+}
+@media (max-width: 380px) {
+  .mp .nav-logo { font-size: 0.78rem !important; }
+  .mp .btn-primary, .mp .btn-ghost { padding: 0 8px !important; }
+}
