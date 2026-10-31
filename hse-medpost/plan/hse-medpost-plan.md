@@ -311,6 +311,15 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
 
+### 2026-10-31 (notices audit, `?v=18`, not deployed)
+
+- Checked every banner and notice added for the portal and the review flow, on desktop and at 390px. The staff review banner holds up on a phone (it wraps to the message on two lines plus the links, 65px, inside the screen). The portal's `.mp-notice`, `.mp-error` and `.mp-chosen` boxes had a full pink or red border and a heavier tint than anything around them; they now share the review banner's pattern (light tint, 1px neutral border, 3px bar on the left, 13px text, 6px/10px padding, square corners; red bar for errors). The page lead line is 0.875rem (was 0.9rem) and the "new employee" summary 0.8125rem (was 14px).
+- Fixed afterwards: an unknown address under /mcu-submit (for example /mcu-submit/nope) used to get the server's plain "404 page not found" text. `routeOrNotFound` in `web.go` sits in front of the portal router: a request some route claims goes to the router as before; an address that exists for another method is still the router's 405 with an `Allow` header (POST to /home gives `Allow: GET`, GET to /signout gives `Allow: POST`); an address nothing claims gets the portal's own "Page not found" page (`NotFoundPage`), with the sidebar when signed in. A first attempt used a catch-all route and turned every 405 into a 404; it was replaced. Test: `TestUnknownPortalAddressGivesThePortalsOwnNotFoundPage`; checked by hand with curl (404, 405 with Allow, 307 for a double slash, HEAD 200). Needs a full deploy (Go).
+
+### 2026-10-31 (review banner, not deployed)
+
+- The "Reviewing ... Fill in the result and save" banner on /mcu had no font size of its own (it fell back to 16px next to 13px text), 10px/14px padding and a full green border, so it out-weighed the form. It is now one slim line in the page's 0.8125rem, theme colours (`--accent-ghost`, a 3px accent bar on the left; red on error, green bar on success), 5px/10px padding, square corners; measured 38px high at 1280px wide (65px when it wraps at 760px). `.submission-banner` in `clearwave/app.css`; `mcu.html` loads `app.css?v=2`.
+
 ### 2026-10-31 (title size, `?v=16`, not deployed)
 
 - Page and card titles (Sign in, Create your login, Account requests, ...) were 1.35rem, the staff app's size, which on a small card looked bigger than the whole header (logo 1.05rem). They are now 1.15rem; the landing hero is clamp(1.3rem, 4vw, 1.6rem).

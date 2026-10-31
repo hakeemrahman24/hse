@@ -179,7 +179,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	// CrossOriginProtection refuses a state-changing request that another site caused, by reading
 	// Sec-Fetch-Site and Origin (owner's choice, plan section 9). With the SameSite=Lax cookie and
 	// POST-only changes it replaces form tokens.
-	h := a.secure(a.withLanguage(http.NewCrossOriginProtection().Handler(in)))
+	h := a.secure(a.withLanguage(http.NewCrossOriginProtection().Handler(a.routeOrNotFound(in))))
 	mux.Handle(basePath, h)
 	mux.Handle(basePath+"/", h)
 }
@@ -291,6 +291,40 @@ func (a *API) message(w http.ResponseWriter, status int, heading, msg string, us
 	p := a.newPage(heading)
 	p.Heading, p.Message, p.User = heading, msg, user
 	a.render(w, status, "message.html", p)
+}
+
+// routeOrNotFound hands a request to the portal's router, except when no route claims it. Then the
+// answer is decided here, because the router's own plain-text 404 is not a portal page: an address
+// that exists for another method (a POST to a page that only answers GET) is still the router's
+// 405 with its Allow header, and an address nothing claims gets the portal's own "Page not found".
+// A catch-all route cannot do this: it would answer for every method and turn each 405 into a 404.
+func (a *API) routeOrNotFound(in *http.ServeMux) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, pattern := in.Handler(r); pattern != "" {
+			in.ServeHTTP(w, r)
+			return
+		}
+		var allow []string
+		for _, method := range []string{http.MethodGet, http.MethodPost} {
+			probe := r.Clone(r.Context())
+			probe.Method = method
+			if _, pattern := in.Handler(probe); pattern != "" {
+				allow = append(allow, method)
+			}
+		}
+		if len(allow) > 0 {
+			w.Header().Set("Allow", strings.Join(allow, ", "))
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
+		a.NotFoundPage(w, r)
+	})
+}
+
+// NotFoundPage answers an address no portal route claims. It shows the sidebar when somebody is
+// signed in, so a mistyped link leaves them one click from where they were.
+func (a *API) NotFoundPage(w http.ResponseWriter, r *http.Request) {
+	a.notFound(w, a.current(r))
 }
 
 func (a *API) notFound(w http.ResponseWriter, user *Submitter) {

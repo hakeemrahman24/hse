@@ -630,3 +630,42 @@ func TestPageOutputIsHTMLEscaped(t *testing.T) {
 		t.Fatalf("expected the escaped name in the page:\n%s", body)
 	}
 }
+
+// An address that no route claims must answer with the portal's own page (styled, with the header),
+// not the server's plain "404 page not found" text; signed in, it keeps the sidebar.
+func TestUnknownPortalAddressGivesThePortalsOwnNotFoundPage(t *testing.T) {
+	e := newEnv(t)
+
+	rec := e.get("/mcu-submit/nope")
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("unknown address = %d, want 404", rec.Code)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "Page not found") || !strings.Contains(body, "mcu-portal.css") || strings.Contains(body, "app-sidebar") {
+		t.Fatalf("signed out: want the portal's page without a sidebar, got:\n%s", body)
+	}
+
+	_, admin := e.signIn("admin", "pelican-orbit-77")
+	rec = e.get("/mcu-submit/nope/deeper", admin)
+	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Body.String(), "Page not found") || !strings.Contains(rec.Body.String(), "app-sidebar") {
+		t.Fatalf("signed in: want 404 with the sidebar, got %d", rec.Code)
+	}
+
+	// A real address with the wrong method is still the router's 405 with an Allow header, not a 404.
+	rec = e.post("/mcu-submit/home", url.Values{}, admin)
+	if rec.Code != http.StatusMethodNotAllowed || !strings.Contains(rec.Header().Get("Allow"), "GET") {
+		t.Fatalf("POST to a GET page = %d (Allow %q), want 405 allowing GET", rec.Code, rec.Header().Get("Allow"))
+	}
+	rec = e.get("/mcu-submit/signout", admin)
+	if rec.Code != http.StatusMethodNotAllowed || !strings.Contains(rec.Header().Get("Allow"), "POST") {
+		t.Fatalf("GET to a POST route = %d (Allow %q), want 405 allowing POST", rec.Code, rec.Header().Get("Allow"))
+	}
+
+	// The real pages still answer as before.
+	if rec := e.get("/mcu-submit/signin"); rec.Code != http.StatusOK {
+		t.Fatalf("sign-in page = %d, want 200", rec.Code)
+	}
+	if rec := e.get("/mcu-submit"); rec.Code != http.StatusOK {
+		t.Fatalf("landing = %d, want 200", rec.Code)
+	}
+}
