@@ -311,6 +311,12 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
 
+### 2026-10-31 (later) — Admin table alignment and phone layout (`?v=12`, not deployed)
+
+- Table action cells (Approve / Reason / Reject, Disable, Pause / Remove) were misaligned because the `<td>` itself had `display:flex`, which breaks table-cell layout. The cell is a normal table cell again, its forms sit on one centred line, all cells are vertically centred, and the Reason field is 110px so the row fits without sideways scroll at 1100px.
+- Phone width (640px and below): the header stays on one line (smaller logo, tighter buttons, checked at 390 and 340px), and the sidebar becomes a wrapped row of chips instead of a tall list. Tables still scroll sideways on a phone, so the Decide column is off screen there; stacking the rows into cards would be the next step.
+- A sign-up request from another address arrived with its email confirmed, so the verification mail does work; hakeemrahman24@gmail.com not receiving it is most likely spam filtering or the per-address sign-up limit (not checked: the database read was refused).
+
 ### 2026-10-31 — Review flow: wrong-record link and related fixes (not deployed)
 
 - End-to-end check of the medical checkup flow (sign-up, verify, approve, setup, sign-in, upload, confirm, send, staff review, close) on a fresh local database: it works, and it showed a real bug. A new-employee document (no patient yet) could be closed with ANY checkup record, so it took on that other patient and the submitter could then download that patient's certificate.
