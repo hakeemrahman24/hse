@@ -311,6 +311,10 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
 
+### 2026-10-31 (phone header, `?v=15`, not deployed)
+
+- Signed-out header on a phone overflowed (Sign in wrapped to two lines, the ID button fell off the screen) because the "Request an account" button took most of the width. At 640px and below that button is hidden in the header (the landing page and the sign-in page both still carry it) and header links never wrap. Checked at 390, 360 and 320px on the landing page and the "Link not valid" page; the signed-in header and chip sidebar were checked at 390 and 340px earlier.
+
 ### 2026-10-31 (audit) — Spacing and badge sizes (`?v=13`, not deployed)
 
 - Measured every field, button and badge in the table pages (admin accounts, reviewer mail, My documents) in headless Chromium: all buttons and fields are 32px at 13px and sit on the row's centre line. The inconsistencies found were spacing (the gap under a heading was 4, 8, 10, 12, 16 or 20px depending on the page) and status badges (19px high, 11px text). Now a heading is followed by 4px on every page, a hint by 12px, a section break above a second heading is 20px, and badges are 24px high with 12px text, same radius as the buttons.
