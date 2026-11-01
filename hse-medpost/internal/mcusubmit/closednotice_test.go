@@ -111,3 +111,47 @@ func TestEnsureNoticeColumnDoesNotAnnounceThePast(t *testing.T) {
 		t.Fatalf("a new closure: %d mails about %d documents", mails, docs)
 	}
 }
+
+func TestRejectedDocumentsAreInTheDailyMailOnceAndWithoutTheReason(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	a := activeSubmitter(t, s, co, "hr.rej@example.com")
+	old, fresh := sentDocIn(t, s, a, "Old Rejected", "Fresh Rejected")
+	if err := s.RejectSubmission(ctx, old, testStaffID, "Scan is blurry"); err != nil {
+		t.Fatal(err)
+	}
+	// Startup marks the rejections that already exist as told, once.
+	if err := s.BackfillRejectNotices(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RejectSubmission(ctx, fresh, testStaffID, "Secret reason text"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.BackfillRejectNotices(ctx); err != nil { // a restart must not swallow the new one
+		t.Fatal(err)
+	}
+	closeFor(t, s, co, a, "Done Worker")
+
+	m := &fakeMailer{}
+	mails, docs, err := s.RunClosedNotices(ctx, m, "https://p")
+	if err != nil || mails != 1 || docs != 2 {
+		t.Fatalf("mails %d docs %d err %v", mails, docs, err)
+	}
+	got := m.sent[0]
+	if !strings.Contains(got.Subject, "1 completed, 1 need a new upload") {
+		t.Errorf("subject %q", got.Subject)
+	}
+	for _, want := range []string{"Done Worker", "Fresh Rejected", "corrected document"} {
+		if !strings.Contains(got.Body, want) {
+			t.Errorf("mail lacks %q:\n%s", want, got.Body)
+		}
+	}
+	for _, bad := range []string{"Old Rejected", "Secret reason text", "Scan is blurry"} {
+		if strings.Contains(got.Body, bad) {
+			t.Errorf("mail must not contain %q", bad)
+		}
+	}
+	if mails, _, _ := s.RunClosedNotices(ctx, m, "https://p"); mails != 0 {
+		t.Errorf("second run sent %d more mails", mails)
+	}
+}

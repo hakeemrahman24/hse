@@ -690,3 +690,52 @@ func TestRegisterRecordsTheSignedROMIFInTheAuditTrail(t *testing.T) {
 		t.Errorf("detail = %q, want %q", detail, want)
 	}
 }
+
+// An account made before the ROMIF existed has no RomifSigned event. It is sent to the ROMIF page
+// at its next sign-in, and after signing it goes on to Home.
+func TestAccountWithoutAROMIFMustSignBeforeUsingThePortal(t *testing.T) {
+	e, id, c := signedIn(t)
+	if _, err := e.store.DB.Exec(`DELETE FROM McuSubmissionEvent WHERE Action = 'RomifSigned'`); err != nil {
+		t.Fatal(err)
+	}
+	rec := e.get("/mcu-submit/home", c)
+	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/mcu-submit/romif" {
+		t.Fatalf("home = %d to %q, want a redirect to the ROMIF page", rec.Code, rec.Header().Get("Location"))
+	}
+	if page := e.get("/mcu-submit/romif", c); page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "Sign and continue") {
+		t.Fatalf("romif page = %d", page.Code)
+	}
+	if rec := e.post("/mcu-submit/romif", url.Values{"romif_accepted": {"1"}, "romif_name": {"Someone Else"}}, c); rec.Code != http.StatusBadRequest {
+		t.Errorf("wrong name = %d, want 400", rec.Code)
+	}
+	if rec := e.post("/mcu-submit/romif", url.Values{"romif_name": {"Budi Santoso"}}, c); rec.Code != http.StatusBadRequest {
+		t.Errorf("not ticked = %d, want 400", rec.Code)
+	}
+	if rec := e.post("/mcu-submit/romif", url.Values{"romif_accepted": {"1"}, "romif_name": {"budi santoso"}}, c); rec.Code != http.StatusSeeOther {
+		t.Fatalf("signing = %d, want a redirect", rec.Code)
+	}
+	if signed, _ := e.store.HasSignedRomif(context.Background(), id); !signed {
+		t.Fatal("no RomifSigned event after signing")
+	}
+	if rec := e.get("/mcu-submit/home", c); rec.Code != http.StatusOK {
+		t.Errorf("home after signing = %d", rec.Code)
+	}
+	if rec := e.get("/mcu-submit/romif", c); rec.Code != http.StatusSeeOther {
+		t.Errorf("romif page once signed = %d, want a redirect home", rec.Code)
+	}
+}
+
+// An account made before names were cleaned may hold characters a typed name can never contain
+// (digits here). It must still be able to sign.
+func TestOldAccountWithOddCharactersInItsNameCanStillSignTheROMIF(t *testing.T) {
+	e, id, c := signedIn(t)
+	if _, err := e.store.DB.Exec(`UPDATE Submitter SET Name = 'Budi 2 Santoso' WHERE SubmitterID = ?`, id); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.store.DB.Exec(`DELETE FROM McuSubmissionEvent WHERE Action = 'RomifSigned'`); err != nil {
+		t.Fatal(err)
+	}
+	if rec := e.post("/mcu-submit/romif", url.Values{"romif_accepted": {"1"}, "romif_name": {"Budi Santoso"}}, c); rec.Code != http.StatusSeeOther {
+		t.Fatalf("signing = %d, want a redirect\n%s", rec.Code, rec.Body)
+	}
+}

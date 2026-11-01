@@ -331,16 +331,21 @@ body.mp {
 .mp-romif-text { max-height: 15rem; overflow-y: auto; font-size: 0.8125rem; line-height: 1.5; margin-bottom: 14px; padding-right: 6px; }
 .mp-romif-text p { margin: 0 0 8px; }
 
+/* Dates stay on one line in the wide table. */
+.mp-table td[data-label="Sent"], .mp-table td[data-label="Requested"] { white-space: nowrap; }
+
 /* Tables on a phone become cards: JS (mcu-portal-cards.js) labels each cell with its column title. */
 @media (max-width: 640px) {
-  .mp-table.mp-cards, .mp-table.mp-cards tbody { display: block; width: 100%; background: transparent; }
-  .mp-table.mp-cards thead { display: none; }
-  .mp-table.mp-cards tr { display: block; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); padding: 8px 12px; margin-bottom: 10px; }
-  .mp-table.mp-cards td { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 4px 0; border-bottom: 0; text-align: right; white-space: normal; }
-  .mp-table.mp-cards td:empty { display: none; }
-  .mp-table.mp-cards td::before { content: attr(data-label); flex: none; text-align: left; font-size: 0.6875rem; font-weight: 700; color: var(--text-2); }
-  .mp-table.mp-cards td:first-child { font-weight: 700; justify-content: flex-start; text-align: left; }
-  .mp-table.mp-cards td:first-child::before { content: none; }
-  .mp-table.mp-cards td.mp-decide, .mp-table.mp-cards td:has(> .mp-inline) { white-space: normal; flex-wrap: wrap; justify-content: flex-start; }
-  .mp-table.mp-cards td.mp-decide::before { content: none; }
+  .mp-table.mp-stack, .mp-table.mp-stack tbody { display: block; width: 100%; background: transparent; }
+  .mp-table.mp-stack thead { display: none; }
+  .mp-table.mp-stack caption { display: block; width: 100%; }
+  .mp-table.mp-stack tr { display: block; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); padding: 8px 12px; margin-bottom: 10px; }
+  .mp-table.mp-stack td { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 4px 0; border-bottom: 0; text-align: right; white-space: normal; }
+  .mp-table.mp-stack td:empty { display: none; }
+  .mp-table.mp-stack td::before { content: attr(data-label); flex: none; text-align: left; font-size: 0.6875rem; font-weight: 700; color: var(--text-2); }
+  .mp-table.mp-stack td:first-child { font-weight: 700; justify-content: flex-start; text-align: left; }
+  .mp-table.mp-stack td:first-child::before { content: none; }
+  .mp-table.mp-stack td.mp-decide, .mp-table.mp-stack td:has(> .mp-inline) { white-space: normal; flex-wrap: wrap; justify-content: flex-start; }
+  .mp-table.mp-stack td.mp-decide::before { content: none; }
 }
+.mp-romif-signout { display: block; margin-top: 12px; }

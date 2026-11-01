@@ -146,13 +146,24 @@ type digestLine struct{ worker, position, company, submitter, sentAt string }
 // waitingForReview returns the sent, not yet reviewed documents, oldest first. It holds no NIK and
 // no birth date: the mail travels over the open internet, the staff page is behind a login.
 func (s *Store) waitingForReview(ctx context.Context) ([]digestLine, error) {
+	return s.digestLines(ctx, SubPending)
+}
+
+// reviewedNotNotified returns the Reviewed documents: a checkup with a result is saved but the
+// reviewer has not pressed Notify submitter, so the submitter has not been told. Without this line
+// a Reviewed document could sit forever, because notifying is optional.
+func (s *Store) reviewedNotNotified(ctx context.Context) ([]digestLine, error) {
+	return s.digestLines(ctx, SubReviewed)
+}
+
+func (s *Store) digestLines(ctx context.Context, status string) ([]digestLine, error) {
 	rows, err := s.DB.QueryContext(ctx,
 		`SELECT s.PatName, s.PatPosition, s.PatCompanyText, u.Name, COALESCE(b.SentAt, '')
 		 FROM McuSubmission s
 		 JOIN McuBatch b ON b.BatchID = s.FK_BatchID
 		 JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID
 		 WHERE s.Status = ?
-		 ORDER BY b.SentAt, s.SubmissionID`, SubPending)
+		 ORDER BY b.SentAt, s.SubmissionID`, status)
 	if err != nil {
 		return nil, err
 	}
@@ -211,15 +222,19 @@ func (s *Store) RunDigest(ctx context.Context, m Mailer, staffURL string) (int, 
 		return 0, nil
 	}
 	lines, err := s.waitingForReview(ctx)
-	if err != nil || len(lines) == 0 {
+	if err != nil {
+		return 0, err
+	}
+	reviewed, err := s.reviewedNotNotified(ctx)
+	if err != nil || len(lines)+len(reviewed) == 0 {
 		return 0, err
 	}
 	to, err := s.activeReviewerEmails(ctx)
 	if err != nil || len(to) == 0 {
 		return 0, err
 	}
-	subject := fmt.Sprintf("Medical checkups waiting for review: %d", len(lines))
-	body := digestBody(lines, staffURL)
+	subject := fmt.Sprintf("Medical checkups: %d waiting for review, %d reviewed and not notified", len(lines), len(reviewed))
+	body := digestBody(lines, reviewed, staffURL)
 	sent := 0
 	for _, addr := range to {
 		if err := m.Send(ctx, addr, subject, body); err != nil {
@@ -235,28 +250,41 @@ func (s *Store) RunDigest(ctx context.Context, m Mailer, staffURL string) (int, 
 		return sent, err
 	}
 	_ = s.LogEvent(ctx, Event{ActorType: ActorSystem, EntityType: EntitySystem, Action: "DigestSent",
-		Detail: fmt.Sprintf("%d waiting, %d mails", len(lines), sent)})
+		Detail: fmt.Sprintf("%d waiting, %d reviewed not notified, %d mails", len(lines), len(reviewed), sent)})
 	return sent, nil
 }
 
-func digestBody(lines []digestLine, staffURL string) string {
+func digestBody(waiting, reviewed []digestLine, staffURL string) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "%d medical checkup documents are waiting for review.\n\n", len(lines))
+	if len(waiting) > 0 {
+		fmt.Fprintf(&b, "%d medical checkup documents are waiting for review.\n\n", len(waiting))
+		writeDigestList(&b, waiting)
+	}
+	if len(reviewed) > 0 {
+		if len(waiting) > 0 {
+			b.WriteString("\n")
+		}
+		fmt.Fprintf(&b, "%d reviewed documents have not been notified to their submitter (press Notify submitter on the Submitted tab).\n\n", len(reviewed))
+		writeDigestList(&b, reviewed)
+	}
+	if staffURL != "" {
+		fmt.Fprintf(&b, "\nOpen them here (sign in required): %s\n", staffURL)
+	}
+	b.WriteString("\nThis list holds no ID numbers, birth dates or results on purpose.\n")
+	return b.String()
+}
+
+func writeDigestList(b *strings.Builder, lines []digestLine) {
 	shown := lines
 	if len(shown) > digestMaxLines {
 		shown = shown[:digestMaxLines]
 	}
 	for _, l := range shown {
-		fmt.Fprintf(&b, "- %s | %s | %s | sent by %s | %s\n", oneLine(l.worker), oneLine(l.position), oneLine(l.company), oneLine(l.submitter), l.sentAt)
+		fmt.Fprintf(b, "- %s | %s | %s | sent by %s | %s\n", oneLine(l.worker), oneLine(l.position), oneLine(l.company), oneLine(l.submitter), l.sentAt)
 	}
 	if more := len(lines) - len(shown); more > 0 {
-		fmt.Fprintf(&b, "\nand %d more.\n", more)
+		fmt.Fprintf(b, "and %d more.\n", more)
 	}
-	if staffURL != "" {
-		fmt.Fprintf(&b, "\nReview them here (sign in required): %s\n", staffURL)
-	}
-	b.WriteString("\nThis list holds no ID numbers or birth dates on purpose.\n")
-	return b.String()
 }
 
 // oneLine keeps a stored value from breaking the list layout.

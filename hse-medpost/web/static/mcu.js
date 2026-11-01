@@ -2189,12 +2189,12 @@ checkupForm?.addEventListener("submit", async (e) => {
     return;
   }
   showFormMessage(msg, "");
-  // Opened from the Submitted page: link the record just saved to that document and close it, so
-  // staff never type the Checkup ID. The checkup is already saved at this point; a failed link is
+  // Opened from the Submitted page: link the record just saved to that document (Reviewed when it has
+  // a result), so staff never type the Checkup ID. An edit of the already linked checkup links it again. The checkup is already saved at this point; a failed link is
   // reported with the ID so it can still be closed by hand on the Submitted page.
-  if (linkedSubmission && !isEdit) {
+  if (linkedSubmission) {
     const savedPatientId = isNewPatient ? data.patientId : currentPatient?.patientId;
-    await closeLinkedSubmission(String(body.checkUpId || "").trim(), savedPatientId);
+    await closeLinkedSubmission(String(body.checkUpId || "").trim(), savedPatientId, !!body.resultCriteria);
   }
   if (isNewPatient) {
     const pRes = await fetch(`/api/patients`, { credentials: "same-origin" });
@@ -3109,11 +3109,32 @@ async function openSubmission(id) {
     return;
   }
   linkedSubmission = sub;
+  // A checkup is already linked (saved earlier without a result): open THAT checkup to finish it,
+  // never a second new one for the same worker.
+  const linkedRec = sub.recordId && patient ? await findLinkedRecord(patient.patientId, sub.recordId) : null;
+  if (sub.recordId && !linkedRec) {
+    linkedSubmission = null;
+    showMcuTab("submitted");
+    submissionBanner("The checkup linked to this document could not be found. Use More, then Unlink, to start again.", "err", false);
+    return;
+  }
   submissionBanner(
-    `Reviewing ${sub.worker} (sent by ${sub.submitter}). Fill in the result and save: the document closes by itself.`,
+    linkedRec
+      ? `Finishing the checkup of ${sub.worker} (sent by ${sub.submitter}). Save it with a result and the document becomes Reviewed.`
+      : `Reviewing ${sub.worker} (sent by ${sub.submitter}). Fill in the checkup and save it with a result: the document then becomes Reviewed.`,
     "",
     sub.hasFile,
   );
+  if (linkedRec) {
+    currentPatient = patient;
+    patientDetail.hidden = true;
+    checkupReturnTo = "table";
+    collapseDetailRow();
+    await loadHistory(patient.patientId);
+    await openCheckupForm(linkedRec);
+    setDataEntryListVisible(false);
+    return;
+  }
   if (patient) {
     await newCheckupForPatientInline(patient);
   } else {
@@ -3123,6 +3144,14 @@ async function openSubmission(id) {
   prefillVisitFromSubmission(sub);
 }
 
+// The checkup record with this id among the worker's own records, or null.
+async function findLinkedRecord(patientId, recordId) {
+  const res = await fetch(`/api/mcu-records?patientId=${patientId}`, { credentials: "same-origin" });
+  if (!res.ok) return null;
+  const records = await res.json();
+  return (Array.isArray(records) ? records : []).find((r) => r.mcuRecordId === recordId) || null;
+}
+
 // Called after the checkup is saved. Two things must hold before the document is linked: the
 // record was saved under the worker the submitter picked (the server checks new employees by date
 // of birth or ID number), and the request reaches the server. When either fails the checkup stays
@@ -3130,13 +3159,13 @@ async function openSubmission(id) {
 function unlinked(sub, checkUpId, why) {
   submissionBanner(
     `The checkup was saved as ${checkUpId}, but it was not linked to the submitted document: ${why} ` +
-      "Close it on the Submitted page by entering that Checkup ID.",
+      "Link it on the Submitted page: open More and pick it from the list.",
     "err",
     false,
   );
 }
 
-async function closeLinkedSubmission(checkUpId, savedPatientId) {
+async function closeLinkedSubmission(checkUpId, savedPatientId, hasResult) {
   const sub = linkedSubmission;
   linkedSubmission = null;
   returnToSubmitted = true;
@@ -3157,7 +3186,14 @@ async function closeLinkedSubmission(checkUpId, savedPatientId) {
     return;
   }
   if (res.ok) {
-    submissionBanner(`Saved. ${sub.worker}'s submitted document is linked to ${checkUpId}. Press Notify submitter on the Submitted tab when the submitter has been told.`, "ok", false);
+    // Reviewed needs a result: without one the document stays Pending and the checkup must be finished.
+    submissionBanner(
+      hasResult
+        ? `Saved. ${sub.worker}'s submitted document is Reviewed and linked to ${checkUpId}. Press Notify submitter on the Submitted tab when the submitter should be told.`
+        : `Saved and linked to ${checkUpId}, but the checkup has no result yet, so the document stays Pending. Open it again from the Submitted tab to add the result.`,
+      "ok",
+      false,
+    );
     return;
   }
   const why = (await res.text().catch(() => "")).trim() || `error ${res.status}`;

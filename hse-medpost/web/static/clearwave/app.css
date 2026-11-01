@@ -5792,3 +5792,6 @@ a.app-tab {
   .sub-more[open] { min-width: 0; }
   .sub-row { flex-wrap: wrap; }
 }
+
+/* A very long worker name wraps instead of pushing the Action column off the screen. */
+#tab-submitted .data-table td[data-label="Name"] { max-width: 16rem; white-space: normal; overflow-wrap: anywhere; }

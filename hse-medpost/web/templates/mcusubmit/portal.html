@@ -15,10 +15,10 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=21" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=25" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
   <script src="/static/mcu-portal-name.js?v=2" defer></script>
-  <script src="/static/mcu-portal-cards.js?v=1" defer></script>
+  <script src="/static/mcu-portal-cards.js?v=3" defer></script>
 </head>
 <body class="mp">
   <a class="mp-skip" href="#main">Skip to content</a>
@@ -28,7 +28,7 @@
       <div class="mp-nav-links">
         {{if .User}}
           <form method="post" action="/mcu-submit/signout" class="mp-inline"><button class="btn-ghost" type="submit">Sign out</button></form>
-        {{else}}
+        {{else if not .Signing}}
           <a href="/mcu-submit/signin">Sign in</a>
           <a class="btn-primary" href="/mcu-submit/register">Request an account</a>
         {{end}}
@@ -111,6 +111,36 @@
     </div>
 {{template "foot" .}}{{end}}
 
+{{define "romif-statement"}}          <div class="mp-romif" role="group" aria-labelledby="romif-title">
+  <h2 id="romif-title">Release of medical information (ROMIF)</h2>
+  <div class="mp-romif-text">
+    <p>By requesting this account I understand that the medical post will store and review the medical checkup results I send, and that a worker's health information may be shared with company management or authorised workplace representatives when reasonably needed for workplace safety, company policy or other legitimate medical purposes.</p>
+    <p>I confirm that the workers whose results I send know about this and agree to it, and that my company has authorised me to send them.</p>
+    <p>I also understand that the information may be shared with other healthcare facilities for referral or continuity of care, in line with the medical post's policies and the law that applies in Indonesia.</p>
+    <p class="mp-hint">If you do not agree, do not request an account.</p>
+  </div>
+  <label class="mp-check" for="romif_accepted"><input id="romif_accepted" name="romif_accepted" type="checkbox" value="1" required /><span>I have read the statement above and I agree.</span></label>
+  <div class="field"><label for="romif_name"><span>Sign by typing your full name</span></label>
+    <input id="romif_name" name="romif_name" type="text" maxlength="150" required autocomplete="off" value="{{.Form.romif_name}}" />
+    <p class="mp-hint">It must match the full name above. It is saved with the date and time as your signature.</p></div>
+</div>
+{{end}}
+
+{{define "romif.html"}}{{template "head" .}}
+    <div class="login-wrap">
+      <div class="login-card mp-wide">
+        <h1>Release of medical <span>information</span></h1>
+        <p class="sub">Please read and sign this once to keep using the portal.</p>
+        {{template "error" .}}
+        <form method="post" action="/mcu-submit/romif">
+          {{template "romif-statement" .}}
+          <div class="submit-row"><button type="submit" class="btn-primary">Sign and continue</button></div>
+        </form>
+        <form method="post" action="/mcu-submit/signout" class="mp-inline mp-romif-signout"><button type="submit" class="btn-ghost">Sign out</button></form>
+      </div>
+    </div>
+{{template "foot" .}}{{end}}
+
 {{define "register.html"}}{{template "head" .}}
     <div class="login-wrap">
       <div class="login-card mp-wide">
@@ -131,19 +161,7 @@
             <p class="mp-hint">Company not listed? Ask the medical post administrator to add it.</p></div>
           <div class="field"><label for="position"><span>Position</span></label>
             <input id="position" name="position" type="text" maxlength="128" data-position required value="{{.Form.position}}" /></div>
-          <div class="mp-romif" role="group" aria-labelledby="romif-title">
-            <h2 id="romif-title">Release of medical information (ROMIF)</h2>
-            <div class="mp-romif-text">
-              <p>By requesting this account I understand that the medical post will store and review the medical checkup results I send, and that a worker's health information may be shared with company management or authorised workplace representatives when reasonably needed for workplace safety, company policy or other legitimate medical purposes.</p>
-              <p>I confirm that the workers whose results I send know about this and agree to it, and that my company has authorised me to send them.</p>
-              <p>I also understand that the information may be shared with other healthcare facilities for referral or continuity of care, in line with the medical post's policies and the law that applies in Indonesia.</p>
-              <p class="mp-hint">If you do not agree, do not request an account.</p>
-            </div>
-            <label class="mp-check" for="romif_accepted"><input id="romif_accepted" name="romif_accepted" type="checkbox" value="1" required /><span>I have read the statement above and I agree.</span></label>
-            <div class="field"><label for="romif_name"><span>Sign by typing your full name</span></label>
-              <input id="romif_name" name="romif_name" type="text" maxlength="150" required autocomplete="off" value="{{.Form.romif_name}}" />
-              <p class="mp-hint">It must match the full name above. It is saved with the date and time as your signature.</p></div>
-          </div>
+          {{template "romif-statement" .}}
           <div class="field">{{template "turnstile" .}}</div>
           <div class="submit-row"><button type="submit" class="btn-primary">Request account</button></div>
         </form>
@@ -330,7 +348,7 @@
         <tbody>
         {{range .Docs}}<tr>
           <td>{{if .SentAt}}{{.SentAt}}{{else}}Draft{{end}}</td><td>{{.PatName}}</td><td>{{.PatDateOfBirth}}</td><td>{{.PatPosition}}</td><td>{{.PatCompanyText}}</td><td>{{.PatNationality}}</td>
-          <td><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span>{{if .RejectReason}} {{.RejectReason}}{{end}}{{with .ResultMessage}}<div class="mp-hint">{{.}}</div>{{end}}</td>
+          <td><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span>{{if .RejectReason}}<div class="mp-hint">{{.RejectReason}}</div>{{end}}{{with .ResultMessage}}<div class="mp-hint">{{.}}</div>{{end}}</td>
           <td>{{if and .HasFile (eq .ScanStatus "Clean")}}<a href="/mcu-submit/documents/{{.ID}}/file" target="_blank" rel="noopener">Open PDF</a>{{else}}<span class="mp-hint">No file</span>{{end}}</td>
           <td class="mp-decide">
             {{if eq .Status "Review"}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/review">Review</a>{{end}}
@@ -509,7 +527,7 @@
 {{define "digest.html"}}{{template "head" .}}
     <section class="mp-section">
       <h1>Reviewer <span>mail</span></h1>
-      <p class="mp-hint">Reviewers get one mail listing every medical checkup document that has been sent and not yet reviewed. It holds no ID numbers or birth dates, and no mail goes out while nothing is waiting.</p>
+      <p class="mp-hint">Reviewers get one mail listing every medical checkup document that has been sent and not yet reviewed, and every reviewed document whose submitter has not been notified yet. It holds no ID numbers, birth dates or results, and no mail goes out while nothing is waiting.</p>
       {{template "error" .}}
 
       <div class="mp-row">
