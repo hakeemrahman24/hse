@@ -55,7 +55,10 @@ func (s *Store) StaffDoc(ctx context.Context, id int64) (Submission, error) {
 	return docs[0], nil
 }
 
-// MarkReviewed records that staff looked at a sent document. Only a Pending document can be
+// MarkReviewed marks a Pending document Reviewed. No HTTP route calls it any more (2026-11-01):
+// Reviewed now means a linked checkup with a result, which only LinkRecord sets. It stays as the
+// single place that writes that transition, and tests use it to set up Reviewed documents.
+// Original note: it records that staff looked at a sent document. Only a Pending document can be
 // reviewed: a Draft or a document under Review is unsent work that staff must not touch. The
 // guarded UPDATE makes two staff members racing each other safe: the second one gets ErrBadState.
 func (s *Store) MarkReviewed(ctx context.Context, id, staffID int64) error {
@@ -107,10 +110,10 @@ func (s *Store) RejectSubmission(ctx context.Context, id, staffID int64, reason 
 func (s *Store) LinkRecord(ctx context.Context, id, staffID int64, checkUpID string) error {
 	checkUpID = strings.TrimSpace(checkUpID)
 	var status, dob, nik, passport string
-	var patient sql.NullInt64
+	var patient, linked sql.NullInt64
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT Status, FK_PatientID, PatDateOfBirth, COALESCE(PatNik, ''), COALESCE(PatPassportNo, '') FROM McuSubmission WHERE SubmissionID = ?`, id).
-		Scan(&status, &patient, &dob, &nik, &passport)
+		`SELECT Status, FK_PatientID, PatDateOfBirth, COALESCE(PatNik, ''), COALESCE(PatPassportNo, ''), FK_McuRecordID FROM McuSubmission WHERE SubmissionID = ?`, id).
+		Scan(&status, &patient, &dob, &nik, &passport, &linked)
 	if errors.Is(err, sql.ErrNoRows) {
 		return ErrNotFound
 	}
@@ -139,8 +142,13 @@ func (s *Store) LinkRecord(ctx context.Context, id, staffID int64, checkUpID str
 	} else if !sameWorker(dob, nik, passport, recordDOB, recordPersonalID) {
 		return ErrRecordMismatch
 	}
+	// Saving the checkup again after editing it (for example to add the result) links the SAME record
+	// again, which is allowed; pointing the document at a different record is not (Unlink first).
+	if linked.Valid && linked.Int64 != recordID {
+		return ErrBadState
+	}
 	var taken int
-	if err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM McuSubmission WHERE FK_McuRecordID = ?`, recordID).Scan(&taken); err != nil {
+	if err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM McuSubmission WHERE FK_McuRecordID = ? AND SubmissionID <> ?`, recordID, id).Scan(&taken); err != nil {
 		return err
 	}
 	if taken > 0 {
@@ -148,12 +156,12 @@ func (s *Store) LinkRecord(ctx context.Context, id, staffID int64, checkUpID str
 	}
 	now := s.stamp()
 	// A result turns Pending into Reviewed; without one the record is linked but the status stays.
-	// AND FK_McuRecordID IS NULL: a document already linked is not silently re-pointed.
+	// The record must be unset or the same one: a linked document is never silently re-pointed.
 	res, err := s.DB.ExecContext(ctx,
 		`UPDATE McuSubmission SET Status = CASE WHEN ? <> '' THEN ? ELSE Status END, FK_McuRecordID = ?, FK_PatientID = COALESCE(FK_PatientID, ?),
 		   ReviewedAt = COALESCE(ReviewedAt, ?), FK_ReviewerStaffID = COALESCE(FK_ReviewerStaffID, ?)
-		 WHERE SubmissionID = ? AND Status IN (?, ?) AND FK_McuRecordID IS NULL`,
-		recordResult, SubReviewed, recordID, recordPatient, now, staffID, id, SubPending, SubReviewed)
+		 WHERE SubmissionID = ? AND Status IN (?, ?) AND (FK_McuRecordID IS NULL OR FK_McuRecordID = ?)`,
+		recordResult, SubReviewed, recordID, recordPatient, now, staffID, id, SubPending, SubReviewed, recordID)
 	// The count above gives the friendly answer; the unique index uq_mcusub_mcurecord is the real
 	// guard when two staff members link the same record in the same instant.
 	if isUniqueViolation(err) {
@@ -168,13 +176,31 @@ func (s *Store) LinkRecord(ctx context.Context, id, staffID int64, checkUpID str
 	return s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "RecordLinked", Detail: checkUpID})
 }
 
+// UnlinkRecord undoes a wrong link, for a document that has not been closed yet (once Closed the
+// submitter has been told and may have downloaded the certificate, so that is final). The document
+// goes back to Pending, because Reviewed means a linked checkup with a result. The checkup record
+// itself is not touched.
+func (s *Store) UnlinkRecord(ctx context.Context, id, staffID int64) error {
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE McuSubmission SET Status = ?, FK_McuRecordID = NULL WHERE SubmissionID = ? AND Status IN (?, ?) AND FK_McuRecordID IS NOT NULL`,
+		SubPending, id, SubPending, SubReviewed)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return s.stateError(ctx, id)
+	}
+	return s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "RecordUnlinked"})
+}
+
 // CloseReviewed closes a Reviewed document at the moment the reviewer notifies the submitter (owner,
 // 2026-10-31: Closed means the submitter was told). The daily "your checkups are done" mail looks
 // for Closed documents. Only a Reviewed document with a
 // linked checkup can close, which is the same as "the worker has a checkup with a result".
 func (s *Store) CloseReviewed(ctx context.Context, id, staffID int64) error {
 	res, err := s.DB.ExecContext(ctx,
-		`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ? AND Status = ? AND FK_McuRecordID IS NOT NULL`,
+		`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ? AND Status = ? AND FK_McuRecordID IS NOT NULL
+		   AND EXISTS (SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria IS NOT NULL)`,
 		SubClosed, id, SubReviewed)
 	if err != nil {
 		return err
@@ -301,6 +327,7 @@ type staffDetail struct {
 	PersonalID  string `json:"personalId"` // the NIK, or the passport number when there is no NIK
 	PatientID   int64  `json:"patientId"`  // 0 = not on file yet
 	CompanyID   int64  `json:"companyId"`  // 0 = not picked
+	RecordID    int64  `json:"recordId"`   // the linked checkup record, 0 = none
 }
 
 func rowOf(d Submission) staffRow {
@@ -399,11 +426,6 @@ func (a *StaffAPI) File(w http.ResponseWriter, r *http.Request) {
 	servePDF(w, rc)
 }
 
-// MarkReviewed marks a Pending document Reviewed.
-func (a *StaffAPI) MarkReviewed(w http.ResponseWriter, r *http.Request) {
-	a.act(w, r, func(ctx context.Context, id, staff int64) error { return a.Store.MarkReviewed(ctx, id, staff) })
-}
-
 // Get returns one sent document for the checkup form to pre-fill from. Drafts and documents still
 // under Review are not staff's to see, so they are 404 here exactly as they are missing from List.
 func (a *StaffAPI) Get(w http.ResponseWriter, r *http.Request) {
@@ -425,7 +447,7 @@ func (a *StaffAPI) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
 		return
 	}
-	out := staffDetail{staffRow: rowOf(d), Nationality: d.PatNationality, Gender: d.PatGender, PersonalID: d.PatNik, PatientID: d.PatientID, CompanyID: d.CompanyID}
+	out := staffDetail{staffRow: rowOf(d), Nationality: d.PatNationality, Gender: d.PatGender, PersonalID: d.PatNik, PatientID: d.PatientID, CompanyID: d.CompanyID, RecordID: d.RecordID}
 	if out.PersonalID == "" {
 		out.PersonalID = d.PatPassportNo
 	}
@@ -497,6 +519,11 @@ func (a *StaffAPI) Link(w http.ResponseWriter, r *http.Request) {
 	a.act(w, r, func(ctx context.Context, id, staff int64) error {
 		return a.Store.LinkRecord(ctx, id, staff, body.CheckUpID)
 	})
+}
+
+// Unlink undoes a wrong link on a document that is not closed yet.
+func (a *StaffAPI) Unlink(w http.ResponseWriter, r *http.Request) {
+	a.act(w, r, func(ctx context.Context, id, staff int64) error { return a.Store.UnlinkRecord(ctx, id, staff) })
 }
 
 // Close closes a Reviewed document. The page calls it "Notify submitter": the reviewer closes the

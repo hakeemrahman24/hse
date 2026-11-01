@@ -1,6 +1,7 @@
 package mcusubmit
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -343,9 +344,11 @@ func (a *API) SignInSubmit(w http.ResponseWriter, r *http.Request) {
 const romifVersion = "2026-10-31"
 
 // signedAs says whether the typed signature is the same name as the account's full name, ignoring
-// case and the spacing. It is the same cleaning the name gets, so "budi  santoso" signs "Budi Santoso".
+// case, spacing and characters a name may not hold. It is the same cleaning the name gets, so "budi  santoso" signs "Budi Santoso".
 func signedAs(typed, name string) bool {
-	return strings.EqualFold(SanitizeName(typed), name)
+	// Both sides are cleaned: an account made before names were cleaned may hold digits or odd
+	// characters that the typed name can never contain, and that must not lock the person out.
+	return strings.EqualFold(SanitizeName(typed), SanitizeName(name))
 }
 
 // auditRomif records the signed ROMIF: who, which wording, which language they read it in, and the
@@ -358,4 +361,58 @@ func (a *API) auditRomif(r *http.Request, id int64, signedName string) {
 	}); err != nil {
 		log.Printf("mcusubmit: audit RomifSigned: %v", err)
 	}
+}
+
+// HasSignedRomif says whether the account has a RomifSigned event. Accounts made before the ROMIF
+// existed have none, and are asked once at their next sign-in (owner, 2026-11-01: the ROMIF is for
+// accounts that have not signed one). The built-in admin is not a person sending health data.
+func (s *Store) HasSignedRomif(ctx context.Context, id int64) (bool, error) {
+	var n int
+	err := s.DB.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM McuSubmissionEvent WHERE EntityType = ? AND EntityID = ? AND Action = 'RomifSigned'`,
+		EntitySubmitter, id).Scan(&n)
+	return n > 0, err
+}
+
+// RomifPage shows the statement to a signed-in account that has not signed it yet.
+func (a *API) RomifPage(w http.ResponseWriter, r *http.Request) {
+	u := a.current(r)
+	if u == nil {
+		http.Redirect(w, r, basePath+"/signin", http.StatusSeeOther)
+		return
+	}
+	if signed, err := a.Store.HasSignedRomif(r.Context(), u.ID); err == nil && (signed || u.IsBuiltIn) {
+		http.Redirect(w, r, basePath+"/home", http.StatusSeeOther)
+		return
+	}
+	a.romifForm(w, http.StatusOK, "")
+}
+
+func (a *API) romifForm(w http.ResponseWriter, status int, errMsg string) {
+	p := a.newPage("Release of medical information")
+	p.Error, p.Signing = errMsg, true
+	a.render(w, status, "romif.html", p)
+}
+
+// RomifSubmit records the signature. The typed name must be the account's own name.
+func (a *API) RomifSubmit(w http.ResponseWriter, r *http.Request) {
+	u := a.current(r)
+	if u == nil {
+		http.Redirect(w, r, basePath+"/signin", http.StatusSeeOther)
+		return
+	}
+	if !parseForm(w, r) {
+		a.message(w, http.StatusBadRequest, "Invalid request", "The form could not be read.", u)
+		return
+	}
+	switch {
+	case r.PostFormValue("romif_accepted") != "1":
+		a.romifForm(w, http.StatusBadRequest, "Read the ROMIF statement and tick the box to agree.")
+		return
+	case !signedAs(r.PostFormValue("romif_name"), u.Name):
+		a.romifForm(w, http.StatusBadRequest, "Sign by typing your full name exactly as it is on your account: "+u.Name+".")
+		return
+	}
+	a.auditRomif(r, u.ID, u.Name)
+	http.Redirect(w, r, basePath+"/home", http.StatusSeeOther)
 }

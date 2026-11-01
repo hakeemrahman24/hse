@@ -39,7 +39,7 @@ func mustReviewer(t *testing.T, s *Store, email string) int64 {
 	return id
 }
 
-func TestDigestListsOnlyPendingDocumentsAndNoSensitiveData(t *testing.T) {
+func TestDigestListsPendingAndReviewedNotNotifiedAndNoSensitiveData(t *testing.T) {
 	s, _, sub := digestStore(t)
 	ctx := context.Background()
 	mustReviewer(t, s, "doc@example.com")
@@ -54,18 +54,18 @@ func TestDigestListsOnlyPendingDocumentsAndNoSensitiveData(t *testing.T) {
 		t.Fatalf("sent %d, %v, mails %d", n, err, len(m.sent))
 	}
 	body := m.sent[0].Body
-	for _, want := range []string{"Worker Pending", "Welder", "PT Example", "Budi Santoso", "https://staff.example/mcu-submissions"} {
+	for _, want := range []string{"Worker Pending", "Welder", "PT Example", "Budi Santoso", "https://staff.example/mcu-submissions", "Worker Reviewed", "have not been notified"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("digest lacks %q\n%s", want, body)
 		}
 	}
-	for _, bad := range []string{"Worker Reviewed", "Worker Draft", "3201011204900001", "1990-04-12"} {
+	for _, bad := range []string{"Worker Draft", "3201011204900001", "1990-04-12"} {
 		if strings.Contains(body, bad) {
 			t.Errorf("digest must not contain %q", bad)
 		}
 	}
-	if !strings.Contains(m.sent[0].Subject, "1") {
-		t.Errorf("subject %q should carry the count", m.sent[0].Subject)
+	if !strings.Contains(m.sent[0].Subject, "1 waiting for review, 1 reviewed and not notified") {
+		t.Errorf("subject %q should carry both counts", m.sent[0].Subject)
 	}
 	if !hasEvent(t, s, EntitySystem, 0, "DigestSent") {
 		t.Error("the digest left no DigestSent event under the System entity")
@@ -217,5 +217,20 @@ func TestReviewerListRules(t *testing.T) {
 	}
 	if err := s.DeleteReviewer(ctx, id); !errors.Is(err, ErrNotFound) {
 		t.Errorf("deleting twice = %v, want ErrNotFound", err)
+	}
+}
+
+func TestDigestIsSentForReviewedDocumentsEvenWhenNothingIsPending(t *testing.T) {
+	s, _, sub := digestStore(t)
+	ctx := context.Background()
+	mustReviewer(t, s, "doc@example.com")
+	id := sentDoc(t, s, sub, "Only Reviewed")
+	_ = s.MarkReviewed(ctx, id, 1)
+	m := &fakeMailer{}
+	if n, err := s.RunDigest(ctx, m, ""); err != nil || n != 1 || len(m.sent) != 1 {
+		t.Fatalf("sent %d, %v, mails %d", n, err, len(m.sent))
+	}
+	if !strings.Contains(m.sent[0].Body, "Only Reviewed") || strings.Contains(m.sent[0].Body, "waiting for review") {
+		t.Errorf("unexpected body:\n%s", m.sent[0].Body)
 	}
 }

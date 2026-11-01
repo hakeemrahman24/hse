@@ -34,6 +34,7 @@ func EnsureNoticeColumn(database *sql.DB) error {
 type closedLine struct {
 	id                        int64
 	worker, position, company string
+	rejected                  bool // a rejected document, told as "needs a corrected upload"
 }
 
 type closedTarget struct {
@@ -42,17 +43,48 @@ type closedTarget struct {
 	lines       []closedLine
 }
 
+// counts splits a target's lines into completed checkups and rejected documents.
+func (t closedTarget) counts() (done, rejected int) {
+	for _, l := range t.lines {
+		if l.rejected {
+			rejected++
+		} else {
+			done++
+		}
+	}
+	return done, rejected
+}
+
+// BackfillRejectNotices runs once, at the first start that knows about rejection mails: documents
+// rejected before that are marked as told, so switching this on does not mail submitters about
+// rejections they already saw in My documents. It is guarded by an event, so a restart never marks
+// a newer rejection as told. (Owner, 2026-11-01: rejected documents go in the daily mail.)
+func (s *Store) BackfillRejectNotices(ctx context.Context) error {
+	var n int
+	if err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*) FROM McuSubmissionEvent WHERE Action = 'RejectNoticeBackfill'`).Scan(&n); err != nil {
+		return err
+	}
+	if n > 0 {
+		return nil
+	}
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE McuSubmission SET CertNotifiedAt = COALESCE(ReviewedAt, SubmittedAt) WHERE Status = ? AND CertNotifiedAt IS NULL`, SubRejected); err != nil {
+		return err
+	}
+	return s.LogEvent(ctx, Event{ActorType: ActorSystem, EntityType: EntitySystem, Action: "RejectNoticeBackfill"})
+}
+
 // dueClosedNotices groups the documents closed and not yet announced by submitter. Only accounts
 // that can still receive mail are included: Active, not the built-in admin, address not bounced,
 // not erased. The rest stay unmarked, so a re-enabled account is told later.
 func (s *Store) dueClosedNotices(ctx context.Context) ([]closedTarget, error) {
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT u.SubmitterID, u.Email, s.SubmissionID, s.PatName, s.PatPosition, s.PatCompanyText
+		`SELECT u.SubmitterID, u.Email, s.SubmissionID, s.PatName, s.PatPosition, s.PatCompanyText, CASE WHEN s.Status = ? THEN 1 ELSE 0 END
 		 FROM McuSubmission s
 		 JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID
-		 WHERE s.Status = ? AND s.FK_McuRecordID IS NOT NULL AND s.CertNotifiedAt IS NULL
+		 WHERE ((s.Status = ? AND s.FK_McuRecordID IS NOT NULL) OR s.Status = ?) AND s.CertNotifiedAt IS NULL
 		   AND u.Status = ? AND u.IsBuiltIn = 0 AND u.EmailBouncedAt IS NULL AND u.ErasedAt IS NULL
-		 ORDER BY u.SubmitterID, s.SubmissionID`, SubClosed, StatusActive)
+		 ORDER BY u.SubmitterID, s.SubmissionID`, SubRejected, SubClosed, SubRejected, StatusActive)
 	if err != nil {
 		return nil, err
 	}
@@ -62,9 +94,11 @@ func (s *Store) dueClosedNotices(ctx context.Context) ([]closedTarget, error) {
 		var id int64
 		var email string
 		var l closedLine
-		if err := rows.Scan(&id, &email, &l.id, &l.worker, &l.position, &l.company); err != nil {
+		var rejected int
+		if err := rows.Scan(&id, &email, &l.id, &l.worker, &l.position, &l.company, &rejected); err != nil {
 			return nil, err
 		}
+		l.rejected = rejected == 1
 		if n := len(out); n == 0 || out[n-1].submitterID != id {
 			out = append(out, closedTarget{submitterID: id, email: email})
 		}
@@ -84,7 +118,7 @@ func (s *Store) RunClosedNotices(ctx context.Context, m Mailer, portalURL string
 	}
 	var failures []error
 	for _, t := range due {
-		if err := m.Send(ctx, t.email, fmt.Sprintf("Medical checkups completed: %d", len(t.lines)), closedNoticeBody(portalURL, t.lines)); err != nil {
+		if err := m.Send(ctx, t.email, noticeSubject(t), closedNoticeBody(portalURL, t.lines)); err != nil {
 			log.Printf("mcu closed notice: mail to submitter %d failed: %v", t.submitterID, err)
 			failures = append(failures, err)
 			continue
@@ -103,20 +137,52 @@ func (s *Store) RunClosedNotices(ctx context.Context, m Mailer, portalURL string
 	return mails, documents, errors.Join(failures...)
 }
 
+func noticeSubject(t closedTarget) string {
+	done, rejected := t.counts()
+	switch {
+	case rejected == 0:
+		return fmt.Sprintf("Medical checkups completed: %d", done)
+	case done == 0:
+		return fmt.Sprintf("Medical checkup documents need a new upload: %d", rejected)
+	}
+	return fmt.Sprintf("Medical checkups: %d completed, %d need a new upload", done, rejected)
+}
+
 func closedNoticeBody(portalURL string, lines []closedLine) string {
+	var done, rejected []closedLine
+	for _, l := range lines {
+		if l.rejected {
+			rejected = append(rejected, l)
+		} else {
+			done = append(done, l)
+		}
+	}
 	var b strings.Builder
-	fmt.Fprintf(&b, "%d of the medical checkups you submitted have been completed by the medical post:\n\n", len(lines))
+	if len(done) > 0 {
+		fmt.Fprintf(&b, "%d of the medical checkups you submitted have been completed by the medical post:\n\n", len(done))
+		writeNoticeList(&b, done)
+	}
+	if len(rejected) > 0 {
+		if len(done) > 0 {
+			b.WriteString("\n")
+		}
+		fmt.Fprintf(&b, "%d of your documents could not be used by the medical post (for example, the file could not be read). Please upload a corrected document for:\n\n", len(rejected))
+		writeNoticeList(&b, rejected)
+	}
+	fmt.Fprintf(&b, "\nSign in to see the details and download the health certificates that are available: %s/documents\n", portalURL+basePath)
+	b.WriteString("\nThis mail holds no results, ID numbers or birth dates on purpose.\n")
+	return b.String()
+}
+
+func writeNoticeList(b *strings.Builder, lines []closedLine) {
 	shown := lines
 	if len(shown) > closedNoticeMaxLines {
 		shown = shown[:closedNoticeMaxLines]
 	}
 	for _, l := range shown {
-		fmt.Fprintf(&b, "- %s | %s | %s\n", oneLine(l.worker), oneLine(l.position), oneLine(l.company))
+		fmt.Fprintf(b, "- %s | %s | %s\n", oneLine(l.worker), oneLine(l.position), oneLine(l.company))
 	}
 	if more := len(lines) - len(shown); more > 0 {
-		fmt.Fprintf(&b, "\nand %d more.\n", more)
+		fmt.Fprintf(b, "and %d more.\n", more)
 	}
-	fmt.Fprintf(&b, "\nSign in to see them and download the health certificates that are available: %s/documents\n", portalURL+basePath)
-	b.WriteString("\nThis mail holds no results, ID numbers or birth dates on purpose.\n")
-	return b.String()
 }

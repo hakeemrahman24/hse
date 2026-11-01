@@ -147,6 +147,8 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("POST "+basePath+"/settings/reminders", a.SaveReminders)
 	in.HandleFunc("GET "+basePath+"/email-change", a.EmailChangePage)
 	in.HandleFunc("POST "+basePath+"/email-change", a.EmailChangeSubmit)
+	in.HandleFunc("GET "+basePath+"/romif", a.RomifPage)
+	in.HandleFunc("POST "+basePath+"/romif", a.RomifSubmit)
 	in.HandleFunc("GET "+basePath+"/home", a.Home)
 	in.HandleFunc("GET "+basePath+"/batch", a.BatchPage)
 	in.HandleFunc("POST "+basePath+"/batch/add", a.AddDocument)
@@ -215,6 +217,7 @@ func (a *API) clientIP(r *http.Request) string {
 
 // page is everything the templates need.
 type page struct {
+	Signing   bool // the ROMIF page: signed in but not allowed anywhere else yet, so no sign-in or sign-up links
 	Title     string
 	Nav       string // which sidebar item is current: the template name without ".html"
 	User      *Submitter
@@ -396,6 +399,16 @@ func (a *API) requireUser(w http.ResponseWriter, r *http.Request) *Submitter {
 	u := a.current(r)
 	if u == nil {
 		http.Redirect(w, r, basePath+"/signin", http.StatusSeeOther)
+		return nil
+	}
+	// An account that has not signed the ROMIF signs it before anything else. The built-in admin
+	// is not a person sending health data and never signs. A failed lookup lets the person in:
+	// a database hiccup must not lock everybody out of the portal.
+	if !u.IsBuiltIn {
+		if signed, err := a.Store.HasSignedRomif(r.Context(), u.ID); err == nil && !signed {
+			http.Redirect(w, r, basePath+"/romif", http.StatusSeeOther)
+			return nil
+		}
 	}
 	return u
 }

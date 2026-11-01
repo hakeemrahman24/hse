@@ -17,6 +17,10 @@ var indonesianText = map[string]string{
 	"Read the ROMIF statement and tick the box to agree.":                                      "Baca pernyataan ROMIF dan centang kotak untuk menyetujui.",
 	"Sign by typing your full name exactly as entered above.":                                  "Tanda tangan dengan mengetik nama lengkap Anda persis seperti yang diisi di atas.",
 
+	"Release of medical ": "Persetujuan pelepasan ",
+	"information":         "informasi medis",
+	"Please read and sign this once to keep using the portal.": "Mohon baca dan tanda tangani sekali ini untuk terus menggunakan portal.",
+	"Sign and continue": "Tanda tangan dan lanjutkan",
 	// Header and shared
 	"Skip to content":            "Lewati ke konten",
 	"Main navigation":            "Navigasi utama",

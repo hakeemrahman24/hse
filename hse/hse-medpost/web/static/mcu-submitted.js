@@ -43,7 +43,9 @@
   function when(t) { return t ? t.replace('T', ' ').slice(0, 16) : ''; }
 
   function reviewPrompt(d) {
-    return 'Open ' + d.worker + "'s checkup form, filled in from the submission? Nothing is saved until you save the checkup.";
+    return d.hasRecord
+      ? 'Open the checkup already linked to ' + d.worker + "'s document?"
+      : 'Open ' + d.worker + "'s checkup form, filled in from the submission? Nothing is saved until you save the checkup.";
   }
 
   // Opening a document changes nothing on the server. A document counts as reviewed only once a
@@ -62,6 +64,12 @@
   function notify(d) {
     if (!window.confirm('Notify the submitter that ' + d.worker + "'s checkup is done? They are told in the daily mail, and this document is closed.")) return;
     call('/api/mcu-submissions/' + d.id + '/close', 'POST').then(load).catch(function (e) { say(e.message, true); });
+  }
+
+  // Undoes a wrong link; the checkup itself stays. The document goes back to Pending.
+  function unlink(d) {
+    if (!window.confirm('Unlink the checkup from ' + d.worker + "'s document? The document goes back to Pending. The checkup itself is kept.")) return;
+    call('/api/mcu-submissions/' + d.id + '/unlink', 'POST').then(load).catch(function (e) { say(e.message, true); });
   }
 
   function button(label, cls, onClick, aria) {
@@ -122,6 +130,9 @@
     // the submitter; before that the next step is the checkup form.
     if (d.status === 'Reviewed' && d.hasRecord) {
       box.appendChild(button('Notify submitter', 'btn-primary', function () { notify(d); }, 'Notify the submitter about ' + d.worker));
+    } else if (d.hasRecord) {
+      // Linked but without a result yet: finish that checkup, do not start another.
+      box.appendChild(button('Open checkup', 'btn-primary', function () { startReview(d); }, 'Open the linked checkup of ' + d.worker));
     } else {
       box.appendChild(button('Review', 'btn-primary', function () { startReview(d); }, 'Review the checkup of ' + d.worker));
     }
@@ -148,7 +159,13 @@
     }));
     more.appendChild(reject.box);
 
-    if (!d.hasRecord) {
+    if (d.hasRecord) {
+      var linked = section('Linked checkup');
+      linked.row.appendChild(document.createTextNode(d.result ? 'Result saved.' : 'Saved without a result.'));
+      linked.row.appendChild(button('Open', 'btn-ghost', function () { startReview(d); }));
+      linked.row.appendChild(button('Unlink', 'btn-ghost', function () { unlink(d); }, 'Unlink the checkup of ' + d.worker));
+      more.appendChild(linked.box);
+    } else {
       var link = section('Link a checkup already entered');
       link.row.textContent = 'Opens when you expand this.';
       more.appendChild(link.box);

@@ -113,9 +113,9 @@ func newStaffEnv(t *testing.T) *staffEnv {
 	mux.HandleFunc("GET /api/mcu-submissions/{id}", api.Get)
 	mux.HandleFunc("GET /api/mcu-submissions/{id}/file", api.File)
 	mux.HandleFunc("GET /api/mcu-submissions/{id}/records", api.Records)
-	mux.HandleFunc("POST /api/mcu-submissions/{id}/review", api.MarkReviewed)
 	mux.HandleFunc("POST /api/mcu-submissions/{id}/reject", api.Reject)
 	mux.HandleFunc("POST /api/mcu-submissions/{id}/link", api.Link)
+	mux.HandleFunc("POST /api/mcu-submissions/{id}/unlink", api.Unlink)
 	mux.HandleFunc("POST /api/mcu-submissions/{id}/close", api.Close)
 	// The real route wraps these in RequireAuth, which puts the session in the context.
 	withSession := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -164,7 +164,7 @@ func TestStaffRoutesRefuseAnAnonymousCaller(t *testing.T) {
 	id := e.doc(t, "Worker One", true)
 	for _, c := range []struct{ method, path string }{
 		{"GET", "/api/mcu-submissions"}, {"GET", fmt.Sprintf("/api/mcu-submissions/%d/file", id)},
-		{"POST", fmt.Sprintf("/api/mcu-submissions/%d/review", id)}, {"POST", fmt.Sprintf("/api/mcu-submissions/%d/reject", id)},
+		{"POST", fmt.Sprintf("/api/mcu-submissions/%d/unlink", id)}, {"POST", fmt.Sprintf("/api/mcu-submissions/%d/reject", id)},
 	} {
 		if rec := e.do(c.method, c.path, `{"reason":"x"}`, true); rec.Code != http.StatusUnauthorized {
 			t.Errorf("%s %s without a session = %d, want 401", c.method, c.path, rec.Code)
@@ -234,11 +234,13 @@ func TestStaffReviewAndRejectOverHTTP(t *testing.T) {
 	a := e.doc(t, "Worker One", true)
 	b := e.doc(t, "Worker Two", true)
 
-	if rec := e.do("POST", fmt.Sprintf("/api/mcu-submissions/%d/review", a), "", false); rec.Code != http.StatusNoContent {
-		t.Fatalf("review = %d\n%s", rec.Code, rec.Body)
+	if err := e.store.MarkReviewed(context.Background(), a, testStaffID); err != nil {
+		t.Fatal(err)
 	}
-	if rec := e.do("POST", fmt.Sprintf("/api/mcu-submissions/%d/review", a), "", false); rec.Code != http.StatusConflict {
-		t.Errorf("review again = %d, want 409", rec.Code)
+	// There is no HTTP route that marks a document Reviewed any more: Reviewed means a linked
+	// checkup with a result, so only the link route can set it.
+	if rec := e.do("POST", fmt.Sprintf("/api/mcu-submissions/%d/review", a), "", false); rec.Code != http.StatusNotFound && rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("the old review route answered %d, want it gone", rec.Code)
 	}
 	for _, c := range []struct {
 		body string
@@ -247,9 +249,6 @@ func TestStaffReviewAndRejectOverHTTP(t *testing.T) {
 		if rec := e.do("POST", fmt.Sprintf("/api/mcu-submissions/%d/reject", b), c.body, false); rec.Code != c.want {
 			t.Errorf("reject %q = %d, want %d", c.body, rec.Code, c.want)
 		}
-	}
-	if rec := e.do("POST", "/api/mcu-submissions/9999/review", "", false); rec.Code != http.StatusNotFound {
-		t.Errorf("missing = %d, want 404", rec.Code)
 	}
 	var n int
 	_ = e.store.DB.QueryRow(`SELECT COUNT(*) FROM McuSubmissionEvent WHERE ActorType = 'Staff' AND ActorID = ? AND Action IN ('Reviewed', 'Rejected')`, testStaffID).Scan(&n)
@@ -375,8 +374,8 @@ func TestLinkRouteMapsEachRefusalToAClearStatus(t *testing.T) {
 	if rec := e.do("POST", path, `{"checkUpId":"MedC-1"}`, false); rec.Code != http.StatusNoContent {
 		t.Fatalf("link = %d: %s", rec.Code, rec.Body.String())
 	}
-	if rec := e.do("POST", path, `{"checkUpId":"MedC-1"}`, false); rec.Code != http.StatusConflict {
-		t.Errorf("linking twice = %d, want 409", rec.Code)
+	if rec := e.do("POST", path, `{"checkUpId":"MedC-1"}`, false); rec.Code != http.StatusNoContent {
+		t.Errorf("linking the same record again = %d, want 204 (saving an edited checkup does this)", rec.Code)
 	}
 	closePath := fmt.Sprintf("/api/mcu-submissions/%d/close", id)
 	if rec := e.do("POST", closePath, ``, false); rec.Code != http.StatusNoContent {
@@ -449,8 +448,8 @@ func TestStaffGetGivesTheFormWhatItNeedsAndHidesUnsentWork(t *testing.T) {
 func TestStaffListNamesWhoReviewedAndWhen(t *testing.T) {
 	e := newStaffEnv(t)
 	id := e.doc(t, "Sent Worker", true)
-	if rec := e.do("POST", fmt.Sprintf("/api/mcu-submissions/%d/review", id), "", false); rec.Code != http.StatusNoContent {
-		t.Fatalf("review = %d", rec.Code)
+	if err := e.store.MarkReviewed(context.Background(), id, testStaffID); err != nil {
+		t.Fatal(err)
 	}
 	rec := e.do("GET", "/api/mcu-submissions", "", false)
 	var rows []staffRow
@@ -696,5 +695,75 @@ func TestResultMessageShownToTheSubmitterOnlyOnceClosed(t *testing.T) {
 		if got := d.ResultMessage(); got != c.want {
 			t.Errorf("%s/%s = %q, want %q", c.status, c.result, got, c.want)
 		}
+	}
+}
+
+func TestLinkAgainSameRecordIsAllowedAndUnlinkUndoesAWrongLink(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrun@example.com")
+	w := seedWorker(t, s, "Un Link", "1990-04-12", co)
+	addRecord(t, s, w, "MedC-U1", "Fit", "2027-01-01", "Open", 1)
+	addRecord(t, s, w, "MedC-U2", "Fit", "2027-01-01", "Open", 1)
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = NULL WHERE CheckUpID = 'MedC-U1'`); err != nil {
+		t.Fatal(err)
+	}
+	a, _ := sentDocIn(t, s, sub, "Un Link", "Other One")
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w, a); err != nil {
+		t.Fatal(err)
+	}
+	status := func() string {
+		var st string
+		_ = s.DB.QueryRow(`SELECT Status FROM McuSubmission WHERE SubmissionID = ?`, a).Scan(&st)
+		return st
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-U1"); err != nil || status() != SubPending {
+		t.Fatalf("link without a result: %v, %s", err, status())
+	}
+	// the reviewer edits the checkup and adds the result, then saves again: the same link again
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = 'Fit' WHERE CheckUpID = 'MedC-U1'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-U1"); err != nil || status() != SubReviewed {
+		t.Fatalf("link again: %v, %s", err, status())
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-U2"); !errors.Is(err, ErrBadState) {
+		t.Fatalf("pointing at another record: %v, want ErrBadState", err)
+	}
+	if err := s.UnlinkRecord(ctx, a, testStaffID); err != nil || status() != SubPending {
+		t.Fatalf("unlink: %v, %s", err, status())
+	}
+	if err := s.UnlinkRecord(ctx, a, testStaffID); !errors.Is(err, ErrBadState) {
+		t.Fatalf("unlinking twice: %v, want ErrBadState", err)
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-U2"); err != nil || status() != SubReviewed {
+		t.Fatalf("relink: %v, %s", err, status())
+	}
+	if err := s.CloseReviewed(ctx, a, testStaffID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.UnlinkRecord(ctx, a, testStaffID); !errors.Is(err, ErrBadState) {
+		t.Fatalf("unlinking a Closed document: %v, want ErrBadState", err)
+	}
+}
+
+func TestCloseReviewedRefusesACheckupWhoseResultWasClearedAfterLinking(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrclr@example.com")
+	w := seedWorker(t, s, "Clear Result", "1990-04-12", co)
+	addRecord(t, s, w, "MedC-CLR", "Fit", "2027-01-01", "Open", 1)
+	a, _ := sentDocIn(t, s, sub, "Clear Result", "Other Two")
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w, a); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-CLR"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = NULL WHERE CheckUpID = 'MedC-CLR'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CloseReviewed(ctx, a, testStaffID); !errors.Is(err, ErrBadState) {
+		t.Fatalf("closing with the result cleared: %v, want ErrBadState", err)
 	}
 }

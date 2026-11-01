@@ -68,6 +68,12 @@ func startMcuPortal(database *sql.DB, sessionSecret string, mux *http.ServeMux, 
 		log.Print("MCU portal: built-in admin account created.")
 	}
 
+	// Runs on SQLite and MariaDB alike (the column comes from migration 035 on MariaDB). A failure
+	// is logged, not fatal: the worst case is that old rejections are mentioned once in a mail.
+	if err := store.BackfillRejectNotices(ctx); err != nil {
+		log.Printf("MCU portal: could not mark old rejections as told: %v", err)
+	}
+
 	var verifier turnstile.Verifier
 	var sitekey string
 	var devCheck bool
