@@ -739,3 +739,81 @@ func TestOldAccountWithOddCharactersInItsNameCanStillSignTheROMIF(t *testing.T) 
 		t.Fatalf("signing = %d, want a redirect\n%s", rec.Code, rec.Body)
 	}
 }
+
+func TestAdminArchiveRestoreEnableAndTheWarnedPermanentRemoval(t *testing.T) {
+	e, id, member := signedIn(t)
+	ctx := context.Background()
+	sentDocIn(t, e.store, id, "Worker One", "Worker Two") // two documents that would go with the account
+	_, admin := e.signIn("admin", "pelican-orbit-77")
+	if admin == nil {
+		t.Fatal("the built-in admin cannot sign in")
+	}
+	status := func() string {
+		u, err := e.store.ByID(ctx, id)
+		if err != nil {
+			return "gone"
+		}
+		return u.Status
+	}
+	// Disable, Enable, Archive, Restore, Enable
+	if rec := e.post("/mcu-submit/admin/disable", url.Values{"id": {itoa(id)}}, admin); rec.Code != http.StatusSeeOther || status() != StatusDisabled {
+		t.Fatalf("disable = %d, %s", rec.Code, status())
+	}
+	if rec := e.post("/mcu-submit/admin/enable", url.Values{"id": {itoa(id)}}, admin); rec.Code != http.StatusSeeOther || status() != StatusActive {
+		t.Fatalf("enable = %d, %s", rec.Code, status())
+	}
+	if rec := e.post("/mcu-submit/admin/archive", url.Values{"id": {itoa(id)}}, admin); rec.Code != http.StatusSeeOther || status() != StatusArchived {
+		t.Fatalf("archive = %d, %s", rec.Code, status())
+	}
+	if rec, c := e.signIn(testUser, testPass); c != nil {
+		t.Fatalf("an archived account signed in (%d)", rec.Code)
+	}
+	if page := e.get("/mcu-submit/admin", admin); strings.Contains(page.Body.String(), testMail) || !strings.Contains(page.Body.String(), "Show 1 archived accounts") {
+		t.Error("the default list must hide an archived account and offer to show it")
+	}
+	if page := e.get("/mcu-submit/admin?archived=1", admin); !strings.Contains(page.Body.String(), testMail) || !strings.Contains(page.Body.String(), "Restore") {
+		t.Error("the archived list must show the account with a Restore button")
+	}
+	if rec := e.post("/mcu-submit/admin/restore", url.Values{"id": {itoa(id)}}, admin); rec.Code != http.StatusSeeOther || status() != StatusDisabled {
+		t.Fatalf("restore = %d, %s (it comes back Disabled, not Active)", rec.Code, status())
+	}
+	if rec := e.post("/mcu-submit/admin/enable", url.Values{"id": {itoa(id)}}, admin); rec.Code != http.StatusSeeOther || status() != StatusActive {
+		t.Fatalf("enable after restore = %d, %s", rec.Code, status())
+	}
+
+	// The permanent removal is asked about first, with the counts.
+	page := e.get("/mcu-submit/admin/delete?id="+itoa(id), admin)
+	body := page.Body.String()
+	if page.Code != http.StatusOK || !strings.Contains(body, "cascading database deletes") || !strings.Contains(body, "<strong>2</strong> submitted documents") {
+		t.Fatalf("warning page = %d\n%s", page.Code, body)
+	}
+	if rec := e.post("/mcu-submit/admin/delete", url.Values{"id": {itoa(id)}}, admin); rec.Code != http.StatusSeeOther || status() != StatusActive {
+		t.Fatalf("a post without the ticked box must not remove anything: %d, %s", rec.Code, status())
+	}
+	_, member = e.signIn(testUser, testPass) // archiving signed the old session out
+	if rec := e.get("/mcu-submit/admin/delete?id="+itoa(id), member); rec.Code != http.StatusNotFound {
+		t.Errorf("a submitter on the warning page = %d, want 404", rec.Code)
+	}
+	if rec := e.post("/mcu-submit/admin/delete", url.Values{"id": {itoa(id)}, "understood": {"1"}}, admin); rec.Code != http.StatusSeeOther {
+		t.Fatalf("remove = %d", rec.Code)
+	}
+	if status() != "gone" {
+		t.Error("the account is still there")
+	}
+	var n int
+	_ = e.store.DB.QueryRow(`SELECT COUNT(*) FROM McuSubmission WHERE FK_SubmitterID = ?`, id).Scan(&n)
+	if n != 0 {
+		t.Errorf("%d documents survived the account", n)
+	}
+	var detail string
+	if err := e.store.DB.QueryRow(`SELECT Detail FROM McuSubmissionEvent WHERE Action = 'AccountRemoved'`).Scan(&detail); err != nil || strings.Contains(detail, testMail) || !strings.Contains(detail, "2 documents") {
+		t.Errorf("audit detail %q, %v: want counts and no email", detail, err)
+	}
+	// the built-in admin is never removable, and nobody removes the account they are signed in with
+	if rec := e.get("/mcu-submit/admin/delete?id="+itoa(e.adminID), admin); rec.Code != http.StatusNotFound {
+		t.Errorf("warning page for the built-in admin = %d, want 404", rec.Code)
+	}
+	if rec := e.post("/mcu-submit/admin/delete", url.Values{"id": {itoa(e.adminID)}, "understood": {"1"}}, admin); rec.Code != http.StatusNotFound {
+		t.Errorf("removing the built-in admin = %d, want 404", rec.Code)
+	}
+}

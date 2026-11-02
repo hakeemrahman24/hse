@@ -286,6 +286,49 @@ body.mp {
 .mp .mp-cb-list .app-program-item.active { box-shadow: inset 3px 0 0 var(--accent); }
 .mp .mp-cb-none { margin: 0; padding: 6px 8px; }
 
+/* Compact density (owner, 2026-11-02: "more compact like in the medpost"): the staff app's
+   rhythm. 28px controls, 0.8125rem body, tight table rows and cards. Placed before the phone
+   rules so those still win at narrow widths. */
+body.mp { font-size: 0.8125rem; line-height: 1.4; }
+.mp-lead { margin-top: 6px; font-size: 0.8125rem; }
+.mp-actions { margin-top: 12px; gap: 8px; }
+.mp-hero { padding: 84px 16px 12px; }
+.mp-steps { padding: 4px 16px 32px; }
+.mp-steps ol { line-height: 1.5; }
+.mp-section { padding: 60px 16px 24px; }
+.mp-shell .mp-section { padding: 10px 4px 16px; }
+.mp-section h1, .mp-hero h1 { font-size: 1.05rem; }
+.mp-hero h1 { font-size: clamp(1.15rem, 3.5vw, 1.35rem); }
+.mp-section h2 { margin: 14px 0 2px; font-size: 0.9rem; }
+.mp .btn-primary, .mp .btn-ghost { height: 28px; padding: 0 12px !important; font-size: 0.78rem !important; }
+.mp input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([type="file"]),
+.mp select, .mp textarea { height: 28px; padding: 3px 8px; font-size: 0.78rem; }
+.mp textarea { height: auto; min-height: 56px; }
+.mp input[type="file"] { height: 28px; line-height: 26px; font-size: 0.78rem; }
+.mp input[type="file"]::file-selector-button { height: 26px; font-size: 0.78rem; padding: 0 10px; }
+.mp .login-card { padding: 12px 14px; }
+.mp .login-card .field { margin-bottom: 7px; }
+.mp .login-card .sub { margin-bottom: 8px; font-size: 0.78rem; }
+.mp .login-card label > span, .mp .login-card legend { font-size: 0.72rem; }
+.mp .login-card .field > label > span, .mp .login-card label > span { margin-bottom: 2px; }
+.mp-hint { margin: 3px 0 8px; font-size: 0.72rem; }
+.mp-error, .mp-notice, .mp-chosen { padding: 4px 8px; margin: 6px 0; font-size: 0.78rem; }
+.mp-cards { gap: 8px; margin: 8px 0; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+.mp-card { padding: 8px 10px; gap: 2px; }
+.mp-count { font-size: 1.2rem; }
+.mp-table, .mp-badge { font-size: 0.78rem; }
+.mp-table th { padding: 4px 8px; }
+.mp-table td { padding: 4px 8px; }
+.mp-table caption { padding: 3px 0; }
+.mp-badge { min-height: 24px; gap: 6px; }
+.mp-filter { gap: 8px 12px; margin: 2px 0 8px; }
+.mp-filter input, .mp-filter select { min-width: 130px; }
+.mp-filter .field label { margin-bottom: 2px; }
+.mp-review { gap: 3px 12px; margin: 0 0 10px; }
+.mp-new { margin: 0 0 10px; padding: 6px 10px; }
+.mp-check { margin: 4px 0; }
+.mp-results button { padding: 5px 8px; }
+
 /* Phone width: a short header on one line, and the sidebar as a wrapped row of chips instead of a
    tall list (the list took half the screen before the page started). */
 @media (max-width: 640px) {
@@ -362,3 +405,7 @@ body.mp {
   .mp-panes-batch { grid-template-columns: minmax(380px, 440px) minmax(0, 1fr); }
   .mp-panes-batch .mp-pane:last-child h2 { margin-top: 0; }
 }
+
+/* Delete in the admin account list: a link styled like the other buttons, in a muted red. */
+.mp .mp-danger { color: #a12a1b !important; border-color: #c98a82 !important; vertical-align: middle; }
+.mp-warn { margin: 8px 0 12px 18px; padding: 0; line-height: 1.5; }

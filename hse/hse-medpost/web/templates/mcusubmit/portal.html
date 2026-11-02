@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=27" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=29" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
   <script src="/static/mcu-portal-name.js?v=2" defer></script>
   <script src="/static/mcu-portal-cards.js?v=4" defer></script>
@@ -522,6 +522,7 @@
       {{else}}<p class="mp-hint">No requests are waiting.</p>{{end}}
 
       <h2>All <span>accounts</span></h2>
+      <p class="mp-hint">Disable blocks sign-in and can be undone with Enable. Archive also hides the account from this list and keeps its documents; show archived accounts to restore one. Delete removes the account and all its documents for good.{{if .ArchivedCount}} {{if .ShowArchived}}<a href="/mcu-submit/admin">Hide archived accounts</a>{{else}}<a href="/mcu-submit/admin?archived=1">Show {{.ArchivedCount}} archived accounts</a>{{end}}{{end}}</p>
       {{if .Accounts}}
       <div class="mp-scroll"><table class="mp-table">
         <caption>Approved, active, rejected and disabled accounts</caption>
@@ -530,11 +531,39 @@
         {{range .Accounts}}<tr>
           <td>{{.Name}}</td><td>{{.Email}}</td><td>{{.Company}}</td><td><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span></td>
           <td>{{if .RejectReason}}{{.RejectReason}}{{end}}{{if .BouncedAt}}Email bounced {{.BouncedAt}}{{end}}</td>
-          <td>{{if or (eq .Status "Active") (eq .Status "Approved")}}
-            <form method="post" action="/mcu-submit/admin/disable" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Disable</button></form>{{end}}</td>
+          <td class="mp-decide">{{if or (eq .Status "Active") (eq .Status "Approved")}}
+            <form method="post" action="/mcu-submit/admin/disable" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Disable</button></form>{{end}}
+            {{if eq .Status "Disabled"}}<form method="post" action="/mcu-submit/admin/enable" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Enable</button></form>{{end}}
+            {{if eq .Status "Archived"}}<form method="post" action="/mcu-submit/admin/restore" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Restore</button></form>
+            {{else}}<form method="post" action="/mcu-submit/admin/archive" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Archive</button></form>{{end}}
+            <a class="btn-ghost mp-danger" href="/mcu-submit/admin/delete?id={{.ID}}">Delete…</a></td>
         </tr>{{end}}
         </tbody></table></div>
       {{else}}<p class="mp-hint">No other accounts yet.</p>{{end}}
+    </section>
+{{template "foot" .}}{{end}}
+
+{{define "admindelete.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1>Delete <span>account</span>?</h1>
+      {{template "error" .}}
+      <div class="login-card mp-wide">
+        <p class="sub"><strong>{{.Target.Name}}</strong> ({{.Target.Email}}), now {{.Target.Status}}.</p>
+        <p><strong>This triggers cascading database deletes and cannot be undone.</strong> Deleting the account also deletes, in one step:</p>
+        <ul class="mp-warn">
+          <li>all of their <strong>{{.Foot.Documents}}</strong> submitted documents, whatever their status (pending, reviewed, closed), so reviewers will no longer see them in the Submitted tab;</li>
+          <li>their <strong>{{.Foot.Batches}}</strong> batches and <strong>{{.Foot.Files}}</strong> stored PDF files;</li>
+          <li>their sign-in, setup and email-change links.</li>
+        </ul>
+        <p>What stays: checkup records that staff already made from those documents, and the audit log, which keeps ids and counts but no name or email address.</p>
+        <p class="mp-hint">Not sure? <strong>Disable</strong> blocks sign-in and <strong>Archive</strong> hides the account. Both keep every document and can be undone.</p>
+        <form method="post" action="/mcu-submit/admin/delete">
+          <input type="hidden" name="id" value="{{.Target.ID}}" />
+          <label class="mp-check" for="understood"><input id="understood" name="understood" type="checkbox" value="1" required /><span>I understand that the documents and files of this account are deleted permanently.</span></label>
+          <div class="submit-row"><button type="submit" class="btn-primary">Delete permanently</button>
+            <a class="btn-ghost" href="/mcu-submit/admin">Cancel</a></div>
+        </form>
+      </div>
     </section>
 {{template "foot" .}}{{end}}
 
