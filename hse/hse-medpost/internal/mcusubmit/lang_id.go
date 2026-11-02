@@ -21,6 +21,7 @@ var indonesianText = map[string]string{
 	"information":         "informasi medis",
 	"Please read and sign this once to keep using the portal.": "Mohon baca dan tanda tangani sekali ini untuk terus menggunakan portal.",
 	"Sign and continue": "Tanda tangan dan lanjutkan",
+	"Withdraw this document? The medical post will no longer see it and the file is deleted. You can upload a corrected one in a new batch.": "Tarik dokumen ini? Pos medis tidak akan melihatnya lagi dan file akan dihapus. Anda dapat mengunggah dokumen yang sudah diperbaiki dalam kumpulan baru.",
 	// Header and shared
 	"Skip to content":            "Lewati ke konten",
 	"Main navigation":            "Navigasi utama",

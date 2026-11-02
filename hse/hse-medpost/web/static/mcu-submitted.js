@@ -66,6 +66,16 @@
     call('/api/mcu-submissions/' + d.id + '/close', 'POST').then(load).catch(function (e) { say(e.message, true); });
   }
 
+  // The page is told by the server whether the signed-in staff member is an admin (data-admin);
+  // the server checks the role again on every removal, so this only decides what is shown.
+  var isAdmin = document.getElementById('tab-submitted').getAttribute('data-admin') === '1';
+
+  // Removing is final: the entry and the stored PDF go. The linked checkup (medical data) stays.
+  function remove(d) {
+    if (!window.confirm('Remove the document of ' + d.worker + ' permanently? The PDF and this entry are removed and the submitter no longer sees it. A linked checkup stays.')) return;
+    call('/api/mcu-submissions/' + d.id, 'DELETE').then(load).catch(function (e) { say(e.message, true); });
+  }
+
   // Undoes a wrong link; the checkup itself stays. The document goes back to Pending.
   function unlink(d) {
     if (!window.confirm('Unlink the checkup from ' + d.worker + "'s document? The document goes back to Pending. The checkup itself is kept.")) return;
@@ -76,7 +86,7 @@
     var b = document.createElement('button');
     b.type = 'button'; b.className = cls; b.textContent = label;
     if (aria) b.setAttribute('aria-label', aria);
-    b.addEventListener('click', onClick);
+    if (onClick) b.addEventListener('click', onClick);
     return b;
   }
 
@@ -94,7 +104,7 @@
 
   // The checkups of this worker that no document is linked to yet; the server applies the same rule
   // as the close itself, so everything offered here is accepted.
-  function loadCandidates(d, row) {
+  function loadCandidates(d, row, fail) {
     row.textContent = 'Looking for this worker\u2019s checkups\u2026';
     fetch('/api/mcu-submissions/' + d.id + '/records', { credentials: 'same-origin' }).then(function (r) {
       if (!r.ok) throw new Error('Could not load the checkups (' + r.status + ').');
@@ -102,7 +112,7 @@
     }).then(function (list) {
       row.textContent = '';
       if (!list.length) {
-        row.textContent = 'No unlinked checkup found for this worker. Use Review to enter one.';
+        row.textContent = 'No unlinked checkup found. Use Review to enter one.';
         row.className = 'sub-row sub-none';
         return;
       }
@@ -117,15 +127,24 @@
       row.appendChild(pick);
       row.appendChild(button('Link', 'btn-ghost', function () {
         call('/api/mcu-submissions/' + d.id + '/link', 'POST', { checkUpId: pick.value })
-          .then(load).catch(function (e) { say(e.message, true); });
+          .then(load).catch(function (e) { fail(e.message); });
       }));
     }).catch(function (e) { row.textContent = e.message; row.className = 'sub-row sub-none'; });
   }
 
-  function actions(d, td) {
-    if (d.status !== 'Pending' && d.status !== 'Reviewed') return;
+  // The row's own cell holds only the next step (Review, Open checkup or Notify submitter) and a
+  // More toggle. The two rare actions open in a full-width detail row under the document, so the row
+  // stays one line tall and the other columns keep their width. Returns that detail row, or null.
+  function actions(d, td, colspan) {
+    var canAct = d.status === 'Pending' || d.status === 'Reviewed';
+    if (!canAct && !isAdmin) return null;
     var box = document.createElement('div');
     box.className = 'sub-act';
+    if (!canAct) { // Closed, Rejected, Withdrawn: only an admin has anything to do here
+      box.appendChild(button('Remove', 'btn-ghost sub-reject', function () { remove(d); }, 'Remove the document of ' + d.worker));
+      td.appendChild(box);
+      return null;
+    }
     // Once a checkup with a result is linked the document is Reviewed and the next step is telling
     // the submitter; before that the next step is the checkup form.
     if (d.status === 'Reviewed' && d.hasRecord) {
@@ -136,48 +155,62 @@
     } else {
       box.appendChild(button('Review', 'btn-primary', function () { startReview(d); }, 'Review the checkup of ' + d.worker));
     }
+    if (isAdmin) box.appendChild(button('Remove', 'btn-ghost sub-reject', function () { remove(d); }, 'Remove the document of ' + d.worker));
+    var toggle = button('More', 'btn-ghost sub-toggle', null, 'More actions for ' + d.worker);
+    toggle.setAttribute('aria-expanded', 'false');
+    box.appendChild(toggle);
+    td.appendChild(box);
 
-    // "More" holds the two things a reviewer rarely does, each in its own labelled section so they
-    // do not read as one form. Reject needs only a reason. Link is for a checkup that was entered
-    // before the document was opened from here: the reviewer picks it from that worker's own
-    // unlinked checkups, so nobody has to remember or type a Checkup ID.
-    var more = document.createElement('details');
-    more.className = 'sub-more';
-    var sum = document.createElement('summary');
-    sum.textContent = 'More';
-    more.appendChild(sum);
+    var row = document.createElement('tr');
+    row.className = 'sub-detail';
+    var cellEl = document.createElement('td');
+    cellEl.colSpan = colspan;
+    var panel = document.createElement('div');
+    panel.className = 'sub-panel';
+    // A problem with these two actions is shown here, next to the button that was pressed.
+    var err = document.createElement('p');
+    err.className = 'sub-panel-err';
+    err.setAttribute('role', 'alert');
+    function fail(text) { err.textContent = text || ''; }
 
+    // Reject needs only a reason; it is for a document that cannot be used (for example unreadable).
     var reject = section('Reject this document');
     var reason = document.createElement('input');
     reason.type = 'text'; reason.maxLength = 200; reason.placeholder = 'Reason the submitter will see';
     reason.setAttribute('aria-label', 'Reason for rejecting ' + d.worker);
     reject.row.appendChild(reason);
-    reject.row.appendChild(button('Reject', 'btn-ghost', function () {
-      if (!reason.value.trim()) { say('Enter a reason before rejecting.', true); reason.focus(); return; }
+    reject.row.appendChild(button('Reject', 'btn-ghost sub-reject', function () {
+      if (!reason.value.trim()) { fail('Enter a reason before rejecting.'); reason.focus(); return; }
+      fail('');
       call('/api/mcu-submissions/' + d.id + '/reject', 'POST', { reason: reason.value })
-        .then(load).catch(function (e) { say(e.message, true); });
+        .then(load).catch(function (e) { fail(e.message); });
     }));
-    more.appendChild(reject.box);
+    panel.appendChild(reject.box);
 
+    var loaded = false, link;
     if (d.hasRecord) {
-      var linked = section('Linked checkup');
-      linked.row.appendChild(document.createTextNode(d.result ? 'Result saved.' : 'Saved without a result.'));
-      linked.row.appendChild(button('Open', 'btn-ghost', function () { startReview(d); }));
-      linked.row.appendChild(button('Unlink', 'btn-ghost', function () { unlink(d); }, 'Unlink the checkup of ' + d.worker));
-      more.appendChild(linked.box);
+      link = section('Linked checkup');
+      link.row.appendChild(document.createTextNode(d.result ? 'A checkup with a result is linked.' : 'A checkup is linked but has no result yet.'));
+      link.row.appendChild(button('Open', 'btn-ghost', function () { startReview(d); }));
+      link.row.appendChild(button('Unlink', 'btn-ghost', function () { unlink(d); }, 'Unlink the checkup of ' + d.worker));
     } else {
-      var link = section('Link a checkup already entered');
-      link.row.textContent = 'Opens when you expand this.';
-      more.appendChild(link.box);
-      var loaded = false;
-      more.addEventListener('toggle', function () {
-        if (!more.open || loaded) return;
-        loaded = true;
-        loadCandidates(d, link.row);
-      });
+      // Link is for a checkup that was entered before the document was opened from here: the
+      // reviewer picks it from that worker's own unlinked checkups, so nobody types a Checkup ID.
+      link = section('Link a checkup already entered');
+      link.row.textContent = 'Looking\u2026';
     }
-    box.appendChild(more);
-    td.appendChild(box);
+    panel.appendChild(link.box);
+    panel.appendChild(err);
+    cellEl.appendChild(panel);
+    row.appendChild(cellEl);
+
+    toggle.addEventListener('click', function () {
+      var open = row.classList.toggle('open');
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.textContent = open ? 'Less' : 'More';
+      if (open && !loaded && !d.hasRecord) { loaded = true; loadCandidates(d, link.row, fail); }
+    });
+    return row;
   }
 
   function render(list) {
@@ -209,8 +242,9 @@
       } else {
         file.textContent = '—';
       }
-      actions(d, cell(tr, ''));
+      var detail = actions(d, cell(tr, ''), headings.length);
       body.appendChild(tr);
+      if (detail) body.appendChild(detail);
     });
     if (!list.length) say('No documents with this status.', false); else say('');
   }

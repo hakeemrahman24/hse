@@ -767,3 +767,125 @@ func TestCloseReviewedRefusesACheckupWhoseResultWasClearedAfterLinking(t *testin
 		t.Fatalf("closing with the result cleared: %v, want ErrBadState", err)
 	}
 }
+
+func TestWithdrawFreesALinkedCheckupAndAskedBeforeInThePage(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrwd@example.com")
+	w := seedWorker(t, s, "With Drawn", "1990-04-12", co)
+	addRecord(t, s, w, "MedC-WD", "Fit", "2027-01-01", "Open", 1)
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = NULL WHERE CheckUpID = 'MedC-WD'`); err != nil {
+		t.Fatal(err)
+	}
+	a, b := sentDocIn(t, s, sub, "With Drawn", "Other Doc")
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w, a); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-WD"); err != nil { // linked, no result: still Pending
+		t.Fatal(err)
+	}
+	if _, err := s.Withdraw(ctx, sub, a); err != nil {
+		t.Fatal(err)
+	}
+	// the record is free again for the other document
+	if err := s.LinkRecord(ctx, b, testStaffID, "MedC-WD"); err != nil && !errors.Is(err, ErrRecordMismatch) {
+		t.Fatalf("the record stayed tied to the withdrawn document: %v", err)
+	}
+}
+
+// Reviewed means a decision was saved. Linking a checkup with no result records no reviewer and no
+// date, unlinking clears them, and old documents marked Reviewed on opening go back to Pending.
+func TestReviewedMeansADecisionNotJustOpened(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrdec@example.com")
+	w := seedWorker(t, s, "Dec Ision", "1990-04-12", co)
+	addRecord(t, s, w, "MedC-DEC", "Fit", "2027-01-01", "Open", 1)
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = NULL WHERE CheckUpID = 'MedC-DEC'`); err != nil {
+		t.Fatal(err)
+	}
+	a, old := sentDocIn(t, s, sub, "Dec Ision", "Opened Only")
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w, a); err != nil {
+		t.Fatal(err)
+	}
+	reviewedAt := func(id int64) (st, at string, rev int64) {
+		var by sql.NullInt64
+		_ = s.DB.QueryRow(`SELECT Status, COALESCE(ReviewedAt, ''), FK_ReviewerStaffID FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&st, &at, &by)
+		return st, at, by.Int64
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-DEC"); err != nil {
+		t.Fatal(err)
+	}
+	if st, at, by := reviewedAt(a); st != SubPending || at != "" || by != 0 {
+		t.Fatalf("linked without a result: %s, %q, %d; want Pending and no reviewer or date", st, at, by)
+	}
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = 'Fit' WHERE CheckUpID = 'MedC-DEC'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-DEC"); err != nil {
+		t.Fatal(err)
+	}
+	if st, at, by := reviewedAt(a); st != SubReviewed || at == "" || by != testStaffID {
+		t.Fatalf("with a result: %s, %q, %d; want Reviewed with the reviewer and date", st, at, by)
+	}
+	if err := s.UnlinkRecord(ctx, a, testStaffID); err != nil {
+		t.Fatal(err)
+	}
+	if st, at, by := reviewedAt(a); st != SubPending || at != "" || by != 0 {
+		t.Fatalf("after unlink: %s, %q, %d", st, at, by)
+	}
+	// a document the old Review button marked Reviewed with nothing linked goes back to Pending
+	if err := s.MarkReviewed(ctx, old, testStaffID); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := s.NormalizeReviewed(ctx); err != nil || n != 1 {
+		t.Fatalf("normalize = %d, %v; want 1", n, err)
+	}
+	if st, at, _ := reviewedAt(old); st != SubPending || at != "" {
+		t.Fatalf("old document: %s, %q", st, at)
+	}
+	if n, _ := s.NormalizeReviewed(ctx); n != 0 {
+		t.Errorf("second run changed %d documents", n)
+	}
+}
+
+func TestRemoveSubmissionRemovesTheRowKeepsTheCheckupAndLogsWithoutPersonalData(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrrm@example.com")
+	w := seedWorker(t, s, "Remove Me", "1990-04-12", co)
+	addRecord(t, s, w, "MedC-RM", "Fit", "2027-01-01", "Open", 1)
+	a, b := sentDocIn(t, s, sub, "Remove Me", "Other Doc")
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ?, FilePath = 'files/abc.pdf' WHERE SubmissionID = ?`, w, a); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-RM"); err != nil {
+		t.Fatal(err)
+	}
+	ref, err := s.RemoveSubmission(ctx, a, testStaffID)
+	if err != nil || ref != "files/abc.pdf" {
+		t.Fatalf("remove = %q, %v; want the stored file reference back", ref, err)
+	}
+	var n int
+	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM McuSubmission WHERE SubmissionID = ?`, a).Scan(&n)
+	if n != 0 {
+		t.Error("the document row is still there")
+	}
+	_ = s.DB.QueryRow(`SELECT COUNT(*) FROM McuRecord WHERE CheckUpID = 'MedC-RM'`).Scan(&n)
+	if n != 1 {
+		t.Error("the linked checkup must stay")
+	}
+	var detail string
+	if err := s.DB.QueryRow(`SELECT Detail FROM McuSubmissionEvent WHERE Action = 'Removed' AND EntityID = ?`, a).Scan(&detail); err != nil || strings.Contains(detail, "Remove Me") {
+		t.Errorf("event detail %q, %v: must exist and carry no name", detail, err)
+	}
+	if _, err := s.RemoveSubmission(ctx, a, testStaffID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("removing twice: %v, want ErrNotFound", err)
+	}
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET Status = 'Draft' WHERE SubmissionID = ?`, b); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.RemoveSubmission(ctx, b, testStaffID); !errors.Is(err, ErrNotFound) {
+		t.Errorf("removing a draft: %v, want ErrNotFound (unsent work is not staff's)", err)
+	}
+}

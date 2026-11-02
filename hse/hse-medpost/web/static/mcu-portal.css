@@ -334,12 +334,14 @@ body.mp {
 /* Dates stay on one line in the wide table. */
 .mp-table td[data-label="Sent"], .mp-table td[data-label="Requested"] { white-space: nowrap; }
 
-/* Tables on a phone become cards: JS (mcu-portal-cards.js) labels each cell with its column title. */
-@media (max-width: 640px) {
-  .mp-table.mp-stack, .mp-table.mp-stack tbody { display: block; width: 100%; background: transparent; }
+/* Tables become cards below 1100px, where ten columns no longer fit: JS (mcu-portal-cards.js) labels each
+   cell with its column title. Cards sit in a grid, so a tablet shows two or three side by side. */
+@media (max-width: 1100px) {
+  .mp-table.mp-stack { display: block; width: 100%; background: transparent; }
+  .mp-table.mp-stack tbody { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 10px; align-items: start; }
   .mp-table.mp-stack thead { display: none; }
   .mp-table.mp-stack caption { display: block; width: 100%; }
-  .mp-table.mp-stack tr { display: block; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); padding: 8px 12px; margin-bottom: 10px; }
+  .mp-table.mp-stack tr { display: block; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-2); padding: 8px 12px; margin: 0; }
   .mp-table.mp-stack td { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 4px 0; border-bottom: 0; text-align: right; white-space: normal; }
   .mp-table.mp-stack td:empty { display: none; }
   .mp-table.mp-stack td::before { content: attr(data-label); flex: none; text-align: left; font-size: 0.6875rem; font-weight: 700; color: var(--text-2); }
@@ -349,3 +351,14 @@ body.mp {
   .mp-table.mp-stack td.mp-decide::before { content: none; }
 }
 .mp-romif-signout { display: block; margin-top: 12px; }
+
+/* Wide screens: form pages use two columns instead of one narrow column on the left. Below 1100px
+   they stack as before. Settings: password, email and reminders as cards side by side. New batch:
+   the upload form left, the documents of the batch right. */
+.mp-panes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0; }
+.mp-pane h2 { margin-top: 20px; }
+@media (min-width: 1100px) {
+  .mp-panes { grid-template-columns: repeat(auto-fill, minmax(380px, 440px)); gap: 0 40px; align-items: start; }
+  .mp-panes-batch { grid-template-columns: minmax(380px, 440px) minmax(0, 1fr); }
+  .mp-panes-batch .mp-pane:last-child h2 { margin-top: 0; }
+}

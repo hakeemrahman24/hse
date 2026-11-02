@@ -155,13 +155,16 @@ func (s *Store) LinkRecord(ctx context.Context, id, staffID int64, checkUpID str
 		return ErrRecordTaken
 	}
 	now := s.stamp()
-	// A result turns Pending into Reviewed; without one the record is linked but the status stays.
+	// A result (a decision) turns Pending into Reviewed and records who decided and when; without one
+	// the record is linked but nothing says "reviewed": the status, the date and the reviewer stay as
+	// they were. Opening or linking is not a review (owner, 2026-11-02).
 	// The record must be unset or the same one: a linked document is never silently re-pointed.
 	res, err := s.DB.ExecContext(ctx,
 		`UPDATE McuSubmission SET Status = CASE WHEN ? <> '' THEN ? ELSE Status END, FK_McuRecordID = ?, FK_PatientID = COALESCE(FK_PatientID, ?),
-		   ReviewedAt = COALESCE(ReviewedAt, ?), FK_ReviewerStaffID = COALESCE(FK_ReviewerStaffID, ?)
+		   ReviewedAt = CASE WHEN ? <> '' THEN COALESCE(ReviewedAt, ?) ELSE ReviewedAt END,
+		   FK_ReviewerStaffID = CASE WHEN ? <> '' THEN COALESCE(FK_ReviewerStaffID, ?) ELSE FK_ReviewerStaffID END
 		 WHERE SubmissionID = ? AND Status IN (?, ?) AND (FK_McuRecordID IS NULL OR FK_McuRecordID = ?)`,
-		recordResult, SubReviewed, recordID, recordPatient, now, staffID, id, SubPending, SubReviewed, recordID)
+		recordResult, SubReviewed, recordID, recordPatient, recordResult, now, recordResult, staffID, id, SubPending, SubReviewed, recordID)
 	// The count above gives the friendly answer; the unique index uq_mcusub_mcurecord is the real
 	// guard when two staff members link the same record in the same instant.
 	if isUniqueViolation(err) {
@@ -182,7 +185,7 @@ func (s *Store) LinkRecord(ctx context.Context, id, staffID int64, checkUpID str
 // itself is not touched.
 func (s *Store) UnlinkRecord(ctx context.Context, id, staffID int64) error {
 	res, err := s.DB.ExecContext(ctx,
-		`UPDATE McuSubmission SET Status = ?, FK_McuRecordID = NULL WHERE SubmissionID = ? AND Status IN (?, ?) AND FK_McuRecordID IS NOT NULL`,
+		`UPDATE McuSubmission SET Status = ?, FK_McuRecordID = NULL, ReviewedAt = NULL, FK_ReviewerStaffID = NULL WHERE SubmissionID = ? AND Status IN (?, ?) AND FK_McuRecordID IS NOT NULL`,
 		SubPending, id, SubPending, SubReviewed)
 	if err != nil {
 		return err
@@ -191,6 +194,50 @@ func (s *Store) UnlinkRecord(ctx context.Context, id, staffID int64) error {
 		return s.stateError(ctx, id)
 	}
 	return s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "RecordUnlinked"})
+}
+
+// NormalizeReviewed puts back to Pending every Reviewed document that does not have a linked
+// checkup with a result. Before 2026-10-31 the Review button marked a document Reviewed the moment
+// it was opened; the rule now is that Reviewed means a decision was saved. It runs at every start
+// and is safe to repeat, because after the first run nothing breaks the rule any more. It returns
+// how many documents it changed.
+func (s *Store) NormalizeReviewed(ctx context.Context) (int, error) {
+	res, err := s.DB.ExecContext(ctx,
+		`UPDATE McuSubmission SET Status = ?, ReviewedAt = NULL, FK_ReviewerStaffID = NULL
+		 WHERE Status = ? AND NOT EXISTS (
+		   SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria IS NOT NULL)`,
+		SubPending, SubReviewed)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
+}
+
+// RemoveSubmission permanently removes a sent document (admin only, enforced where it is routed).
+// The row goes, and the caller removes the stored file whose reference it returns. The checkup
+// record, if one was linked, is medical data and is kept. The event log keeps who removed what by
+// id and status, never the worker's name or numbers. Drafts and documents still under Review are
+// the submitter's unsent work, so they are ErrNotFound here exactly as in the list.
+func (s *Store) RemoveSubmission(ctx context.Context, id, staffID int64) (fileRef string, err error) {
+	var status string
+	var ref sql.NullString
+	err = s.DB.QueryRowContext(ctx,
+		`SELECT Status, FilePath FROM McuSubmission WHERE SubmissionID = ? AND Status NOT IN (?, ?)`, id, SubDraft, SubReview).Scan(&status, &ref)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", err
+	}
+	res, err := s.DB.ExecContext(ctx, `DELETE FROM McuSubmission WHERE SubmissionID = ? AND Status = ?`, id, status)
+	if err != nil {
+		return "", err
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		return "", s.stateError(ctx, id) // its status changed between the read and the removal
+	}
+	return ref.String, s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "Removed", Detail: "was " + status})
 }
 
 // CloseReviewed closes a Reviewed document at the moment the reviewer notifies the submitter (owner,
@@ -519,6 +566,36 @@ func (a *StaffAPI) Link(w http.ResponseWriter, r *http.Request) {
 	a.act(w, r, func(ctx context.Context, id, staff int64) error {
 		return a.Store.LinkRecord(ctx, id, staff, body.CheckUpID)
 	})
+}
+
+// Remove takes a sent document away for good. The route wraps it in the admin check.
+func (a *StaffAPI) Remove(w http.ResponseWriter, r *http.Request) {
+	staff, ok := staffID(w, r)
+	if !ok {
+		return
+	}
+	id, ok := parseID(r.PathValue("id"))
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	ref, err := a.Store.RemoveSubmission(r.Context(), id, staff)
+	switch {
+	case err == nil:
+		if ref != "" && a.Files != nil {
+			if derr := a.Files.Delete(r.Context(), ref); derr != nil {
+				log.Printf("mcusubmit: removed document %d but not its file: %v", id, derr)
+			}
+		}
+		w.WriteHeader(http.StatusNoContent)
+	case errors.Is(err, ErrNotFound):
+		http.NotFound(w, r)
+	case errors.Is(err, ErrBadState):
+		http.Error(w, "This document changed a moment ago. Refresh the list and try again.", http.StatusConflict)
+	default:
+		log.Printf("mcusubmit: staff remove: %v", err)
+		http.Error(w, "Something went wrong.", http.StatusInternalServerError)
+	}
 }
 
 // Unlink undoes a wrong link on a document that is not closed yet.
