@@ -18,4 +18,13 @@
     });
     table.classList.add('mp-stack');
   });
+
+  // A form with data-confirm asks first (withdrawing deletes the file and cannot be undone). The
+  // question is an attribute the language dictionary translates too. Without JavaScript the
+  // form simply submits.
+  Array.prototype.forEach.call(document.querySelectorAll('form[data-confirm]'), function (form) {
+    form.addEventListener('submit', function (e) {
+      if (!window.confirm(form.getAttribute('data-confirm'))) e.preventDefault();
+    });
+  });
 })();

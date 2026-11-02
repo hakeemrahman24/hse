@@ -70,6 +70,11 @@ func startMcuPortal(database *sql.DB, sessionSecret string, mux *http.ServeMux, 
 
 	// Runs on SQLite and MariaDB alike (the column comes from migration 035 on MariaDB). A failure
 	// is logged, not fatal: the worst case is that old rejections are mentioned once in a mail.
+	if n, err := store.NormalizeReviewed(ctx); err != nil {
+		log.Printf("MCU portal: could not reset documents wrongly marked Reviewed: %v", err)
+	} else if n > 0 {
+		log.Printf("MCU portal: %d documents marked Reviewed without a checkup result were put back to Pending.", n)
+	}
 	if err := store.BackfillRejectNotices(ctx); err != nil {
 		log.Printf("MCU portal: could not mark old rejections as told: %v", err)
 	}

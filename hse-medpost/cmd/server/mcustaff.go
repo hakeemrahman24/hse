@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"hse-medpost/internal/mcusubmit"
+	"hse-medpost/internal/middleware"
 )
 
 // registerMcuStaff adds the staff side of the medical checkup portal to the staff app: the review
@@ -25,5 +26,7 @@ func registerMcuStaff(mux *http.ServeMux, guard func(http.Handler) http.Handler,
 	mux.Handle("POST /api/mcu-submissions/{id}/reject", guard(http.HandlerFunc(api.Reject)))
 	mux.Handle("POST /api/mcu-submissions/{id}/link", guard(http.HandlerFunc(api.Link)))
 	mux.Handle("POST /api/mcu-submissions/{id}/unlink", guard(http.HandlerFunc(api.Unlink)))
+	// Removing a record is the admin role only (owner, 2026-11-02); the guard above still applies.
+	mux.Handle("DELETE /api/mcu-submissions/{id}", guard(middleware.RequireAdmin(http.HandlerFunc(api.Remove))))
 	mux.Handle("POST /api/mcu-submissions/{id}/close", guard(http.HandlerFunc(api.Close)))
 }

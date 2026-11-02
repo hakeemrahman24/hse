@@ -30,8 +30,9 @@ const (
 
 var (
 	textNode = regexp.MustCompile(`>([^<>]+)<`)
-	// title/placeholder/aria-label/alt carry words a reader sees or hears.
-	visibleAttr = regexp.MustCompile(`\b(title|placeholder|aria-label|alt)="([^"]*)"`)
+	// title/placeholder/aria-label/alt carry words a reader sees or hears; data-confirm is the question
+	// a confirm box asks (mcu-portal-cards.js).
+	visibleAttr = regexp.MustCompile(`\b(title|placeholder|aria-label|alt|data-confirm)="([^"]*)"`)
 )
 
 // languageOf reads the choice; anything but a known value means English.
