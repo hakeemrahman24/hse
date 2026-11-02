@@ -5760,7 +5760,8 @@ a.app-tab {
 .sub-group-title { font-size: 0.6875rem; font-weight: 600; color: var(--text-3); margin-bottom: 4px; }
 .sub-row { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-2); white-space: normal; }
 .sub-row input, .sub-row select { box-sizing: border-box; height: 24px; font-size: 0.75rem; padding: 0 6px; flex: 1 1 auto; min-width: 0; margin: 0; }
-.sub-row .btn-ghost { flex: none; }
+/* Buttons in the panel are the same 24px as the fields beside them and as Review in the row. */
+#tab-submitted .sub-row .btn-ghost { flex: none; box-sizing: border-box; height: 24px; padding: 0 10px !important; font-size: 0.75rem !important; line-height: 1; }
 .sub-none { display: block; color: var(--text-3); }
 .sub-panel-err { grid-column: 1 / -1; margin: 0; font-size: 0.75rem; color: #a12a1b; }
 .sub-panel-err:empty { display: none; }
