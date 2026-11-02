@@ -166,6 +166,11 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("POST "+basePath+"/admin/approve", a.AdminApprove)
 	in.HandleFunc("POST "+basePath+"/admin/reject", a.AdminReject)
 	in.HandleFunc("POST "+basePath+"/admin/disable", a.AdminDisable)
+	in.HandleFunc("POST "+basePath+"/admin/enable", a.AdminEnable)
+	in.HandleFunc("POST "+basePath+"/admin/archive", a.AdminArchive)
+	in.HandleFunc("POST "+basePath+"/admin/restore", a.AdminRestore)
+	in.HandleFunc("GET "+basePath+"/admin/delete", a.AdminDeletePage)
+	in.HandleFunc("POST "+basePath+"/admin/delete", a.AdminDeleteSubmit)
 	in.HandleFunc("GET "+basePath+"/admin/reminders", a.ReminderPage)
 	in.HandleFunc("POST "+basePath+"/admin/reminders", a.ReminderSave)
 	in.HandleFunc("POST "+basePath+"/admin/reminders/send", a.ReminderSendNow)
@@ -217,21 +222,25 @@ func (a *API) clientIP(r *http.Request) string {
 
 // page is everything the templates need.
 type page struct {
-	Signing   bool // the ROMIF page: signed in but not allowed anywhere else yet, so no sign-in or sign-up links
-	Title     string
-	Nav       string // which sidebar item is current: the template name without ".html"
-	User      *Submitter
-	Sitekey   string
-	DevCheck  bool
-	Error     string
-	Form      map[string]string
-	Companies []companyOption
-	Token     string
-	Heading   string
-	Message   string
-	Counts    map[string]int
-	Pending   []adminRow
-	Accounts  []adminRow
+	Signing       bool // the ROMIF page: signed in but not allowed anywhere else yet, so no sign-in or sign-up links
+	Title         string
+	Nav           string // which sidebar item is current: the template name without ".html"
+	User          *Submitter
+	Sitekey       string
+	DevCheck      bool
+	Error         string
+	Form          map[string]string
+	Companies     []companyOption
+	Token         string
+	Heading       string
+	Message       string
+	Counts        map[string]int
+	Pending       []adminRow
+	Accounts      []adminRow
+	Target        *adminRow        // the account the delete warning page is about
+	Foot          AccountFootprint // what deleting it would take with it
+	ShowArchived  bool             // the admin list also shows archived accounts
+	ArchivedCount int
 
 	// Upload pages.
 	Docs          []Submission
@@ -269,6 +278,7 @@ type adminRow struct {
 	ID                                                int64
 	Name, Email, Company, Position, Status, CreatedAt string
 	RejectReason, BouncedAt                           string
+	Docs                                              int // documents this account has sent
 }
 
 func (a *API) newPage(title string) page {

@@ -29,9 +29,16 @@ func (a *API) AdminPage(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, "list submitters", err)
 		return
 	}
+	showArchived := r.URL.Query().Get("archived") == "1"
 	var waiting, others []Submitter
+	archived := 0
 	for _, u := range all {
 		switch {
+		case u.Status == StatusArchived:
+			archived++
+			if showArchived {
+				others = append(others, u)
+			}
 		case u.Status == StatusRequested && u.EmailVerifiedAt != "":
 			waiting = append(waiting, u)
 		case u.Status == StatusRequested:
@@ -43,6 +50,14 @@ func (a *API) AdminPage(w http.ResponseWriter, r *http.Request) {
 	names := a.allCompanyNames(r.Context())
 	p := a.newPage("Admin")
 	p.User, p.Pending, p.Accounts = admin, a.toRows(waiting, names), a.toRows(others, names)
+	p.ShowArchived, p.ArchivedCount = showArchived, archived
+	if counts, err := a.Store.DocumentCounts(r.Context()); err != nil {
+		log.Printf("mcusubmit: document counts: %v", err) // the list still works without them
+	} else {
+		for i := range p.Accounts {
+			p.Accounts[i].Docs = counts[p.Accounts[i].ID]
+		}
+	}
 	a.render(w, http.StatusOK, "admin.html", p)
 }
 
