@@ -329,6 +329,16 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
 .mp-check { margin: 4px 0; }
 .mp-results button { padding: 5px 8px; }
 
+/* Sign-up form on a desktop (owner, 2026-11-05: it was a phone-width column on a wide screen).
+   From 760px the card widens and the four fields sit two to a row; the ROMIF statement, the
+   security check and the button take the full width. Below 760px nothing changes. */
+@media (min-width: 760px) {
+  .mp .login-card.mp-reg { max-width: 720px; padding: 18px 22px; }
+  .mp-form2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; align-items: start; }
+  .mp-form2 > .field { min-width: 0; }
+  .mp-form2 > :not(.field), .mp-form2 > .mp-full { grid-column: 1 / -1; }
+}
+
 /* Phone width: a short header on one line, and the sidebar as a wrapped row of chips instead of a
    tall list (the list took half the screen before the page started). */
 @media (max-width: 640px) {

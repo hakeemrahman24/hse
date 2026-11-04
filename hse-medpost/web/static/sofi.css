@@ -2,6 +2,7 @@
 .sofi-field { margin-bottom: 14px; }
 .sofi-error { color: #b42318; font-size: 0.875rem; margin: 12px 0 0; }
 .sofi-error[hidden] { display: none; }
+.sofi-preview { margin: 12px 0 0; padding: 8px 12px; font-size: 0.875rem; font-weight: 600; color: #b54708; background: #fffaeb; border: 1px solid #fedf89; border-radius: 6px; }
 
 .combo { position: relative; display: block; }
 .combo-list {

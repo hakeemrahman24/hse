@@ -44,6 +44,8 @@
   var msgEl = document.getElementById("sofi-window-msg");
   var openNowBtn = document.getElementById("sofi-open-now");
   var emptyEl = document.getElementById("sofi-window-empty");
+  var previewBtn = document.getElementById("sofi-preview-btn");
+  var previewOn = false; // what the server last said
 
   var STATE_LABEL = {
     upcoming: "Upcoming", open: "Open", past: "Finished",
@@ -103,7 +105,12 @@
       if (!results[0].ok) { throw new Error(list.error || "Could not read the schedule."); }
       bodyEl.replaceChildren.apply(bodyEl, list.map(row));
       emptyEl.hidden = list.length > 0;
-      if (status.state === "open") {
+      previewOn = !!status.preview;
+      previewBtn.textContent = previewOn ? "Close preview" : "Open preview (answers not saved)";
+      previewBtn.disabled = status.state === "open"; // a real window is already open and recording
+      if (previewOn) {
+        statusEl.textContent = "PREVIEW is on until " + status.previewUntil + " (GMT+9). /sofi is open, but nothing sent is saved.";
+      } else if (status.state === "open") {
         statusEl.textContent = "Open now, until " + status.until + " (GMT+9).";
       } else if (status.state === "upcoming") {
         statusEl.textContent = "Closed. The next window opens " + status.opens + " (GMT+9).";
@@ -166,6 +173,22 @@
     } catch (err) {
       showMessage(err.message);
     }
+    load();
+  });
+
+  // Preview opens /sofi without a window, for looking at it. Answers are scored and shown but never
+  // saved. The server turns it off by itself after two hours, so it cannot stay open by mistake.
+  previewBtn.addEventListener("click", async function () {
+    if (!previewOn && !confirm("Open /sofi for preview? Anyone with the link can fill it in, but nothing they send is saved. It turns itself off after 2 hours.")) { return; }
+    showMessage("");
+    var res = await fetch("/api/sofi-preview", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ on: !previewOn })
+    });
+    var data = await readJson(res);
+    if (!res.ok) { showMessage(data.error || "Could not change preview."); }
     load();
   });
 
