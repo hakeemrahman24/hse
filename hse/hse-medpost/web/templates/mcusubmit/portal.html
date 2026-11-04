@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=29" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=30" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
   <script src="/static/mcu-portal-name.js?v=2" defer></script>
   <script src="/static/mcu-portal-cards.js?v=4" defer></script>
@@ -143,11 +143,11 @@
 
 {{define "register.html"}}{{template "head" .}}
     <div class="login-wrap">
-      <div class="login-card mp-wide">
+      <div class="login-card mp-wide mp-reg">
         <h1>Request an <span>account</span></h1>
         <p class="sub">For company HR contacts and clinics who send medical checkup results.</p>
         {{template "error" .}}
-        <form method="post" action="/mcu-submit/register" autocomplete="on">
+        <form method="post" action="/mcu-submit/register" autocomplete="on" class="mp-form2">
           <div class="field"><label for="name"><span>Full name</span></label>
             <input id="name" name="name" type="text" maxlength="150" required autocomplete="name" data-name value="{{.Form.name}}" /></div>
           <div class="field"><label for="email"><span>Work email</span></label>
@@ -162,8 +162,8 @@
           <div class="field"><label for="position"><span>Position</span></label>
             <input id="position" name="position" type="text" maxlength="128" data-position required value="{{.Form.position}}" /></div>
           {{template "romif-statement" .}}
-          <div class="field">{{template "turnstile" .}}</div>
-          <div class="submit-row"><button type="submit" class="btn-primary">Request account</button></div>
+          <div class="field mp-full">{{template "turnstile" .}}</div>
+          <div class="submit-row mp-full"><button type="submit" class="btn-primary">Request account</button></div>
         </form>
         <p class="mp-hint">Already have a login? <a href="/mcu-submit/signin">Sign in</a></p>
       </div>

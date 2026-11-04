@@ -500,7 +500,27 @@ function workerDetailFieldsHtml(p) {
       ${roField("Blood type", p.bloodType)}
       ${roField("Employee/badge ID", p.employeeId)}
       ${roField("NIK/Passport ID", p.personalId)}
+      <label data-mcu-valid-until>
+        <span>MCU valid until</span>
+        <div class="ro-value">…</div>
+      </label>
     </div>`;
+}
+
+// The patient list carries no checkup data, so the "MCU valid until" field
+// workerDetailFieldsHtml draws starts as a placeholder and is filled here
+// from the patient's newest checkup (the server orders records newest first).
+async function fillMcuValidUntil(container, patientId) {
+  const value = container?.querySelector("[data-mcu-valid-until] .ro-value");
+  if (!value) return;
+  try {
+    const res = await fetch(`/api/mcu-records?patientId=${patientId}`, { credentials: "same-origin" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const records = await res.json();
+    value.textContent = (Array.isArray(records) && records[0]?.resultValidUntil) || "—";
+  } catch (err) {
+    value.textContent = "Could not load";
+  }
 }
 
 // true while #patient-form is open from one of these inline rows rather
@@ -672,6 +692,7 @@ function showWorkerDetailForPatient(p, triggerRow, linkSelector) {
   if (!expanded) return;
   markExpandedLink(triggerRow, linkSelector);
   const row = expandedDetailRow;
+  fillMcuValidUntil(row, p.patientId);
   row.querySelector("[data-inline-edit-worker]")?.addEventListener("click", () => {
     currentPatient = p;
     patientFormOpenedFromInlineRow = true;
@@ -835,6 +856,7 @@ async function showMcuDetailInline(mcuRecordId, triggerRow) {
   if (!expanded) return;
   markExpandedLink(triggerRow, "[data-mcu-id]");
   const row = expandedDetailRow;
+  fillMcuValidUntil(row, p.patientId);
   row.querySelector("[data-inline-new-checkup]")?.addEventListener("click", () => newCheckupForPatientInline(p));
   row.querySelector("[data-inline-edit-checkup]")?.addEventListener("click", () => {
     collapseDetailRow();

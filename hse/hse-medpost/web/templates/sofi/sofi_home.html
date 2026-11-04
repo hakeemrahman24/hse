@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/sofi.css?v=6" />
+  <link rel="stylesheet" href="/static/sofi.css?v=7" />
 </head>
 <body>
   <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
@@ -27,6 +27,7 @@
     <div class="login-card login-card--wide">
       <h1>{{tr .Lang "Fatigue screening"}}</h1>
       <p class="sub"><i>Swedish Occupational Fatigue Inventory</i> (SOFI)</p>
+      {{if .Preview}}<p class="sofi-preview" role="status">{{tr .Lang "Preview: your answers are not saved."}}</p>{{end}}
 
       {{if .Past}}
       <section class="sofi-past">
