@@ -479,6 +479,7 @@ func main() {
 	mux.HandleFunc("GET /api/directory/checkups", directoryAPI.Checkups)
 	mux.HandleFunc("GET /api/directory/activities", directoryAPI.Activities)
 	mux.HandleFunc("GET /api/directory/subheaders", directoryAPI.SubHeaders)
+	mux.HandleFunc("GET /api/directory/regions", directoryAPI.Regions)
 	mux.HandleFunc("GET /api/directory/activities/{id}/files", directoryAPI.ActivityFiles)
 	mux.HandleFunc("GET /api/directory/evidence/{id}", directoryAPI.EvidenceFile)
 	mux.HandleFunc("GET /api/directory/evidence/{id}/{filename}", directoryAPI.EvidenceFile)
