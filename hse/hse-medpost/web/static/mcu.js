@@ -824,6 +824,20 @@ function mcuDetailFieldsHtml(rec) {
   return { exam: admin + groups, result };
 }
 
+// The health certificate is offered only for a Fit / Fit-with-note result
+// that is still standing (isCertificateEligible) and whose valid-until date
+// has not passed. An expired one is not offered here; the history table's
+// Certificate link still reaches it.
+function validCertificateButtonHtml(rec, p) {
+  const certifiable = rec.resultCriteria === "Fit" || rec.resultCriteria === "FitWithNote";
+  const days = daysUntilDate(rec.resultValidUntil);
+  if (!certifiable || days === null || days < 0) return "";
+  if (!isCertificateEligible(rec.checkUpStatus, rec.hcValidityStatus, rec.resultCriteria)) return "";
+  const abbrev = companyCache.find((c) => c.companyId === Number(p.companyId))?.abbreviation || "";
+  const href = certificateOpenHref(rec.mcuRecordId, rec.checkUpId, abbrev, p.name || "", rec.resultValidUntil);
+  return `<a class="btn-outline" href="${escapeHtml(href)}" target="_blank" rel="noopener">View / download health certificate</a>`;
+}
+
 async function showMcuDetailInline(mcuRecordId, triggerRow) {
   const resolved = await resolvePatientByMcuId(mcuRecordId);
   if (!resolved) return;
@@ -849,6 +863,7 @@ async function showMcuDetailInline(mcuRecordId, triggerRow) {
     </div>
     <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
       <button type="button" class="btn-primary" data-inline-edit-checkup="${rec.mcuRecordId}">Edit checkup</button>
+      ${validCertificateButtonHtml(rec, p)}
       <button type="button" class="btn-outline" data-inline-cancel>Cancel</button>
     </div>`,
     "mcu",
