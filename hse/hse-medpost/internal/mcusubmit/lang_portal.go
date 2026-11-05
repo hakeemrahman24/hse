@@ -46,7 +46,6 @@ var portalText = map[string][2]string{
 	"Nationality":          {"Kewarganegaraan", "国籍"},
 	"File":                 {"File", "文件"},
 	"Action":               {"Tindakan", "操作"},
-	"Position / company":   {"Jabatan / perusahaan", "职位 / 公司"},
 	"Open PDF":             {"Buka PDF", "打开 PDF"},
 	"No file":              {"Tidak ada file", "无文件"},
 	"Remove":               {"Hapus", "删除"},

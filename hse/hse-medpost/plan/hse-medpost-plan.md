@@ -309,6 +309,10 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 ## Progress Log
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
+### 2026-11-06 (latest) — Company shows its abbreviation first
+- **Changed:** in My documents (and the batch pages), All accounts and Account requests, the Company column shows `Company.Abbreviation` in bold with the full name small underneath; a company without an abbreviation shows its name alone. My documents now has Worker (name, position, birth date · nationality) and Company columns instead of "Position / company". Submission rows join `Company` on the snapshot text (`co.Name = s.PatCompanyText`; Name is unique) because `FK_CompanyID` is only set once staff link the checkup.
+- **Open:** only companies with an abbreviation benefit; the staff app's lists were not changed.
+
 ### 2026-11-06 (later) — Admin account tables in the same style
 - **Changed:** All accounts goes from seven columns to five (Account = name over email; Company; Status with reject reason / bounce under the badge; ROMIF with the date under "Signed"; Action right-aligned). Account requests goes to four (Account, Company over position, Requested, Decide). Both reuse the `mp-docs` table style and show as cards on a phone.
 - **Why:** the long name/email/company strings wrapped and the empty Note column wasted width. The ROMIF date was showing raw (`...T10:09:26`) because "Signed " text in the cell stopped the card script reformatting it; it now sits in a `span.mp-when`.

@@ -80,7 +80,10 @@ type Submission struct {
 	PatGender             string
 	RecordID              int64 // the checkup record a Closed document was linked to, 0 = none
 	PatientID, CompanyID  int64
-	SubmitterCompanyID    int64 // the uploader's company: the template shows Withdraw to that company's accounts
+	// PatCompanyAbbr is the abbreviation of the company named in PatCompanyText ("" when it has none
+	// or the text matches no company). Lists show it first and the full name small.
+	PatCompanyAbbr     string
+	SubmitterCompanyID int64 // the uploader's company: the template shows Withdraw to that company's accounts
 }
 
 const submissionColumns = `s.SubmissionID, s.FK_BatchID, s.FK_SubmitterID, COALESCE(u.Name, ''),
@@ -88,13 +91,14 @@ const submissionColumns = `s.SubmissionID, s.FK_BatchID, s.FK_SubmitterID, COALE
 	s.IsNewEmployee, CASE WHEN s.FilePath IS NULL THEN 0 ELSE 1 END, s.ScanStatus, s.Status, COALESCE(s.RejectReason, ''),
 	s.SubmittedAt, COALESCE(b.SentAt, ''), COALESCE(s.WithdrawnAt, ''), COALESCE(s.FileExpiresAt, ''),
 	COALESCE(s.ReviewedAt, ''), COALESCE(rs.StaffName, ''), COALESCE(s.PatNik, ''), COALESCE(s.PatPassportNo, ''), COALESCE(s.PatGender, ''),
-	COALESCE(s.FK_PatientID, 0), COALESCE(s.FK_CompanyID, 0), COALESCE(s.FK_McuRecordID, 0), COALESCE(rec.ResultCriteria, ''), COALESCE(rec.ResultNotes, ''), COALESCE(rec.Recommendation, ''), COALESCE(u.FK_CompanyID, 0)`
+	COALESCE(s.FK_PatientID, 0), COALESCE(s.FK_CompanyID, 0), COALESCE(s.FK_McuRecordID, 0), COALESCE(rec.ResultCriteria, ''), COALESCE(rec.ResultNotes, ''), COALESCE(rec.Recommendation, ''), COALESCE(u.FK_CompanyID, 0), COALESCE(co.Abbreviation, '')`
 
 const submissionFrom = ` FROM McuSubmission s
 	JOIN McuBatch b ON b.BatchID = s.FK_BatchID
 	JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID
 	LEFT JOIN MedpostStaffTable rs ON rs.StaffID = s.FK_ReviewerStaffID
-	LEFT JOIN McuRecord rec ON rec.McuRecordID = s.FK_McuRecordID`
+	LEFT JOIN McuRecord rec ON rec.McuRecordID = s.FK_McuRecordID
+	LEFT JOIN Company co ON co.Name = s.PatCompanyText`
 
 // ResultMessage is what the submitter may read about a result that is not a plain Fit, shown only
 // once the reviewer closed the document (that is the moment the submitter is told). Owner,
@@ -129,7 +133,7 @@ func (s *Store) querySubmissions(ctx context.Context, where string, args ...any)
 		if err := rows.Scan(&d.ID, &d.BatchID, &d.SubmitterID, &d.SubmitterName, &d.PatName, &d.PatDateOfBirth,
 			&d.PatPosition, &d.PatCompanyText, &d.PatNationality, &isNew, &hasFile, &d.ScanStatus, &d.Status,
 			&d.RejectReason, &d.SubmittedAt, &d.SentAt, &d.WithdrawnAt, &d.FileExpiresAt,
-			&d.ReviewedAt, &d.ReviewedBy, &d.PatNik, &d.PatPassportNo, &d.PatGender, &d.PatientID, &d.CompanyID, &d.RecordID, &d.Result, &d.ResultNotes, &d.Recommendation, &d.SubmitterCompanyID); err != nil {
+			&d.ReviewedAt, &d.ReviewedBy, &d.PatNik, &d.PatPassportNo, &d.PatGender, &d.PatientID, &d.CompanyID, &d.RecordID, &d.Result, &d.ResultNotes, &d.Recommendation, &d.SubmitterCompanyID, &d.PatCompanyAbbr); err != nil {
 			return nil, err
 		}
 		d.IsNewEmployee, d.HasFile = isNew == 1, hasFile == 1

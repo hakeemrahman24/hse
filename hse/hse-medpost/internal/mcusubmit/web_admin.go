@@ -6,11 +6,11 @@ import (
 	"net/http"
 )
 
-func (a *API) toRows(rows []Submitter, companies map[int64]string) []adminRow {
+func (a *API) toRows(rows []Submitter, companies map[int64]companyLabel) []adminRow {
 	out := make([]adminRow, 0, len(rows))
 	for _, u := range rows {
 		out = append(out, adminRow{
-			ID: u.ID, Name: u.Name, Email: u.Email, Company: companies[u.CompanyID], Position: u.Position,
+			ID: u.ID, Name: u.Name, Email: u.Email, Company: companies[u.CompanyID].Name, CompanyAbbr: companies[u.CompanyID].Abbr, Position: u.Position,
 			Status: u.Status, CreatedAt: u.CreatedAt, RejectReason: u.RejectReason, BouncedAt: u.EmailBouncedAt,
 		})
 	}
@@ -47,7 +47,7 @@ func (a *API) AdminPage(w http.ResponseWriter, r *http.Request) {
 			others = append(others, u)
 		}
 	}
-	names := a.allCompanyNames(r.Context())
+	names := a.allCompanies(r.Context())
 	p := a.newPage("Admin")
 	p.User, p.Pending, p.Accounts = admin, a.toRows(waiting, names), a.toRows(others, names)
 	p.ShowArchived, p.ArchivedCount = showArchived, archived
