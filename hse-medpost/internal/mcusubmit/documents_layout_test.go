@@ -1,8 +1,10 @@
 package mcusubmit
 
 import (
+	"html"
 	"net/url"
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -123,6 +125,42 @@ func TestCompanyShowsItsAbbreviationFirst(t *testing.T) {
 	} {
 		if !strings.Contains(body, noAbbr) || strings.Contains(body, `<strong>PTEX</strong>`) {
 			t.Errorf("%s: a company without an abbreviation should show its name alone", name)
+		}
+	}
+}
+
+// New batch carries the upload progress block, its script, and the messages in every language
+// (owner, 2026-11-06): a big scan must not look like a hang while it uploads and is rebuilt.
+func TestNewBatchHasTheUploadProgressBlockInEveryLanguage(t *testing.T) {
+	u := newUploadEnv(t)
+	body := u.get("/mcu-submit/batch", u.cookie).Body.String()
+	for _, want := range []string{`id="up-progress"`, `id="up-status"`, `data-m="checking"`, "/static/mcu-portal-upload.js"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("New batch lacks %q", want)
+		}
+	}
+	for _, text := range []string{
+		"Uploading the file…", "The file is larger than 15 MB. Split it or scan at a lower resolution.",
+	} {
+		if _, ok := portalText[text]; !ok {
+			t.Errorf("no Indonesian/Chinese text for %q", text)
+		}
+	}
+	for _, key := range []string{"Uploaded. Checking and shrinking the file now.", "This file is over 10 MB, so uploading", "This file is over 10 MB. Making it smaller first", "Made smaller: {from} MB", "The connection was cut or timed out."} {
+		found := false
+		for en := range portalText {
+			if strings.HasPrefix(en, key) {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("no translation starting %q", key)
+		}
+	}
+	// Every message in the page must be a dictionary key word for word, or it stays English.
+	for _, m := range regexp.MustCompile(`data-m="[a-z]+">([^<]+)</span>`).FindAllStringSubmatch(body, -1) {
+		if _, ok := portalText[html.UnescapeString(m[1])]; !ok {
+			t.Errorf("page message has no translation entry: %q", m[1])
 		}
 	}
 }

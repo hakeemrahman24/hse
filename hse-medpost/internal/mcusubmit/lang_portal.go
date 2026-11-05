@@ -89,6 +89,16 @@ var portalText = map[string][2]string{
 	"Indonesian citizens: the 16-digit NIK. Everyone else: the passport number (6 to 12 letters or digits).": {"Warga negara Indonesia: NIK 16 digit. Lainnya: nomor paspor (6 sampai 12 huruf atau angka).", "印度尼西亚公民：16 位 NIK。其他人：护照号码(6 到 12 位字母或数字)。"},
 	"Checkup result (PDF, up to 15 MB)": {"Hasil check-up (PDF, maksimal 15 MB)", "体检结果(PDF,最大 15 MB)"},
 	"The file is rebuilt and compressed when it is uploaded. Password-protected PDFs and PDFs with scripts or attachments are refused.": {"File dibangun ulang dan dikompres saat diunggah. PDF yang dilindungi kata sandi serta PDF dengan skrip atau lampiran ditolak.", "文件上传时会被重新生成并压缩。受密码保护的 PDF,以及带脚本或附件的 PDF 将被拒绝。"},
+	"Uploading the file…": {"Mengunggah file…", "正在上传文件…"},
+	"Uploaded. Checking and shrinking the file now. A large scan can take a minute or two. Keep this page open.":                                                    {"Sudah terunggah. File sedang diperiksa dan diperkecil. Pindaian besar bisa memakan satu atau dua menit. Biarkan halaman ini tetap terbuka.", "已上传。正在检查并压缩文件。较大的扫描件可能需要一两分钟。请保持此页面打开。"},
+	"This file is over 10 MB, so uploading and checking it can take a few minutes. Keep this page open until it finishes.":                                          {"File ini lebih dari 10 MB, jadi mengunggah dan memeriksanya bisa memakan beberapa menit. Biarkan halaman ini tetap terbuka sampai selesai.", "此文件超过 10 MB，上传和检查可能需要几分钟。请保持此页面打开直到完成。"},
+	"The file is larger than 15 MB. Split it or scan at a lower resolution.":                                                                                        {"File lebih besar dari 15 MB. Bagi file atau pindai dengan resolusi lebih rendah.", "文件超过 15 MB。请拆分文件或降低扫描分辨率。"},
+	"The connection was cut or timed out. The file may have arrived: look in the list of documents in this batch before you upload it again.":                       {"Koneksi terputus atau habis waktu. File mungkin sudah sampai: lihat daftar dokumen di kumpulan ini sebelum mengunggah ulang.", "连接中断或超时。文件可能已送达：请先查看本批次的文件列表，再重新上传。"},
+	"This file is over 10 MB. Making it smaller first…":                                                                                                             {"File ini lebih dari 10 MB. Diperkecil dulu…", "此文件超过 10 MB。正在先压缩…"},
+	"Made smaller: {from} MB to {to} MB. The pages are saved as pictures, so the text in this PDF can no longer be selected. The medical post sees the same pages.": {"Diperkecil: {from} MB menjadi {to} MB. Halaman disimpan sebagai gambar, sehingga teks di PDF ini tidak bisa lagi dipilih. Pos medis melihat halaman yang sama.", "已压缩：{from} MB 变为 {to} MB。页面已保存为图片，因此无法再选取此 PDF 中的文字。医务室看到的页面不变。"},
+	"Already sent: waiting for the medical post":                                                                                                                    {"Sudah dikirim: menunggu pos medis", "已发送：等待医务室处理"},
+	"Checkup done {last}, valid until {until}. A new one is accepted only more than 180 days after the last, from {from}.":                                          {"Check-up dilakukan {last}, berlaku sampai {until}. Yang baru diterima hanya lebih dari 180 hari setelah yang terakhir, yaitu mulai {from}.", "体检日期 {last}，有效期至 {until}。仅在上次体检 180 天之后才接受新的体检，从 {from} 起。"},
+	"This worker already has a document waiting for the medical post. Wait for its result before sending another.":                                                  {"Pekerja ini sudah memiliki dokumen yang menunggu pos medis. Tunggu hasilnya sebelum mengirim yang lain.", "该员工已有文件在等待医务室处理。请等待结果后再提交新的。"},
 	"Upload and review": {"Unggah dan periksa", "上传并检查"},
 	"Documents in this": {"Dokumen dalam", "本批次中的"},
 	"No documents yet.": {"Belum ada dokumen.", "暂无文件。"},
@@ -139,6 +149,8 @@ type portalPattern struct {
 }
 
 var portalPatterns = []portalPattern{
+	{regexp.MustCompile(`^This worker already has a valid medical checkup \(done on (\S+), valid until (\S+)\)\. A new checkup is accepted only more than 180 days after the last one, from (\S+)\.$`),
+		"Pekerja ini sudah memiliki medical check-up yang berlaku (dilakukan $1, berlaku sampai $2). Check-up baru diterima hanya lebih dari 180 hari setelah yang terakhir, yaitu mulai $3.", "该员工已有有效体检（体检日期 $1，有效期至 $2）。仅在上次体检 180 天之后才接受新的体检，从 $3 起。"},
 	{regexp.MustCompile(`^(\d+) documents need your action$`), "$1 dokumen perlu tindakan Anda", "$1 份文件需要您处理"},
 	{regexp.MustCompile(`^(\d+) documents?, page (\d+) of (\d+)$`), "$1 dokumen, halaman $2 dari $3", "共 $1 份文件，第 $2 页，共 $3 页"},
 	{regexp.MustCompile(`^Send batch of (\d+) for review$`), "Kirim kumpulan berisi $1 dokumen untuk ditinjau", "发送包含 $1 份文件的批次以供审核"},

@@ -451,3 +451,13 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
 .mp-docs td:first-child .mp-sub { font-weight: 400; }
 .mp-docs .mp-sub { overflow-wrap: anywhere; }
 .mp-docs td { padding-top: 10px; padding-bottom: 10px; }
+
+/* New batch upload: the progress bar and its status line sit just above the Upload button. */
+.mp-progress { display: block; width: 100%; max-width: 420px; height: 10px; margin: 6px 0 2px; accent-color: var(--accent); }
+.mp-warnline { color: #8a5a00; }
+.mp-hint.mp-bad { color: #a12a1b; font-weight: 700; }
+
+/* A worker the picker lists but cannot select: greyed out, with the reason in red under the details. */
+.mp-results li.mp-blocked button { cursor: not-allowed; }
+.mp-results li.mp-blocked button:disabled { color: var(--text-3); }
+.mp-results li.mp-blocked button .mp-blocked-why { display: block; color: #a12a1b; font-weight: 700; margin-top: 2px; opacity: 1; }
