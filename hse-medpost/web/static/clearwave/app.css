@@ -4309,7 +4309,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   margin-bottom: 0;
 }
 
-.dash-pivot-table,
 /* Result rows that open to list the checkups behind them. */
 .dash-case-toggle {
   display: inline-flex;
@@ -4343,6 +4342,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 .dash-case-label { font-size: 12px; font-weight: 600; opacity: 0.7; }
 .dash-case-empty { margin: 4px 0 8px; opacity: 0.7; }
 
+.dash-pivot-table,
 .dash-detail-table {
   width: 100%;
   border-collapse: collapse;
