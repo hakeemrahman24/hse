@@ -223,6 +223,8 @@
     body.textContent = '';
     list.forEach(function (d) {
       var tr = document.createElement('tr');
+      // One tint per status (see .sub-st-* in app.css) so the state shows at a glance without reading the column.
+      tr.className = 'sub-st-' + String(d.status || '').toLowerCase();
       cell(tr, when(d.sentAt));
       var worker = cell(tr, d.worker);
       note(worker, d.isNewEmployee ? 'New employee' : '');
