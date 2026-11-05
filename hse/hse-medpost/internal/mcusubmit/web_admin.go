@@ -83,6 +83,8 @@ func (a *API) adminFailed(w http.ResponseWriter, admin *Submitter, err error) {
 		a.notFound(w, admin)
 	case errors.Is(err, ErrBadState):
 		a.message(w, http.StatusConflict, "Already decided", "This account is not in a state where that is possible. Reload the Admin page.", admin)
+	case errors.Is(err, ErrCompanyFull):
+		a.message(w, http.StatusConflict, "Company is full", "This company already has two accounts. Archive or delete one of them first.", admin)
 	default:
 		a.serverError(w, "admin action", err)
 	}

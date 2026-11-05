@@ -7,9 +7,9 @@ package mcusubmit
 var indonesianText = map[string]string{
 	// ROMIF on the sign-up page (adapted from the old clinic app's wording; owner to review)
 	"Release of medical information (ROMIF)": "Persetujuan pelepasan informasi medis (ROMIF)",
-	"By requesting this account I understand that the medical post will store and review the medical checkup results I send, and that a worker's health information may be shared with company management or authorised workplace representatives when reasonably needed for workplace safety, company policy or other legitimate medical purposes.": "Dengan mengajukan akun ini, saya memahami bahwa pos medis akan menyimpan dan meninjau hasil medical check-up yang saya kirim, dan bahwa informasi kesehatan pekerja dapat dibagikan kepada manajemen perusahaan atau perwakilan yang berwenang di tempat kerja apabila diperlukan untuk keselamatan kerja, kebijakan perusahaan, atau tujuan medis yang sah.",
+	"By requesting this account I understand that the Medical Team of the PT Layar Nusantara Gas project area will store and review the medical checkup results I send, and that a worker's health information may be shared with company management or authorised workplace representatives when reasonably needed for workplace safety, company policy or other legitimate medical purposes.": "Dengan mengajukan akun ini, saya memahami bahwa Tim Medis di area proyek PT Layar Nusantara Gas akan menyimpan dan meninjau hasil medical check-up yang saya kirim, dan bahwa informasi kesehatan pekerja dapat dibagikan kepada manajemen perusahaan atau perwakilan yang berwenang di tempat kerja apabila diperlukan untuk keselamatan kerja, kebijakan perusahaan, atau tujuan medis yang sah.",
 	"I confirm that the workers whose results I send know about this and agree to it, and that my company has authorised me to send them.":                                                                      "Saya menyatakan bahwa pekerja yang hasilnya saya kirim mengetahui dan menyetujui hal ini, dan bahwa perusahaan saya telah memberi saya wewenang untuk mengirimkannya.",
-	"I also understand that the information may be shared with other healthcare facilities for referral or continuity of care, in line with the medical post's policies and the law that applies in Indonesia.": "Saya juga memahami bahwa informasi tersebut dapat dibagikan kepada fasilitas kesehatan lain untuk rujukan atau kelanjutan perawatan, sesuai kebijakan pos medis dan hukum yang berlaku di Indonesia.",
+	"I also understand that the information may be shared with other healthcare facilities for referral or continuity of care, in line with the Medical Team's policies and the law that applies in Indonesia.": "Saya juga memahami bahwa informasi tersebut dapat dibagikan kepada fasilitas kesehatan lain untuk rujukan atau kelanjutan perawatan, sesuai kebijakan Tim Medis dan hukum yang berlaku di Indonesia.",
 	"If you do not agree, do not request an account.":                                          "Jika Anda tidak setuju, jangan ajukan akun.",
 	"I have read the statement above and I agree.":                                             "Saya telah membaca pernyataan di atas dan menyetujuinya.",
 	"Sign by typing your full name":                                                            "Tanda tangan dengan mengetik nama lengkap Anda",
@@ -132,5 +132,6 @@ var indonesianText = map[string]string{
 	"There is nothing at this address.": "Tidak ada apa pun di alamat ini.",
 	"Invalid request":                   "Permintaan tidak valid",
 	"The form could not be read.":       "Formulir tidak dapat dibaca.",
-	"Something went wrong.":             "Terjadi kesalahan.",
+	"This company already has two accounts. Ask your colleague to sign in, or ask the medical post administrator.": "Perusahaan ini sudah memiliki dua akun. Minta rekan Anda untuk masuk, atau minta administrator pos medis.",
+	"Something went wrong.": "Terjadi kesalahan.",
 }

@@ -119,6 +119,11 @@ func (s *Store) Register(ctx context.Context, email, name string, companyID int6
 	} else if !errors.Is(err, ErrNotFound) {
 		return 0, err
 	}
+	if room, err := s.CompanyHasRoom(ctx, companyID); err != nil {
+		return 0, err
+	} else if !room {
+		return 0, ErrCompanyFull // two accounts per company (owner, 2026-11-05)
+	}
 	res, err := s.DB.ExecContext(ctx,
 		`INSERT INTO Submitter (Email, Name, FK_CompanyID, PositionText, Status, CreatedAt)
 		 VALUES (?, ?, ?, ?, ?, ?)`,

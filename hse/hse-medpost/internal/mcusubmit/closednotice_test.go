@@ -22,7 +22,14 @@ func TestOneMailPerSubmitterListsEverythingClosedSinceTheLastOne(t *testing.T) {
 	s, _, co := newTestStore(t)
 	ctx := context.Background()
 	a := activeSubmitter(t, s, co, "hr.a@example.com")
-	b := activeSubmitter(t, s, co, "hr.b@example.com")
+	// B is at another company: colleagues of one company are copied on each other's mail (see
+	// TestTheCompanysOtherAccountGetsACopy), which this test is not about.
+	res, err := s.DB.Exec(`INSERT INTO Company (Name) VALUES ('PT Other')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	co2, _ := res.LastInsertId()
+	b := activeSubmitter(t, s, co2, "hr.b@example.com")
 	closeFor(t, s, co, a, "Worker One")
 	closeFor(t, s, co, a, "Worker Two")
 	closeFor(t, s, co, b, "Worker Three")
@@ -70,9 +77,10 @@ func TestAFailedMailIsRetriedAndUnreachableAccountsAreSkipped(t *testing.T) {
 	s, _, co := newTestStore(t)
 	ctx := context.Background()
 	ok := activeSubmitter(t, s, co, "hr.ok@example.com")
-	bounced := activeSubmitter(t, s, co, "hr.bounce@example.com")
+	co2 := company(t, s, "PT Bounce", 0) // another company, so no colleague covers the bounce
+	bounced := activeSubmitter(t, s, co2, "hr.bounce@example.com")
 	closeFor(t, s, co, ok, "Worker One")
-	closeFor(t, s, co, bounced, "Worker Two")
+	closeFor(t, s, co2, bounced, "Worker Two")
 	if _, err := s.DB.Exec(`UPDATE Submitter SET EmailBouncedAt = ? WHERE SubmitterID = ?`, s.stamp(), bounced); err != nil {
 		t.Fatal(err)
 	}

@@ -172,7 +172,7 @@ func TestCompleteSetupRefusesAnUnapprovedAccountAndATakenUsername(t *testing.T) 
 		t.Fatalf("setup before approval = %v, want ErrBadState", err)
 	}
 	first := approved(t, s, co, "b@example.com")
-	second := approved(t, s, co, "c@example.com")
+	second := approved(t, s, co2(t, s), "c@example.com") // another company: two accounts per company
 	if err := s.CompleteSetup(ctx, first, "shared", hash); err != nil {
 		t.Fatal(err)
 	}
@@ -342,7 +342,7 @@ func TestPurgeUnverifiedRemovesOnlyStaleUnverifiedRequests(t *testing.T) {
 	_ = s.MarkVerified(ctx, verified)
 
 	clock.advance(49 * time.Hour)
-	fresh := register(t, s, co, "fresh@example.com")
+	fresh := register(t, s, co2(t, s), "fresh@example.com") // another company: two accounts per company
 
 	n, err := s.PurgeUnverified(ctx, 48*time.Hour)
 	if err != nil || n != 1 {

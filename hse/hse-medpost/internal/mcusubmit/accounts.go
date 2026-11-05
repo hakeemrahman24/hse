@@ -238,6 +238,32 @@ func (s *Store) ChangeEmail(ctx context.Context, id int64, newEmail string) erro
 	return nil
 }
 
+// ChangeUsername lets a signed-in account pick another username (owner, 2026-11-05: a company's
+// two accounts are handed over by changing the details, not by adding a third account). The new name
+// follows the same rules as at set-up and may not be taken by another account.
+func (s *Store) ChangeUsername(ctx context.Context, id int64, username string) error {
+	if err := ValidUsername(username); err != nil {
+		return err
+	}
+	username = strings.ToLower(strings.TrimSpace(username))
+	if other, err := s.ByUsername(ctx, username); err == nil && other.ID != id {
+		return ErrUsernameTaken
+	} else if err != nil && !errors.Is(err, ErrNotFound) {
+		return err
+	}
+	res, err := s.DB.ExecContext(ctx, `UPDATE Submitter SET Username = ? WHERE SubmitterID = ? AND IsBuiltIn = 0 AND Status = ?`, username, id, StatusActive)
+	if isUniqueViolation(err) {
+		return ErrUsernameTaken
+	}
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 // SetReminders switches the expiry reminder mails on or off for one submitter.
 func (s *Store) SetReminders(ctx context.Context, id int64, on bool) error {
 	v := 0

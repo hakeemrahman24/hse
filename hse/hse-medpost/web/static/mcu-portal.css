@@ -339,6 +339,10 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
   .mp-form2 > :not(.field), .mp-form2 > .mp-full { grid-column: 1 / -1; }
 }
 
+/* The "Needs action" tick sits on the filter row's baseline: the 130px minimum above is for text fields. */
+.mp-filter .mp-check { height: 28px; margin: 0; align-items: center; }
+.mp-filter input[type="checkbox"] { min-width: 0; width: auto; height: auto; }
+
 /* Phone width: a short header on one line, and the sidebar as a wrapped row of chips instead of a
    tall list (the list took half the screen before the page started). */
 @media (max-width: 640px) {

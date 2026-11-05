@@ -109,7 +109,7 @@ func TestEraseBlanksOnlyLongInactiveAccountsWithoutFiles(t *testing.T) {
 	holder := activeSubmitter(t, s, co, "holder@example.com")
 	storedDoc(t, s, files, holder, "Worker One")
 	clock.advance(300 * day)
-	recent := activeSubmitter(t, s, co, "recent@example.com")
+	recent := activeSubmitter(t, s, co2(t, s), "recent@example.com") // another company: two accounts per company
 
 	// 1000 days after the first two sign-ups: idle and holder are past 2 years, recent (700 days) is not.
 	clock.advance(700 * day)

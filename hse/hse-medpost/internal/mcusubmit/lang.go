@@ -10,7 +10,7 @@ import (
 )
 
 // Language switcher (owner, 2026-10-29): English and Indonesian, chosen with a button in the
-// header and remembered in a cookie.
+// header and remembered in a cookie. Simplified Chinese was added on 2026-11-05 (lang_zh.go).
 //
 // The templates stay in English and are not full of lookups. Instead the finished page is passed
 // through the dictionary in lang_id.go: a piece of visible text is replaced only when the WHOLE
@@ -22,6 +22,7 @@ const (
 	langCookie  = "mcu_lang"
 	langEnglish = "en"
 	langIndo    = "id"
+	langChinese = "zh"
 
 	// nextPlaceholder is written by the header template where the switcher needs the current
 	// address; withLanguage fills it in. Handlers and templates therefore never need the request.
@@ -37,8 +38,8 @@ var (
 
 // languageOf reads the choice; anything but a known value means English.
 func languageOf(r *http.Request) string {
-	if c, err := r.Cookie(langCookie); err == nil && c.Value == langIndo {
-		return langIndo
+	if c, err := r.Cookie(langCookie); err == nil && (c.Value == langIndo || c.Value == langChinese) {
+		return c.Value
 	}
 	return langEnglish
 }
@@ -52,7 +53,7 @@ func (a *API) SetLanguage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	lang := r.PostFormValue("lang")
-	if lang != langEnglish && lang != langIndo {
+	if lang != langEnglish && lang != langIndo && lang != langChinese {
 		http.Error(w, "unknown language", http.StatusBadRequest)
 		return
 	}
@@ -114,8 +115,8 @@ func (a *API) withLanguage(next http.Handler) http.Handler {
 		body := lw.buf.Bytes()
 		if strings.HasPrefix(w.Header().Get("Content-Type"), "text/html") {
 			page := string(body)
-			if languageOf(r) == langIndo {
-				page = translateHTML(page)
+			if lang := languageOf(r); lang != langEnglish {
+				page = translateHTML(page, lang)
 			}
 			// The page's own address, escaped for an attribute, so the choice returns here.
 			page = strings.ReplaceAll(page, nextPlaceholder, html.EscapeString(r.URL.RequestURI()))
@@ -127,9 +128,10 @@ func (a *API) withLanguage(next http.Handler) http.Handler {
 	})
 }
 
-// translateHTML swaps dictionary phrases for Indonesian in visible text and attributes.
-func translateHTML(page string) string {
-	page = strings.Replace(page, `<html lang="en">`, `<html lang="id">`, 1)
+// translateHTML swaps dictionary phrases for the chosen language in visible text and attributes.
+func translateHTML(page, lang string) string {
+	dict := dictionaries[lang]
+	page = strings.Replace(page, `<html lang="en">`, `<html lang="`+htmlLang[lang]+`">`, 1)
 	page = textNode.ReplaceAllStringFunc(page, func(m string) string {
 		inner := m[1 : len(m)-1]
 		lead := inner[:len(inner)-len(strings.TrimLeft(inner, " \t\r\n"))]
@@ -138,36 +140,75 @@ func translateHTML(page string) string {
 		if core == "" {
 			return m
 		}
-		return ">" + lead + translatePhrase(core) + trail + "<"
+		return ">" + lead + translateText(lang, dict, core) + trail + "<"
 	})
 	return visibleAttr.ReplaceAllStringFunc(page, func(m string) string {
 		sub := visibleAttr.FindStringSubmatch(m)
-		return sub[1] + `="` + translatePhrase(sub[2]) + `"`
+		return sub[1] + `="` + translateText(lang, dict, sub[2]) + `"`
 	})
 }
 
-// dictionary is indonesianText with its keys and values trimmed. The dictionary file keeps the
-// trailing space of a split heading ("Sign " + "in") so it reads like the template, but
+// htmlLang is the value of <html lang> for each translated language.
+var htmlLang = map[string]string{langIndo: "id", langChinese: "zh-Hans"}
+
+// dictionaries holds each language's text with keys and values trimmed. The dictionary files keep
+// the trailing space of a split heading ("Sign " + "in") so they read like the template, but
 // translateHTML looks up the trimmed text of a node and puts the surrounding whitespace back itself.
-var dictionary = func() map[string]string {
-	m := make(map[string]string, len(indonesianText))
-	for k, v := range indonesianText {
+var dictionaries = map[string]map[string]string{
+	langIndo:    withPortal(trimmed(indonesianText), 0),
+	langChinese: withPortal(trimmed(simplifiedChineseText), 1),
+}
+
+// withPortal adds the signed-in pages' phrases (lang_portal.go). An entry already in the public
+// dictionary wins, so a shared word such as "Company" keeps one translation everywhere.
+func withPortal(m map[string]string, column int) map[string]string {
+	for k, v := range portalText {
+		if _, ok := m[k]; !ok && v[column] != "" {
+			m[k] = v[column]
+		}
+	}
+	return m
+}
+
+func trimmed(src map[string]string) map[string]string {
+	m := make(map[string]string, len(src))
+	for k, v := range src {
 		m[strings.TrimSpace(k)] = strings.TrimSpace(v)
 	}
 	return m
-}()
+}
 
-// translatePhrase returns the Indonesian text for an exact English phrase (as it appears in the
+// translateText is translatePhrase, then the sentence patterns (lang_portal.go) for text that has a
+// number or a name in it and so is not in the dictionary as it stands.
+func translateText(lang string, dict map[string]string, escaped string) string {
+	if out := translatePhrase(dict, escaped); out != escaped {
+		return out
+	}
+	plain := html.UnescapeString(escaped)
+	for _, p := range portalPatterns {
+		if !p.re.MatchString(plain) {
+			continue
+		}
+		repl := p.id
+		if lang == langChinese {
+			repl = p.zh
+		}
+		return html.EscapeString(p.re.ReplaceAllString(plain, repl))
+	}
+	return escaped
+}
+
+// translatePhrase returns the dict text for an exact English phrase (as it appears in the
 // HTML, so entities are decoded first and encoded again), or the phrase unchanged. A page title
 // is "<page> · <portal name>", so its two halves are looked up separately.
-func translatePhrase(escaped string) string {
+func translatePhrase(dict map[string]string, escaped string) string {
 	plain := html.UnescapeString(escaped)
-	if t, ok := dictionary[plain]; ok {
+	if t, ok := dict[plain]; ok {
 		return html.EscapeString(t)
 	}
 	if left, right, ok := strings.Cut(plain, " · "); ok {
-		l, lok := dictionary[left]
-		r, rok := dictionary[right]
+		l, lok := dict[left]
+		r, rok := dict[right]
 		if lok || rok {
 			if !lok {
 				l = left

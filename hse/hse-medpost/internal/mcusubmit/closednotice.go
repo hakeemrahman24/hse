@@ -39,7 +39,9 @@ type closedLine struct {
 
 type closedTarget struct {
 	submitterID int64
+	companyID   int64 // the uploader's company: its other accounts get a copy
 	email       string
+	bounced     bool // the uploader's mailbox is bouncing: the copy to the company's other account is the mail
 	lines       []closedLine
 }
 
@@ -79,11 +81,11 @@ func (s *Store) BackfillRejectNotices(ctx context.Context) error {
 // not erased. The rest stay unmarked, so a re-enabled account is told later.
 func (s *Store) dueClosedNotices(ctx context.Context) ([]closedTarget, error) {
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT u.SubmitterID, u.Email, s.SubmissionID, s.PatName, s.PatPosition, s.PatCompanyText, CASE WHEN s.Status = ? THEN 1 ELSE 0 END
+		`SELECT u.SubmitterID, COALESCE(u.FK_CompanyID, 0), u.Email, CASE WHEN u.EmailBouncedAt IS NULL THEN 0 ELSE 1 END, s.SubmissionID, s.PatName, s.PatPosition, s.PatCompanyText, CASE WHEN s.Status = ? THEN 1 ELSE 0 END
 		 FROM McuSubmission s
 		 JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID
 		 WHERE ((s.Status = ? AND s.FK_McuRecordID IS NOT NULL) OR s.Status = ?) AND s.CertNotifiedAt IS NULL
-		   AND u.Status = ? AND u.IsBuiltIn = 0 AND u.EmailBouncedAt IS NULL AND u.ErasedAt IS NULL
+		   AND u.Status = ? AND u.IsBuiltIn = 0 AND u.ErasedAt IS NULL
 		 ORDER BY u.SubmitterID, s.SubmissionID`, SubRejected, SubClosed, SubRejected, StatusActive)
 	if err != nil {
 		return nil, err
@@ -91,16 +93,16 @@ func (s *Store) dueClosedNotices(ctx context.Context) ([]closedTarget, error) {
 	defer rows.Close()
 	var out []closedTarget
 	for rows.Next() {
-		var id int64
+		var id, companyID int64
 		var email string
 		var l closedLine
-		var rejected int
-		if err := rows.Scan(&id, &email, &l.id, &l.worker, &l.position, &l.company, &rejected); err != nil {
+		var rejected, bounced int
+		if err := rows.Scan(&id, &companyID, &email, &bounced, &l.id, &l.worker, &l.position, &l.company, &rejected); err != nil {
 			return nil, err
 		}
 		l.rejected = rejected == 1
 		if n := len(out); n == 0 || out[n-1].submitterID != id {
-			out = append(out, closedTarget{submitterID: id, email: email})
+			out = append(out, closedTarget{submitterID: id, companyID: companyID, email: email, bounced: bounced == 1})
 		}
 		out[len(out)-1].lines = append(out[len(out)-1].lines, l)
 	}
@@ -118,10 +120,34 @@ func (s *Store) RunClosedNotices(ctx context.Context, m Mailer, portalURL string
 	}
 	var failures []error
 	for _, t := range due {
-		if err := m.Send(ctx, t.email, noticeSubject(t), closedNoticeBody(portalURL, t.lines)); err != nil {
-			log.Printf("mcu closed notice: mail to submitter %d failed: %v", t.submitterID, err)
-			failures = append(failures, err)
-			continue
+		// The uploader gets the mail, and so does the company's other account (owner, 2026-11-05:
+		// a backup for when the first mailbox has trouble). When the uploader's mailbox is
+		// bouncing, the other account's copy is the mail. The document counts as told once any
+		// of them was accepted; the mail holds names and positions only, so a copy leaks nothing more.
+		backups, err := s.BackupRecipients(ctx, t.submitterID, t.companyID)
+		if err != nil {
+			log.Printf("mcu closed notice: backup recipients of submitter %d: %v", t.submitterID, err)
+		}
+		var to []string
+		if !t.bounced {
+			to = append(to, t.email)
+		}
+		to = append(to, backups...)
+		accepted := 0
+		var mailErr error
+		for _, addr := range to {
+			if err := m.Send(ctx, addr, noticeSubject(t), closedNoticeBody(portalURL, t.lines)); err != nil {
+				log.Printf("mcu closed notice: mail for submitter %d's documents failed: %v", t.submitterID, err)
+				mailErr = err
+				continue
+			}
+			accepted++
+		}
+		if accepted == 0 {
+			if mailErr != nil {
+				failures = append(failures, mailErr)
+			}
+			continue // nobody could be reached: the documents stay due and the next daily run tries again
 		}
 		for _, l := range t.lines {
 			if _, err := s.DB.ExecContext(ctx, `UPDATE McuSubmission SET CertNotifiedAt = ? WHERE SubmissionID = ? AND CertNotifiedAt IS NULL`, s.stamp(), l.id); err != nil {

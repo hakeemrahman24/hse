@@ -115,12 +115,19 @@ func (a *API) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 		default:
 			a.sendMail(r.Context(), email, "You already have an account", alreadyRegisteredMail(a.baseURL))
 		}
+	case errors.Is(err, ErrCompanyFull):
+		a.registerForm(w, r, http.StatusConflict, form, companyFullMsg)
+		return
 	default:
 		a.serverError(w, "register", err)
 		return
 	}
 	reply()
 }
+
+// companyFullMsg tells the person what to do instead: the two people of the company can change their
+// own login email or username when someone leaves, so nobody needs a third account.
+const companyFullMsg = "This company already has two accounts. Ask your colleague to sign in, or ask the medical post administrator."
 
 func (a *API) mailVerifyLink(r *http.Request, id int64, email string) {
 	raw, err := a.Store.IssueToken(r.Context(), id, PurposeVerify, "", verifyTTL)
@@ -341,7 +348,7 @@ func (a *API) SignInSubmit(w http.ResponseWriter, r *http.Request) {
 
 // romifVersion names the wording the person agreed to. Change it whenever the ROMIF text in
 // register.html changes, so the audit trail says which text each person signed.
-const romifVersion = "2026-10-31"
+const romifVersion = "2026-11-05"
 
 // signedAs says whether the typed signature is the same name as the account's full name, ignoring
 // case, spacing and characters a name may not hold. It is the same cleaning the name gets, so "budi  santoso" signs "Budi Santoso".

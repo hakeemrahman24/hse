@@ -72,7 +72,7 @@
       tries++;
       if (window.turnstile) {
         clearInterval(wait);
-        window.turnstile.render(box, { sitekey: box.dataset.sitekey, callback: onToken, language: box.dataset.lang });
+        window.turnstile.render(box, { sitekey: box.dataset.sitekey, callback: onToken, language: box.dataset.lang === "zh" ? "zh-cn" : box.dataset.lang });
       } else if (tries > LOAD_POLL_MAX) {
         clearInterval(wait);
         showError(msg.msgCheckLoad);
