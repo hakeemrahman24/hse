@@ -13,6 +13,26 @@
   var page = 1;
   var pages = 1;
 
+  // Status is a row of tap targets (chips) instead of a dropdown: one tap, all choices visible. The hidden
+  // #sub-status keeps the value, so query() and Reset work on it as before.
+  var chips = Array.prototype.slice.call(document.querySelectorAll('#sub-toolbar .sub-chip'));
+  var more = document.getElementById('sub-more');
+  var moreCount = document.getElementById('sub-more-n');
+  function syncChips() {
+    chips.forEach(function (c) { c.setAttribute('aria-checked', c.getAttribute('data-v') === statusSel.value ? 'true' : 'false'); });
+  }
+  // From 641px up everything fits, so "More filters" is always open; on a phone it stays folded, with a
+  // count so a filter hidden inside it is never forgotten.
+  var wide = window.matchMedia('(min-width: 641px)');
+  function foldMore() { if (wide.matches) more.open = true; }
+  function countMore() {
+    var n = ['company', 'submitter', 'from', 'to'].filter(function (f) { return document.getElementById('sub-' + f).value.trim(); }).length;
+    moreCount.textContent = String(n);
+    moreCount.hidden = !n;
+  }
+  foldMore();
+  if (wide.addEventListener) wide.addEventListener('change', foldMore);
+
   function say(text, isError) {
     msg.textContent = text || '';
     msg.className = 'sub-msg' + (isError ? ' err' : '');
@@ -283,12 +303,15 @@
   }
 
   // A new filter always starts again at page 1.
-  function apply() { page = 1; load(); }
+  function apply() { page = 1; countMore(); load(); }
 
-  statusSel.addEventListener('change', apply);
+  chips.forEach(function (c) {
+    c.addEventListener('click', function () { statusSel.value = c.getAttribute('data-v'); syncChips(); apply(); });
+  });
   document.getElementById('sub-apply').addEventListener('click', apply);
   document.getElementById('sub-clear').addEventListener('click', function () {
     statusSel.value = '';
+    syncChips();
     fields.forEach(function (f) { document.getElementById('sub-' + f).value = ''; });
     apply();
   });

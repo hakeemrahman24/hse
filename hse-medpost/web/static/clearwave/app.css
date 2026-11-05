@@ -5763,6 +5763,30 @@ a.app-tab {
 #tab-submitted .mcu-data-filter-row input { box-sizing: border-box; height: 26px; font-size: 0.75rem; padding: 0 6px; }
 #tab-submitted .mcu-data-filter-row .btn-primary,
 #tab-submitted .mcu-data-filter-row .btn-ghost { height: 26px; padding: 0 12px !important; font-size: 0.75rem !important; line-height: 1; }
+/* Status chips + folded "More filters" (mcu-submitted.js). Wide screens: chips inline, extra fields always open. */
+#tab-submitted .sub-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+#tab-submitted .sub-chip { font: inherit; font-size: 0.75rem; padding: 0 12px; height: 26px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--text-1); cursor: pointer; }
+#tab-submitted .sub-chip[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+#tab-submitted .sub-more summary { cursor: pointer; font-size: 0.75rem; color: var(--text-2); list-style: none; padding: 6px 0; }
+#tab-submitted .sub-more summary::-webkit-details-marker { display: none; }
+#tab-submitted .sub-more summary::before { content: "\25B8  "; }
+#tab-submitted .sub-more[open] summary::before { content: "\25BE  "; }
+#tab-submitted .sub-more summary b { background: var(--accent); color: #fff; border-radius: 999px; padding: 0 6px; font-size: 0.7rem; margin-left: 4px; }
+#tab-submitted .sub-more-grid { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; }
+#tab-submitted .sub-more-grid > label { display: flex; flex-direction: column; }
+@media (min-width: 641px) {
+  #tab-submitted .sub-more, #tab-submitted .sub-more-grid { display: contents; }
+  #tab-submitted .sub-more summary { display: none; }
+}
+@media (max-width: 640px) {
+  #tab-submitted .sub-chips { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 2px; scrollbar-width: none; }
+  #tab-submitted .sub-chip { flex: none; height: 34px; padding: 0 14px; font-size: 0.8125rem; }
+  #tab-submitted .mcu-data-filter-row > label.sub-worker { flex: 1 1 100%; }
+  #tab-submitted .sub-more { flex: 1 1 100%; }
+  #tab-submitted .sub-more-grid > label { flex: 1 1 calc(50% - 4px); min-width: 0; gap: 2px; }
+  #tab-submitted .sub-more-grid > label:nth-child(-n+2) { flex-basis: 100%; }
+  #tab-submitted .sub-more-grid input { width: 100%; height: 34px; font-size: 0.875rem; box-sizing: border-box; }
+}
 .sub-msg { margin: 6px 12px; min-height: 0; font-size: 0.8125rem; color: var(--text-2); }
 .sub-msg:empty { display: none; }
 .sub-msg.err { color: #a12a1b; }
