@@ -79,15 +79,15 @@
                 <button type="button" class="sub-chip" role="radio" aria-checked="false" data-v="Withdrawn">Withdrawn</button>
               </div>
               <label class="sub-worker"><span>Worker</span><input id="sub-worker" type="text" maxlength="60" autocomplete="off" /></label>
-              <details class="sub-more" id="sub-more">
-                <summary>More filters <b id="sub-more-n" hidden></b></summary>
-                <div class="sub-more-grid">
+              <div class="sub-more" id="sub-more">
+                <button type="button" class="sub-more-toggle" id="sub-more-toggle" aria-expanded="false" aria-controls="sub-more-grid">More filters <b id="sub-more-n" hidden></b></button>
+                <div class="sub-more-grid" id="sub-more-grid">
                   <label><span>Company</span><input id="sub-company" type="text" maxlength="60" autocomplete="off" /></label>
                   <label><span>Submitter</span><input id="sub-submitter" type="text" maxlength="60" autocomplete="off" /></label>
                   <label><span>From</span><input id="sub-from" type="date" /></label>
                   <label><span>To</span><input id="sub-to" type="date" /></label>
                 </div>
-              </details>
+              </div>
               <button type="button" id="sub-apply" class="btn-primary">Filter</button>
               <button type="button" id="sub-clear" class="btn-ghost">Reset</button>
             </div>

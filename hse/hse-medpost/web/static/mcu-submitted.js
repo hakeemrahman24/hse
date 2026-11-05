@@ -21,17 +21,19 @@
   function syncChips() {
     chips.forEach(function (c) { c.setAttribute('aria-checked', c.getAttribute('data-v') === statusSel.value ? 'true' : 'false'); });
   }
-  // From 641px up everything fits, so "More filters" is always open; on a phone it stays folded, with a
-  // count so a filter hidden inside it is never forgotten.
-  var wide = window.matchMedia('(min-width: 641px)');
-  function foldMore() { if (wide.matches) more.open = true; }
+  // From 641px up CSS shows every field inline and hides the toggle; on a phone the fields stay folded
+  // until the toggle is pressed, with a count so a filter hidden inside is never forgotten.
+  var moreToggle = document.getElementById('sub-more-toggle');
+  moreToggle.addEventListener('click', function () {
+    var open = !more.classList.contains('open');
+    more.classList.toggle('open', open);
+    moreToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  });
   function countMore() {
     var n = ['company', 'submitter', 'from', 'to'].filter(function (f) { return document.getElementById('sub-' + f).value.trim(); }).length;
     moreCount.textContent = String(n);
     moreCount.hidden = !n;
   }
-  foldMore();
-  if (wide.addEventListener) wide.addEventListener('change', foldMore);
 
   function say(text, isError) {
     msg.textContent = text || '';
