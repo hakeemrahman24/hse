@@ -215,7 +215,7 @@ func (a *API) AddDocument(w http.ResponseWriter, r *http.Request) {
 	for _, k := range []string{"patient_id", "name", "dob", "position", "company_id", "nationality", "gender", "id_number"} {
 		form[k] = strings.TrimSpace(r.FormValue(k))
 	}
-	in, msg := a.workerDetails(r.Context(), form)
+	in, msg := a.workerDetails(r.Context(), u.ID, form)
 	if msg != "" {
 		a.renderBatch(w, r.Context(), http.StatusBadRequest, u, form, msg)
 		return
@@ -290,7 +290,7 @@ func (a *API) uploadFailed(w http.ResponseWriter, r *http.Request, u *Submitter,
 // misspelled and a tampered form cannot change who the document is about. Without a choice the
 // submitter is adding a new employee: typed fields, checked strictly, and refused when that person
 // is already on file (they must pick the existing record instead).
-func (a *API) workerDetails(ctx context.Context, f map[string]string) (NewSubmission, string) {
+func (a *API) workerDetails(ctx context.Context, submitterID int64, f map[string]string) (NewSubmission, string) {
 	if f["patient_id"] != "" {
 		id, ok := parseID(f["patient_id"])
 		if !ok {
@@ -299,6 +299,16 @@ func (a *API) workerDetails(ctx context.Context, f map[string]string) (NewSubmis
 		w, err := a.Store.WorkerByID(ctx, id)
 		if err != nil {
 			return NewSubmission{}, "Choose the worker from the list."
+		}
+		// The picker already greys these workers out; this is the check that counts, because a form
+		// can be posted without the picker. Two documents for one checkup help nobody.
+		block, err := a.Store.WorkerBlock(ctx, submitterID, w.PatientID)
+		if err != nil {
+			log.Printf("mcusubmit: worker block: %v", err)
+			return NewSubmission{}, "The worker could not be checked. Please try again."
+		}
+		if block.Kind != "" {
+			return NewSubmission{}, block.Message()
 		}
 		in := NewSubmission{
 			PatientID: w.PatientID, PatName: w.Name, PatDateOfBirth: w.DateOfBirth, PatPosition: w.Position,
@@ -342,6 +352,12 @@ type workerJSON struct {
 	Position    string `json:"position"`
 	Company     string `json:"company"`
 	Nationality string `json:"nationality"`
+	// Blocked is "", "waiting" or "valid"; Until and From carry the dates of "valid". The picker
+	// builds its sentence from these codes so the page's language dictionary can translate it.
+	Blocked string `json:"blocked"`
+	Last    string `json:"last"`
+	Until   string `json:"until"`
+	From    string `json:"from"`
 }
 
 // WorkerSearch feeds the picker. It needs a session, asks for at least three letters, returns at
@@ -366,7 +382,14 @@ func (a *API) WorkerSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]workerJSON, 0, len(found))
 	for _, f := range found {
-		out = append(out, workerJSON{f.PatientID, f.Name, f.DateOfBirth, f.Position, f.Company, f.Nationality})
+		j := workerJSON{ID: f.PatientID, Name: f.Name, DateOfBirth: f.DateOfBirth, Position: f.Position, Company: f.Company, Nationality: f.Nationality}
+		// A failed check shows the worker as selectable: the upload repeats the check and refuses.
+		if b, err := a.Store.WorkerBlock(r.Context(), u.ID, f.PatientID); err != nil {
+			log.Printf("mcusubmit: worker block: %v", err)
+		} else {
+			j.Blocked, j.Last, j.Until, j.From = b.Kind, b.Last, b.Until, b.From
+		}
+		out = append(out, j)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(out)

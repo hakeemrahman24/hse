@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=37" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=40" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
   <script src="/static/mcu-portal-name.js?v=2" defer></script>
   <script src="/static/mcu-portal-cards.js?v=5" defer></script>
@@ -414,6 +414,10 @@
             <label for="worker-q"><span>Find the worker (type at least 3 letters of the name)</span></label>
             <input id="worker-q" type="search" autocomplete="off" />
             <ul id="worker-results" class="mp-results" aria-label="Matching workers"></ul>
+            <div id="picker-msgs" hidden>
+              <span data-m="waiting">Already sent: waiting for the medical post</span>
+              <span data-m="valid">Checkup done {last}, valid until {until}. A new one is accepted only more than 180 days after the last, from {from}.</span>
+            </div>
             <input type="hidden" name="patient_id" id="patient-id" value="{{index .Form "patient_id"}}" />
             <p id="worker-chosen" class="mp-chosen" hidden></p>
             <button type="button" id="worker-clear" class="btn-ghost" hidden>Choose another worker</button>
@@ -445,10 +449,24 @@
           </details>
           <div class="field"><label for="file"><span>Checkup result (PDF, up to 15 MB)</span></label><input id="file" name="file" type="file" accept="application/pdf,.pdf" required />
             <p class="mp-hint">The file is rebuilt and compressed when it is uploaded. Password-protected PDFs and PDFs with scripts or attachments are refused.</p></div>
+          <p id="up-warn" class="mp-hint mp-warnline" hidden></p>
+          <div id="up-msgs" hidden>
+            <span data-m="uploading">Uploading the file…</span>
+            <span data-m="checking">Uploaded. Checking and shrinking the file now. A large scan can take a minute or two. Keep this page open.</span>
+            <span data-m="slow">This file is over 10 MB, so uploading and checking it can take a few minutes. Keep this page open until it finishes.</span>
+            <span data-m="toobig">The file is larger than 15 MB. Split it or scan at a lower resolution.</span>
+            <span data-m="reducing">This file is over 10 MB. Making it smaller first…</span>
+            <span data-m="reduced">Made smaller: {from} MB to {to} MB. The pages are saved as pictures, so the text in this PDF can no longer be selected. The medical post sees the same pages.</span>
+            <span data-m="cut">The connection was cut or timed out. The file may have arrived: look in the list of documents in this batch before you upload it again.</span>
+          </div>
+          <progress id="up-progress" class="mp-progress" max="100" hidden></progress>
+          <p id="up-status" class="mp-hint" role="status" hidden></p>
           <button type="submit" class="btn-primary">Upload and review</button>
         </form>
       </div>
-      <script src="/static/mcu-worker-picker.js?v=1"></script>
+      <script src="/static/mcu-worker-picker.js?v=3"></script>
+      <script src="/static/mcu-portal-reduce.js?v=2"></script>
+      <script src="/static/mcu-portal-upload.js?v=3"></script>
 
       </div>
       <div class="mp-pane">
