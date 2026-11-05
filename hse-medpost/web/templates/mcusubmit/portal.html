@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=34" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=36" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
   <script src="/static/mcu-portal-name.js?v=2" defer></script>
   <script src="/static/mcu-portal-cards.js?v=5" defer></script>
@@ -547,12 +547,14 @@
     <section class="mp-section">
       <h1>Account <span>requests</span></h1>
       {{if .Pending}}
-      <div class="mp-scroll"><table class="mp-table">
+      <div class="mp-scroll"><table class="mp-table mp-docs">
         <caption>Waiting for a decision (email confirmed)</caption>
-        <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Company</th><th scope="col">Position</th><th scope="col">Requested</th><th scope="col">Decide</th></tr></thead>
+        <thead><tr><th scope="col">Account</th><th scope="col">Company / position</th><th scope="col">Requested</th><th scope="col">Decide</th></tr></thead>
         <tbody>
         {{range .Pending}}<tr>
-          <td>{{.Name}}</td><td>{{.Email}}</td><td>{{.Company}}</td><td>{{.Position}}</td><td>{{.CreatedAt}}</td>
+          <td><div class="mp-cell"><strong>{{.Name}}</strong><div class="mp-sub">{{.Email}}</div></div></td>
+          <td><div class="mp-cell">{{.Company}}<div class="mp-sub">{{.Position}}</div></div></td>
+          <td><div class="mp-cell"><span class="mp-when">{{.CreatedAt}}</span></div></td>
           <td class="mp-decide">
             <form method="post" action="/mcu-submit/admin/approve" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-primary">Approve</button></form>
             <form method="post" action="/mcu-submit/admin/reject" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" />
@@ -567,14 +569,15 @@
       <p class="mp-actions"><a class="btn-ghost" href="/mcu-submit/romif/statement">View ROMIF statement</a></p>
       <p class="mp-hint">Disable blocks sign-in and can be undone with Enable. Archive also hides the account from this list and keeps its documents; show archived accounts to restore one. Delete removes the account and all its documents for good.{{if .ArchivedCount}} {{if .ShowArchived}}<a href="/mcu-submit/admin">Hide archived accounts</a>{{else}}<a href="/mcu-submit/admin?archived=1">Show {{.ArchivedCount}} archived accounts</a>{{end}}{{end}}</p>
       {{if .Accounts}}
-      <div class="mp-scroll"><table class="mp-table">
+      <div class="mp-scroll"><table class="mp-table mp-docs">
         <caption>Approved, active, rejected and disabled accounts</caption>
-        <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Company</th><th scope="col">Status</th><th scope="col">ROMIF</th><th scope="col">Note</th><th scope="col">Action</th></tr></thead>
+        <thead><tr><th scope="col">Account</th><th scope="col">Company</th><th scope="col">Status</th><th scope="col">ROMIF</th><th scope="col">Action</th></tr></thead>
         <tbody>
         {{range .Accounts}}<tr>
-          <td>{{.Name}}</td><td>{{.Email}}</td><td>{{.Company}}</td><td><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span></td>
-          <td>{{if .RomifAt}}Signed {{.RomifAt}}{{else}}Not signed{{end}}</td>
-          <td>{{if .RejectReason}}{{.RejectReason}}{{end}}{{if .BouncedAt}}Email bounced {{.BouncedAt}}{{end}}</td>
+          <td><div class="mp-cell"><strong>{{.Name}}</strong><div class="mp-sub">{{.Email}}</div></div></td>
+          <td><div class="mp-cell">{{.Company}}</div></td>
+          <td><div class="mp-cell"><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span>{{if .RejectReason}}<div class="mp-hint">{{.RejectReason}}</div>{{end}}{{if .BouncedAt}}<div class="mp-hint">Email bounced <span class="mp-when">{{.BouncedAt}}</span></div>{{end}}</div></td>
+          <td><div class="mp-cell">{{if .RomifAt}}Signed<div class="mp-sub"><span class="mp-when">{{.RomifAt}}</span></div>{{else}}<span class="mp-hint">Not signed</span>{{end}}</div></td>
           <td class="mp-decide">{{if or (eq .Status "Active") (eq .Status "Approved")}}
             <form method="post" action="/mcu-submit/admin/disable" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Disable</button></form>{{end}}
             {{if eq .Status "Disabled"}}<form method="post" action="/mcu-submit/admin/enable" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Enable</button></form>{{end}}

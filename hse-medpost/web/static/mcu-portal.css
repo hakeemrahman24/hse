@@ -449,3 +449,5 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
   .mp-table.mp-stack.mp-docs td .mp-cell { text-align: right; }
 }
 .mp-docs td:first-child .mp-sub { font-weight: 400; }
+.mp-docs .mp-sub { overflow-wrap: anywhere; }
+.mp-docs td { padding-top: 10px; padding-bottom: 10px; }
