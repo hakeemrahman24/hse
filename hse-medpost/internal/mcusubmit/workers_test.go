@@ -159,7 +159,7 @@ func TestReviewDocumentsNeverReachStaff(t *testing.T) {
 	if _, err := s.StaffFile(ctx, id); !errors.Is(err, ErrNotFound) {
 		t.Errorf("StaffFile of a Review document = %v, want ErrNotFound", err)
 	}
-	if _, err := s.OwnFile(ctx, sub, id); err != nil {
+	if _, err := s.OwnFile(ctx, Scope{SubmitterID: sub}, id); err != nil {
 		t.Errorf("the submitter must be able to open the file to review it: %v", err)
 	}
 }

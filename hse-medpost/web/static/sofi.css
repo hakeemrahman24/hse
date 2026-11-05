@@ -1,8 +1,10 @@
 /* /sofi pages: the searchable name list and the date-of-birth row. Everything else is clearwave. */
+/* One text size for everything in the form (labels, values, words, hints, buttons, messages). Headings keep their own. */
+:root { --sofi-fs: 0.9rem; }
 .sofi-field { margin-bottom: 14px; }
-.sofi-error { color: #b42318; font-size: 0.875rem; margin: 12px 0 0; }
+.sofi-error { color: #b42318; font-size: var(--sofi-fs); margin: 12px 0 0; }
 .sofi-error[hidden] { display: none; }
-.sofi-preview { margin: 12px 0 0; padding: 8px 12px; font-size: 0.875rem; font-weight: 600; color: #b54708; background: #fffaeb; border: 1px solid #fedf89; border-radius: 6px; }
+.sofi-preview { margin: 12px 0 0; padding: 8px 12px; font-size: var(--sofi-fs); font-weight: 600; color: #b54708; background: #fffaeb; border: 1px solid #fedf89; border-radius: 6px; }
 
 .combo { position: relative; display: block; }
 .combo-list {
@@ -30,7 +32,7 @@
 /* The native date input only supplies the calendar popup; it is never seen. */
 .dob-native { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 
-.submit-row { margin-top: 18px; }
+.submit-row { margin-top: 14px; }
 .submit-row .btn-primary { width: 100%; }
 
 /* Language switch: the same two-letter links as the SOC page. */
@@ -42,50 +44,76 @@
    labels 0.75rem/600 (the same as the sign-in labels), values and words 0.9rem, hints 0.8rem.
    Every block starts at the card's left edge, so the profile, the hints, the words and the
    buttons line up. */
-.sofi-profile { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 20px; margin: 20px 0 16px; }
+.sofi-profile { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 16px; margin: 12px 0 10px; }
 .sofi-profile > div { min-width: 0; }
-.sofi-profile dt, .sofi-profile dt label { margin: 0 0 4px; font-size: 0.75rem; font-weight: 600; line-height: 1.3; color: var(--text-2); }
-.sofi-profile dd { margin: 0; font-size: 0.9rem; line-height: 1.4; color: var(--text-1); overflow-wrap: anywhere; }
+.sofi-profile dt, .sofi-profile dt label { margin: 0 0 2px; font-size: var(--sofi-fs); font-weight: 600; line-height: 1.3; color: var(--text-2); }
+.sofi-profile dd { margin: 0; font-size: var(--sofi-fs); line-height: 1.4; color: var(--text-1); overflow-wrap: anywhere; }
 .sofi-weeks select { width: 100%; max-width: none; }
-.sofi-hint { margin: 0; font-size: 0.8rem; line-height: 1.4; color: var(--text-2); }
-.sofi-instruction { margin-top: 8px; }
-.sofi-anchors { display: flex; justify-content: space-between; gap: 12px; margin: 6px 0 4px; }
+.sofi-hint { margin: 0; font-size: var(--sofi-fs); line-height: 1.4; color: var(--text-2); }
+.sofi-instruction { margin-top: 6px; }
+.sofi-anchors { display: flex; justify-content: space-between; gap: 12px; margin: 4px 0 2px; }
 .sofi-items { list-style: none; margin: 0; padding: 0; counter-reset: sofi; }
-.sofi-item { counter-increment: sofi; padding: 12px 0; border-bottom: 1px solid var(--border, #e5e7eb); }
+.sofi-item { counter-increment: sofi; padding: 8px 0; border-bottom: 1px solid var(--border, #e5e7eb); }
 .sofi-item.missing { background: rgba(180, 35, 24, 0.07); }
 .sofi-item fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
-.sofi-item legend { float: left; width: 100%; padding: 0; margin: 0 0 8px; font-size: 0.9rem; font-weight: 600; line-height: 1.4; color: var(--text-1); }
+.sofi-item legend { float: left; width: 100%; padding: 0; margin: 0 0 6px; font-size: var(--sofi-fs); font-weight: 600; line-height: 1.4; color: var(--text-1); }
 .sofi-item legend::before { content: counter(sofi) ". "; font-weight: 600; color: var(--text-2); }
-.sofi-scale { clear: both; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.sofi-scale { clear: both; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
 .sofi-scale label { position: relative; display: block; margin: 0; }
 .sofi-scale input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
 /* ".login-card label > span" (clearwave) styles every label's span as a small bold caption; the
    longer selector keeps the answer buttons on the form's 0.9rem text. */
 .login-card .sofi-scale label > span {
-  display: block; margin: 0; text-align: center; padding: 9px 0; border: 1px solid rgba(13, 30, 28, 0.3); border-radius: 2px;
-  background: var(--surface); color: var(--text-1); font-size: 0.9rem; font-weight: 500; line-height: 1.2;
+  display: block; margin: 0; text-align: center; padding: 6px 0; border: 1px solid rgba(13, 30, 28, 0.3); border-radius: 2px;
+  background: var(--surface); color: var(--text-1); font-size: var(--sofi-fs); font-weight: 500; line-height: 1.2;
 }
 .login-card .sofi-scale input:checked + span { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 .login-card .sofi-scale input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Result */
 #sofi-result h2 { font-size: 1.1rem; margin: 24px 0 12px; }
-.sofi-bar { display: grid; grid-template-columns: minmax(120px, 190px) 1fr minmax(110px, auto); gap: 10px; align-items: center; margin: 8px 0; font-size: 0.9rem; line-height: 1.4; }
+.sofi-bar { display: grid; grid-template-columns: minmax(120px, 190px) 1fr minmax(110px, auto); gap: 10px; align-items: center; margin: 8px 0; font-size: var(--sofi-fs); line-height: 1.4; }
 .sofi-bar-track { height: 10px; background: rgba(13, 30, 28, 0.1); border-radius: 5px; overflow: hidden; }
 .sofi-bar-fill { display: block; height: 100%; border-radius: 5px; }
 .sofi-low { background: #2f855a; }
 .sofi-moderate { background: #b7791f; }
 .sofi-high { background: #b42318; }
-.sofi-total { margin: 16px 0 8px; font-size: 0.9rem; }
-#sofi-help { font-size: 0.9rem; line-height: 1.4; }
-.sofi-level { padding: 2px 8px; border-radius: 4px; color: #fff; font-size: 0.9rem; font-weight: 600; }
+.sofi-total { margin: 16px 0 8px; font-size: var(--sofi-fs); }
+#sofi-help { font-size: var(--sofi-fs); line-height: 1.4; }
+.sofi-level { padding: 2px 8px; border-radius: 4px; color: #fff; font-size: var(--sofi-fs); font-weight: 600; }
 @media (max-width: 520px) {
   .sofi-bar { grid-template-columns: 1fr; gap: 4px; }
 }
 
 /* "Your earlier results" on /sofi/start: the person's own earlier questionnaires */
 .sofi-past { margin: 0 0 1.5rem; }
-.sofi-past h2 { font-size: 1.05rem; margin: 0 0 0.5rem; }
-.sofi-past-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.sofi-past h2 { font-size: 1.1rem; margin: 0 0 0.5rem; }
+.sofi-past-table { width: 100%; border-collapse: collapse; font-size: var(--sofi-fs); }
 .sofi-past-table th, .sofi-past-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border, #d9dee5); }
 .sofi-past-table small { color: var(--text-2); }
+
+/* Form controls and text that clearwave sizes on its own: bring them to the same size. */
+.login-card--wide .sub, .login-card--wide select, .login-card--wide .btn-primary, .login-card--wide .btn-ghost { font-size: var(--sofi-fs); }
+.submit-row .sofi-hint { margin-top: 8px; text-align: center; }
+/* clearwave sets the button size with !important, so this must too */
+.submit-row .btn-primary { font-size: var(--sofi-fs) !important; }
+.submit-row .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* Layout. Compact on a desktop: the card is wider, the profile runs in columns, and each word sits
+   on one line with its 0-6 buttons at the right. On a phone the word is above its buttons, the
+   buttons are at least 44px tall (a comfortable tap), and the page uses nearly the full width.
+   The other /sofi pages use the narrow card and are not affected by .login-card--wide. */
+.login-card--wide { max-width: 860px; padding: 18px 20px; }
+@media (min-width: 701px) {
+  .sofi-item fieldset { display: flow-root; }
+  .sofi-item legend { float: left; width: calc(100% - 316px); margin: 0; padding-top: 5px; }
+  .sofi-scale { clear: none; float: right; width: 300px; }
+}
+@media (max-width: 700px) {
+  .login-wrap { padding: 60px 8px 16px; }
+  .login-card--wide { padding: 14px 12px; }
+  .sofi-profile { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+  .login-card .sofi-scale label > span { padding: 12px 0; }
+  .sofi-anchors { flex-direction: column; gap: 0; }
+  .sofi-past-table th, .sofi-past-table td { padding: 5px 4px; }
+}

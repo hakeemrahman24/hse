@@ -144,6 +144,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("GET "+basePath+"/settings", a.SettingsPage)
 	in.HandleFunc("POST "+basePath+"/settings/password", a.ChangePassword)
 	in.HandleFunc("POST "+basePath+"/settings/email", a.RequestEmailChange)
+	in.HandleFunc("POST "+basePath+"/settings/username", a.ChangeUsername)
 	in.HandleFunc("POST "+basePath+"/settings/reminders", a.SaveReminders)
 	in.HandleFunc("GET "+basePath+"/email-change", a.EmailChangePage)
 	in.HandleFunc("POST "+basePath+"/email-change", a.EmailChangeSubmit)
@@ -159,6 +160,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("POST "+basePath+"/documents/{id}/confirm", a.ConfirmDocument)
 	in.HandleFunc("GET "+basePath+"/documents/{id}/file", a.DocumentFile)
 	in.HandleFunc("GET "+basePath+"/documents/{id}/certificate", a.DocumentCertificate)
+	in.HandleFunc("GET "+basePath+"/documents/certificates.zip", a.CertificatesZip)
 	in.HandleFunc("POST "+basePath+"/documents/{id}/remove", a.RemoveDocument)
 	in.HandleFunc("POST "+basePath+"/documents/{id}/withdraw", a.WithdrawDocument)
 	in.HandleFunc("POST "+basePath+"/webhooks/brevo", a.BrevoWebhook)
@@ -222,25 +224,28 @@ func (a *API) clientIP(r *http.Request) string {
 
 // page is everything the templates need.
 type page struct {
-	Signing       bool // the ROMIF page: signed in but not allowed anywhere else yet, so no sign-in or sign-up links
-	Title         string
-	Nav           string // which sidebar item is current: the template name without ".html"
-	User          *Submitter
-	Sitekey       string
-	DevCheck      bool
-	Error         string
-	Form          map[string]string
-	Companies     []companyOption
-	Token         string
-	Heading       string
-	Message       string
-	Counts        map[string]int
-	Pending       []adminRow
-	Accounts      []adminRow
-	Target        *adminRow        // the account the delete warning page is about
-	Foot          AccountFootprint // what deleting it would take with it
-	ShowArchived  bool             // the admin list also shows archived accounts
-	ArchivedCount int
+	Signing          bool // the ROMIF page: signed in but not allowed anywhere else yet, so no sign-in or sign-up links
+	Title            string
+	Nav              string // which sidebar item is current: the template name without ".html"
+	User             *Submitter
+	Sitekey          string
+	DevCheck         bool
+	Error            string
+	Form             map[string]string
+	Companies        []companyOption
+	Token            string
+	Heading          string
+	Message          string
+	Counts           map[string]int
+	Pending          []adminRow
+	Accounts         []adminRow
+	ZipURL           string           // the "Download all certificates" link, empty when the page has none
+	ShowUploader     bool             // My documents shows who uploaded each row
+	AccountCompanies []CompanyRef     // companies in scope, for the filter above My documents
+	Target           *adminRow        // the account the delete warning page is about
+	Foot             AccountFootprint // what deleting it would take with it
+	ShowArchived     bool             // the admin list also shows archived accounts
+	ArchivedCount    int
 
 	// Upload pages.
 	Docs          []Submission
@@ -454,7 +459,13 @@ func (a *API) Home(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		return
 	}
-	docs, err := a.Store.ListOwn(r.Context(), u.ID)
+	// The counts are the company's, like My documents: the second account sees the same picture.
+	sc, err := a.Store.ScopeFor(r.Context(), u)
+	if err != nil {
+		a.serverError(w, "scope", err)
+		return
+	}
+	docs, err := a.Store.ListScope(r.Context(), sc)
 	if err != nil {
 		a.serverError(w, "list own", err)
 		return
@@ -463,6 +474,9 @@ func (a *API) Home(w http.ResponseWriter, r *http.Request) {
 	p.User, p.Counts = u, map[string]int{}
 	for _, d := range docs {
 		p.Counts[d.Status]++
+		if d.Status == SubRejected || d.ResultMessage() != "" {
+			p.Counts["Needs"]++ // shown as "Needs action" with a link to the filtered list
+		}
 	}
 	// Shown whether or not reminder mails are on (plan section 8); the admin has no workers of
 	// their own, so the list is only for submitters.

@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=30" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=32" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
   <script src="/static/mcu-portal-name.js?v=2" defer></script>
   <script src="/static/mcu-portal-cards.js?v=4" defer></script>
@@ -36,6 +36,7 @@
           <input type="hidden" name="next" value="@@NEXT@@" />
           <button class="btn-ghost" type="submit" name="lang" value="en" lang="en" aria-label="English">EN</button>
           <button class="btn-ghost" type="submit" name="lang" value="id" lang="id" aria-label="Bahasa Indonesia">ID</button>
+          <button class="btn-ghost" type="submit" name="lang" value="zh" lang="zh-Hans" aria-label="中文">中文</button>
         </form>
       </div>
     </div>
@@ -114,9 +115,9 @@
 {{define "romif-statement"}}          <div class="mp-romif" role="group" aria-labelledby="romif-title">
   <h2 id="romif-title">Release of medical information (ROMIF)</h2>
   <div class="mp-romif-text">
-    <p>By requesting this account I understand that the medical post will store and review the medical checkup results I send, and that a worker's health information may be shared with company management or authorised workplace representatives when reasonably needed for workplace safety, company policy or other legitimate medical purposes.</p>
+    <p>By requesting this account I understand that the Medical Team of the PT Layar Nusantara Gas project area will store and review the medical checkup results I send, and that a worker's health information may be shared with company management or authorised workplace representatives when reasonably needed for workplace safety, company policy or other legitimate medical purposes.</p>
     <p>I confirm that the workers whose results I send know about this and agree to it, and that my company has authorised me to send them.</p>
-    <p>I also understand that the information may be shared with other healthcare facilities for referral or continuity of care, in line with the medical post's policies and the law that applies in Indonesia.</p>
+    <p>I also understand that the information may be shared with other healthcare facilities for referral or continuity of care, in line with the Medical Team's policies and the law that applies in Indonesia.</p>
     <p class="mp-hint">If you do not agree, do not request an account.</p>
   </div>
   <label class="mp-check" for="romif_accepted"><input id="romif_accepted" name="romif_accepted" type="checkbox" value="1" required /><span>I have read the statement above and I agree.</span></label>
@@ -313,6 +314,21 @@
       </div>
 
       <div class="mp-pane">
+      <h2>Change <span>username</span></h2>
+      <div class="login-card mp-wide">
+        <p class="sub">Now: {{.User.Username}}</p>
+        <form method="post" action="/mcu-submit/settings/username" autocomplete="off">
+          <div class="field"><label for="username"><span>New username</span></label>
+            <input id="username" name="username" type="text" maxlength="40" required autocomplete="off" autocapitalize="none" spellcheck="false" /></div>
+          <div class="field"><label for="username-current"><span>Current password</span></label>
+            <input id="username-current" name="current" type="password" maxlength="72" required autocomplete="current-password" />
+            <p class="mp-hint">3 to 40 letters, digits, dots or underscores. Use the new name the next time you sign in.</p></div>
+          <button type="submit" class="btn-primary">Change username</button>
+        </form>
+      </div>
+      </div>
+
+      <div class="mp-pane">
       <h2>Reminder <span>mails</span></h2>
       <div class="login-card mp-wide">
         <form method="post" action="/mcu-submit/settings/reminders">
@@ -330,6 +346,7 @@
     <section class="mp-section">
       <h1>Welcome, <span>{{.User.Name}}</span></h1>
       <p class="mp-lead">Your documents by status.</p>
+      {{if index .Counts "Needs"}}<p class="mp-notice" role="status"><a href="/mcu-submit/documents?needs=1">{{index .Counts "Needs"}} documents need your action</a>: a rejected document to upload again, or a result with a note to read.</p>{{end}}
       <div class="mp-cards">
         <div class="mp-card"><span class="mp-count">{{index .Counts "Draft"}}</span><span>Draft</span></div>
         <div class="mp-card"><span class="mp-count">{{index .Counts "Pending"}}</span><span>Pending</span></div>
@@ -352,17 +369,18 @@
 {{define "doctable"}}
       <div class="mp-scroll"><table class="mp-table">
         <caption>{{.Caption}}</caption>
-        <thead><tr><th scope="col">Sent</th><th scope="col">Worker</th><th scope="col">Date of birth</th><th scope="col">Position</th><th scope="col">Company</th><th scope="col">Nationality</th><th scope="col">Status</th><th scope="col">File</th><th scope="col">Action</th></tr></thead>
+        <thead><tr><th scope="col">Sent</th>{{if .ShowUploader}}<th scope="col">Uploaded by</th>{{end}}<th scope="col">Worker</th><th scope="col">Date of birth</th><th scope="col">Position</th><th scope="col">Company</th><th scope="col">Nationality</th><th scope="col">Status</th><th scope="col">File</th><th scope="col">Action</th></tr></thead>
         <tbody>
         {{range .Docs}}<tr>
-          <td>{{if .SentAt}}{{.SentAt}}{{else}}Draft{{end}}</td><td>{{.PatName}}</td><td>{{.PatDateOfBirth}}</td><td>{{.PatPosition}}</td><td>{{.PatCompanyText}}</td><td>{{.PatNationality}}</td>
+          <td>{{if .SentAt}}{{.SentAt}}{{else}}Draft{{end}}</td>{{if $.ShowUploader}}<td>{{.SubmitterName}}</td>{{end}}<td>{{.PatName}}</td><td>{{.PatDateOfBirth}}</td><td>{{.PatPosition}}</td><td>{{.PatCompanyText}}</td><td>{{.PatNationality}}</td>
           <td><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span>{{if .RejectReason}}<div class="mp-hint">{{.RejectReason}}</div>{{end}}{{with .ResultMessage}}<div class="mp-hint">{{.}}</div>{{end}}</td>
           <td>{{if and .HasFile (eq .ScanStatus "Clean")}}<a href="/mcu-submit/documents/{{.ID}}/file" target="_blank" rel="noopener">Open PDF</a>{{else}}<span class="mp-hint">No file</span>{{end}}</td>
           <td class="mp-decide">
-            {{if eq .Status "Review"}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/review">Review</a>{{end}}
+            {{if eq .SubmitterID $.User.ID}}{{if eq .Status "Review"}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/review">Review</a>{{end}}
             {{if or (eq .Status "Draft") (eq .Status "Review")}}<form method="post" action="/mcu-submit/documents/{{.ID}}/remove" class="mp-inline"><button type="submit" class="btn-ghost">{{if eq .Status "Draft"}}Remove{{else}}Discard{{end}}</button></form>{{end}}
+            {{end}}
             {{if and (eq .Status "Closed") .RecordID}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/certificate">Download certificate</a>{{end}}
-            {{if eq .Status "Pending"}}<form method="post" action="/mcu-submit/documents/{{.ID}}/withdraw" class="mp-inline" data-confirm="Withdraw this document? The medical post will no longer see it and the file is deleted. You can upload a corrected one in a new batch."><button type="submit" class="btn-ghost">Withdraw</button></form>{{end}}
+            {{if and (eq .Status "Pending") (or (eq .SubmitterID $.User.ID) (and $.User.CompanyID (eq .SubmitterCompanyID $.User.CompanyID)))}}<form method="post" action="/mcu-submit/documents/{{.ID}}/withdraw" class="mp-inline" data-confirm="Withdraw this document? The medical post will no longer see it and the file is deleted. You can upload a corrected one in a new batch."><button type="submit" class="btn-ghost">Withdraw</button></form>{{end}}
           </td></tr>{{end}}
         </tbody></table></div>
 {{end}}
@@ -480,6 +498,11 @@
           <input id="f-worker" name="worker" type="text" maxlength="60" value="{{.Form.worker}}" /></div>
         <div class="field"><label for="f-company"><span>Company</span></label>
           <input id="f-company" name="company" type="text" maxlength="60" value="{{.Form.company}}" /></div>
+        <div class="field"><label class="mp-check" for="f-needs"><input id="f-needs" name="needs" type="checkbox" value="1"{{if .Form.needs}} checked{{end}} /> <span>Needs action</span></label></div>
+        {{if gt (len .AccountCompanies) 1}}<div class="field"><label for="f-account"><span>Account company</span></label>
+          <select id="f-account" name="account"><option value="">All</option>
+            {{range .AccountCompanies}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) $.Form.account}} selected{{end}}>{{.Name}}</option>{{end}}
+          </select></div>{{end}}
         <div class="field"><label for="f-status"><span>Status</span></label>
           <select id="f-status" name="status"><option value="">All</option>
             {{range .Statuses}}<option value="{{.}}"{{if eq . $.Form.status}} selected{{end}}>{{.}}</option>{{end}}
@@ -496,8 +519,8 @@
       {{if or .PrevURL .NextURL}}<p class="mp-actions">
         {{if .PrevURL}}<a class="btn-ghost" href="{{.PrevURL}}" rel="prev">Previous</a>{{end}}
         {{if .NextURL}}<a class="btn-ghost" href="{{.NextURL}}" rel="next">Next</a>{{end}}</p>{{end}}
-      {{else if not .Error}}<p class="mp-hint">{{if .Form.worker}}No document matches this filter.{{else if .Form.company}}No document matches this filter.{{else if .Form.status}}No document matches this filter.{{else if .Form.from}}No document matches this filter.{{else if .Form.to}}No document matches this filter.{{else}}You have not uploaded anything yet.{{end}}</p>{{end}}
-      <p class="mp-actions"><a class="btn-primary" href="/mcu-submit/batch">New batch</a></p>
+      {{else if not .Error}}<p class="mp-hint">{{if or .Form.worker .Form.needs}}No document matches this filter.{{else if .Form.company}}No document matches this filter.{{else if .Form.status}}No document matches this filter.{{else if .Form.from}}No document matches this filter.{{else if .Form.to}}No document matches this filter.{{else}}Nothing has been uploaded yet.{{end}}</p>{{end}}
+      <p class="mp-actions"><a class="btn-primary" href="/mcu-submit/batch">New batch</a>{{if .ZipURL}} <a class="btn-ghost" href="{{.ZipURL}}">Download all certificates</a>{{end}}</p>
     </section>
 {{template "foot" .}}{{end}}
 

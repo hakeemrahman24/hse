@@ -87,3 +87,63 @@ func TestTheSwitcherCarriesTheCurrentPageSoTheChoiceComesBack(t *testing.T) {
 		t.Fatal("the current address was written into the page without escaping")
 	}
 }
+
+// Chinese (owner, 2026-11-05) must cover exactly the phrases Indonesian does, so a phrase added to
+// one dictionary and forgotten in the other is caught here instead of showing up as English text.
+func TestChineseDictionaryCoversTheSamePhrasesAsIndonesian(t *testing.T) {
+	for k := range indonesianText {
+		if _, ok := simplifiedChineseText[k]; !ok {
+			t.Errorf("no Chinese text for %q", k)
+		}
+	}
+	for k := range simplifiedChineseText {
+		if _, ok := indonesianText[k]; !ok {
+			t.Errorf("Chinese text for a phrase Indonesian lacks: %q", k)
+		}
+	}
+}
+
+func TestChoosingChineseSetsTheCookieAndTranslatesThePages(t *testing.T) {
+	e := newEnv(t)
+	rec := e.post("/mcu-submit/lang", url.Values{"lang": {"zh"}, "next": {"/mcu-submit/register"}})
+	if rec.Code != http.StatusSeeOther {
+		t.Fatalf("choose = %d", rec.Code)
+	}
+	var set *http.Cookie
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == langCookie {
+			set = c
+		}
+	}
+	if set == nil || set.Value != "zh" {
+		t.Fatalf("language cookie = %+v", set)
+	}
+	chinese := &http.Cookie{Name: langCookie, Value: "zh"}
+	for path, want := range map[string]string{
+		"/mcu-submit/signin":   "忘记密码？",
+		"/mcu-submit/register": "申请账户",
+	} {
+		body := e.do(http.MethodGet, path, nil, []*http.Cookie{chinese}, nil).Body.String()
+		if !strings.Contains(body, want) || !strings.Contains(body, `lang="zh-Hans"`) {
+			t.Errorf("%s lacks %q or lang=zh-Hans:\n%s", path, want, body)
+		}
+	}
+}
+
+func TestSignedInPagesAreTranslatedAndSentencesWithNumbersToo(t *testing.T) {
+	for lang, want := range map[string][]string{
+		"id": {"Kirim kumpulan berisi 3 dokumen untuk ditinjau", "Dokumen", "Perlu tindakan"},
+		"zh": {"发送包含 3 份文件的批次以供审核", "我的", "需要处理"},
+	} {
+		page := translateHTML(`<html lang="en"><h1>My <span>documents</span></h1><label><span>Needs action</span></label><button>Send batch of 3 for review</button>`, lang)
+		for _, w := range want {
+			if !strings.Contains(page, w) {
+				t.Errorf("%s: page lacks %q:\n%s", lang, w, page)
+			}
+		}
+	}
+	// A name the dictionary does not know, even one that looks like a phrase, is left alone.
+	if got := translateHTML(`<td>Budi Santoso</td>`, "id"); !strings.Contains(got, "Budi Santoso") {
+		t.Errorf("a name was changed: %s", got)
+	}
+}

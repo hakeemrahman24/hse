@@ -32,6 +32,14 @@ func (s *Store) Archive(ctx context.Context, id int64) error {
 // Restore brings an Archived account back as Disabled, never straight to Active: the admin looks at
 // it first and then presses Enable.
 func (s *Store) Restore(ctx context.Context, id int64) error {
+	// Coming back uses a place in the company again, so it needs one.
+	if u, err := s.ByID(ctx, id); err == nil && u.Status == StatusArchived && u.CompanyID != 0 {
+		if room, err := s.CompanyHasRoom(ctx, u.CompanyID); err != nil {
+			return err
+		} else if !room {
+			return ErrCompanyFull
+		}
+	}
 	return s.transition(ctx, id, `Status = ?`, []any{StatusDisabled}, ``, StatusArchived)
 }
 

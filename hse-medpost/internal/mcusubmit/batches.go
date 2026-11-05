@@ -80,6 +80,7 @@ type Submission struct {
 	PatGender             string
 	RecordID              int64 // the checkup record a Closed document was linked to, 0 = none
 	PatientID, CompanyID  int64
+	SubmitterCompanyID    int64 // the uploader's company: the template shows Withdraw to that company's accounts
 }
 
 const submissionColumns = `s.SubmissionID, s.FK_BatchID, s.FK_SubmitterID, COALESCE(u.Name, ''),
@@ -87,7 +88,7 @@ const submissionColumns = `s.SubmissionID, s.FK_BatchID, s.FK_SubmitterID, COALE
 	s.IsNewEmployee, CASE WHEN s.FilePath IS NULL THEN 0 ELSE 1 END, s.ScanStatus, s.Status, COALESCE(s.RejectReason, ''),
 	s.SubmittedAt, COALESCE(b.SentAt, ''), COALESCE(s.WithdrawnAt, ''), COALESCE(s.FileExpiresAt, ''),
 	COALESCE(s.ReviewedAt, ''), COALESCE(rs.StaffName, ''), COALESCE(s.PatNik, ''), COALESCE(s.PatPassportNo, ''), COALESCE(s.PatGender, ''),
-	COALESCE(s.FK_PatientID, 0), COALESCE(s.FK_CompanyID, 0), COALESCE(s.FK_McuRecordID, 0), COALESCE(rec.ResultCriteria, ''), COALESCE(rec.ResultNotes, ''), COALESCE(rec.Recommendation, '')`
+	COALESCE(s.FK_PatientID, 0), COALESCE(s.FK_CompanyID, 0), COALESCE(s.FK_McuRecordID, 0), COALESCE(rec.ResultCriteria, ''), COALESCE(rec.ResultNotes, ''), COALESCE(rec.Recommendation, ''), COALESCE(u.FK_CompanyID, 0)`
 
 const submissionFrom = ` FROM McuSubmission s
 	JOIN McuBatch b ON b.BatchID = s.FK_BatchID
@@ -128,7 +129,7 @@ func (s *Store) querySubmissions(ctx context.Context, where string, args ...any)
 		if err := rows.Scan(&d.ID, &d.BatchID, &d.SubmitterID, &d.SubmitterName, &d.PatName, &d.PatDateOfBirth,
 			&d.PatPosition, &d.PatCompanyText, &d.PatNationality, &isNew, &hasFile, &d.ScanStatus, &d.Status,
 			&d.RejectReason, &d.SubmittedAt, &d.SentAt, &d.WithdrawnAt, &d.FileExpiresAt,
-			&d.ReviewedAt, &d.ReviewedBy, &d.PatNik, &d.PatPassportNo, &d.PatGender, &d.PatientID, &d.CompanyID, &d.RecordID, &d.Result, &d.ResultNotes, &d.Recommendation); err != nil {
+			&d.ReviewedAt, &d.ReviewedBy, &d.PatNik, &d.PatPassportNo, &d.PatGender, &d.PatientID, &d.CompanyID, &d.RecordID, &d.Result, &d.ResultNotes, &d.Recommendation, &d.SubmitterCompanyID); err != nil {
 			return nil, err
 		}
 		d.IsNewEmployee, d.HasFile = isNew == 1, hasFile == 1
@@ -372,16 +373,22 @@ func (s *Store) SendBatch(ctx context.Context, submitterID, batchID int64) (int,
 // and that record must not stay tied to a document the medical post no longer sees. The checkup
 // itself is medical data and is kept.)
 func (s *Store) Withdraw(ctx context.Context, submitterID, id int64) (string, error) {
-	path, status, err := s.ownedStatus(ctx, submitterID, id)
+	var p sql.NullString
+	var status string
+	err := s.DB.QueryRowContext(ctx, `SELECT FilePath, Status FROM McuSubmission WHERE SubmissionID = ? AND `+peerWhere, append([]any{id}, peerArgs(submitterID)...)...).Scan(&p, &status)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
 	if err != nil {
 		return "", err
 	}
+	path := p.String
 	if status != SubPending {
 		return "", ErrBadState
 	}
 	res, err := s.DB.ExecContext(ctx,
-		`UPDATE McuSubmission SET Status = ?, WithdrawnAt = ?, FilePath = NULL, FK_McuRecordID = NULL WHERE SubmissionID = ? AND FK_SubmitterID = ? AND Status = ?`,
-		SubWithdrawn, s.stamp(), id, submitterID, SubPending)
+		`UPDATE McuSubmission SET Status = ?, WithdrawnAt = ?, FilePath = NULL, FK_McuRecordID = NULL WHERE SubmissionID = ? AND `+peerWhere+` AND Status = ?`,
+		append(append([]any{SubWithdrawn, s.stamp(), id}, peerArgs(submitterID)...), SubPending)...)
 	if err != nil {
 		return "", err
 	}
@@ -395,6 +402,13 @@ func (s *Store) Withdraw(ctx context.Context, submitterID, id int64) (string, er
 // session, never from the request, so a submitter can only ever see their own rows.
 func (s *Store) ListOwn(ctx context.Context, submitterID int64) ([]Submission, error) {
 	return s.querySubmissions(ctx, `WHERE s.FK_SubmitterID = ? ORDER BY s.SubmissionID DESC`, submitterID)
+}
+
+// ListScope returns every document a submitter may read (their own, plus the sent ones of the
+// company and its subcontractors), newest first.
+func (s *Store) ListScope(ctx context.Context, sc Scope) ([]Submission, error) {
+	clause, args := sc.clause()
+	return s.querySubmissions(ctx, `WHERE `+clause+` ORDER BY s.SubmissionID DESC`, args...)
 }
 
 // StaffQueue is the review list. Drafts are never listed (staff must not see unsent work), and
@@ -421,10 +435,12 @@ func (s *Store) fileFor(ctx context.Context, where string, args ...any) (string,
 	return p.String, err
 }
 
-// OwnFile is the path a submitter may open: their own, scanned clean, not withdrawn. Drafts are
-// allowed so they can check what they uploaded before sending.
-func (s *Store) OwnFile(ctx context.Context, submitterID, id int64) (string, error) {
-	return s.fileFor(ctx, `s.SubmissionID = ? AND s.FK_SubmitterID = ? AND s.Status <> ?`, id, submitterID, SubWithdrawn)
+// OwnFile is the path a submitter may open: their own, or a sent one of their company or its
+// subcontractors (Scope), scanned clean, not withdrawn. Their own Drafts are allowed so they can
+// check what they uploaded before sending.
+func (s *Store) OwnFile(ctx context.Context, sc Scope, id int64) (string, error) {
+	clause, args := sc.clause()
+	return s.fileFor(ctx, `s.SubmissionID = ? AND `+clause+` AND s.Status <> ?`, append(append([]any{id}, args...), SubWithdrawn)...)
 }
 
 // StaffFile is the path a staff member may open: scanned clean and sent (never a Draft or a

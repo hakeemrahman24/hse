@@ -18,6 +18,9 @@ var ErrBadFilter = errors.New("mcusubmit: unknown status or date in the filter")
 // from the request); with OwnerID zero it is the staff list, which never shows unsent work.
 type DocFilter struct {
 	OwnerID   int64
+	Scope     *Scope // with OwnerID set: also the sent documents of the company and its subcontractors
+	Account   int64  // with Scope: only documents of accounts of this company (must be inside Scope)
+	Needs     bool   // own view: only documents that need the submitter to do something (see needsActionSQL)
 	Status    string
 	Worker    string // words of the worker's name, any order
 	Company   string // words of the company text
@@ -34,6 +37,14 @@ type DocPage struct {
 }
 
 var ownStatuses = map[string]bool{"": true, SubDraft: true, SubReview: true, SubPending: true, SubReviewed: true, SubClosed: true, SubRejected: true, SubWithdrawn: true}
+
+// followUpResults are the results after which the submitter has something to do or read: the
+// reviewer's recommendation or notes (see Submission.ResultMessage).
+var followUpResults = []string{"NeedFollowUp", "IncompleteResult", "TemporaryUnfit", "Unfit"}
+
+// needsActionSQL is "Needs action" (owner, 2026-11-05): a rejected document (upload a corrected one)
+// or a Closed one with a follow-up result. Fixed text; its values are bound parameters.
+const needsActionSQL = ` AND (s.Status = ? OR (s.Status = ? AND rec.ResultCriteria IN (?, ?, ?, ?)))`
 
 const dateOnlyLayout = "2006-01-02"
 
@@ -54,8 +65,21 @@ func (s *Store) SearchDocs(ctx context.Context, f DocFilter) (DocPage, error) {
 
 	where, args := ` WHERE 1 = 1`, []any{}
 	if f.OwnerID != 0 {
-		where += ` AND s.FK_SubmitterID = ?`
-		args = append(args, f.OwnerID)
+		if f.Scope != nil {
+			if f.Account != 0 && !f.Scope.Covers(f.Account) {
+				return DocPage{}, ErrBadFilter // a company outside the scope cannot be asked for
+			}
+			clause, scopeArgs := f.Scope.clause()
+			where += ` AND ` + clause
+			args = append(args, scopeArgs...)
+			if f.Account != 0 {
+				where += ` AND s.FK_SubmitterID IN (SELECT SubmitterID FROM Submitter WHERE FK_CompanyID = ?)`
+				args = append(args, f.Account)
+			}
+		} else {
+			where += ` AND s.FK_SubmitterID = ?`
+			args = append(args, f.OwnerID)
+		}
 	} else {
 		// Staff never see unsent work (Draft and Review are not valid staff filters either); withdrawn
 		// documents only when asked for by name.
@@ -64,6 +88,13 @@ func (s *Store) SearchDocs(ctx context.Context, f DocFilter) (DocPage, error) {
 		if f.Status != SubWithdrawn {
 			where += ` AND s.Status <> ?`
 			args = append(args, SubWithdrawn)
+		}
+	}
+	if f.Needs && f.OwnerID != 0 {
+		where += needsActionSQL
+		args = append(args, SubRejected, SubClosed)
+		for _, r := range followUpResults {
+			args = append(args, r)
 		}
 	}
 	if f.Status != "" {

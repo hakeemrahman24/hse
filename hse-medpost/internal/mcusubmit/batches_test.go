@@ -187,7 +187,7 @@ func TestWithdrawWorksOnlyWhilePendingAndDeletesTheFile(t *testing.T) {
 	if list[0].Status != SubWithdrawn || list[0].HasFile || list[0].WithdrawnAt == "" {
 		t.Fatalf("after withdraw: %+v", list[0])
 	}
-	if _, err := s.OwnFile(ctx, sub, id); !errors.Is(err, ErrNotFound) {
+	if _, err := s.OwnFile(ctx, Scope{SubmitterID: sub}, id); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("file route after withdraw = %v, want ErrNotFound", err)
 	}
 	if _, err := s.Withdraw(ctx, sub, id); !errors.Is(err, ErrBadState) {
@@ -204,12 +204,15 @@ func TestWithdrawAndRemoveRefuseAnotherSubmittersDocument(t *testing.T) {
 	ctx := context.Background()
 	owner := activeSubmitter(t, s, co, "owner@example.com")
 	other := activeSubmitter(t, s, co, "other@example.com")
+	stranger := activeSubmitter(t, s, company(t, s, "PT Stranger", 0), "stranger@example.com")
 	id := addClean(t, s, owner, "Andi Wijaya")
 
+	// A colleague of the same company may not remove an unsent draft (writing stays with the
+	// uploader) but a stranger can do neither.
 	if _, err := s.RemoveDraft(ctx, other, id); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("foreign RemoveDraft = %v, want ErrNotFound", err)
 	}
-	if _, err := s.Withdraw(ctx, other, id); !errors.Is(err, ErrNotFound) {
+	if _, err := s.Withdraw(ctx, stranger, id); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("foreign Withdraw = %v, want ErrNotFound", err)
 	}
 }
@@ -281,14 +284,14 @@ func TestFileRoutesRefuseUnscannedAndOtherPeoplesFiles(t *testing.T) {
 	scanning, _ := s.AddSubmission(ctx, owner, sampleDoc("Not Scanned Yet"))
 	clean := addClean(t, s, owner, "Scanned Clean")
 
-	if _, err := s.OwnFile(ctx, owner, scanning); !errors.Is(err, ErrNotFound) {
+	if _, err := s.OwnFile(ctx, Scope{SubmitterID: owner}, scanning); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("unscanned own file = %v, want ErrNotFound", err)
 	}
-	if p, err := s.OwnFile(ctx, owner, clean); err != nil || p == "" {
+	if p, err := s.OwnFile(ctx, Scope{SubmitterID: owner}, clean); err != nil || p == "" {
 		t.Fatalf("clean own draft = %q, %v; a submitter may check their own drafts", p, err)
 	}
 	// Same answer for someone else's id as for a missing one: never confirm the id exists.
-	if _, err := s.OwnFile(ctx, other, clean); !errors.Is(err, ErrNotFound) {
+	if _, err := s.OwnFile(ctx, Scope{SubmitterID: other}, clean); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("foreign file = %v, want ErrNotFound", err)
 	}
 	if _, err := s.StaffFile(ctx, clean); !errors.Is(err, ErrNotFound) {

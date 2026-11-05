@@ -15,8 +15,10 @@
   var weeksEl = document.getElementById("weeks");
   // The texts come from the page, already in the visitor's language.
   var msg = form.dataset;
-  var lang = msg.lang === "en" ? "en" : "id";
+  var lang = msg.lang === "en" || msg.lang === "zh" ? msg.lang : "id";
   var submitting = false;
+  var submitBtn = form.querySelector('button[type="submit"]');
+  var progressEl = document.getElementById("sofi-progress");
 
   function showError(text) {
     errEl.textContent = text;
@@ -42,10 +44,26 @@
     li.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 
+  // Every word and the weeks are mandatory, so the button stays disabled until all are answered.
+  // "n / 25" shows how far along the person is, so a long form never hides what is still missing.
+  function refreshSubmit() {
+    var answered = 0;
+    for (var n = 1; n <= ITEM_COUNT; n++) {
+      if (form.querySelector('input[name="q' + n + '"]:checked')) { answered++; }
+    }
+    var complete = answered === ITEM_COUNT && /^\d{1,3}$/.test(weeksEl.value.trim());
+    submitBtn.disabled = !complete;
+    if (progressEl) { progressEl.textContent = answered + " / " + ITEM_COUNT; }
+  }
+
   form.addEventListener("change", function (e) {
     var li = e.target.closest && e.target.closest(".sofi-item");
     if (li) { li.classList.remove("missing"); }
+    refreshSubmit();
   });
+  // A browser can restore ticked answers after a reload or Back, so count them once at the start.
+  refreshSubmit();
+  window.addEventListener("pageshow", refreshSubmit);
 
   function bar(d) {
     var row = document.createElement("div");

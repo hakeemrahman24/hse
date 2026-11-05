@@ -287,6 +287,51 @@ func (a *API) RequestEmailChange(w http.ResponseWriter, r *http.Request) {
 	a.settingsPage(w, http.StatusOK, u, "", "We sent a confirmation link to the new address. Your login email changes when you open it.")
 }
 
+// ChangeUsername sets a new username after the current password is given again, like the email
+// change: a stolen session cookie alone must not be able to rename the account.
+func (a *API) ChangeUsername(w http.ResponseWriter, r *http.Request) {
+	u := a.requireUser(w, r)
+	if u == nil {
+		return
+	}
+	if !parseForm(w, r) {
+		a.settingsPage(w, http.StatusBadRequest, u, "The form could not be read.", "")
+		return
+	}
+	if msg := a.checkCurrentPassword(r.Context(), u, r.PostFormValue("current")); msg != "" {
+		a.settingsPage(w, http.StatusBadRequest, u, msg, "")
+		return
+	}
+	username := strings.ToLower(strings.TrimSpace(r.PostFormValue("username")))
+	if err := ValidUsername(username); err != nil {
+		msg := "3 to 40 letters, digits, dots or underscores."
+		if strings.EqualFold(username, builtInUsername) {
+			msg = "That username is taken. Choose another."
+		}
+		a.settingsPage(w, http.StatusBadRequest, u, msg, "")
+		return
+	}
+	err := a.Store.ChangeUsername(r.Context(), u.ID, username)
+	switch {
+	case errors.Is(err, ErrUsernameTaken):
+		a.settingsPage(w, http.StatusConflict, u, "That username is taken. Choose another.", "")
+		return
+	case errors.Is(err, ErrNotFound):
+		a.notFound(w, u)
+		return
+	case err != nil:
+		a.serverError(w, "change username", err)
+		return
+	}
+	fresh, err := a.Store.ByID(r.Context(), u.ID)
+	if err != nil {
+		a.serverError(w, "reload account", err)
+		return
+	}
+	a.audit(r, ActorSubmitter, u.ID, EntitySubmitter, u.ID, "UsernameChanged")
+	a.settingsPage(w, http.StatusOK, &fresh, "", "Username changed. Use it the next time you sign in.")
+}
+
 // SaveReminders stores the checkbox. A browser sends nothing for an unchecked box, so "absent" is "off".
 func (a *API) SaveReminders(w http.ResponseWriter, r *http.Request) {
 	u := a.requireUser(w, r)

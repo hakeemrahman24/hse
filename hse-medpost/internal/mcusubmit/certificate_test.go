@@ -1,6 +1,8 @@
 package mcusubmit
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -83,6 +85,14 @@ func TestCertificateIsOnlyForTheOwnersClosedDocumentWithARecord(t *testing.T) {
 	other := u.env.onboard("hr2@example.com", "hr.two", "a-long-passphrase-2")
 	_, otherCookie := u.env.signIn("hr.two", "a-long-passphrase-2")
 	_ = other
+	// Colleagues of one company share documents now (owner, 2026-11-05), so "somebody else" must
+	// belong to another company.
+	if _, err := u.store.DB.Exec(`INSERT INTO Company (Name) VALUES ('PT Elsewhere')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := u.store.DB.Exec(`UPDATE Submitter SET FK_CompanyID = (SELECT CompanyID FROM Company WHERE Name = 'PT Elsewhere') WHERE SubmitterID = ?`, other); err != nil {
+		t.Fatal(err)
+	}
 
 	for name, c := range map[string]struct {
 		id     int64
@@ -120,5 +130,36 @@ func TestARefusedCertificateIsExplainedAndNoSourceMeansNoRoute(t *testing.T) {
 	}
 	if hasEvent(t, u.store, EntitySubmission, id, "CertificateDownloaded") {
 		t.Error("a refused certificate was logged as downloaded")
+	}
+}
+
+func TestCertificatesZipHoldsEveryClosedCertificateInTheScopeAndNothingElse(t *testing.T) {
+	u := newUploadEnv(t)
+	u.api.SetCertificates(&fakeCerts{dir: t.TempDir()})
+	one := u.closedDoc("Siti Aminah")
+	two := u.closedDoc("Budi Hartono")
+	sentDoc(t, u.store, u.userID, "Still Pending")
+
+	rec := u.get("/mcu-submit/documents/certificates.zip?status=Closed", u.cookie)
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/zip" {
+		t.Fatalf("= %d %v", rec.Code, rec.Header())
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(zr.File) != 2 || !strings.HasPrefix(zr.File[0].Name, itoa(two)+"-") && !strings.HasPrefix(zr.File[0].Name, itoa(one)+"-") {
+		t.Errorf("zip holds %d files: %v", len(zr.File), zr.File)
+	}
+	if !hasEvent(t, u.store, EntitySubmission, one, "CertificateDownloaded") {
+		t.Error("the zip download was not logged")
+	}
+	// The list offers the button.
+	if body := u.get("/mcu-submit/documents", u.cookie).Body.String(); !strings.Contains(body, "certificates.zip") {
+		t.Error("no Download all certificates link on the documents page")
+	}
+	// Signed out: no zip.
+	if rec := u.get("/mcu-submit/documents/certificates.zip"); rec.Code == http.StatusOK {
+		t.Error("the zip was served without signing in")
 	}
 }

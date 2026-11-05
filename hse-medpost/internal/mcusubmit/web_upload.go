@@ -95,13 +95,24 @@ func (a *API) Documents(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	page, _ := strconv.Atoi(q.Get("page")) // not a number becomes 0, which SearchDocs moves to page 1
+	sc, err := a.Store.ScopeFor(r.Context(), u)
+	if err != nil {
+		a.serverError(w, "scope", err)
+		return
+	}
+	account, _ := parseID(q.Get("account")) // 0 = every company in scope
 	filter := DocFilter{
-		OwnerID: u.ID, Status: q.Get("status"), Worker: q.Get("worker"), Company: q.Get("company"),
+		OwnerID: u.ID, Scope: &sc, Account: account, Needs: q.Get("needs") == "1", Status: q.Get("status"), Worker: q.Get("worker"), Company: q.Get("company"),
 		From: q.Get("from"), To: q.Get("to"), Page: page,
 	}
 	p := a.newPage("My documents")
-	p.User, p.Caption = u, "Every document you uploaded, newest first"
-	p.Form = map[string]string{"status": filter.Status, "worker": filter.Worker, "company": filter.Company, "from": filter.From, "to": filter.To}
+	p.User, p.Caption = u, "Every document of your company, newest first"
+	p.AccountCompanies = a.Store.ScopeCompanies(r.Context(), sc)
+	// The column is only worth its width when more than one account's documents can be in the list.
+	if n, err := a.Store.accountsInCompany(r.Context(), u.CompanyID); err == nil {
+		p.ShowUploader = n > 1 || len(p.AccountCompanies) > 1
+	}
+	p.Form = map[string]string{"needs": q.Get("needs"), "account": q.Get("account"), "status": filter.Status, "worker": filter.Worker, "company": filter.Company, "from": filter.From, "to": filter.To}
 	p.Statuses = documentStatuses
 	result, err := a.Store.SearchDocs(r.Context(), filter)
 	if errors.Is(err, ErrBadFilter) {
@@ -114,6 +125,14 @@ func (a *API) Documents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.Docs, p.Result = result.Rows, result
+	if a.certs != nil {
+		for _, d := range result.Rows {
+			if d.Status == SubClosed && d.RecordID != 0 {
+				p.ZipURL = zipQuery(p.Form)
+				break
+			}
+		}
+	}
 	p.PrevURL, p.NextURL = pagerLinks(basePath+"/documents", p.Form, result)
 	a.render(w, http.StatusOK, "documents.html", p)
 }
@@ -602,7 +621,12 @@ func (a *API) DocumentFile(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, u)
 		return
 	}
-	ref, err := a.Store.OwnFile(r.Context(), u.ID, id)
+	sc, err := a.Store.ScopeFor(r.Context(), u)
+	if err != nil {
+		a.serverError(w, "scope", err)
+		return
+	}
+	ref, err := a.Store.OwnFile(r.Context(), sc, id)
 	if err != nil {
 		if !errors.Is(err, ErrNotFound) {
 			log.Printf("mcusubmit: own file: %v", err)

@@ -34,15 +34,16 @@ type CertificateSource interface {
 // answers 404, so a build without the clinical side simply has no such button.
 func (a *API) SetCertificates(src CertificateSource) { a.certs = src }
 
-// OwnClosedRecord returns the checkup record a submitter's own Closed document was linked to. A
-// document of someone else, one that is not Closed, or one with no record is ErrNotFound, so the
+// OwnClosedRecord returns the checkup record a Closed document in the submitter's scope (their own,
+// their company's, a subcontractor's) was linked to. A document outside it, one that is not Closed, or one with no record is ErrNotFound, so the
 // route cannot be used to probe other people's documents.
-func (s *Store) OwnClosedRecord(ctx context.Context, submitterID, id int64) (int64, error) {
+func (s *Store) OwnClosedRecord(ctx context.Context, sc Scope, id int64) (int64, error) {
 	var record int64
+	clause, args := sc.clause()
 	err := s.DB.QueryRowContext(ctx,
-		`SELECT FK_McuRecordID FROM McuSubmission
-		 WHERE SubmissionID = ? AND FK_SubmitterID = ? AND Status = ? AND FK_McuRecordID IS NOT NULL`,
-		id, submitterID, SubClosed).Scan(&record)
+		`SELECT s.FK_McuRecordID FROM McuSubmission s
+		 WHERE s.SubmissionID = ? AND `+clause+` AND s.Status = ? AND s.FK_McuRecordID IS NOT NULL`,
+		append(append([]any{id}, args...), SubClosed)...).Scan(&record)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, ErrNotFound
 	}
@@ -60,7 +61,12 @@ func (a *API) DocumentCertificate(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, u)
 		return
 	}
-	record, err := a.Store.OwnClosedRecord(r.Context(), u.ID, id)
+	sc, err := a.Store.ScopeFor(r.Context(), u)
+	if err != nil {
+		a.serverError(w, "scope", err)
+		return
+	}
+	record, err := a.Store.OwnClosedRecord(r.Context(), sc, id)
 	if err != nil {
 		if !errors.Is(err, ErrNotFound) {
 			log.Printf("mcusubmit: own closed record: %v", err)

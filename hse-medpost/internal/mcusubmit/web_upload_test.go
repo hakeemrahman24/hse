@@ -474,7 +474,15 @@ func TestWithdrawDeletesTheFileAndKeepsTheRow(t *testing.T) {
 func TestSubmittersCannotTouchEachOthersDocuments(t *testing.T) {
 	u := newUploadEnv(t)
 	id := u.uploadOK()
-	u.onboardSecond()
+	other2 := u.onboard("hr2@example.com", "hr.other", "a-long-passphrase-2")
+	// Colleagues of one company may withdraw each other's Pending documents (owner, 2026-11-05), so
+	// the "somebody else" here belongs to another company.
+	if _, err := u.store.DB.Exec(`INSERT INTO Company (Name) VALUES ('PT Elsewhere')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := u.store.DB.Exec(`UPDATE Submitter SET FK_CompanyID = (SELECT CompanyID FROM Company WHERE Name = 'PT Elsewhere') WHERE SubmitterID = ?`, other2); err != nil {
+		t.Fatal(err)
+	}
 	_, other := u.signIn("hr.other", "a-long-passphrase-2")
 	for _, action := range []string{"remove", "withdraw"} {
 		if rec := u.post(fmt.Sprintf("/mcu-submit/documents/%d/%s", id, action), nil, other); rec.Code != http.StatusNotFound {

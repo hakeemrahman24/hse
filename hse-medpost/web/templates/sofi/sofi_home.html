@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/sofi.css?v=7" />
+  <link rel="stylesheet" href="/static/sofi.css?v=11" />
 </head>
 <body>
   <nav class="nav scrolled" role="navigation" aria-label="Main navigation">
@@ -93,7 +93,8 @@
         </ol>
 
         <div class="submit-row">
-          <button type="submit" class="btn-primary">{{tr .Lang "Submit"}}</button>
+          <button type="submit" class="btn-primary" disabled>{{tr .Lang "Submit"}}</button>
+          <span id="sofi-progress" class="sofi-hint" aria-live="polite">0 / {{len .Items}}</span>
         </div>
       </form>
       {{end}}
@@ -108,6 +109,6 @@
     </div>
   </div>
 
-  {{if not .Done}}<script src="/static/sofi-form.js?v=3" defer></script>{{end}}
+  {{if not .Done}}<script src="/static/sofi-form.js?v=4" defer></script>{{end}}
 </body>
 </html>
