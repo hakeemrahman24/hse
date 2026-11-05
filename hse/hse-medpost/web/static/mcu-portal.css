@@ -423,3 +423,29 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
 /* Delete in the admin account list: a link styled like the other buttons, in a muted red. */
 .mp .mp-danger { color: #a12a1b !important; border-color: #c98a82 !important; vertical-align: middle; }
 .mp-warn { margin: 8px 0 12px 18px; padding: 0; line-height: 1.5; }
+
+/* My documents: five columns. Related fields share a cell (grey second line), cells align to the top so
+   one- and three-line cells start together, and the actions sit at the right edge. The primary pink
+   button is New batch in the title bar; row buttons are ghosts except Review, which asks for action. */
+.mp-docs td { vertical-align: top; }
+.mp-docs .mp-cell { min-width: 0; }
+.mp-docs .mp-sub { color: var(--text-3); font-size: 0.75rem; margin-top: 2px; }
+.mp-docs .mp-hint { margin: 4px 0 0; }
+.mp-docs td.mp-decide { text-align: right; }
+.mp-docs th:last-child { text-align: right; }
+.mp-docs .mp-pdf { margin-right: 10px; vertical-align: middle; }
+.mp-docs .mp-badge { min-height: 20px; }
+.mp-titlebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 16px; }
+.mp-titlebar .mp-actions { margin: 0; }
+.mp-chips { margin: 8px 0 4px; }
+.mp-chip { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px; border: 1px solid var(--border); border-radius: 2px; font-size: 0.8125rem; color: var(--text-1); text-decoration: none; background: var(--surface-2); }
+.mp-chip b { font-weight: 700; min-width: 1.4em; text-align: center; padding: 0 4px; background: var(--hl); border-radius: 2px; }
+.mp-chip.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.mp-filter select { max-width: 220px; }
+@media (max-width: 1100px) {
+  .mp-table.mp-stack.mp-docs td { text-align: right; align-items: baseline; }
+  .mp-table.mp-stack.mp-docs td:first-child .mp-cell { text-align: left; }
+  .mp-table.mp-stack.mp-docs td.mp-decide { justify-content: flex-end; text-align: right; }
+  .mp-table.mp-stack.mp-docs td .mp-cell { text-align: right; }
+}
+.mp-docs td:first-child .mp-sub { font-weight: 400; }

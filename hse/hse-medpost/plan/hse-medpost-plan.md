@@ -309,6 +309,12 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 ## Progress Log
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
+### 2026-11-06 — Submitter "My documents": five columns, top actions, Needs action chip
+- **Changed:** `doctable` (used by My documents, the batch page and the send question) goes from ten columns to five: Worker (name, birth date · nationality), Position / company, Sent (uploader underneath when the company has several accounts), Status (notes unchanged), Action (Open PDF + buttons, right-aligned). Cells align to the top. Download certificate is now a ghost button; pink stays for New batch.
+- New batch and Download all certificates moved to the title row. "Needs action" is a chip with the company's count (same rule as Home) instead of a checkbox; the filter keeps it through a hidden field. "1 document" singular, with the Indonesian/Chinese pattern widened to match.
+- **Why:** ten columns wrapped Position and Company onto three lines, and the bottom buttons were off-screen on long lists. Worker comes first (not Sent) so the phone card's bold title line is the worker.
+- **Open:** no Excel export on the submitter side (asked, not requested to build); not yet checked in a browser at phone width.
+
 
 
 ### 2026-11-05 (ROMIF statement button on Home; ROMIF column in the admin list)

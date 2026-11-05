@@ -12,7 +12,9 @@
       });
     });
     // Stored timestamps read "2026-10-31T07:32:02"; show them like the staff app does ("2026-10-31 07:32").
-    Array.prototype.forEach.call(table.querySelectorAll('tbody td'), function (td) {
+    // My documents wraps the date in span.mp-when (its cell also holds the uploader), so that span is
+    // checked as well as plain cells.
+    Array.prototype.forEach.call(table.querySelectorAll('tbody td, tbody .mp-when'), function (td) {
       var m = /^(\d{4}-\d\d-\d\d)T(\d\d:\d\d):\d\d$/.exec(td.textContent.trim());
       if (m && !td.children.length) td.textContent = m[1] + ' ' + m[2];
     });
