@@ -76,7 +76,7 @@ func (a *API) GetMcuReport(w http.ResponseWriter, r *http.Request) {
 	to := strings.TrimSpace(r.URL.Query().Get("to"))
 
 	supSQL, supArgs := dashSupersededSQL(from, to)
-	query := strings.Replace(reportBaseQuery, "m.HcValidityStatus\n", "m.HcValidityStatus, "+supSQL+"\n", 1)
+	query := strings.Replace(reportBaseQuery, "m.HcValidityStatus\n", "m.HcValidityStatus, m.ResultNotes, m.Recommendation, "+supSQL+"\n", 1)
 	args := supArgs
 	var conds []string
 	if from != "" {
@@ -106,11 +106,11 @@ func (a *API) GetMcuReport(w http.ResponseWriter, r *http.Request) {
 	dash := newDashAccum()
 	for rows.Next() {
 		var rr ReportRow
-		var storedHcValidity *string
+		var storedHcValidity, resultNotes, recommendation *string
 		var superseded bool
 		if err := rows.Scan(&rr.McuRecordID, &rr.CheckUpID, &rr.PatientName, &rr.DateOfBirth, &rr.PersonalID, &rr.CompanyName, &rr.CompanyAbbreviation,
 			&rr.Criteria, &rr.TaskCategory, &rr.ReviewDate,
-			&rr.ResultCriteria, &rr.ResultValidUntil, &rr.CheckUpStatus, &storedHcValidity, &superseded); err != nil {
+			&rr.ResultCriteria, &rr.ResultValidUntil, &rr.CheckUpStatus, &storedHcValidity, &resultNotes, &recommendation, &superseded); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})
 			return
 		}
@@ -122,6 +122,12 @@ func (a *API) GetMcuReport(w http.ResponseWriter, r *http.Request) {
 			Result:   derefStr(rr.ResultCriteria),
 			Status:   derefStr(rr.CheckUpStatus),
 			HC:       rr.HcValidityStatus,
+
+			CheckUpID:      rr.CheckUpID,
+			Name:           rr.PatientName,
+			ReviewDate:     rr.ReviewDate,
+			ResultNotes:    derefStr(resultNotes),
+			Recommendation: derefStr(recommendation),
 
 			Superseded: superseded,
 		})

@@ -292,12 +292,47 @@ function sumDash(rows) {
   return (rows || []).reduce((sum, row) => sum + row.count, 0);
 }
 
-function dashSwatchRows(rows, total, withShare) {
+// Results whose row opens to show the checkups behind it. Fit, Fit with note
+// and Waiver stay plain: there is nothing a reviewer needs to read there.
+const DASH_EXPANDABLE = new Set(["NeedFollowUp", "IncompleteResult", "TemporaryUnfit", "Unfit"]);
+// Row ids that are open, kept here so a chart/company toggle re-render does
+// not collapse what the reviewer was reading.
+const dashOpenCases = new Set();
+
+function dashCaseDetail(cases, key) {
+  const label = key === "NeedFollowUp" || key === "IncompleteResult" ? "Recommendation" : "Result notes";
+  if (!cases.length) return `<p class="dash-case-empty">No checkups.</p>`;
+  const items = cases
+    .map((c) => {
+      const text = c.text ? escapeHtml(c.text) : `<em>No ${label.toLowerCase()} written.</em>`;
+      const meta = [c.checkUpId, c.company, c.reviewDate].filter(Boolean).map(escapeHtml).join(" · ");
+      return `<li><b>${escapeHtml(c.name)}</b><span class="dash-case-meta">${meta}</span><span class="dash-case-text"><span class="dash-case-label">${label}</span> ${text}</span></li>`;
+    })
+    .join("");
+  return `<ul class="dash-case-list">${items}</ul>`;
+}
+
+// scope is "" for the combined/filtered table, or a company name inside the
+// per-company table, so the same result key can be open in two places.
+function dashSwatchRows(rows, total, withShare, caseOpts) {
+  const cols = withShare ? 3 : 2;
   return (rows || [])
     .map((row) => {
       const share = total ? `${((row.count / total) * 100).toFixed(1)}%` : "0.0%";
       const shareCell = withShare ? `<td class="num">${share}</td>` : "";
-      return `<tr><td><span class="dash-swatch" style="background:${escapeHtml(row.color)}"></span>${escapeHtml(row.label)}</td><td class="num">${row.count}</td>${shareCell}</tr>`;
+      const swatch = `<span class="dash-swatch" style="background:${escapeHtml(row.color)}"></span>`;
+      if (!caseOpts || !DASH_EXPANDABLE.has(row.key)) {
+        return `<tr><td>${swatch}${escapeHtml(row.label)}</td><td class="num">${row.count}</td>${shareCell}</tr>`;
+      }
+      const id = `${caseOpts.scope}|${row.key}`;
+      const open = dashOpenCases.has(id);
+      const button = `<button type="button" class="dash-case-toggle" data-dash-case="${escapeHtml(id)}" aria-expanded="${open}">${swatch}${escapeHtml(row.label)}<span class="dash-case-caret" aria-hidden="true"></span></button>`;
+      let html = `<tr class="dash-case-row${open ? " is-open" : ""}"><td>${button}</td><td class="num">${row.count}</td>${shareCell}</tr>`;
+      if (open) {
+        const cases = ((caseOpts.cases || {})[row.key] || []).filter((c) => !caseOpts.company || c.company === caseOpts.company);
+        html += `<tr class="dash-case-detail"><td colspan="${cols}">${dashCaseDetail(cases, row.key)}</td></tr>`;
+      }
+      return html;
     })
     .join("");
 }
@@ -415,19 +450,20 @@ function perCompanyCharts(blocks) {
   return `<div class="dash-per-company-grid">${cards}</div>`;
 }
 
-function companyLegendTable(blocks, label) {
+function companyLegendTable(blocks, label, cases) {
   const groups = blocks
     .filter((block) => sumDash(block.rows))
     .map((block) => {
       const total = sumDash(block.rows);
-      return `<tbody><tr class="dash-pivot-company"><td colspan="3">${escapeHtml(block.name)}</td></tr>${dashSwatchRows(block.rows, total, true)}</tbody>`;
+      return `<tbody><tr class="dash-pivot-company"><td colspan="3">${escapeHtml(block.name)}</td></tr>${dashSwatchRows(block.rows, total, true, cases && { cases, scope: block.name, company: block.name })}</tbody>`;
     })
     .join("");
   return `<table class="dash-detail-table"><thead><tr><th>${label}</th><th class="num">Count</th><th class="num">Share</th></tr></thead>${groups}</table>`;
 }
 
-function legendTable(rows, label, total) {
-  return `<table class="dash-detail-table"><thead><tr><th>${label}</th><th class="num">Count</th><th class="num">Share</th></tr></thead><tbody>${dashSwatchRows(rows, total, true)}</tbody></table>`;
+function legendTable(rows, label, total, cases, company) {
+  const caseOpts = cases && { cases, scope: "", company: company || "" };
+  return `<table class="dash-detail-table"><thead><tr><th>${label}</th><th class="num">Count</th><th class="num">Share</th></tr></thead><tbody>${dashSwatchRows(rows, total, true, caseOpts)}</tbody></table>`;
 }
 
 function sectionSplit(left, right, stacked) {
@@ -461,7 +497,7 @@ function renderDashCharts() {
   const statusRight = view.perCompany ? perCompanyCharts(statusBlocks) : chartStage(view.statusRows);
   const purposeLeft = view.perCompany ? companyLegendTable(purposeGroups, "Purpose") : legendTable(view.purposeRows, "Purpose", purposeTotal);
   const purposeRight = view.perCompany ? perCompanyCharts(purposeGroups) : chartStage(view.purposeRows);
-  const resultLeft = view.perCompany ? companyLegendTable(resultGroups, "Result") : legendTable(view.resultCriteriaRows, "Result", resultTotal);
+  const resultLeft = view.perCompany ? companyLegendTable(resultGroups, "Result", analytics.resultCases || {}) : legendTable(view.resultCriteriaRows, "Result", resultTotal, analytics.resultCases || {}, view.company);
   const resultRight = view.perCompany ? perCompanyCharts(resultGroups) : chartStage(view.resultCriteriaRows);
   host.innerHTML = [
     `<p class="dash-cohort">${view.total} record${view.total === 1 ? "" : "s"}${who}</p>`,
@@ -515,6 +551,18 @@ async function loadReport() {
     if (apply) apply.disabled = false;
   }
 }
+
+// One delegated listener: the tables are rebuilt on every render.
+document.getElementById("dash-charts")?.addEventListener("click", (e) => {
+  const btn = e.target.closest?.("[data-dash-case]");
+  if (!btn) return;
+  const id = btn.dataset.dashCase;
+  if (dashOpenCases.has(id)) dashOpenCases.delete(id);
+  else dashOpenCases.add(id);
+  renderDashCharts();
+  const again = [...document.querySelectorAll("[data-dash-case]")].find((el) => el.dataset.dashCase === id);
+  again?.focus();
+});
 
 document.getElementById("report-filter")?.addEventListener("input", () => syncDashReset());
 document.getElementById("report-filter")?.addEventListener("submit", (e) => {
