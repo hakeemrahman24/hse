@@ -16,6 +16,38 @@ type dashSrc struct {
 	HC       string
 	// Superseded marks a checkup that is not its patient's newest in range.
 	Superseded bool
+
+	// Case detail, filled only by the on-screen report. The PDF path leaves
+	// Name empty so it never keeps per-person rows in memory.
+	CheckUpID      string
+	Name           string
+	ReviewDate     string
+	ResultNotes    string
+	Recommendation string
+}
+
+// dashCase is one checkup behind a non-fit result row, so a reviewer can expand
+// the row and read why. Text is the recommendation for results that need a
+// follow-up and the result notes for unfit ones (the same split the review
+// form enforces in validateResultDependentFields).
+type dashCase struct {
+	Company    string `json:"company"`
+	CheckUpID  string `json:"checkUpId"`
+	Name       string `json:"name"`
+	ReviewDate string `json:"reviewDate"`
+	Text       string `json:"text"`
+}
+
+// dashCaseText returns the note worth showing for a result, or ok=false for
+// results that are not expandable (Fit, Fit with note, Waiver, none).
+func dashCaseText(result, notes, recommendation string) (string, bool) {
+	switch result {
+	case "NeedFollowUp", "IncompleteResult":
+		return strings.TrimSpace(recommendation), true
+	case "TemporaryUnfit", "Unfit":
+		return strings.TrimSpace(notes), true
+	}
+	return "", false
 }
 
 // dashSupersededSQL is a SELECT column (plus its bind args): 1 when the same
@@ -74,12 +106,15 @@ type DashboardAnalytics struct {
 	Companies                       []string               `json:"companies"`
 	CompanyPivot                    []dashCompanyBlock     `json:"companyPivot"`
 	CompanyStatusRows               map[string][]dashCount `json:"companyStatusRows"`
+	// ResultCases lists the checkups behind each expandable result key.
+	ResultCases map[string][]dashCase `json:"resultCases"`
 }
 
 type dashAccum struct {
 	statusCounts    map[string]int
 	purposeCounts   map[string]int
 	resultCounts    map[string]int
+	resultCases     map[string][]dashCase
 	companyTotals   map[string]int
 	companyStatus   map[string]map[string]int
 	companyPurpose  map[string]map[string]int
@@ -98,6 +133,7 @@ func newDashAccum() *dashAccum {
 		statusCounts:    map[string]int{},
 		purposeCounts:   map[string]int{},
 		resultCounts:    map[string]int{},
+		resultCases:     map[string][]dashCase{},
 		companyTotals:   map[string]int{},
 		companyStatus:   map[string]map[string]int{},
 		companyPurpose:  map[string]map[string]int{},
@@ -145,6 +181,14 @@ func (d *dashAccum) add(row dashSrc) {
 	if hasResult {
 		d.resultCounts[result]++
 		d.companyResult[company][result]++
+		if row.Name != "" {
+			if text, ok := dashCaseText(result, row.ResultNotes, row.Recommendation); ok {
+				d.resultCases[result] = append(d.resultCases[result], dashCase{
+					Company: company, CheckUpID: row.CheckUpID, Name: row.Name,
+					ReviewDate: row.ReviewDate, Text: text,
+				})
+			}
+		}
 	}
 	if !isDashClosed(row.Status) {
 		return
@@ -200,6 +244,7 @@ func (d *dashAccum) finish() DashboardAnalytics {
 		Companies:                       nzStrings(companies),
 		CompanyPivot:                    pivot,
 		CompanyStatusRows:               statusByCompany,
+		ResultCases:                     d.resultCases,
 	}
 }
 
