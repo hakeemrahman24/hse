@@ -283,6 +283,7 @@ type companyOption struct {
 type adminRow struct {
 	ID                                                int64
 	Name, Email, Company, Position, Status, CreatedAt string
+	CompanyAbbr                                       string // shown first, with Company small under it
 	RejectReason, BouncedAt                           string
 	RomifAt                                           string // when the account signed the ROMIF; empty when it has not
 	Docs                                              int    // documents this account has sent
@@ -530,21 +531,24 @@ func (a *API) companyName(ctx context.Context, id int64) (string, error) {
 	return name, err
 }
 
-func (a *API) allCompanyNames(ctx context.Context) map[int64]string {
-	names := map[int64]string{}
-	rows, err := a.Store.DB.QueryContext(ctx, `SELECT CompanyID, Name FROM Company`)
+// companyLabel is a company's full name and its abbreviation (empty when it has none).
+type companyLabel struct{ Name, Abbr string }
+
+func (a *API) allCompanies(ctx context.Context) map[int64]companyLabel {
+	labels := map[int64]companyLabel{}
+	rows, err := a.Store.DB.QueryContext(ctx, `SELECT CompanyID, Name, COALESCE(Abbreviation, '') FROM Company`)
 	if err != nil {
-		return names
+		return labels // the lists then show no company, which is better than no list
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id int64
-		var n string
-		if rows.Scan(&id, &n) == nil {
-			names[id] = n
+		var l companyLabel
+		if rows.Scan(&id, &l.Name, &l.Abbr) == nil {
+			labels[id] = l
 		}
 	}
-	return names
+	return labels
 }
 
 // lookupMailDomain asks DNS whether a domain can receive mail: an MX record, or failing that an

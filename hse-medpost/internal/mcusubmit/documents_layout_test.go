@@ -22,7 +22,7 @@ func TestMyDocumentsPageLayout(t *testing.T) {
 		_ = os.WriteFile(out, []byte(body), 0o600)
 	}
 	for _, want := range []string{
-		`<th scope="col">Worker</th><th scope="col">Position / company</th><th scope="col">Sent</th><th scope="col">Status</th><th scope="col">Action</th>`,
+		`<th scope="col">Worker</th><th scope="col">Company</th><th scope="col">Sent</th><th scope="col">Status</th><th scope="col">Action</th>`,
 		"2 documents, page 1 of 1", `class="mp-titlebar"`, `class="mp-chip"`, `?needs=1`, "Open PDF",
 	} {
 		if !strings.Contains(body, want) {
@@ -83,11 +83,46 @@ func TestAdminRequestsTableLayout(t *testing.T) {
 		_ = os.WriteFile(out, []byte(body), 0o600)
 	}
 	for _, want := range []string{
-		`<th scope="col">Account</th><th scope="col">Company / position</th><th scope="col">Requested</th><th scope="col">Decide</th>`,
+		`<th scope="col">Account</th><th scope="col">Company</th><th scope="col">Requested</th><th scope="col">Decide</th>`,
 		`<div class="mp-sub">budi@example.com</div>`, "Approve", "Reject",
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("requests table lacks %q", want)
+		}
+	}
+}
+
+// Lists show the company's abbreviation first and its full name small underneath; a company with
+// no abbreviation shows its name alone (owner, 2026-11-06).
+func TestCompanyShowsItsAbbreviationFirst(t *testing.T) {
+	e := newEnv(t)
+	id := e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	sentDoc(t, e.store, id, "Siti Aminah") // company text "PT Example"
+	_, admin := e.signIn("admin", "pelican-orbit-77")
+	withAbbr := `<strong>PTEX</strong><div class="mp-sub">PT Example</div>`
+	noAbbr := `<strong>PT Example</strong>`
+
+	if _, err := e.store.DB.Exec(`UPDATE Company SET Abbreviation = 'PTEX' WHERE CompanyID = ?`, e.companyID); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{
+		"My documents": e.get("/mcu-submit/documents", cookie).Body.String(),
+		"admin":        e.get("/mcu-submit/admin", admin).Body.String(),
+	} {
+		if !strings.Contains(body, withAbbr) {
+			t.Errorf("%s: abbreviation first with the name small is missing", name)
+		}
+	}
+	if _, err := e.store.DB.Exec(`UPDATE Company SET Abbreviation = NULL WHERE CompanyID = ?`, e.companyID); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{
+		"My documents": e.get("/mcu-submit/documents", cookie).Body.String(),
+		"admin":        e.get("/mcu-submit/admin", admin).Body.String(),
+	} {
+		if !strings.Contains(body, noAbbr) || strings.Contains(body, `<strong>PTEX</strong>`) {
+			t.Errorf("%s: a company without an abbreviation should show its name alone", name)
 		}
 	}
 }
