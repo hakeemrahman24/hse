@@ -817,3 +817,32 @@ func TestAdminArchiveRestoreEnableAndTheWarnedPermanentRemoval(t *testing.T) {
 		t.Errorf("removing the built-in admin = %d, want 404", rec.Code)
 	}
 }
+
+// The ROMIF statement can be read again after signing: from a button on Home for the submitter, and
+// the admin list shows who has signed and when.
+func TestRomifStatementIsReadableAndShownInTheAdminList(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("budi@example.com", "budi.s", "pelican-orbit-77")
+	_, member := e.signIn("budi.s", "pelican-orbit-77")
+
+	if home := e.get("/mcu-submit/home", member); !strings.Contains(home.Body.String(), "/mcu-submit/romif/statement") {
+		t.Error("Home has no ROMIF statement button")
+	}
+	page := e.get("/mcu-submit/romif/statement", member)
+	if page.Code != http.StatusOK || !strings.Contains(page.Body.String(), "Medical Team of the PT Layar Nusantara Gas") ||
+		!strings.Contains(page.Body.String(), "You signed this statement on") {
+		t.Errorf("statement page = %d\n%s", page.Code, page.Body)
+	}
+	if rec := e.get("/mcu-submit/romif/statement"); rec.Code != http.StatusSeeOther {
+		t.Errorf("signed out = %d, want a redirect to sign in", rec.Code)
+	}
+
+	_, admin := e.signIn("admin", "pelican-orbit-77")
+	list := e.get("/mcu-submit/admin", admin).Body.String()
+	if !strings.Contains(list, "Signed 20") || strings.Contains(list, "Not signed") {
+		t.Errorf("admin list should show the signature date:\n%s", list)
+	}
+	if rec := e.get("/mcu-submit/romif/statement", admin); rec.Code != http.StatusOK {
+		t.Errorf("admin statement = %d", rec.Code)
+	}
+}

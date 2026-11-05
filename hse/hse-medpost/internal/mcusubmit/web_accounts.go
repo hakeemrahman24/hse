@@ -423,3 +423,41 @@ func (a *API) RomifSubmit(w http.ResponseWriter, r *http.Request) {
 	a.auditRomif(r, u.ID, u.Name)
 	http.Redirect(w, r, basePath+"/home", http.StatusSeeOther)
 }
+
+// RomifSignedAt maps each account to the time of its latest RomifSigned event, for the admin list.
+// One query for the whole list instead of one per row; events come oldest first so the latest wins.
+func (s *Store) RomifSignedAt(ctx context.Context) (map[int64]string, error) {
+	rows, err := s.DB.QueryContext(ctx,
+		`SELECT EntityID, At FROM McuSubmissionEvent WHERE EntityType = ? AND Action = 'RomifSigned' ORDER BY EventID`, EntitySubmitter)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[int64]string{}
+	for rows.Next() {
+		var id int64
+		var at string
+		if err := rows.Scan(&id, &at); err != nil {
+			return nil, err
+		}
+		out[id] = at
+	}
+	return out, rows.Err()
+}
+
+// RomifStatement shows the statement read-only to any signed-in account (and the admin), so it can
+// be read again after signing. A signed account also sees when it signed.
+func (a *API) RomifStatement(w http.ResponseWriter, r *http.Request) {
+	u := a.requireUser(w, r)
+	if u == nil {
+		return
+	}
+	p := a.newPage("ROMIF statement")
+	p.User = u
+	if signed, err := a.Store.RomifSignedAt(r.Context()); err != nil {
+		log.Printf("mcusubmit: romif signature: %v", err)
+	} else if at := signed[u.ID]; at != "" {
+		p.Notice = "You signed this statement on " + at + "."
+	}
+	a.render(w, http.StatusOK, "romifview.html", p)
+}
