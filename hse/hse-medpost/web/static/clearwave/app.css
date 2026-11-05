@@ -5822,12 +5822,17 @@ a.app-tab {
    Same tokens and button classes as the rest of the app; the row's left edge is the accent colour so a
    list of documents reads as a list of things you can open, not as a table. */
 .ref-panel { padding: 16px; }
-.ref-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+/* The toolbar is one row of two controls with the same height and the app's 2px corner (every button is forced to 2px by a global
+   !important rule, and inputs use 2px), the way the filter bars on this page are drawn (1px darker border). The search box takes all the width the
+   button leaves. The base .btn-primary is a pill (border-radius: 100px) with !important padding, so the
+   button needs its own radius and an inline-flex box to centre its label at the shared height. */
+.ref-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin-bottom: 12px; }
+.ref-search, .ref-add { box-sizing: border-box; height: 36px; border-radius: 2px; }
 .ref-search {
-  flex: 1 1 14rem; min-width: 0; padding: 9px 12px; font: inherit;
-  border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text-1);
+  flex: 1 1 16rem; min-width: 0; padding: 0 12px; font: inherit; font-size: 0.8125rem;
+  border: 1px solid rgba(13, 30, 28, 0.3); background: var(--surface-2); color: var(--text-1);
 }
-.ref-add { flex: 0 0 auto; }
+.ref-add { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; padding: 0 20px !important; }
 .ref-search:focus-visible, .ref-field :is(input, select, textarea):focus-visible, .ref-rename:focus-visible {
   outline: 2px solid var(--accent-mid); outline-offset: 1px;
 }
@@ -5837,7 +5842,7 @@ a.app-tab {
 .ref-item {
   display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: space-between; align-items: flex-start;
   padding: 14px 16px; background: var(--surface-2); border: 1px solid var(--border);
-  border-left: 3px solid var(--accent-mid); border-radius: 12px;
+  border-left: 3px solid var(--accent-mid); border-radius: 2px;
 }
 .ref-item--muted { opacity: 0.6; border-left-color: var(--border); }
 .ref-main { flex: 1 1 16rem; min-width: 0; }
@@ -5849,7 +5854,7 @@ a.app-tab {
 .ref-btn { font-size: 0.8125rem; padding: 6px 10px; text-decoration: none; }
 .ref-btn--danger { color: #B3261E; }
 .ref-btn--danger:hover { color: #B3261E; background: rgba(179, 38, 30, 0.08); }
-.ref-rename { padding: 6px 10px; min-width: 12rem; font: inherit; border: 1px solid var(--accent-border); border-radius: 8px; }
+.ref-rename { padding: 6px 10px; min-width: 12rem; font: inherit; border: 1px solid var(--accent-border); border-radius: 2px; }
 .ref-history { flex-basis: 100%; border-top: 1px dashed var(--border); padding-top: 8px; font-size: 0.8125rem; color: var(--text-2); }
 .ref-history-list { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; }
 
@@ -5857,7 +5862,7 @@ a.app-tab {
   /* margin:auto is what centres a modal <dialog>; this app's global reset zeroes margins, which pinned it top-left. */
   margin: auto;
   width: min(38rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; padding: 0;
-  border: 1px solid var(--accent-border); border-radius: 16px; background: var(--surface); color: var(--text-1);
+  border: 1px solid var(--accent-border); border-radius: 2px; background: var(--surface); color: var(--text-1);
   box-shadow: var(--shadow-lg);
 }
 .ref-dialog::backdrop { background: rgba(13, 30, 28, 0.45); }
@@ -5869,7 +5874,7 @@ a.app-tab {
 .ref-field { display: grid; gap: 4px; font-size: 0.8125rem; font-weight: 600; color: var(--text-2); }
 .ref-field :is(input, select, textarea) {
   min-width: 0; padding: 8px 10px; font: inherit; font-weight: 400;
-  border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text-1);
+  border: 1px solid rgba(13, 30, 28, 0.3); border-radius: 2px; background: var(--surface-2); color: var(--text-1);
 }
 .ref-kind { display: flex; gap: 16px; font-size: 0.875rem; }
 .ref-pick-list { max-height: 50vh; overflow: auto; margin-top: 10px; }
@@ -5878,4 +5883,5 @@ a.app-tab {
 @media (max-width: 640px) {
   .ref-panel { padding: 12px; }
   .ref-actions { width: 100%; }
+  .ref-add { flex: 1 1 100%; } /* the button gets its own full-width row under the search box */
 }
