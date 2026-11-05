@@ -46,6 +46,7 @@ var portalText = map[string][2]string{
 	"Nationality":          {"Kewarganegaraan", "国籍"},
 	"File":                 {"File", "文件"},
 	"Action":               {"Tindakan", "操作"},
+	"Position / company":   {"Jabatan / perusahaan", "职位 / 公司"},
 	"Open PDF":             {"Buka PDF", "打开 PDF"},
 	"No file":              {"Tidak ada file", "无文件"},
 	"Remove":               {"Hapus", "删除"},
@@ -140,7 +141,7 @@ type portalPattern struct {
 
 var portalPatterns = []portalPattern{
 	{regexp.MustCompile(`^(\d+) documents need your action$`), "$1 dokumen perlu tindakan Anda", "$1 份文件需要您处理"},
-	{regexp.MustCompile(`^(\d+) documents, page (\d+) of (\d+)$`), "$1 dokumen, halaman $2 dari $3", "共 $1 份文件，第 $2 页，共 $3 页"},
+	{regexp.MustCompile(`^(\d+) documents?, page (\d+) of (\d+)$`), "$1 dokumen, halaman $2 dari $3", "共 $1 份文件，第 $2 页，共 $3 页"},
 	{regexp.MustCompile(`^Send batch of (\d+) for review$`), "Kirim kumpulan berisi $1 dokumen untuk ditinjau", "发送包含 $1 份文件的批次以供审核"},
 	{regexp.MustCompile(`^Yes, send (\d+)$`), "Ya, kirim $1", "是，发送 $1 份"},
 	{regexp.MustCompile(`^(\d+) document\(s\) still need your review\. Confirm or discard them, then you can send the batch\.$`),

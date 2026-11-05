@@ -125,6 +125,15 @@ func (a *API) Documents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.Docs, p.Result = result.Rows, result
+	// The "Needs action" chip carries the company's count, like Home, whatever filter is on.
+	p.Counts = map[string]int{}
+	if all, err := a.Store.ListScope(r.Context(), sc); err == nil {
+		for _, d := range all {
+			if d.Status == SubRejected || d.ResultMessage() != "" {
+				p.Counts["Needs"]++
+			}
+		}
+	}
 	if a.certs != nil {
 		for _, d := range result.Rows {
 			if d.Status == SubClosed && d.RecordID != 0 {

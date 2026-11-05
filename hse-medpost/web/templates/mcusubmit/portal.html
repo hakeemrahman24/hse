@@ -15,10 +15,10 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=32" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=34" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
   <script src="/static/mcu-portal-name.js?v=2" defer></script>
-  <script src="/static/mcu-portal-cards.js?v=4" defer></script>
+  <script src="/static/mcu-portal-cards.js?v=5" defer></script>
 </head>
 <body class="mp">
   <a class="mp-skip" href="#main">Skip to content</a>
@@ -381,19 +381,21 @@
 {{template "foot" .}}{{end}}
 
 {{define "doctable"}}
-      <div class="mp-scroll"><table class="mp-table">
+      <div class="mp-scroll"><table class="mp-table mp-docs">
         <caption>{{.Caption}}</caption>
-        <thead><tr><th scope="col">Sent</th>{{if .ShowUploader}}<th scope="col">Uploaded by</th>{{end}}<th scope="col">Worker</th><th scope="col">Date of birth</th><th scope="col">Position</th><th scope="col">Company</th><th scope="col">Nationality</th><th scope="col">Status</th><th scope="col">File</th><th scope="col">Action</th></tr></thead>
+        <thead><tr><th scope="col">Worker</th><th scope="col">Position / company</th><th scope="col">Sent</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
         <tbody>
         {{range .Docs}}<tr>
-          <td>{{if .SentAt}}{{.SentAt}}{{else}}Draft{{end}}</td>{{if $.ShowUploader}}<td>{{.SubmitterName}}</td>{{end}}<td>{{.PatName}}</td><td>{{.PatDateOfBirth}}</td><td>{{.PatPosition}}</td><td>{{.PatCompanyText}}</td><td>{{.PatNationality}}</td>
-          <td><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span>{{if .RejectReason}}<div class="mp-hint">{{.RejectReason}}</div>{{end}}{{with .ResultMessage}}<div class="mp-hint">{{.}}</div>{{end}}</td>
-          <td>{{if and .HasFile (eq .ScanStatus "Clean")}}<a href="/mcu-submit/documents/{{.ID}}/file" target="_blank" rel="noopener">Open PDF</a>{{else}}<span class="mp-hint">No file</span>{{end}}</td>
+          <td><div class="mp-cell"><strong>{{.PatName}}</strong><div class="mp-sub">{{.PatDateOfBirth}}{{if .PatNationality}} · {{.PatNationality}}{{end}}</div></div></td>
+          <td><div class="mp-cell">{{.PatPosition}}<div class="mp-sub">{{.PatCompanyText}}</div></div></td>
+          <td><div class="mp-cell">{{if .SentAt}}<span class="mp-when">{{.SentAt}}</span>{{else}}Draft{{end}}{{if $.ShowUploader}}<div class="mp-sub">{{.SubmitterName}}</div>{{end}}</div></td>
+          <td><div class="mp-cell"><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span>{{if .RejectReason}}<div class="mp-hint">{{.RejectReason}}</div>{{end}}{{with .ResultMessage}}<div class="mp-hint">{{.}}</div>{{end}}</div></td>
           <td class="mp-decide">
+            {{if and .HasFile (eq .ScanStatus "Clean")}}<a class="mp-pdf" href="/mcu-submit/documents/{{.ID}}/file" target="_blank" rel="noopener">Open PDF</a>{{else}}<span class="mp-hint">No file</span>{{end}}
             {{if eq .SubmitterID $.User.ID}}{{if eq .Status "Review"}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/review">Review</a>{{end}}
             {{if or (eq .Status "Draft") (eq .Status "Review")}}<form method="post" action="/mcu-submit/documents/{{.ID}}/remove" class="mp-inline"><button type="submit" class="btn-ghost">{{if eq .Status "Draft"}}Remove{{else}}Discard{{end}}</button></form>{{end}}
             {{end}}
-            {{if and (eq .Status "Closed") .RecordID}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/certificate">Download certificate</a>{{end}}
+            {{if and (eq .Status "Closed") .RecordID}}<a class="btn-ghost" href="/mcu-submit/documents/{{.ID}}/certificate">Download certificate</a>{{end}}
             {{if and (eq .Status "Pending") (or (eq .SubmitterID $.User.ID) (and $.User.CompanyID (eq .SubmitterCompanyID $.User.CompanyID)))}}<form method="post" action="/mcu-submit/documents/{{.ID}}/withdraw" class="mp-inline" data-confirm="Withdraw this document? The medical post will no longer see it and the file is deleted. You can upload a corrected one in a new batch."><button type="submit" class="btn-ghost">Withdraw</button></form>{{end}}
           </td></tr>{{end}}
         </tbody></table></div>
@@ -505,14 +507,18 @@
 
 {{define "documents.html"}}{{template "head" .}}
     <section class="mp-section">
-      <h1>My <span>documents</span></h1>
+      <div class="mp-titlebar">
+        <h1>My <span>documents</span></h1>
+        <p class="mp-actions"><a class="btn-primary" href="/mcu-submit/batch">New batch</a>{{if .ZipURL}} <a class="btn-ghost" href="{{.ZipURL}}">Download all certificates</a>{{end}}</p>
+      </div>
       {{template "error" .}}
+      <p class="mp-chips"><a class="mp-chip{{if .Form.needs}} on{{end}}" href="{{if .Form.needs}}/mcu-submit/documents{{else}}/mcu-submit/documents?needs=1{{end}}"{{if .Form.needs}} aria-current="true"{{end}}><span>Needs action</span> <b>{{index .Counts "Needs"}}</b></a></p>
       <form method="get" action="/mcu-submit/documents" class="mp-filter" aria-label="Filter your documents">
         <div class="field"><label for="f-worker"><span>Worker</span></label>
           <input id="f-worker" name="worker" type="text" maxlength="60" value="{{.Form.worker}}" /></div>
         <div class="field"><label for="f-company"><span>Company</span></label>
           <input id="f-company" name="company" type="text" maxlength="60" value="{{.Form.company}}" /></div>
-        <div class="field"><label class="mp-check" for="f-needs"><input id="f-needs" name="needs" type="checkbox" value="1"{{if .Form.needs}} checked{{end}} /> <span>Needs action</span></label></div>
+        {{if .Form.needs}}<input type="hidden" name="needs" value="1" />{{end}}
         {{if gt (len .AccountCompanies) 1}}<div class="field"><label for="f-account"><span>Account company</span></label>
           <select id="f-account" name="account"><option value="">All</option>
             {{range .AccountCompanies}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) $.Form.account}} selected{{end}}>{{.Name}}</option>{{end}}
@@ -528,13 +534,12 @@
         <div class="submit-row"><button type="submit" class="btn-primary">Filter</button> <a class="btn-ghost" href="/mcu-submit/documents">Clear</a></div>
       </form>
       {{if .Docs}}
-      <p class="mp-hint" role="status">{{.Result.Total}} documents, page {{.Result.Page}} of {{.Result.Pages}}</p>
+      <p class="mp-hint" role="status">{{.Result.Total}} {{if eq .Result.Total 1}}document{{else}}documents{{end}}, page {{.Result.Page}} of {{.Result.Pages}}</p>
       {{template "doctable" .}}
       {{if or .PrevURL .NextURL}}<p class="mp-actions">
         {{if .PrevURL}}<a class="btn-ghost" href="{{.PrevURL}}" rel="prev">Previous</a>{{end}}
         {{if .NextURL}}<a class="btn-ghost" href="{{.NextURL}}" rel="next">Next</a>{{end}}</p>{{end}}
       {{else if not .Error}}<p class="mp-hint">{{if or .Form.worker .Form.needs}}No document matches this filter.{{else if .Form.company}}No document matches this filter.{{else if .Form.status}}No document matches this filter.{{else if .Form.from}}No document matches this filter.{{else if .Form.to}}No document matches this filter.{{else}}Nothing has been uploaded yet.{{end}}</p>{{end}}
-      <p class="mp-actions"><a class="btn-primary" href="/mcu-submit/batch">New batch</a>{{if .ZipURL}} <a class="btn-ghost" href="{{.ZipURL}}">Download all certificates</a>{{end}}</p>
     </section>
 {{template "foot" .}}{{end}}
 
