@@ -311,6 +311,11 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
 
+### 2026-11-05 (ROMIF statement button on Home; ROMIF column in the admin list)
+- New read-only page `GET /mcu-submit/romif/statement` (`RomifStatement`, any signed-in account incl. the admin) shows the ROMIF wording and, for a signed account, when it signed. The statement text is now its own template `romif-text`, shared with the sign-up and sign-in-time forms, so the three can never differ. Home has an "ROMIF statement" button; the admin Accounts page has a "View ROMIF statement" button and a ROMIF column ("Signed <time>" / "Not signed") from one query, `Store.RomifSignedAt`, over the RomifSigned events. Indonesian and Chinese texts added to `lang_portal.go`; test `TestRomifStatementIsReadableAndShownInTheAdminList`.
+- Open: not deployed yet; the admin page stays English by design.
+
+
 ### 2026-11-05 (Submitted tab: six columns, phone cards; Website document type)
 - **Submitted tab** went from ten columns to six (Sent, Name, Submitter, Status, Reviewed, Action). Company and position sit under the name, the checkup result under the status, the reviewer's name over the time, and Open PDF beside the buttons. Why: ten columns forced sideways scrolling and nothing stood out. The card layout below 1100px already existed; added a phone tier (600px): one column, a stacked filter with side-by-side dates, 36px tap targets.
 - **New document type `Website`** (link only, belongs to a program like Procedure/Forms). The server refuses a Website without an http(s) link or with a file. SQLite rebuilds `DocumentTable` itself at startup (`activitylog.EnsureWebsiteDocumentType`, widens the CHECK); MariaDB needs `migrations/mysql/039_document_website.sql` run by hand after a mysqldump, **before** deploying.

@@ -58,6 +58,15 @@ func (a *API) AdminPage(w http.ResponseWriter, r *http.Request) {
 			p.Accounts[i].Docs = counts[p.Accounts[i].ID]
 		}
 	}
+	if signed, err := a.Store.RomifSignedAt(r.Context()); err != nil {
+		log.Printf("mcusubmit: romif signatures: %v", err) // the list still works without them
+	} else {
+		for _, rows := range [][]adminRow{p.Pending, p.Accounts} {
+			for i := range rows {
+				rows[i].RomifAt = signed[rows[i].ID]
+			}
+		}
+	}
 	a.render(w, http.StatusOK, "admin.html", p)
 }
 

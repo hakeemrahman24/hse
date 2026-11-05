@@ -15,6 +15,7 @@ var portalText = map[string][2]string{
 	// Sidebar and shared words
 	"Medical checkups": {"Medical check-up", "体检"},
 	"Account":          {"Akun", "账户"},
+	"ROMIF statement":  {"Pernyataan ROMIF", "ROMIF 声明"},
 	"Review":           {"Periksa", "检查"},
 	"Draft":            {"Draf", "草稿"},
 	"Pending":          {"Menunggu", "待审核"},
@@ -148,5 +149,6 @@ var portalPatterns = []portalPattern{
 	{regexp.MustCompile(`^The medical post will see these (\d+) documents\. After sending you cannot add more to this batch or take a document back, except by withdrawing it while it is waiting for review\.$`),
 		"Pos medis akan melihat $1 dokumen ini. Setelah dikirim, Anda tidak dapat menambah dokumen ke kumpulan ini atau mengambil kembali dokumen, kecuali dengan menariknya selama menunggu peninjauan.",
 		"医疗站将看到这 $1 份文件。发送后，您不能再向此批次添加文件，也不能收回文件，但在文件等待审核期间可以撤回。"},
+	{regexp.MustCompile(`^You signed this statement on (.+)\.$`), "Anda menandatangani pernyataan ini pada $1.", "您已于 $1 签署此声明。"},
 	{regexp.MustCompile(`^Now: (.+)$`), "Sekarang: $1", "当前：$1"},
 }

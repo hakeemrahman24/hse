@@ -112,20 +112,34 @@
     </div>
 {{template "foot" .}}{{end}}
 
-{{define "romif-statement"}}          <div class="mp-romif" role="group" aria-labelledby="romif-title">
-  <h2 id="romif-title">Release of medical information (ROMIF)</h2>
+{{define "romif-text"}}  <h2 id="romif-title">Release of medical information (ROMIF)</h2>
   <div class="mp-romif-text">
     <p>By requesting this account I understand that the Medical Team of the PT Layar Nusantara Gas project area will store and review the medical checkup results I send, and that a worker's health information may be shared with company management or authorised workplace representatives when reasonably needed for workplace safety, company policy or other legitimate medical purposes.</p>
     <p>I confirm that the workers whose results I send know about this and agree to it, and that my company has authorised me to send them.</p>
     <p>I also understand that the information may be shared with other healthcare facilities for referral or continuity of care, in line with the Medical Team's policies and the law that applies in Indonesia.</p>
     <p class="mp-hint">If you do not agree, do not request an account.</p>
   </div>
+{{end}}
+
+{{define "romif-statement"}}          <div class="mp-romif" role="group" aria-labelledby="romif-title">
+{{template "romif-text" .}}
   <label class="mp-check" for="romif_accepted"><input id="romif_accepted" name="romif_accepted" type="checkbox" value="1" required /><span>I have read the statement above and I agree.</span></label>
   <div class="field"><label for="romif_name"><span>Sign by typing your full name</span></label>
     <input id="romif_name" name="romif_name" type="text" maxlength="150" required autocomplete="off" value="{{.Form.romif_name}}" />
     <p class="mp-hint">It must match the full name above. It is saved with the date and time as your signature.</p></div>
 </div>
 {{end}}
+
+{{define "romifview.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <h1>ROMIF statement</h1>
+      <div class="mp-romif" role="group" aria-labelledby="romif-title">
+{{template "romif-text" .}}
+      </div>
+      {{if .Notice}}<p class="mp-notice" role="status">{{.Notice}}</p>{{end}}
+      <p class="mp-actions"><a class="btn-ghost" href="/mcu-submit/{{if .User.IsBuiltIn}}admin{{else}}home{{end}}">Back</a></p>
+    </section>
+{{template "foot" .}}{{end}}
 
 {{define "romif.html"}}{{template "head" .}}
     <div class="login-wrap">
@@ -362,7 +376,7 @@
         <thead><tr><th scope="col">Worker</th><th scope="col">Position</th><th scope="col">Company</th><th scope="col">Valid until</th></tr></thead>
         <tbody>{{range .Expiring}}<tr><td>{{.Name}}</td><td>{{.Position}}</td><td>{{.Company}}</td><td>{{.ValidUntil}}</td></tr>{{end}}</tbody></table></div>
       {{end}}
-      <p class="mp-actions"><a class="btn-primary" href="/mcu-submit/batch">Start or continue a batch</a> <a class="btn-ghost" href="/mcu-submit/documents">My documents</a></p>
+      <p class="mp-actions"><a class="btn-primary" href="/mcu-submit/batch">Start or continue a batch</a> <a class="btn-ghost" href="/mcu-submit/documents">My documents</a> <a class="btn-ghost" href="/mcu-submit/romif/statement">ROMIF statement</a></p>
     </section>
 {{template "foot" .}}{{end}}
 
@@ -545,14 +559,16 @@
       {{else}}<p class="mp-hint">No requests are waiting.</p>{{end}}
 
       <h2>All <span>accounts</span></h2>
+      <p class="mp-actions"><a class="btn-ghost" href="/mcu-submit/romif/statement">View ROMIF statement</a></p>
       <p class="mp-hint">Disable blocks sign-in and can be undone with Enable. Archive also hides the account from this list and keeps its documents; show archived accounts to restore one. Delete removes the account and all its documents for good.{{if .ArchivedCount}} {{if .ShowArchived}}<a href="/mcu-submit/admin">Hide archived accounts</a>{{else}}<a href="/mcu-submit/admin?archived=1">Show {{.ArchivedCount}} archived accounts</a>{{end}}{{end}}</p>
       {{if .Accounts}}
       <div class="mp-scroll"><table class="mp-table">
         <caption>Approved, active, rejected and disabled accounts</caption>
-        <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Company</th><th scope="col">Status</th><th scope="col">Note</th><th scope="col">Action</th></tr></thead>
+        <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Company</th><th scope="col">Status</th><th scope="col">ROMIF</th><th scope="col">Note</th><th scope="col">Action</th></tr></thead>
         <tbody>
         {{range .Accounts}}<tr>
           <td>{{.Name}}</td><td>{{.Email}}</td><td>{{.Company}}</td><td><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span></td>
+          <td>{{if .RomifAt}}Signed {{.RomifAt}}{{else}}Not signed{{end}}</td>
           <td>{{if .RejectReason}}{{.RejectReason}}{{end}}{{if .BouncedAt}}Email bounced {{.BouncedAt}}{{end}}</td>
           <td class="mp-decide">{{if or (eq .Status "Active") (eq .Status "Approved")}}
             <form method="post" action="/mcu-submit/admin/disable" class="mp-inline"><input type="hidden" name="id" value="{{.ID}}" /><button type="submit" class="btn-ghost">Disable</button></form>{{end}}

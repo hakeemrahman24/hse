@@ -150,6 +150,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("POST "+basePath+"/email-change", a.EmailChangeSubmit)
 	in.HandleFunc("GET "+basePath+"/romif", a.RomifPage)
 	in.HandleFunc("POST "+basePath+"/romif", a.RomifSubmit)
+	in.HandleFunc("GET "+basePath+"/romif/statement", a.RomifStatement)
 	in.HandleFunc("GET "+basePath+"/home", a.Home)
 	in.HandleFunc("GET "+basePath+"/batch", a.BatchPage)
 	in.HandleFunc("POST "+basePath+"/batch/add", a.AddDocument)
@@ -283,7 +284,8 @@ type adminRow struct {
 	ID                                                int64
 	Name, Email, Company, Position, Status, CreatedAt string
 	RejectReason, BouncedAt                           string
-	Docs                                              int // documents this account has sent
+	RomifAt                                           string // when the account signed the ROMIF; empty when it has not
+	Docs                                              int    // documents this account has sent
 }
 
 func (a *API) newPage(title string) page {
