@@ -73,6 +73,22 @@ var docTypes = map[string]bool{
 	"SocializationMaterial": true,
 	"Forms":                 true,
 	"Template":              true,
+	"Website":               true,
+}
+
+// websiteProblem is why a Website document cannot be stored, or "" when it can. A website is only a
+// web address people open: it needs an http(s) link, and an uploaded file would have no place to show.
+func websiteProblem(dtype, formLink string, hasFile bool) string {
+	if dtype != "Website" {
+		return ""
+	}
+	if hasFile {
+		return "a website is a link, not a file"
+	}
+	if l := strings.ToLower(formLink); !strings.HasPrefix(l, "http://") && !strings.HasPrefix(l, "https://") {
+		return "a website needs a link starting with http:// or https://"
+	}
+	return ""
 }
 
 func (a *API) ListDocuments(w http.ResponseWriter, r *http.Request) {
@@ -224,6 +240,10 @@ func (a *API) createDocumentMultipart(w http.ResponseWriter, r *http.Request) {
 
 	fileLink := ""
 	file, hdr, err := r.FormFile("file")
+	if msg := websiteProblem(dtype, formLink, err == nil); msg != "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": msg})
+		return
+	}
 	if err == nil {
 		defer file.Close()
 		program := ""
@@ -271,6 +291,10 @@ func (a *API) insertDocument(w http.ResponseWriter, procID *int64, dtype, title,
 	}
 	if formLink == "" && fileLink == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "provide formLink or file"})
+		return
+	}
+	if msg := websiteProblem(dtype, formLink, fileLink != ""); msg != "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": msg})
 		return
 	}
 	if dtype == "Template" {

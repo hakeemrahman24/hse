@@ -9,7 +9,7 @@
 // Uses the helpers in reference-tab.js (refEl, referenceRequest, referenceFileProblem, ...),
 // which must be loaded first. Text from the server goes on the page with textContent only.
 
-const REFERENCE_CATEGORY_ORDER = ["Forms", "Procedure", "SocializationMaterial", "Template"];
+const REFERENCE_CATEGORY_ORDER = ["Forms", "Procedure", "SocializationMaterial", "Website", "Template"];
 
 // One label above a control. Wrapping the control in the <label> ties them together for
 // screen readers and makes a click on the text focus the field.
@@ -120,6 +120,8 @@ function referenceNewPanel(ctx) {
   const submit = refEl("button", { type: "submit", class: "btn-primary", text: "Add to this tab" });
   const sync = () => {
     programField.hidden = f.category.value === "Template"; // a Template belongs to no program
+    if (f.category.value === "Website") f.kindLink.checked = true; // a website is a link, never a file
+    f.kindFile.disabled = f.category.value === "Website";
     fileField.hidden = !f.kindFile.checked;
     linkField.hidden = f.kindFile.checked;
   };

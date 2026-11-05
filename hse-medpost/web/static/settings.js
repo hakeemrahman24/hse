@@ -245,7 +245,7 @@ const sectionMeta = {
   },
   documents: {
     title: "Documents",
-    hint: "Procedure, Forms, Socialization material per program, plus medpost-wide Templates. Sorted oldest first within each type.",
+    hint: "Procedure, Forms, Socialization material and Websites per program, plus medpost-wide Templates. Sorted oldest first within each type.",
   },
   "company-details": {
     title: "Company details",
@@ -1700,6 +1700,11 @@ document.getElementById("doc-type").addEventListener("change", () => {
   const isTemplate = document.getElementById("doc-type").value === "Template";
   document.getElementById("doc-program-wrap").hidden = isTemplate;
   document.getElementById("doc-program").required = !isTemplate;
+  // A website is a link only, so the file picker goes away and the address becomes required.
+  const isWebsite = document.getElementById("doc-type").value === "Website";
+  document.getElementById("doc-file-wrap").hidden = isWebsite;
+  document.querySelector('#add-document [name="file"]').disabled = isWebsite;
+  document.querySelector('#add-document [name="formLink"]').required = isWebsite;
 });
 
 document.getElementById("add-document").addEventListener("submit", async (e) => {

@@ -65,6 +65,9 @@ func main() {
 		if err := emr.EnsureMalariaPurpose(database); err != nil {
 			log.Fatal(err)
 		}
+		if err := activitylog.EnsureWebsiteDocumentType(database); err != nil {
+			log.Fatal(err)
+		}
 		if err := emr.EnsureMalariaID(database); err != nil {
 			log.Fatal(err)
 		}
