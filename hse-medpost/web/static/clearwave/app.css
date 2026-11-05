@@ -5828,19 +5828,19 @@ a.app-tab {
 #tab-submitted .data-table tr.sub-st-closed > td { background: #e8f5e9; }
 #tab-submitted .data-table tr.sub-st-rejected > td { background: #fbeceb; }
 #tab-submitted .data-table tr.sub-st-withdrawn > td { background: #f0f0f0; }
-#tab-submitted .data-table tr.sub-st-pending > td:first-child { box-shadow: inset 4px 0 0 #e0a800; }
-#tab-submitted .data-table tr.sub-st-reviewed > td:first-child { box-shadow: inset 4px 0 0 #3b7dd8; }
-#tab-submitted .data-table tr.sub-st-closed > td:first-child { box-shadow: inset 4px 0 0 #3f9b4f; }
-#tab-submitted .data-table tr.sub-st-rejected > td:first-child { box-shadow: inset 4px 0 0 #c0392b; }
-#tab-submitted .data-table tr.sub-st-withdrawn > td:first-child { box-shadow: inset 4px 0 0 #9a9a9a; }
+#tab-submitted .data-table tr.sub-st-pending > td:last-child { box-shadow: inset -4px 0 0 #e0a800; }
+#tab-submitted .data-table tr.sub-st-reviewed > td:last-child { box-shadow: inset -4px 0 0 #3b7dd8; }
+#tab-submitted .data-table tr.sub-st-closed > td:last-child { box-shadow: inset -4px 0 0 #3f9b4f; }
+#tab-submitted .data-table tr.sub-st-rejected > td:last-child { box-shadow: inset -4px 0 0 #c0392b; }
+#tab-submitted .data-table tr.sub-st-withdrawn > td:last-child { box-shadow: inset -4px 0 0 #9a9a9a; }
 @media (max-width: 1100px) {
   /* a card is the row itself: tint the card, not each line, and put the colour edge on the card */
   #tab-submitted .data-table tr[class*="sub-st-"] > td { background: transparent; box-shadow: none; }
-  #tab-submitted .data-table tr.sub-st-pending { background: #fff6dd; border-left: 4px solid #e0a800; }
-  #tab-submitted .data-table tr.sub-st-reviewed { background: #e6f0fb; border-left: 4px solid #3b7dd8; }
-  #tab-submitted .data-table tr.sub-st-closed { background: #e8f5e9; border-left: 4px solid #3f9b4f; }
-  #tab-submitted .data-table tr.sub-st-rejected { background: #fbeceb; border-left: 4px solid #c0392b; }
-  #tab-submitted .data-table tr.sub-st-withdrawn { background: #f0f0f0; border-left: 4px solid #9a9a9a; }
+  #tab-submitted .data-table tr.sub-st-pending { background: #fff6dd; border-right: 4px solid #e0a800; }
+  #tab-submitted .data-table tr.sub-st-reviewed { background: #e6f0fb; border-right: 4px solid #3b7dd8; }
+  #tab-submitted .data-table tr.sub-st-closed { background: #e8f5e9; border-right: 4px solid #3f9b4f; }
+  #tab-submitted .data-table tr.sub-st-rejected { background: #fbeceb; border-right: 4px solid #c0392b; }
+  #tab-submitted .data-table tr.sub-st-withdrawn { background: #f0f0f0; border-right: 4px solid #9a9a9a; }
 }
 
 /* A note under a value (company and position under the name, the result under the status, the time under the reviewer). */
