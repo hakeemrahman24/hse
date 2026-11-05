@@ -1,6 +1,7 @@
 package mcusubmit
 
 import (
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -45,5 +46,48 @@ func TestMyDocumentsPageLayout(t *testing.T) {
 	needs := e.get("/mcu-submit/documents?needs=1", cookie).Body.String()
 	if !strings.Contains(needs, `class="mp-chip on"`) || !strings.Contains(needs, `name="needs" value="1"`) {
 		t.Errorf("active chip or hidden field missing")
+	}
+}
+
+// The admin's All accounts table is five columns: name over email, company, status (with its note),
+// ROMIF (date underneath) and the actions (owner, 2026-11-06).
+func TestAdminAccountsTableLayout(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, admin := e.signIn("admin", "pelican-orbit-77")
+	body := e.get("/mcu-submit/admin", admin).Body.String()
+	if out := os.Getenv("MCU_DUMP_ADMIN"); out != "" {
+		_ = os.WriteFile(out, []byte(body), 0o600)
+	}
+	for _, want := range []string{
+		`<th scope="col">Account</th><th scope="col">Company</th><th scope="col">Status</th><th scope="col">ROMIF</th><th scope="col">Action</th>`,
+		`<div class="mp-sub">hr@example.com</div>`, "Disable", "Archive", "Delete…",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("admin page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, `<th scope="col">Email</th><th scope="col">Company</th><th scope="col">Status</th><th scope="col">ROMIF</th><th scope="col">Note</th>`) {
+		t.Error("the old seven-column accounts header is still there")
+	}
+}
+
+// A waiting request shows as four columns (account, company over position, requested, decide).
+func TestAdminRequestsTableLayout(t *testing.T) {
+	e := newEnv(t)
+	e.post("/mcu-submit/register", e.registerForm("budi@example.com"))
+	_ = e.post("/mcu-submit/verify", url.Values{"token": {tokenFrom(t, e.mail.last(t))}})
+	_, admin := e.signIn("admin", "pelican-orbit-77")
+	body := e.get("/mcu-submit/admin", admin).Body.String()
+	if out := os.Getenv("MCU_DUMP_REQ"); out != "" {
+		_ = os.WriteFile(out, []byte(body), 0o600)
+	}
+	for _, want := range []string{
+		`<th scope="col">Account</th><th scope="col">Company / position</th><th scope="col">Requested</th><th scope="col">Decide</th>`,
+		`<div class="mp-sub">budi@example.com</div>`, "Approve", "Reject",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("requests table lacks %q", want)
+		}
 	}
 }

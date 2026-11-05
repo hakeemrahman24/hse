@@ -839,7 +839,7 @@ func TestRomifStatementIsReadableAndShownInTheAdminList(t *testing.T) {
 
 	_, admin := e.signIn("admin", "pelican-orbit-77")
 	list := e.get("/mcu-submit/admin", admin).Body.String()
-	if !strings.Contains(list, "Signed 20") || strings.Contains(list, "Not signed") {
+	if !strings.Contains(list, `Signed<div class="mp-sub"><span class="mp-when">20`) || strings.Contains(list, "Not signed") {
 		t.Errorf("admin list should show the signature date:\n%s", list)
 	}
 	if rec := e.get("/mcu-submit/romif/statement", admin); rec.Code != http.StatusOK {
