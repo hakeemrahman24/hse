@@ -5907,6 +5907,39 @@ a.app-tab {
   .sub-pager { flex-wrap: wrap; }
 }
 
+/* Phone: the Submitted list is as compact as the Employee and MCU data lists. Flat full-width rows with a thin rule under each and a
+   2px gap instead of rounded cards with a 8px gap; tight line spacing; the filter in two columns with short fields instead of
+   one tall field per line. The status tint and its coloured right edge stay, since they carry the state. */
+@media (max-width: 640px) {
+  #tab-submitted > .app-filter { padding: 4px 8px 2px; }
+  #tab-submitted .mcu-data-filter-row { gap: 4px 8px; }
+  #tab-submitted .mcu-data-filter-row > label { flex: 1 1 calc(50% - 4px); min-width: 0; gap: 2px; }
+  #tab-submitted .mcu-data-filter-row > label > span { font-size: 0.7rem; }
+  #tab-submitted .mcu-data-filter-row input[type="text"],
+  #tab-submitted .mcu-data-filter-row select,
+  #tab-submitted .mcu-data-filter-row input { height: 30px; font-size: 0.8125rem; }
+  #tab-submitted .mcu-data-filter-row .btn-primary,
+  #tab-submitted .mcu-data-filter-row .btn-ghost { flex: 1 1 0; height: 30px; font-size: 0.8125rem !important; }
+  .sub-msg { margin: 2px 8px; }
+  #tab-submitted .data-table tbody { display: block; }
+  #tab-submitted .data-table tr {
+    display: block; box-sizing: border-box; width: 100%;
+    border: 0; border-bottom: 1px solid rgba(154, 59, 38, 0.45); border-radius: 0;
+    margin: 0 0 2px; padding: 6px 8px;
+  }
+  #tab-submitted .data-table td { padding: 1px 0; gap: 8px; }
+  #tab-submitted .data-table.compact td { padding: 1px 0; }
+  #tab-submitted .data-table td[data-label="Name"] { padding-bottom: 3px; margin-bottom: 2px; font-size: 0.875rem; }
+  #tab-submitted .data-table td[data-label="Action"] { padding-top: 4px; margin-top: 2px; }
+  #tab-submitted .sub-act { gap: 6px; }
+  #tab-submitted .sub-act .btn-primary,
+  #tab-submitted .sub-act .btn-ghost { height: 30px; padding: 0 12px !important; }
+  #tab-submitted .sub-pdf { padding: 4px; }
+  #tab-submitted .data-table.compact tr.sub-detail > td { padding: 6px 8px 8px; }
+  .sub-row input, .sub-row select, #tab-submitted .sub-row .btn-ghost { height: 30px; }
+  .sub-pager { margin: 6px 8px; gap: 8px; }
+}
+
 /* Reference tab on the Medical Record page (reference-tab.js) and its Add dialog (reference-add.js).
    Same tokens and button classes as the rest of the app; the row's left edge is the accent colour so a
    list of documents reads as a list of things you can open, not as a table. */
