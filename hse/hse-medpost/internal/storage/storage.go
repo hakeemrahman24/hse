@@ -64,7 +64,7 @@ func EvidenceTypeDir(evidenceType string) string {
 // DocumentTypeDir uses DocumentTable.DocumentsType names.
 func DocumentTypeDir(docType string) string {
 	switch docType {
-	case "Procedure", "SocializationMaterial", "Forms", "Template":
+	case "Procedure", "SocializationMaterial", "Forms", "Template", "Website":
 		return docType
 	default:
 		return "Other"

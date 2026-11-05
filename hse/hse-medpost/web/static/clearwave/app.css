@@ -5815,7 +5815,41 @@ a.app-tab {
 
 /* In the wide table a very long worker name wraps instead of pushing the Action column off the screen. */
 @media (min-width: 1101px) {
-  #tab-submitted .data-table td[data-label="Name"] { max-width: 16rem; white-space: normal; overflow-wrap: break-word; min-width: 9rem; }
+  #tab-submitted .data-table td[data-label="Name"] { max-width: 22rem; white-space: normal; overflow-wrap: break-word; min-width: 12rem; }
+  #tab-submitted .data-table td { vertical-align: top; padding-top: 6px; padding-bottom: 6px; }
+  #tab-submitted .data-table td[data-label="Status"],
+  #tab-submitted .data-table td[data-label="Reviewed (UTC)"] { white-space: normal; }
+}
+
+/* A note under a value (company and position under the name, the result under the status, the time under the reviewer). */
+#tab-submitted .data-table td .sub-note { white-space: normal; margin-top: 1px; }
+#tab-submitted .sub-pdf { font-size: 0.75rem; font-weight: 500; }
+
+/* Phone: the card's own Name line carries the notes on their own lines; the filter becomes one column
+   (dates side by side); buttons get a finger-sized height. */
+@media (max-width: 600px) {
+  #tab-submitted .data-table tbody { grid-template-columns: minmax(0, 1fr); }
+  #tab-submitted .data-table td[data-label="Name"] .sub-note { flex-basis: 100%; font-weight: 400; font-size: 0.75rem; }
+  #tab-submitted .data-table td[data-label="Status"],
+  #tab-submitted .data-table td[data-label="Reviewed (UTC)"] { flex-wrap: wrap; }
+  #tab-submitted .data-table td[data-label="Status"] .sub-note,
+  #tab-submitted .data-table td[data-label="Reviewed (UTC)"] .sub-note { flex-basis: 100%; text-align: right; }
+  #tab-submitted .mcu-data-filter-row > label { flex: 1 1 100%; }
+  #tab-submitted .mcu-data-filter-row > label:has(input[type="date"]) { flex: 1 1 calc(50% - 8px); }
+  #tab-submitted .mcu-data-filter-row input[type="text"],
+  #tab-submitted .mcu-data-filter-row select,
+  #tab-submitted .mcu-data-filter-row input { width: 100%; height: 36px; font-size: 0.875rem; }
+  #tab-submitted .mcu-data-filter-row .btn-primary,
+  #tab-submitted .mcu-data-filter-row .btn-ghost { flex: 1 1 40%; height: 36px; font-size: 0.875rem !important; }
+  #tab-submitted .sub-act { gap: 8px; }
+  #tab-submitted .sub-act .btn-primary,
+  #tab-submitted .sub-act .btn-ghost { height: 36px; padding: 0 14px !important; font-size: 0.8125rem !important; }
+  #tab-submitted .sub-pdf { padding: 8px 4px; }
+  #tab-submitted .data-table.compact td:last-child { min-width: 0; }
+  .sub-row { flex-direction: column; align-items: stretch; }
+  .sub-row input, .sub-row select { height: 36px; }
+  #tab-submitted .sub-row .btn-ghost { height: 36px; }
+  .sub-pager { flex-wrap: wrap; }
 }
 
 /* Reference tab on the Medical Record page (reference-tab.js) and its Add dialog (reference-add.js).

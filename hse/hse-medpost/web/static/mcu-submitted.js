@@ -135,14 +135,11 @@
   // The row's own cell holds only the next step (Review, Open checkup or Notify submitter) and a
   // More toggle. The two rare actions open in a full-width detail row under the document, so the row
   // stays one line tall and the other columns keep their width. Returns that detail row, or null.
-  function actions(d, td, colspan) {
+  function actions(d, box, colspan) {
     var canAct = d.status === 'Pending' || d.status === 'Reviewed';
     if (!canAct && !isAdmin) return null;
-    var box = document.createElement('div');
-    box.className = 'sub-act';
     if (!canAct) { // Closed, Rejected, Withdrawn: only an admin has anything to do here
       box.appendChild(button('Remove', 'btn-ghost sub-reject', function () { remove(d); }, 'Remove the document of ' + d.worker));
-      td.appendChild(box);
       return null;
     }
     // Once a checkup with a result is linked the document is Reviewed and the next step is telling
@@ -159,7 +156,6 @@
     var toggle = button('More', 'btn-ghost sub-toggle', null, 'More actions for ' + d.worker);
     toggle.setAttribute('aria-expanded', 'false');
     box.appendChild(toggle);
-    td.appendChild(box);
 
     var row = document.createElement('tr');
     row.className = 'sub-detail';
@@ -213,36 +209,42 @@
     return row;
   }
 
+  function note(td, text) {
+    if (!text) return;
+    var n = document.createElement('div');
+    n.className = 'sub-note'; n.textContent = text;
+    td.appendChild(n);
+  }
+
+  // Six columns instead of ten: what belongs together shares a cell. Company and position sit under
+  // the worker's name, the checkup result under the status, the reviewer's name over the time, and
+  // the PDF link beside the buttons, so a row reads left to right as who, by whom, where it stands.
   function render(list) {
     body.textContent = '';
     list.forEach(function (d) {
       var tr = document.createElement('tr');
       cell(tr, when(d.sentAt));
       var worker = cell(tr, d.worker);
-      if (d.isNewEmployee) {
-        var tag = document.createElement('div');
-        tag.className = 'sub-note'; tag.textContent = 'New employee';
-        worker.appendChild(tag);
-      }
-      cell(tr, d.company); cell(tr, d.position); cell(tr, d.submitter);
+      note(worker, d.isNewEmployee ? 'New employee' : '');
+      note(worker, [d.company, d.position].filter(Boolean).join(' \u00b7 '));
+      cell(tr, d.submitter);
       var st = cell(tr, d.status);
-      if (d.rejectReason) {
-        var why = document.createElement('div');
-        why.className = 'sub-note'; why.textContent = d.rejectReason;
-        st.appendChild(why);
-      }
-      cell(tr, d.result ? RESULTS[d.result] || d.result : '');
-      cell(tr, [d.reviewedBy, when(d.reviewedAt)].filter(Boolean).join(', '));
-      var file = cell(tr, '');
+      note(st, d.result ? 'Result: ' + (RESULTS[d.result] || d.result) : '');
+      note(st, d.rejectReason);
+      var rev = cell(tr, d.reviewedBy || '');
+      note(rev, when(d.reviewedAt));
+      var box = document.createElement('div');
+      box.className = 'sub-act';
       if (d.hasFile) {
         var a = document.createElement('a');
         a.href = '/api/mcu-submissions/' + d.id + '/file';
-        a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Open PDF';
-        file.appendChild(a);
-      } else {
-        file.textContent = '—';
+        a.target = '_blank'; a.rel = 'noopener'; a.className = 'sub-pdf'; a.textContent = 'Open PDF';
+        a.setAttribute('aria-label', 'Open the PDF of ' + d.worker);
+        box.appendChild(a);
       }
-      var detail = actions(d, cell(tr, ''), headings.length);
+      var td = cell(tr, '');
+      td.appendChild(box);
+      var detail = actions(d, box, headings.length);
       body.appendChild(tr);
       if (detail) body.appendChild(detail);
     });

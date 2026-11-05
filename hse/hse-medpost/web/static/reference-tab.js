@@ -20,6 +20,7 @@ const REFERENCE_TYPE_LABELS = {
   SocializationMaterial: "Socialization material",
   Forms: "Form",
   Template: "Template",
+  Website: "Website",
 };
 const REFERENCE_SECTION_LABELS = {
   outpatient: "Outpatient",
