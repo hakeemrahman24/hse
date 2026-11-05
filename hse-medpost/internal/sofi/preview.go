@@ -1,11 +1,11 @@
 package sofi
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 )
 
@@ -13,9 +13,11 @@ import (
 // scheduling a window. Nothing sent in preview is saved: the answers are scored and shown, then
 // forgotten, so the medical team's table, dashboard and PDF never see them.
 //
-// The switch lives in memory on purpose. A restart then closes the preview, and a preview that
-// somebody forgot cannot stay open: it also turns itself off after previewTTL. That matters because
-// real employees could land on the page while it is on, and they would believe they had submitted.
+// The switch is a row in SofiPreview, not a variable in memory: a server restart (a deploy, or a
+// crash) must not close a preview the administrator opened a few minutes ago. A preview that
+// somebody forgot still cannot stay open, because the row carries its own end time (previewTTL).
+// That matters because real employees could land on the page while it is on, and they would
+// believe they had submitted.
 const (
 	// previewWindowID stands in for a window id. Real ids start at 1, so a session or submit that
 	// carries -1 can never be mistaken for a saved period.
@@ -27,20 +29,25 @@ const (
 // msgPreviewOn is shown on every /sofi page while preview is on (translated in i18n.go).
 const msgPreviewOn = "Preview: your answers are not saved."
 
-// previewState is the on/off switch and the time it turns itself off.
-type previewState struct {
-	mu    sync.Mutex
-	until time.Time
-}
-
-// previewUntil is when preview ends, or the zero time when it is off.
+// previewUntil is when preview ends, or the zero time when it is off. If the table is missing
+// (the MariaDB migration was not run) preview counts as off, and the log says so once.
 func (a *API) previewUntil() time.Time {
-	a.preview.mu.Lock()
-	defer a.preview.mu.Unlock()
-	if !a.now().Before(a.preview.until) {
+	var s string
+	err := a.DB.QueryRow(`SELECT UntilAt FROM SofiPreview WHERE PreviewID = 1`).Scan(&s)
+	if errors.Is(err, sql.ErrNoRows) {
 		return time.Time{}
 	}
-	return a.preview.until
+	if err != nil {
+		if !a.previewWarned.Swap(true) {
+			log.Printf("sofi: preview switch unreadable, treating preview as off (run migrations/mysql/037_sofi_preview.sql?): %v", err)
+		}
+		return time.Time{}
+	}
+	until, err := time.Parse(timeLayoutDB, s)
+	if err != nil || !a.now().Before(until) {
+		return time.Time{}
+	}
+	return until
 }
 
 // previewActive reports whether /sofi is open for preview. A real window always wins, so a real
@@ -57,12 +64,10 @@ var errPreviewWindowOpen = errors.New("A window is open right now, so /sofi is a
 
 // setPreview switches preview on or off. Turning it on while a real window is open is refused:
 // that window is already open, and the admin should not think it is being previewed.
-func (a *API) setPreview(on bool) error {
+func (a *API) setPreview(on bool, by string) error {
 	if !on {
-		a.preview.mu.Lock()
-		a.preview.until = time.Time{}
-		a.preview.mu.Unlock()
-		return nil
+		_, err := a.DB.Exec(`DELETE FROM SofiPreview`)
+		return err
 	}
 	win, err := a.openWindow(a.now())
 	if err != nil {
@@ -71,10 +76,22 @@ func (a *API) setPreview(on bool) error {
 	if win != nil {
 		return errPreviewWindowOpen
 	}
-	a.preview.mu.Lock()
-	a.preview.until = a.now().Add(previewTTL)
-	a.preview.mu.Unlock()
-	return nil
+	now := a.now().UTC()
+	// Delete then insert, in one transaction: "INSERT ... ON CONFLICT" and "ON DUPLICATE KEY" are
+	// spelled differently on SQLite and MariaDB.
+	tx, err := a.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM SofiPreview`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`INSERT INTO SofiPreview (PreviewID, UntilAt, SetBy, SetAt) VALUES (1, ?, ?, ?)`,
+		now.Add(previewTTL).Format(timeLayoutDB), by, now.Format(timeLayoutDB)); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // previewUntilText is the end of preview in GMT+9 text, "" when off.
@@ -94,7 +111,7 @@ func (a *API) AdminPreview(w http.ResponseWriter, r *http.Request) {
 		staffError(w, http.StatusBadRequest, "Send {\"on\": true} or {\"on\": false}.")
 		return
 	}
-	if err := a.setPreview(in.On); err != nil {
+	if err := a.setPreview(in.On, staffName(r)); err != nil {
 		if errors.Is(err, errPreviewWindowOpen) {
 			staffError(w, http.StatusConflict, err.Error())
 			return

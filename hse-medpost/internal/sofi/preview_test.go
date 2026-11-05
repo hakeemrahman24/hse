@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -108,5 +109,44 @@ func TestPreviewStatusIsReportedToStaff(t *testing.T) {
 	var st windowStatus
 	if json.Unmarshal(rec.Body.Bytes(), &st) != nil || !st.Preview || st.PreviewUntil == "" {
 		t.Fatalf("status = %s", rec.Body.String())
+	}
+}
+
+// A restart makes a new API over the same database. The preview must still be on: that was the
+// bug (the switch was in memory, so every restart closed it long before its two hours).
+func TestPreviewSurvivesARestart(t *testing.T) {
+	api := newBareTestAPI(t)
+	clockAt(api, at(2, 0, 0))
+	if rec := setPreviewVia(api, "true"); rec.Code != http.StatusOK {
+		t.Fatalf("turn on: %d %s", rec.Code, rec.Body.String())
+	}
+	restarted, err := New(api.DB, "test-secret", filepath.Join("..", "..", "web", "templates"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	move := clockAt(restarted, at(2, 1, 30))
+	if !restarted.previewActive() {
+		t.Fatal("preview closed after a restart, 90 minutes in")
+	}
+	move(at(2, 2, 1))
+	if restarted.previewActive() {
+		t.Fatal("preview is still on after its two hours")
+	}
+}
+
+func TestPreviewWithoutItsTableIsOffAndTheButtonSaysSo(t *testing.T) {
+	api := newBareTestAPI(t)
+	clockAt(api, at(2, 0, 0))
+	if _, err := api.DB.Exec(`DROP TABLE SofiPreview`); err != nil {
+		t.Fatal(err)
+	}
+	if api.previewActive() {
+		t.Fatal("preview counted as on with no table")
+	}
+	if rec := setPreviewVia(api, "true"); rec.Code != http.StatusInternalServerError {
+		t.Fatalf("turn on without the table: %d", rec.Code)
+	}
+	if rec := get(api.SignInPage, "/sofi"); !strings.Contains(rec.Body.String(), "The questionnaire is closed") {
+		t.Fatal("/sofi should stay closed")
 	}
 }

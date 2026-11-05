@@ -37,7 +37,10 @@
 
 /* Language switch: the same two-letter links as the SOC page. */
 .lang-switch { display: inline-flex; gap: 4px; margin-left: auto; margin-right: 12px; }
-.lang-switch a { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; color: var(--text-2); text-decoration: none; }
+/* Fixed-size boxes with the text centred: "中文" comes from a different font than "ID" and "EN", so
+   with plain padding the three sat at different heights. */
+.lang-switch { align-items: center; }
+.lang-switch a { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: 44px; height: 28px; padding: 0 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; line-height: 1; color: var(--text-2); text-decoration: none; }
 .lang-switch a.active { background: var(--accent-ghost, rgba(0, 0, 0, 0.06)); color: var(--accent); }
 
 /* Questionnaire. One text scale for the whole form:
