@@ -116,3 +116,69 @@ func TestSignedInFormShowsTheHeaderFieldsAndTwentyFiveWordsInOneLanguage(t *test
 		t.Fatalf("%d answer buttons, want %d (25 words x 7 points)", n, ItemCount*7)
 	}
 }
+
+func TestEveryPublicMessageAndWordHasAChineseText(t *testing.T) {
+	for _, msg := range publicMessages {
+		if zh := tr(LangZH, msg); zh == msg || strings.TrimSpace(zh) == "" {
+			t.Fatalf("no Chinese text for %q", msg)
+		}
+	}
+	for _, it := range Items {
+		if strings.TrimSpace(it.Text(LangZH)) == "" {
+			t.Fatalf("word %d has no Chinese text", it.Number)
+		}
+	}
+	for _, d := range Dimensions {
+		if strings.TrimSpace(d.Name(LangZH)) == "" {
+			t.Fatalf("dimension %s has no Chinese name", d.Key)
+		}
+	}
+	for key := range zhMessages {
+		if _, ok := idText[key]; !ok {
+			t.Fatalf("Chinese text for %q, which is not a public message", key)
+		}
+	}
+}
+
+func TestChineseCanBeChosenAndShowsOnlyChinese(t *testing.T) {
+	api := newTestAPI(t)
+	rec := httptest.NewRecorder()
+	api.SetLang(rec, httptest.NewRequest(http.MethodGet, "/sofi/lang?l=zh&next=/sofi/start", nil))
+	var cookie *http.Cookie
+	for _, c := range rec.Result().Cookies() {
+		if c.Name == langCookie {
+			cookie = c
+		}
+	}
+	if cookie == nil || cookie.Value != LangZH {
+		t.Fatalf("cookie = %v", cookie)
+	}
+
+	c := signedInCookie(t, api)
+	req := httptest.NewRequest(http.MethodGet, "/sofi/start", nil)
+	req.AddCookie(c)
+	req.AddCookie(cookie)
+	rec = httptest.NewRecorder()
+	api.Start(rec, req)
+	body := rec.Body.String()
+	for _, want := range []string{`lang="zh"`, "疲劳筛查", "工作过度", "懒洋洋", "中文"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("Chinese form lacks %q", want)
+		}
+	}
+	for _, other := range []string{"Overworked", "Kerja berlebihan", "Weeks on site"} {
+		if strings.Contains(body, other) {
+			t.Fatalf("Chinese form still shows %q", other)
+		}
+	}
+}
+
+func TestSubmitButtonStartsDisabledUntilEverythingIsAnswered(t *testing.T) {
+	api := newTestAPI(t)
+	c := signedInCookie(t, api)
+	rec := get(api.Start, "/sofi/start", c)
+	body := rec.Body.String()
+	if !strings.Contains(body, `class="btn-primary" disabled>`) || !strings.Contains(body, "0 / 25") {
+		t.Fatal("the Submit button should start disabled with a 0 / 25 counter")
+	}
+}

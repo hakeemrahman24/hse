@@ -6,12 +6,13 @@ import (
 	"time"
 )
 
-// The /sofi pages show one language at a time, chosen with the EN / ID switch and remembered in a
+// The /sofi pages show one language at a time, chosen with the ID / EN / 中文 switch and remembered in a
 // cookie. Indonesian is the default. Every text a visitor can see is written here as an English
 // key and its Indonesian text; a template or handler asks tr(lang, key).
 const (
 	LangEN = "en"
 	LangID = "id"
+	LangZH = "zh" // Simplified Chinese (lang_zh.go)
 
 	langCookie = "sofi_lang"
 	langTTL    = 365 * 24 * time.Hour
@@ -27,6 +28,7 @@ type Language struct {
 var languages = []Language{
 	{LangID, "ID", "Bahasa Indonesia"},
 	{LangEN, "EN", "English"},
+	{LangZH, "中文", "简体中文"},
 }
 
 // messages are {English, Indonesian}. The English text is also the key.
@@ -89,7 +91,7 @@ var messages = [][2]string{
 	{"High", "Tinggi"},
 	{"Your fatigue is low. Keep resting well.", "Kelelahan Anda rendah. Tetap istirahat yang cukup."},
 	{"Your fatigue is moderate. Rest and drink water, and tell your supervisor if it gets worse.", "Kelelahan Anda sedang. Istirahat dan minum air, lalu beri tahu atasan jika bertambah berat."},
-	{"Your fatigue is high. Tell your supervisor and the medical post before doing high-risk work.", "Kelelahan Anda tinggi. Beri tahu atasan dan pos medis sebelum melakukan pekerjaan berisiko tinggi."},
+	{"Your fatigue is high. Tell your supervisor and the Medical Team before doing high-risk work.", "Kelelahan Anda tinggi. Beri tahu atasan dan tim medis sebelum melakukan pekerjaan berisiko tinggi."},
 	{"This is a screening result, not a diagnosis.", "Ini hasil skrining, bukan diagnosis."},
 
 	{msgClosed, "Kuesioner sedang ditutup."},
@@ -97,7 +99,8 @@ var messages = [][2]string{
 	{"It opens on", "Dibuka pada"},
 	{"Please come back then.", "Silakan kembali pada waktu tersebut."},
 	{"No opening date has been set yet.", "Belum ada jadwal pembukaan."},
-	{"Questions? Ask the medical post.", "Ada pertanyaan? Tanyakan ke pos medis."},
+	{"Questions? Ask the Medical Team.", "Ada pertanyaan? Tanyakan ke tim medis."},
+	{msgPreviewOn, "Pratinjau: jawaban Anda tidak disimpan."},
 }
 
 var idText = func() map[string]string {
@@ -117,37 +120,58 @@ var publicMessages = func() []string {
 	return keys
 }()
 
-// tr returns the text in lang. A key with no Indonesian text stays in English.
+// tr returns the text in lang. A key with no text in that language stays in English.
 func tr(lang, key string) string {
-	if lang == LangID {
+	switch lang {
+	case LangID:
 		if t, ok := idText[key]; ok {
+			return t
+		}
+	case LangZH:
+		if t, ok := zhMessages[key]; ok {
 			return t
 		}
 	}
 	return key
 }
 
+// knownLang reports whether code is one of the languages in the switch.
+func knownLang(code string) bool {
+	for _, l := range languages {
+		if l.Code == code {
+			return true
+		}
+	}
+	return false
+}
+
 // langOf reads the visitor's language: the cookie if it holds a known code, otherwise Indonesian.
 func langOf(r *http.Request) string {
-	if c, err := r.Cookie(langCookie); err == nil && (c.Value == LangEN || c.Value == LangID) {
+	if c, err := r.Cookie(langCookie); err == nil && knownLang(c.Value) {
 		return c.Value
 	}
 	return LangID
 }
 
 // Text returns the word in lang. Indonesian shows the clinic's explanation of the word, with a
-// capital letter.
+// capital letter; Chinese is a plain translation (lang_zh.go).
 func (i Item) Text(lang string) string {
-	if lang == LangID {
+	switch lang {
+	case LangID:
 		return strings.ToUpper(i.ID[:1]) + i.ID[1:]
+	case LangZH:
+		return i.ZH
 	}
 	return i.EN
 }
 
 // Name returns the dimension name in lang.
 func (d Dimension) Name(lang string) string {
-	if lang == LangID {
+	switch lang {
+	case LangID:
 		return d.ID
+	case LangZH:
+		return d.ZH
 	}
 	return d.EN
 }
@@ -157,7 +181,7 @@ var switchTargets = map[string]bool{"/sofi": true, "/sofi/start": true}
 
 // SetLang stores the chosen language and returns to the page the switch was on.
 func (a *API) SetLang(w http.ResponseWriter, r *http.Request) {
-	if l := r.URL.Query().Get("l"); l == LangEN || l == LangID {
+	if l := r.URL.Query().Get("l"); knownLang(l) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     langCookie,
 			Value:    l,

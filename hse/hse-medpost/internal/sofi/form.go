@@ -145,6 +145,14 @@ func (a *API) Submit(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, "Enter the weeks on site and answer every word.")
 		return
 	}
+	// Preview: score it and show it, save nothing and take no lock.
+	if winID == previewWindowID {
+		writeJSON(w, http.StatusOK, struct {
+			Result
+			Preview bool `json:"preview"`
+		}{res, true})
+		return
+	}
 	p, err := a.profile(s.UserID)
 	if err != nil {
 		log.Printf("sofi: submit profile: %v", err)

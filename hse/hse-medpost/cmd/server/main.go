@@ -429,6 +429,7 @@ func main() {
 	mux.Handle("GET /api/sofi-windows/status", middleware.RequireAuth(http.HandlerFunc(sofiAPI.WindowStatus)))
 	mux.Handle("GET /api/sofi-windows", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminWindows))))
 	mux.Handle("POST /api/sofi-windows", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminCreateWindow))))
+	mux.Handle("POST /api/sofi-preview", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminPreview))))
 	mux.Handle("POST /api/sofi-windows/{id}/end", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminEndWindow))))
 	// The doctor's note of a test period, printed on the PDF report. Any signed-in staff may read
 	// it; PutNote checks for a doctor, the Chief Medical Officer or the administrator itself.
