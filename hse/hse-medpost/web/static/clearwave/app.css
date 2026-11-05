@@ -5764,13 +5764,17 @@ a.app-tab {
 #tab-submitted .mcu-data-filter-row .btn-primary,
 #tab-submitted .mcu-data-filter-row .btn-ghost { height: 26px; padding: 0 12px !important; font-size: 0.75rem !important; line-height: 1; }
 /* Status chips + folded "More filters" (mcu-submitted.js). Wide screens: chips inline, extra fields always open. */
-#tab-submitted .sub-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-#tab-submitted .sub-chip { font: inherit; font-size: 0.75rem; padding: 0 12px; height: 26px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-2); color: var(--text-1); cursor: pointer; }
+/* The shared .mcu-data-filter-row is flex:none, so it grew to its content and ran off the screen; here it takes the container's width and wraps. */
+#tab-submitted .mcu-data-filter-row { flex: 1 1 100%; min-width: 0; }
+#tab-submitted .sub-chips { flex: 1 1 100%; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+#tab-submitted .sub-chip { box-sizing: border-box; font: inherit; font-size: 0.75rem; line-height: 1; padding: 0 10px; height: 24px; border: 1px solid rgba(13, 30, 28, 0.25); border-radius: 2px; background: var(--surface-2); color: var(--text-1); cursor: pointer; }
+#tab-submitted .sub-chip:hover { background: #fff; }
 #tab-submitted .sub-chip[aria-checked="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-#tab-submitted .sub-more-toggle { font: inherit; font-size: 0.8125rem; color: var(--text-2); background: none; border: 0; padding: 8px 0; cursor: pointer; }
+#tab-submitted .sub-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+#tab-submitted .sub-more-toggle { box-sizing: border-box; font: inherit; font-size: 0.75rem; line-height: 1; height: 24px; color: var(--text-1); background: var(--surface-2); border: 1px solid rgba(13, 30, 28, 0.25); border-radius: 2px; padding: 0 10px; cursor: pointer; }
 #tab-submitted .sub-more-toggle::before { content: "\25B8  "; }
 #tab-submitted .sub-more.open .sub-more-toggle::before { content: "\25BE  "; }
-#tab-submitted .sub-more-toggle b { background: var(--accent); color: #fff; border-radius: 999px; padding: 0 6px; font-size: 0.7rem; margin-left: 4px; }
+#tab-submitted .sub-more-toggle b { background: var(--accent); color: #fff; border-radius: 2px; padding: 0 5px; font-size: 0.7rem; margin-left: 4px; }
 #tab-submitted .sub-more-grid { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; }
 #tab-submitted .sub-more-grid > label { display: flex; flex-direction: column; }
 @media (min-width: 641px) {
@@ -5778,14 +5782,15 @@ a.app-tab {
   #tab-submitted .sub-more-toggle { display: none; }
 }
 @media (max-width: 640px) {
-  #tab-submitted .sub-chips { flex: 1 1 100%; flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding-bottom: 2px; scrollbar-width: none; }
-  #tab-submitted .sub-chip { flex: none; height: 34px; padding: 0 14px; font-size: 0.8125rem; }
+  #tab-submitted .sub-chips { flex: 1 1 100%; gap: 4px; }
+  #tab-submitted .sub-chip { flex: 1 1 calc(33.333% - 4px); height: 30px; padding: 0 6px; font-size: 0.8125rem; }
+  #tab-submitted .sub-more-toggle { height: 30px; }
   #tab-submitted .mcu-data-filter-row > label.sub-worker { flex: 1 1 100%; }
   #tab-submitted .sub-more { flex: 1 1 100%; }
   #tab-submitted .sub-more:not(.open) .sub-more-grid { display: none; }
   #tab-submitted .sub-more-grid > label { flex: 1 1 calc(50% - 4px); min-width: 0; gap: 2px; }
   #tab-submitted .sub-more-grid > label:nth-child(-n+2) { flex-basis: 100%; }
-  #tab-submitted .sub-more-grid input { width: 100%; height: 34px; font-size: 0.875rem; box-sizing: border-box; }
+  #tab-submitted .sub-more-grid input { width: 100%; height: 30px; font-size: 0.8125rem; box-sizing: border-box; }
 }
 .sub-msg { margin: 6px 12px; min-height: 0; font-size: 0.8125rem; color: var(--text-2); }
 .sub-msg:empty { display: none; }
