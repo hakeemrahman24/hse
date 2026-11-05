@@ -396,6 +396,7 @@ function initMalariaForm() {
     views: {
       table: document.getElementById("mal-view-table"),
       dashboard: document.getElementById("mal-view-dashboard"),
+      reference: document.getElementById("mal-view-reference"),
     },
     dashFilter: document.getElementById("mal-dash-filter"),
     dashFrom: document.getElementById("mal-dash-from"),
@@ -823,6 +824,8 @@ function initMalariaForm() {
     }
     for (const [view, el] of Object.entries(els.views)) el.hidden = view !== name;
     if (name === "dashboard" && dashboardStale) loadDashboard();
+    // The Reference tab (reference-tab.js) is loaded each time it is shown, so it is never stale.
+    if (name === "reference") window.loadReference?.(document.getElementById("mal-reference"), "malaria");
   }
   for (const tab of els.tabs) tab.addEventListener("click", () => showView(tab.dataset.view));
 

@@ -5817,3 +5817,65 @@ a.app-tab {
 @media (min-width: 1101px) {
   #tab-submitted .data-table td[data-label="Name"] { max-width: 16rem; white-space: normal; overflow-wrap: break-word; min-width: 9rem; }
 }
+
+/* Reference tab on the Medical Record page (reference-tab.js) and its Add dialog (reference-add.js).
+   Same tokens and button classes as the rest of the app; the row's left edge is the accent colour so a
+   list of documents reads as a list of things you can open, not as a table. */
+.ref-panel { padding: 16px; }
+.ref-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.ref-search {
+  flex: 1 1 14rem; min-width: 0; padding: 9px 12px; font: inherit;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text-1);
+}
+.ref-add { flex: 0 0 auto; }
+.ref-search:focus-visible, .ref-field :is(input, select, textarea):focus-visible, .ref-rename:focus-visible {
+  outline: 2px solid var(--accent-mid); outline-offset: 1px;
+}
+.ref-status { min-height: 1.25rem; margin: 0 0 8px; font-size: 0.8125rem; color: var(--accent); }
+.ref-status--error { color: #B3261E; }
+.ref-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ref-item {
+  display: flex; flex-wrap: wrap; gap: 10px 16px; justify-content: space-between; align-items: flex-start;
+  padding: 14px 16px; background: var(--surface-2); border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-mid); border-radius: 12px;
+}
+.ref-item--muted { opacity: 0.6; border-left-color: var(--border); }
+.ref-main { flex: 1 1 16rem; min-width: 0; }
+.ref-title { margin: 0 0 2px; font-size: 0.9375rem; font-weight: 700; color: var(--text-1); overflow-wrap: anywhere; }
+.ref-meta, .ref-notes, .ref-also { margin: 2px 0 0; font-size: 0.8125rem; color: var(--text-3); overflow-wrap: anywhere; }
+.ref-notes { color: var(--text-2); }
+.ref-also { color: var(--accent); }
+.ref-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ref-btn { font-size: 0.8125rem; padding: 6px 10px; text-decoration: none; }
+.ref-btn--danger { color: #B3261E; }
+.ref-btn--danger:hover { color: #B3261E; background: rgba(179, 38, 30, 0.08); }
+.ref-rename { padding: 6px 10px; min-width: 12rem; font: inherit; border: 1px solid var(--accent-border); border-radius: 8px; }
+.ref-history { flex-basis: 100%; border-top: 1px dashed var(--border); padding-top: 8px; font-size: 0.8125rem; color: var(--text-2); }
+.ref-history-list { margin: 0; padding-left: 1.1rem; display: grid; gap: 4px; }
+
+.ref-dialog {
+  /* margin:auto is what centres a modal <dialog>; this app's global reset zeroes margins, which pinned it top-left. */
+  margin: auto;
+  width: min(38rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; padding: 0;
+  border: 1px solid var(--accent-border); border-radius: 16px; background: var(--surface); color: var(--text-1);
+  box-shadow: var(--shadow-lg);
+}
+.ref-dialog::backdrop { background: rgba(13, 30, 28, 0.45); }
+.ref-dialog-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 16px 0; }
+.ref-dialog-head h2 { margin: 0; font-size: 1.0625rem; }
+.ref-dialog .app-tabs { margin-top: 8px; }
+.ref-form { display: grid; gap: 12px; }
+.ref-form[hidden], .ref-field[hidden] { display: none; } /* display:grid above beats the UA [hidden] rule otherwise */
+.ref-field { display: grid; gap: 4px; font-size: 0.8125rem; font-weight: 600; color: var(--text-2); }
+.ref-field :is(input, select, textarea) {
+  min-width: 0; padding: 8px 10px; font: inherit; font-weight: 400;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2); color: var(--text-1);
+}
+.ref-kind { display: flex; gap: 16px; font-size: 0.875rem; }
+.ref-pick-list { max-height: 50vh; overflow: auto; margin-top: 10px; }
+.ref-dialog .ref-panel > .ref-search { width: 100%; box-sizing: border-box; }
+.ref-dialog .ref-status { padding: 0 16px 14px; margin: 0; }
+@media (max-width: 640px) {
+  .ref-panel { padding: 12px; }
+  .ref-actions { width: 100%; }
+}

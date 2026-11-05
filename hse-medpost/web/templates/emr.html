@@ -108,6 +108,7 @@
             <!-- Fatigue only: screening-log.js relabels the first tab "Sleep Score" and shows this one (the table of what employees submitted at /sofi). -->
             <button type="button" class="app-tab" id="scr-tab-sofi" role="tab" aria-selected="false" aria-controls="scr-view-sofi" data-view="sofi" hidden>SOFI Fatigue Survey</button>
             <button type="button" class="app-tab" id="scr-tab-dashboard" role="tab" aria-selected="false" aria-controls="scr-view-dashboard" data-view="dashboard">Dashboard</button>
+            <button type="button" class="app-tab" id="scr-tab-reference" role="tab" aria-selected="false" aria-controls="scr-view-reference" data-view="reference">Reference</button>
           </div>
 
           <div id="scr-view-table" role="tabpanel" aria-labelledby="scr-tab-table">
@@ -602,6 +603,12 @@
               </div>
             </div>
           </div>
+
+          <!-- Reference: links and offline forms an admin attached to this test (reference-tab.js,
+               /api/reference/{section}). screening-log.js passes the test's key as the section. -->
+          <div id="scr-view-reference" role="tabpanel" aria-labelledby="scr-tab-reference" hidden>
+            <div id="scr-reference" class="ref-panel"></div>
+          </div>
         </div>
 
         <!-- Malaria screening: entered here on the website only (there is no offline
@@ -611,6 +618,7 @@
           <div class="app-tabs" role="tablist" aria-label="Malaria screening views">
             <button type="button" class="app-tab active" id="mal-tab-table" role="tab" aria-selected="true" aria-controls="mal-view-table" data-view="table">Table</button>
             <button type="button" class="app-tab" id="mal-tab-dashboard" role="tab" aria-selected="false" aria-controls="mal-view-dashboard" data-view="dashboard">Dashboard</button>
+            <button type="button" class="app-tab" id="mal-tab-reference" role="tab" aria-selected="false" aria-controls="mal-view-reference" data-view="reference">Reference</button>
           </div>
 
           <div id="mal-view-table" role="tabpanel" aria-labelledby="mal-tab-table">
@@ -838,6 +846,10 @@
               </div>
             </div>
           </div>
+
+          <div id="mal-view-reference" role="tabpanel" aria-labelledby="mal-tab-reference" hidden>
+            <div id="mal-reference" class="ref-panel"></div>
+          </div>
         </div>
       </div>
     </section>
@@ -849,6 +861,8 @@
   <script src="/static/page-shell.js"></script>
   <script src="/static/clinic-date.js"></script>
   <script src="/static/date-dmy.js"></script>
+  <script src="/static/reference-tab.js"></script>
+  <script src="/static/reference-add.js"></script>
   <script src="/static/malaria.js"></script>
   <script src="/static/screening-log.js"></script>
   <script src="/static/sofi-rounds.js"></script>

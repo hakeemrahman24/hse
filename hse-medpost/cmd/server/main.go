@@ -44,7 +44,7 @@ func main() {
 		if err := screening.EnsureScreeningTableNames(database); err != nil {
 			log.Fatal(err)
 		}
-		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "020_mcu_portal_digest.sql", "021_mcu_mail_setting.sql", "022_mcu_submission_record_unique.sql", "023_unfit_is_open.sql", "024_sofi_preview.sql"} {
+		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "020_mcu_portal_digest.sql", "021_mcu_mail_setting.sql", "022_mcu_submission_record_unique.sql", "023_unfit_is_open.sql", "024_sofi_preview.sql", "025_document_reference.sql"} {
 			sqlText, err := db.LoadMigrationFile(filepath.Join("migrations", "sqlite", name))
 			if err != nil {
 				log.Fatal(err)
@@ -134,6 +134,17 @@ func main() {
 	// next visit save repairs it, so it must never keep the service down.
 	if err := db.SyncAllPatientsFromLatestVisit(database); err != nil {
 		log.Printf("patient company backfill failed: %v", err)
+	}
+
+	// Hash the files that existed before Reference versions (migration 025 gave
+	// them a version 1 with no hash) so re-uploading one of them is refused as a
+	// duplicate. Both drivers. Logged, not fatal: on MariaDB the table only exists
+	// once migration 038 was run by hand, and a missing table must not keep the
+	// service down; the Reference tab is the only thing that depends on it.
+	if filled, err := activitylog.EnsureDocumentHashes(database); err != nil {
+		log.Printf("reference document hashes failed: %v", err)
+	} else if filled > 0 {
+		log.Printf("reference document hashes: filled %d", filled)
 	}
 
 	// staff.EnsureAdminAccount runs first: activitylog.SeedIfEmpty looks up
@@ -327,6 +338,9 @@ func main() {
 	mux.Handle("POST /api/documents", middleware.RequireAuth(middleware.RequireProgramManager(http.HandlerFunc(logAPI.CreateDocument))))
 	mux.Handle("PUT /api/documents/{id}", middleware.RequireAuth(middleware.RequireProgramManager(http.HandlerFunc(logAPI.UpdateDocument))))
 	mux.Handle("DELETE /api/documents/{id}", middleware.RequireAuth(middleware.RequireProgramManager(http.HandlerFunc(logAPI.DeleteDocument))))
+	// Reference tab on the medical record page: /api/reference/... (reading needs sign-in,
+	// every change is admin only; the permission wrappers are inside RegisterReferenceRoutes).
+	logAPI.RegisterReferenceRoutes(mux)
 
 	mux.Handle("GET /api/staff", middleware.RequireAuth(http.HandlerFunc(staffAPI.ListStaff)))
 	mux.Handle("PUT /api/staff/{id}", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(staffAPI.UpdateStaff))))

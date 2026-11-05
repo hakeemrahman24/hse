@@ -3,10 +3,10 @@ package activitylog
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -347,22 +347,15 @@ func (a *API) DeleteDocument(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad id"})
 		return
 	}
-	var fileLink sql.NullString
-	err = a.DB.QueryRow(`SELECT FileLink FROM DocumentTable WHERE DocumentID = ?`, id).Scan(&fileLink)
-	if err == sql.ErrNoRows {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
-		return
-	}
-	if err != nil {
+	// removeDocument deletes the row, its versions and section links, and every
+	// file it owns, so a replaced file's older versions are not left on disk.
+	if err := a.removeDocument(id); err != nil {
+		if errors.Is(err, ErrDocumentNotFound) {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "not found"})
+			return
+		}
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})
 		return
-	}
-	if _, err := a.DB.Exec(`DELETE FROM DocumentTable WHERE DocumentID = ?`, id); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})
-		return
-	}
-	if fileLink.Valid && fileLink.String != "" && !strings.HasPrefix(fileLink.String, "placeholder:") {
-		_ = os.Remove(fileLink.String)
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
