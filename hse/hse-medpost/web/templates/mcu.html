@@ -69,20 +69,25 @@
         <div id="tab-submitted" hidden data-admin="{{if eq .Role "admin"}}1{{end}}">
           <div id="sub-toolbar" class="app-filter">
             <div class="mcu-data-filter-row">
-              <label><span>Status</span>
-                <select id="sub-status">
-                  <option value="">All sent</option>
-                  <option value="Pending">Pending</option>
-                  <option value="Reviewed">Reviewed, not notified</option>
-                  <option value="Rejected">Rejected</option>
-                  <option value="Closed">Closed (notified)</option>
-                  <option value="Withdrawn">Withdrawn</option>
-                </select></label>
-              <label><span>Worker</span><input id="sub-worker" type="text" maxlength="60" autocomplete="off" /></label>
-              <label><span>Company</span><input id="sub-company" type="text" maxlength="60" autocomplete="off" /></label>
-              <label><span>Submitter</span><input id="sub-submitter" type="text" maxlength="60" autocomplete="off" /></label>
-              <label><span>From</span><input id="sub-from" type="date" /></label>
-              <label><span>To</span><input id="sub-to" type="date" /></label>
+              <div class="sub-chips" role="radiogroup" aria-label="Status">
+                <input id="sub-status" type="hidden" value="" />
+                <button type="button" class="sub-chip" role="radio" aria-checked="true" data-v="">All sent</button>
+                <button type="button" class="sub-chip" role="radio" aria-checked="false" data-v="Pending">Pending</button>
+                <button type="button" class="sub-chip" role="radio" aria-checked="false" data-v="Reviewed">Reviewed</button>
+                <button type="button" class="sub-chip" role="radio" aria-checked="false" data-v="Closed">Closed</button>
+                <button type="button" class="sub-chip" role="radio" aria-checked="false" data-v="Rejected">Rejected</button>
+                <button type="button" class="sub-chip" role="radio" aria-checked="false" data-v="Withdrawn">Withdrawn</button>
+              </div>
+              <label class="sub-worker"><span>Worker</span><input id="sub-worker" type="text" maxlength="60" autocomplete="off" /></label>
+              <details class="sub-more" id="sub-more">
+                <summary>More filters <b id="sub-more-n" hidden></b></summary>
+                <div class="sub-more-grid">
+                  <label><span>Company</span><input id="sub-company" type="text" maxlength="60" autocomplete="off" /></label>
+                  <label><span>Submitter</span><input id="sub-submitter" type="text" maxlength="60" autocomplete="off" /></label>
+                  <label><span>From</span><input id="sub-from" type="date" /></label>
+                  <label><span>To</span><input id="sub-to" type="date" /></label>
+                </div>
+              </details>
               <button type="button" id="sub-apply" class="btn-primary">Filter</button>
               <button type="button" id="sub-clear" class="btn-ghost">Reset</button>
             </div>
