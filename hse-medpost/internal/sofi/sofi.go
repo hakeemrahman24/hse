@@ -66,8 +66,9 @@ type API struct {
 	verifier     turnstile.Verifier
 	now          func() time.Time // replaced in tests
 	sitekey      string
-	devCheck     bool       // show a stub button instead of the Cloudflare box
-	submitMu     sync.Mutex // makes "already submitted?" and the insert one step
+	devCheck     bool         // show a stub button instead of the Cloudflare box
+	submitMu     sync.Mutex   // makes "already submitted?" and the insert one step
+	preview      previewState // the admin's preview switch (preview.go)
 }
 
 // New builds the handlers. The signing key is derived from the staff session secret, so a staff
@@ -178,10 +179,12 @@ type pageData struct {
 	Past []PastResult
 	// Done: they already sent the questionnaire in the period they signed in under, so no form.
 	Done bool
+	// Preview: the administrator switched preview on, so nothing sent here is saved.
+	Preview bool
 }
 
 func (a *API) pageData(r *http.Request, path string) pageData {
-	return pageData{Lang: langOf(r), Langs: languages, Path: path}
+	return pageData{Lang: langOf(r), Langs: languages, Path: path, Preview: a.previewActive()}
 }
 
 var scalePoints = func() []int {
@@ -196,7 +199,7 @@ var scalePoints = func() []int {
 var levelHelp = map[string]string{
 	LevelLow:      "Your fatigue is low. Keep resting well.",
 	LevelModerate: "Your fatigue is moderate. Rest and drink water, and tell your supervisor if it gets worse.",
-	LevelHigh:     "Your fatigue is high. Tell your supervisor and the medical post before doing high-risk work.",
+	LevelHigh:     "Your fatigue is high. Tell your supervisor and the Medical Team before doing high-risk work.",
 }
 
 // checked reports whether this browser has passed the Cloudflare check recently.

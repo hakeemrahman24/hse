@@ -72,8 +72,8 @@ func TestClosedPageAlwaysSaysWhoToAsk(t *testing.T) {
 	clockAt(api, at(1, 0, 0))
 	check := func(when string) {
 		for lang, want := range map[string]string{
-			LangEN: "Questions? Ask the medical post.",
-			LangID: "Ada pertanyaan? Tanyakan ke pos medis.",
+			LangEN: "Questions? Ask the Medical Team.",
+			LangID: "Ada pertanyaan? Tanyakan ke tim medis.",
 		} {
 			req := httptest.NewRequest(http.MethodGet, "/sofi", nil)
 			req.AddCookie(&http.Cookie{Name: langCookie, Value: lang})

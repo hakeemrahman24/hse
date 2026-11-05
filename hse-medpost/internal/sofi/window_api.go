@@ -27,6 +27,9 @@ func (a *API) requireOpen(w http.ResponseWriter, r *http.Request) (*windowRow, b
 		writeError(w, r, http.StatusInternalServerError, "Something went wrong.")
 		return nil, false
 	}
+	if win == nil && a.previewActive() {
+		return &windowRow{ID: previewWindowID}, true
+	}
 	if win == nil {
 		writeError(w, r, http.StatusForbidden, msgClosed)
 		return nil, false
@@ -49,14 +52,20 @@ func (a *API) sessionWindowID(s *auth.Session) (int64, error) {
 	if win != nil {
 		return win.ID, nil
 	}
-	if s.WindowID == 0 {
-		return 0, nil
+	if s.WindowID > 0 {
+		ok, err := a.windowUsable(s.WindowID)
+		if err != nil {
+			return 0, err
+		}
+		if ok {
+			return s.WindowID, nil
+		}
 	}
-	ok, err := a.windowUsable(s.WindowID)
-	if err != nil || !ok {
-		return 0, err
+	// Only now, so someone finishing a real period is never turned into a preview that saves nothing.
+	if a.previewActive() {
+		return previewWindowID, nil
 	}
-	return s.WindowID, nil
+	return 0, nil
 }
 
 // closedData is what sofi_closed.html needs.
@@ -87,7 +96,7 @@ func (a *API) pageOpen(w http.ResponseWriter, r *http.Request, path string) bool
 		http.Error(w, tr(langOf(r), "Something went wrong."), http.StatusInternalServerError)
 		return false
 	}
-	if win == nil {
+	if win == nil && !a.previewActive() {
 		a.closedPage(w, r, path)
 		return false
 	}
@@ -221,6 +230,9 @@ type windowStatus struct {
 	Opens  string  `json:"opens,omitempty"`
 	Zone   string  `json:"zone"`
 	Rounds []Round `json:"rounds"`
+	// Preview: /sofi is open for preview (nothing is saved) until PreviewUntil, GMT+9.
+	Preview      bool   `json:"preview"`
+	PreviewUntil string `json:"previewUntil,omitempty"`
 }
 
 // WindowStatus tells any signed-in staff whether /sofi is open, when it next opens, and which
@@ -236,6 +248,10 @@ func (a *API) WindowStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	} else if err == nil {
 		out.State, out.Until = "open", siteFromDB(open.ClosesAt)
+	}
+	out.Preview, out.PreviewUntil = a.previewActive(), a.previewUntilText()
+	if !out.Preview {
+		out.PreviewUntil = ""
 	}
 	var list []WindowView
 	if err == nil {

@@ -35,15 +35,16 @@ type Dimension struct {
 	Key string
 	EN  string
 	ID  string
+	ZH  string
 }
 
 // Dimensions is in form order: items 1-4 belong to the first, 5-8 to the second, and so on.
 var Dimensions = []Dimension{
-	{"lack_of_energy", "Lack of energy", "Kurang energi"},
-	{"physical_exertion", "Physical exertion", "Pengerahan tenaga fisik"},
-	{"physical_discomfort", "Physical discomfort", "Ketidaknyamanan fisik"},
-	{"lack_of_motivation", "Lack of motivation", "Kurang motivasi"},
-	{"sleepiness", "Sleepiness", "Kantuk"},
+	{"lack_of_energy", "Lack of energy", "Kurang energi", "精力不足"},
+	{"physical_exertion", "Physical exertion", "Pengerahan tenaga fisik", "体力消耗"},
+	{"physical_discomfort", "Physical discomfort", "Ketidaknyamanan fisik", "身体不适"},
+	{"lack_of_motivation", "Lack of motivation", "Kurang motivasi", "缺乏动力"},
+	{"sleepiness", "Sleepiness", "Kantuk", "嗜睡"},
 }
 
 // Item is one word of the inventory.
@@ -52,6 +53,7 @@ type Item struct {
 	Dimension string
 	EN        string
 	ID        string
+	ZH        string
 }
 
 // Items are numbered 1-20 in the order they are shown and scored.
@@ -68,7 +70,7 @@ func buildItems() []Item {
 	items := make([]Item, 0, ItemCount)
 	for d, group := range words {
 		for _, w := range group {
-			items = append(items, Item{Number: len(items) + 1, Dimension: Dimensions[d].Key, EN: w[0], ID: w[1]})
+			items = append(items, Item{Number: len(items) + 1, Dimension: Dimensions[d].Key, EN: w[0], ID: w[1], ZH: zhItems[len(items)]})
 		}
 	}
 	return items
@@ -79,6 +81,7 @@ type DimensionResult struct {
 	Key   string `json:"key"`
 	EN    string `json:"en"`
 	ID    string `json:"id"`
+	ZH    string `json:"zh"`
 	Score int    `json:"score"`
 	Max   int    `json:"max"`
 	Level string `json:"level"`
@@ -108,7 +111,7 @@ func Score(answers []int) (Result, error) {
 			sum += a
 		}
 		res.Dimensions = append(res.Dimensions, DimensionResult{
-			Key: dim.Key, EN: dim.EN, ID: dim.ID,
+			Key: dim.Key, EN: dim.EN, ID: dim.ID, ZH: dim.ZH,
 			Score: sum, Max: itemsPerDimension * MaxAnswer, Level: band(sum, dimLowMax, dimModerateMax),
 		})
 		res.Total += sum
