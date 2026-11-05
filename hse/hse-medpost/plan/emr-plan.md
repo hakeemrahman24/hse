@@ -264,3 +264,35 @@ Every clinical route needs an explicit role check (reuse `RequireDoctorOrCMO`). 
 16. ~~Offline malaria form~~ — decided 2026-10-20: malaria has no offline form, so the patient search, the MCU lookup and the region lookup all happen on the website.
 17. ~~Week of the year~~ — decided 2026-10-20: the week of the year; I read that as the ISO week (Monday start). Confirm if the HSE report uses another week numbering.
 18. ~~Head of household~~ — decided 2026-10-20: text only, cleaned and Title Case, with a "Sama dengan pasien" option (see §4.3).
+
+## 11. Reference tab on the medical record page
+
+Decided 2026-11-05. Each section on `emr.html` that has Table / Dashboard tabs (Drug and Alcohol, Fatigue, Malaria, and so on) gets a third **Reference** tab holding links and offline forms. **Status 2026-11-05: built and checked on SQLite and in a browser for Drug and Alcohol, Fatigue and Malaria; not yet run on MariaDB (migration `038_document_reference.sql` is run by hand on the Pi first).** Outpatient, Inpatient and Wellness get the tab when their pages exist; the API already accepts them. Details are in the Progress Log of `hse-medpost-plan.md`.
+
+**Decided by the owner:** the tab is per section; admins upload through the UI inside the tab; old versions of a replaced file are kept; an exact duplicate (same SHA-256) is rejected; the tab gets a search box; an admin can pick an existing document instead of uploading again.
+
+**Model: extend the activity log's documents, do not build a second list.** `DocumentTable` (`internal/activity-log/documents.go`) already holds a title, a link (`FormLink`) or an uploaded file (`FileLink`), notes and a type, per program. It becomes the one library of documents. It has no versions, no hash and no link to the record-page sections, so three things are added:
+- `DocumentVersion`: document id, version number, file path, original name, SHA-256 with a **unique** index, uploaded by, date. `DocumentTable.FileLink` becomes the path of the current version. Existing documents get a version 1 from their current file. The unique index is what keeps two simultaneous uploads of the same file from both succeeding.
+- `DocumentSection`: document id, section (malaria, fatigue, ...), sort order, added by, date. It says "this document shows in this section's Reference tab". The same document can show in several sections, and removing it from one tab does not delete it. A table, not a `Section` column on `DocumentTable`, so one SOP can serve two sections.
+- Activity documents are untouched: their program link stays, and they appear in the pick list as they are. Which section shows them is the admin's choice.
+
+**Add reference dialog (admins only), two ways:**
+1. *Pick existing:* a searchable list of documents already in `DocumentTable` (title, Link or File, program, updated date); ones already in this section are greyed out. Choosing one only adds a `DocumentSection` row, no upload or hashing.
+2. *Upload new:* choose Link or File, title, category, optional note. A file is either "Add as new item" or "Replace <existing item>" chosen from a dropdown, never matched by filename (`form-v2.pdf` and `form_final.pdf` can be the same form). A hash that already exists is refused with "This file is already in Reference as <title>", no override. On success it is also added to this section.
+
+**Actions on an item (admins):** Remove from this tab (deletes only the `DocumentSection` row); Replace file (new version of the shared document, so every section showing it gets it, and the dialog says "Also shown in: ..."); History (download older versions); Edit title; Delete document (removes it everywhere, blocked while another section still uses it, with the same "also shown in" warning). Staff see the list with Open or Download, plus "Updated <date>".
+
+**Rules carried over:** links open in a new tab with `rel="noopener noreferrer"`; files PDF, DOCX, XLSX, PNG, JPG only, about 10 MB cap, stored outside the web root, served through an authenticated handler with `Content-Disposition: attachment`, renamed on upload (reuse `storage.DocumentDir` / `DocumentFilename`); offline forms are stored in the app, not as external links; a form uploaded from `forms/` can show the `-<ddmmyy>` revision date as its version label; changes go in the activity log. Hashing reuses the approach of `saveEvidenceWithHash` in `internal/activity-log/subheaders.go`. Who may add is the same check the existing document routes use (not yet read; confirm when building), so there is one admin rule.
+
+**Schema:** needs both `migrations/sqlite/` and `migrations/mysql/` files (numbers are separate per engine; check `ls`), valid on MariaDB as well as SQLite, with WHY-comments in the new Go code.
+
+**Build order:** (1) migrations and backfill of version 1; (2) store with tests: hash and reject duplicates, replace keeps history, section links, block delete while shared; (3) handlers reusing the document routes' admin check; (4) the Reference tab in `emr.html` with the Add dialog, search and History; (5) run on MariaDB.
+
+**Decided 2026-11-05 (follow-up):**
+- File size cap stays 10 MB. It is enforced on the server with `http.MaxBytesReader` on the upload route, because `CreateDocument` today only calls `ParseMultipartForm(32 << 20)`, which limits memory use, not the upload size.
+- Category is a fixed list, not free text. Suggested: reuse the four existing `DocumentsType` values (Procedure, SocializationMaterial, Forms, Template) so the library has one list; the dialog shows them as a dropdown. Owner to confirm the list.
+- Admin check: view and download use `middleware.RequireAuth`; add, replace, pick existing, remove from tab, edit title and delete use `middleware.RequireAuth(middleware.RequireProgramManager(...))`, which allows the `admin` role only (`internal/middleware/middleware.go`; this is the check the existing `POST/PUT/DELETE /api/documents` routes in `cmd/server/main.go` use). The new routes reuse it, so there is one admin rule. The UI hides the admin buttons for other roles, but the server is what enforces it.
+
+**Decided 2026-11-05 (program rule):** keep the `DocumentTable` CHECK as it is. The Add dialog asks for a program whenever the category is not Template; category Template means "no program" and hides the program field. The server still enforces this in `insertDocument`, which already rejects a missing program for non-Template types and a program on a Template. No schema change is needed for this.
+
+**Open:** none for the design. Still to confirm when building: the fixed category list (suggested: the four existing `DocumentsType` values).

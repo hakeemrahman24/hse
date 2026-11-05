@@ -170,8 +170,8 @@ function initScreeningLog() {
   if (!panel) return;
   const $ = (id) => document.getElementById(id);
   const els = {
-    tabs: [$("scr-tab-table"), $("scr-tab-sofi"), $("scr-tab-dashboard")],
-    views: { table: $("scr-view-table"), sofi: $("scr-view-sofi"), dashboard: $("scr-view-dashboard") },
+    tabs: [$("scr-tab-table"), $("scr-tab-sofi"), $("scr-tab-dashboard"), $("scr-tab-reference")],
+    views: { table: $("scr-view-table"), sofi: $("scr-view-sofi"), dashboard: $("scr-view-dashboard"), reference: $("scr-view-reference") },
     search: $("scr-search"),
     from: $("scr-from"),
     to: $("scr-to"),
@@ -227,7 +227,13 @@ function initScreeningLog() {
   }
 
   // ---- tabs ----------------------------------------------------------------
+  let activeView = "table";
+  // The Reference tab belongs to whichever test is open (its key is the section name),
+  // so it is loaded each time it is shown rather than once.
+  const loadReferenceTab = () => window.loadReference?.($("scr-reference"), kind);
+
   function showView(name) {
+    activeView = name;
     for (const tab of els.tabs) {
       const on = tab.dataset.view === name;
       tab.classList.toggle("active", on);
@@ -235,6 +241,7 @@ function initScreeningLog() {
     }
     for (const [view, el] of Object.entries(els.views)) el.hidden = view !== name;
     if (name === "dashboard" && dashboardStale) loadDashboard();
+    if (name === "reference") loadReferenceTab();
   }
   for (const tab of els.tabs) tab.addEventListener("click", () => showView(tab.dataset.view));
 
@@ -503,6 +510,9 @@ function initScreeningLog() {
       setUpDashboard();
       dashboardStale = true;
       showView("table");
+    } else if (activeView === "reference") {
+      // Coming back to this test after another page: the open Reference tab may be stale.
+      loadReferenceTab();
     }
     return loadTable();
   };

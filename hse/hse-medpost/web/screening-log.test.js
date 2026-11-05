@@ -115,7 +115,7 @@ test("each tab in the screening panel is registered with its view", () => {
   const script = readFileSync("web/static/screening-log.js", "utf8");
   const panel = html.slice(html.indexOf('id="mr-panel-screening"'));
   const tabs = [...panel.matchAll(/<button[^>]*\bid="(scr-tab-[a-z]+)"[^>]*\bdata-view="([a-z]+)"/g)];
-  assert.deepEqual(tabs.map((t) => t[2]).sort(), ["dashboard", "sofi", "table"]);
+  assert.deepEqual(tabs.map((t) => t[2]).sort(), ["dashboard", "reference", "sofi", "table"]);
   const registered = script.match(/tabs: \[([^\]]*)\]/)[1];
   const views = script.match(/views: \{([^}]*)\}/)[1];
   for (const [, tabId, view] of tabs) {
