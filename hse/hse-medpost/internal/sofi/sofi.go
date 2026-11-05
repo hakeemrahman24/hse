@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"hse-medpost/internal/auth"
@@ -57,18 +58,18 @@ const msgNotFound = "Details not found, please check and try again."
 
 // API holds what the /sofi handlers need.
 type API struct {
-	DB           *sql.DB
-	store        *auth.Store
-	pages        *template.Template
-	lim          *ratelimit.Limiter
-	trustCF      bool // read the visitor address from CF-Connecting-IP (only when the port is reachable through the tunnel alone)
-	secureCookie bool
-	verifier     turnstile.Verifier
-	now          func() time.Time // replaced in tests
-	sitekey      string
-	devCheck     bool         // show a stub button instead of the Cloudflare box
-	submitMu     sync.Mutex   // makes "already submitted?" and the insert one step
-	preview      previewState // the admin's preview switch (preview.go)
+	DB            *sql.DB
+	store         *auth.Store
+	pages         *template.Template
+	lim           *ratelimit.Limiter
+	trustCF       bool // read the visitor address from CF-Connecting-IP (only when the port is reachable through the tunnel alone)
+	secureCookie  bool
+	verifier      turnstile.Verifier
+	now           func() time.Time // replaced in tests
+	sitekey       string
+	devCheck      bool        // show a stub button instead of the Cloudflare box
+	submitMu      sync.Mutex  // makes "already submitted?" and the insert one step
+	previewWarned atomic.Bool // the missing-preview-table warning is logged once, not on every request
 }
 
 // New builds the handlers. The signing key is derived from the staff session secret, so a staff

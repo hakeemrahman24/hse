@@ -392,6 +392,12 @@ _Convention: every session that changes code or makes a design decision appends 
 - `/mcu-submit` no longer has a black background: `web/static/mcu-portal.css` is now a light pink-white page with white cards, plum text and the same pink accent. Pink as text uses a darker `#c4126b` (contrast), the bright pink is only a fill, and button text stays dark. Stylesheet link bumped to `?v=2`. Checked in headless Chromium: landing, sign-in, register at desktop and phone width. Signed-in and admin pages share the same tokens but were not looked at.
 - Open: Pi admin password is still the placeholder `<choose a long password>` in `.env`; nothing from today is deployed.
 
+### 2026-11-05 — SOFI preview now survives a server restart
+
+- Bug report: the owner opened preview in the admin page and it closed on its own well before 2 hours. Cause (most likely, no server log was available): the switch was a variable in memory, so every restart of the server closed it, and the server is restarted often while code changes. I had written that down as intended; it was the wrong choice. Now the switch is one row in `SofiPreview` (`PreviewID` 1, `UntilAt` UTC, `SetBy`, `SetAt`); the 2-hour limit still turns it off, and a real window still wins.
+- New: `migrations/sqlite/024_sofi_preview.sql` (loaded on startup and in the test helper) and **`migrations/mysql/037_sofi_preview.sql` (run by hand on MariaDB, before deploying)**. If the table is missing, preview counts as off, the log says so once, and the button answers "Could not change preview"; nothing else breaks. Tests: `TestPreviewSurvivesARestart`, `TestPreviewWithoutItsTableIsOffAndTheButtonSaysSo`.
+- Open: if it still closes early after this, look at the server log for "sofi: preview" lines and at whether a scheduled window opened (a real window takes over from preview and the admin page then shows "Open").
+
 ### 2026-11-05 — SOFI form: compact, desktop and phone layouts
 
 - CSS only (`web/static/sofi.css`, last block). Desktop (over 700px): card widened from 640px to 860px, the profile runs in columns, and each word sits on one line with its 0-6 buttons at the right (about 48px a row instead of about 85px, so the 25 words need roughly half the scrolling). Phone (700px and under): card uses nearly the full width, the word is above its buttons, the buttons are 44px tall for tapping, the profile is two columns, the 0 and 6 explanations stack. Spacing and padding were reduced everywhere.
