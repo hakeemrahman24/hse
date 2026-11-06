@@ -996,9 +996,9 @@ func (a *API) SearchMcuRecords(w http.ResponseWriter, r *http.Request) {
 		JOIN Patient p ON p.PatientID = m.FK_PatientID
 		LEFT JOIN CheckUpCriteriaTable c ON c.CheckUpCriteriaID = m.FK_CheckUpCriteriaID
 		LEFT JOIN Company co ON co.CompanyID = m.FK_CompanyID
-		WHERE m.CheckUpID LIKE ? OR p.Name LIKE ?
+		WHERE m.CheckUpID LIKE ? OR `+db.NameLikeSQL("p.Name")+`
 		ORDER BY m.ReviewDate DESC`,
-		"%"+q+"%", "%"+q+"%")
+		"%"+q+"%", db.NameLikeArg(q))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})
 		return

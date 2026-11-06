@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"hse-medpost/internal/db"
 )
 
 const (
@@ -79,8 +81,8 @@ func (s *Store) SearchWorkers(ctx context.Context, q string) ([]Worker, error) {
 	query := workerSelect + ` WHERE 1 = 1`
 	args := make([]any, 0, len(words))
 	for _, w := range words {
-		query += ` AND p.Name LIKE ?`
-		args = append(args, "%"+w+"%")
+		query += ` AND ` + db.NameLikeSQL("p.Name")
+		args = append(args, db.NameLikeArg(w))
 	}
 	// The limit is a constant written into the text, not a user value, so it is safe to concatenate.
 	query += ` ORDER BY p.Name LIMIT ` + strconv.Itoa(maxWorkerResults)

@@ -330,8 +330,8 @@ func (a *API) ListPatients(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN Company c ON c.CompanyID = p.FK_CompanyID`
 	args := []any{}
 	if q != "" {
-		query += ` WHERE p.Name LIKE ?`
-		args = append(args, "%"+q+"%")
+		query += ` WHERE ` + db.NameLikeSQL("p.Name")
+		args = append(args, db.NameLikeArg(q))
 	}
 	query += ` ORDER BY p.Name`
 

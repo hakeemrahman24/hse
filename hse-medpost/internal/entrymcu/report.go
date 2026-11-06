@@ -7,6 +7,7 @@ package entrymcu
 
 import (
 	"hse-medpost/internal/dates"
+	"hse-medpost/internal/db"
 	"net/http"
 	"strings"
 	"time"
@@ -225,8 +226,8 @@ func (a *API) GetMcuRecordsBrowse(w http.ResponseWriter, r *http.Request) {
 	args := []any{}
 	var conds []string
 	if name != "" {
-		conds = append(conds, "p.Name LIKE ?")
-		args = append(args, "%"+name+"%")
+		conds = append(conds, db.NameLikeSQL("p.Name"))
+		args = append(args, db.NameLikeArg(name))
 	}
 	if companyID != "" {
 		conds = append(conds, "m.FK_CompanyID = ?")
@@ -294,8 +295,8 @@ func (a *API) writeEmployeeRows(w http.ResponseWriter, name, companyID string) {
 	args := []any{}
 	var conds []string
 	if name != "" {
-		conds = append(conds, "p.Name LIKE ?")
-		args = append(args, "%"+name+"%")
+		conds = append(conds, db.NameLikeSQL("p.Name"))
+		args = append(args, db.NameLikeArg(name))
 	}
 	if companyID != "" {
 		conds = append(conds, "COALESCE(m.FK_CompanyID, p.FK_CompanyID) = ?")
