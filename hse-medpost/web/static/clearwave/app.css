@@ -1300,17 +1300,24 @@ body:has(.app-shell--full) {
   }
 }
 
-/* Desktop: the two certificate tool groups are stacked, left-aligned, so
-   Latest certs and Latest rows share one left edge. The block sits at the
-   right of the row, so New patient appearing beside the name never pushes
-   it onto a different row. */
+/* Desktop: Name (with New patient) and the two stacked certificate groups
+   share the top of the row, side by side, with the rule between them
+   stretching to the height of the stack. */
 @media (min-width: 1101px) {
+  #tab-mcu-data:not(.is-employee) .mcu-data-top-row {
+    align-items: flex-start;
+    gap: 16px;
+  }
+  #tab-mcu-data:not(.is-employee) .mcu-data-rule {
+    align-self: stretch;
+    height: auto;
+  }
   #tab-mcu-data:not(.is-employee) .mcu-cert-download {
     flex: none;
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
-    margin-left: auto;
+    margin-left: 0;
   }
 }
 
