@@ -43,10 +43,39 @@ function collapseSpaces(str) {
   return str.replace(/^\s+/, "").replace(/\s{2,}/g, " ");
 }
 
-// Person names: letters and single spaces only. O'hara becomes Ohara,
-// JOHN DOE becomes John Doe.
+// Title style for a person name, the same rule as titleName in
+// internal/mcusubmit/sanitize.go and the /mcu-submit page: a word starts
+// after a space, hyphen or dot. After an apostrophe the next letter is
+// capital only behind a one-letter start (O'Neil, D'Angelo), so Ma'ruf and
+// As'adul keep their lower case.
+function titleName(str) {
+  let out = "";
+  let upperNext = true;
+  let lettersInWord = 0;
+  for (const ch of str) {
+    if (/\p{L}/u.test(ch)) {
+      out += upperNext ? ch.toUpperCase() : ch.toLowerCase();
+      upperNext = false;
+      lettersInWord++;
+    } else if (ch === "'") {
+      out += ch;
+      upperNext = lettersInWord === 1;
+    } else if (/\p{M}/u.test(ch)) {
+      out += ch;
+    } else {
+      out += ch; // space, hyphen or dot: a new word starts
+      upperNext = true;
+      lettersInWord = 0;
+    }
+  }
+  return out;
+}
+
+// Person names: letters, combining marks, space, apostrophe, hyphen and dot
+// (O'Connor, As'adul, Nur-Aini, M.Yusuf), single spaces, title case. Curly
+// apostrophes from a phone keyboard become the plain one.
 function sanitizeName(str) {
-  return toProperCase(collapseSpaces(str.replace(/[^\p{L}\s]/gu, "")));
+  return titleName(collapseSpaces(str.replace(/[‘’]/g, "'").replace(/[^\p{L}\p{M}\s'.\-]/gu, "")));
 }
 
 // Work positions: same title case and space cleanup, and digits stay

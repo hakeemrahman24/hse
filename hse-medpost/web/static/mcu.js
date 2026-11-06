@@ -6,7 +6,7 @@ async function logout() {
 }
 document.getElementById("logout")?.addEventListener("click", logout);
 
-// Live sanitizing lives in case-guard.js: names are letters only, work
+// Live sanitizing lives in case-guard.js: names keep letters, apostrophe, hyphen and dot, work
 // positions keep digits (Welder 3G), both title-cased with extra spaces gone.
 guardCase(document.querySelector('#patient-form [name="name"]'), sanitizeName);
 guardCase(document.querySelector('#checkup-form [name="workPosition"]'), sanitizePosition);
