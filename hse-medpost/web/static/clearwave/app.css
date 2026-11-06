@@ -1300,15 +1300,17 @@ body:has(.app-shell--full) {
   }
 }
 
-/* Desktop: with New patient beside the name, the certificate tools used to
-   drop whole to a second row. Let them take the space left on the row and
-   wrap their two groups inside it, right-aligned, so the rule stays beside
-   them and both groups share one right edge. */
+/* Desktop: the two certificate tool groups are stacked, left-aligned, so
+   Latest certs and Latest rows share one left edge. The block sits at the
+   right of the row, so New patient appearing beside the name never pushes
+   it onto a different row. */
 @media (min-width: 1101px) {
   #tab-mcu-data:not(.is-employee) .mcu-cert-download {
-    flex: 1 1 0;
-    min-width: 0;
-    justify-content: flex-end;
+    flex: none;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    margin-left: auto;
   }
 }
 
