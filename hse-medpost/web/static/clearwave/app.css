@@ -1300,6 +1300,41 @@ body:has(.app-shell--full) {
   }
 }
 
+/* Desktop: with New patient beside the name, the certificate tools used to
+   drop whole to a second row. Let them take the space left on the row and
+   wrap their two groups inside it, right-aligned, so the rule stays beside
+   them and both groups share one right edge. */
+@media (min-width: 1101px) {
+  #tab-mcu-data:not(.is-employee) .mcu-cert-download {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: flex-end;
+  }
+}
+
+/* Phone: New patient is the same height and type size as the other buttons,
+   and the Name field takes the rest of the row. */
+@media (max-width: 640px) {
+  #tab-mcu-data .mcu-data-search-row > label {
+    flex: 1 1 auto;
+    width: auto;
+  }
+  #tab-mcu-data .mcu-data-search-row .mcu-tab-new-patient {
+    flex: none;
+    margin: 0;
+  }
+  #tab-mcu-data .mcu-tab-new-patient .new-patient-card {
+    box-sizing: border-box;
+    height: 24px;
+    padding: 0 6px;
+    gap: 4px;
+    font-size: 0.75rem;
+    line-height: 1;
+    white-space: nowrap;
+    transform: none;
+  }
+}
+
 /* Employee: name and company inputs share one width, a quarter of the
    filter row. Expiring and Reset sit beside the company field. */
 #tab-mcu-data.is-employee > .app-filter {
