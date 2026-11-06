@@ -14,6 +14,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"unicode"
+
+	"golang.org/x/text/unicode/norm"
 
 	"hse-medpost/internal/db"
 )
@@ -89,16 +92,51 @@ func NormalizePersonalID(personalID, nationalityName string) (string, error) {
 }
 
 var (
-	nonNameChars     = regexp.MustCompile(`[^\p{L}\s]+`)
+	nonNameChars     = regexp.MustCompile(`[^\p{L}\p{M}\s'.\-]+`)
 	nonPositionChars = regexp.MustCompile(`[^\p{L}\p{N}\s]+`)
 	repeatedSpace    = regexp.MustCompile(`\s{2,}`)
 	asciiWord        = regexp.MustCompile(`[A-Za-z]+`)
 )
 
-// NormalizePersonName keeps letters and single spaces, then title-cases.
-// O'hara becomes Ohara, JOHN DOE becomes John Doe.
+// NormalizePersonName keeps letters, combining marks, space, apostrophe, hyphen
+// and dot, collapses spaces, and title-cases: as'adul becomes As'adul, o'connor
+// O'Connor, JOHN DOE John Doe, nur-aini Nur-Aini. Curly apostrophes become the
+// plain one. This is the same rule as the staff form (case-guard.js) and
+// SanitizeName in internal/mcusubmit.
 func NormalizePersonName(s string) string {
-	return titleASCIIWords(collapseSpaces(nonNameChars.ReplaceAllString(s, "")))
+	s = strings.NewReplacer("‘", "'", "’", "'").Replace(norm.NFC.String(s))
+	return titlePersonName(collapseSpaces(nonNameChars.ReplaceAllString(s, "")))
+}
+
+// titlePersonName starts a word after a space, hyphen or dot. After an
+// apostrophe the next letter is capital only behind a one-letter start
+// (O'Neil, D'Angelo), so Ma'ruf and As'adul keep their lower case.
+func titlePersonName(s string) string {
+	var b strings.Builder
+	upperNext := true
+	lettersInWord := 0
+	for _, r := range s {
+		switch {
+		case unicode.IsLetter(r):
+			if upperNext {
+				b.WriteRune(unicode.ToUpper(r))
+			} else {
+				b.WriteRune(unicode.ToLower(r))
+			}
+			upperNext = false
+			lettersInWord++
+		case r == '\'':
+			b.WriteRune(r)
+			upperNext = lettersInWord == 1
+		case unicode.IsMark(r):
+			b.WriteRune(r)
+		default: // space, hyphen, dot
+			b.WriteRune(r)
+			upperNext = true
+			lettersInWord = 0
+		}
+	}
+	return b.String()
 }
 
 // NormalizeWorkPosition is the same styling, and digits stay.
