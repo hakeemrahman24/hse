@@ -309,6 +309,18 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 ## Progress Log
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
+### 2026-11-07 (latest) — Employees route can include expired checkups (opt-in)
+
+- **What changed:** `GET /api/directory/employees` takes `includeExpired=1` (exactly `1`; any other value means off). With it, a worker whose latest decided result is Fit or Fit with note is returned even when `ResultValidUntil` is in the past (a result with no valid-until date is still left out). Everything else is unchanged: Unfit and newer-decision rules, archived and renewed rows, the 20-row limit, and the default (no parameter) still returns valid checkups only. `internal/directory/directory.go`, test `TestEmployeesCanIncludeAnExpiredFitCheckupOnlyWhenAsked`.
+- **Why:** entry-permit's "My Layar Entry Permit" page must tell a worker "Your permit validity has ended" (a permit lasts as long as the medical checkup). Without this they were indistinguishable from an unknown name. Only that one lookup sends the flag; the name picker, gate officer eligibility and the permit request form never do, so no permit can be requested for a worker with no valid checkup.
+- **Open:** `TestCheckupsReturnsEveryRecord` still fails (`hcValidityStatus` empty, expected "Archived / Exit"); it fails the same way on a clean checkout of the last commit, so it is not from this change. Needs the next deploy of medpost before entry-permit shows the message in production.
+
+### 2026-11-06 (latest) — Token-guarded company route for entry-permit
+
+- **What changed:** new `GET /api/directory/companies` (`internal/directory/companies.go`, registered in `cmd/server/main.go`). Same bearer-token check as the other directory routes. Returns every company, **archived ones included and flagged** (`archived`), as `[{companyId, name, abbreviation, entity, gov, archived, parents:[{name, depth}]}]`, ordered by name, parents nearest first. `gov` is true when the entity is Government or the abbreviation is GOV, decided here so every reader agrees. Read-only, no schema change. Parents are read in batches of 200 so a long list never exceeds SQLite's placeholder limit. Three tests (listing with parents, entity, GOV and archived; token required; `isGov`).
+- **Why:** entry-permit keeps a read-only nightly mirror of the company list so its forms keep working while medpost restarts, and the waiver form must tell government offices from visitor companies. The list is edited only here.
+- **Open:** `TestCheckupsReturnsEveryRecord` still fails as before (not touched). The route exists only after the next deploy.
+
 ### 2026-11-06 (latest) — Token-guarded region route for entry-permit
 
 - **What changed:** new `GET /api/directory/regions` (`internal/directory/regions.go`, registered in `cmd/server/main.go`). Same bearer-token check as the other directory routes. Returns every regency and city with its province (`[{code, name, province}]`, ordered by province then name) from the local `Region` table, read-only, no schema change. Three tests (token required, only level-2 rows with the province name, database error); plain JOIN, valid on SQLite and MariaDB.

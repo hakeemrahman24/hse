@@ -426,3 +426,31 @@ func mustExec(t *testing.T, database *sql.DB, query string, args ...any) {
 		t.Fatal(err)
 	}
 }
+
+// The permit app asks for expired workers only to tell them their checkup has ended. Every other
+// caller (name search, gate officer checks) must keep getting valid checkups only.
+func TestEmployeesCanIncludeAnExpiredFitCheckupOnlyWhenAsked(t *testing.T) {
+	database := openDirectoryTestDB(t)
+	seedDirectoryFixture(t, database)
+	api := &API{DB: database, Token: "secret", Now: fixedNow}
+
+	if got := getDirectory(t, api, "/api/directory/employees?q=lama"); len(got) != 0 {
+		t.Fatalf("expired fit returned without being asked: %v", got)
+	}
+	got := getDirectory(t, api, "/api/directory/employees?q=lama&includeExpired=1")
+	if len(got) != 1 || got[0]["checkUpId"] != "MedC-expired" || got[0]["resultValidUntil"] != "2026-10-02" {
+		t.Fatalf("includeExpired = %v", got)
+	}
+	// Asking for expired ones does not widen anything else: unfit stays out, and a worker's
+	// current valid checkup is still the one returned.
+	if got := getDirectory(t, api, "/api/directory/employees?q=budi&includeExpired=1"); len(got) != 0 {
+		t.Fatalf("unfit worker leaked: %v", got)
+	}
+	if got := getDirectory(t, api, "/api/directory/employees?q=and&includeExpired=1"); len(got) != 1 || got[0]["checkUpId"] != "MedC-new" {
+		t.Fatalf("current checkup = %v", got)
+	}
+	// Any value other than 1 means "not asked".
+	if got := getDirectory(t, api, "/api/directory/employees?q=lama&includeExpired=yes"); len(got) != 0 {
+		t.Fatalf("a loose value switched it on: %v", got)
+	}
+}
