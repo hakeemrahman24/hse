@@ -894,6 +894,7 @@ body:has(.app-shell--full) {
 #tab-mcu-data.is-employee #mcu-cert-download,
 #tab-mcu-data.is-employee #mcu-data-export,
 #tab-mcu-data.is-employee #mcu-data-export-latest,
+#tab-mcu-data.is-employee #mcu-data-shown-export,
 #tab-mcu-data.is-employee #mcu-cert-clear,
 #tab-mcu-data.is-employee #mcu-cert-clear-notice,
 #tab-mcu-data.is-employee .mcu-cert-download,

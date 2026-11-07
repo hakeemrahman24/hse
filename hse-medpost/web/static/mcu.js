@@ -2909,15 +2909,22 @@ async function downloadMcuRowsXlsx(ids, prefix, btn) {
   }
 }
 
-// Excel button beside "Expiring ≤ 60 days": exports exactly the rows on screen
-// (name and company filters included) as mcu-expiring-ddmmyy.xlsx.
-document.getElementById("mcu-data-expiring-export")?.addEventListener("click", (e) => {
+// "Export shown to Excel": exactly the rows on screen, in the order shown
+// (name, company, Today and Expiring filters included). Named mcu-expiring-ddmmyy
+// while the Expiring filter is on, mcu-shown-ddmmyy otherwise. The ids travel in
+// the URL, so a very long list is refused instead of failing at the proxy.
+const MAX_SHOWN_EXPORT_ROWS = 1000;
+document.getElementById("mcu-data-shown-export")?.addEventListener("click", (e) => {
   const ids = mcuDataShownRows.map((r) => r.mcuRecordId).filter(Boolean);
   if (!ids.length) {
-    alert("No expiring rows to export.");
+    alert("No rows shown to export.");
     return;
   }
-  downloadMcuRowsXlsx(ids, "mcu-expiring", e.currentTarget);
+  if (ids.length > MAX_SHOWN_EXPORT_ROWS) {
+    alert(`${ids.length} rows are shown. Narrow the search below ${MAX_SHOWN_EXPORT_ROWS}, or use "Export all data to Excel".`);
+    return;
+  }
+  downloadMcuRowsXlsx(ids, mcuDataExpiringOnly ? "mcu-expiring" : "mcu-shown", e.currentTarget);
 });
 
 // "Export latest" takes the top N rows of the table as shown (current sort and
@@ -2981,8 +2988,6 @@ function syncMcuDataToggles() {
     expiringBtn.classList.toggle("is-on", mcuDataExpiringOnly);
     expiringBtn.setAttribute("aria-pressed", mcuDataExpiringOnly ? "true" : "false");
   }
-  const expiringExport = document.getElementById("mcu-data-expiring-export");
-  if (expiringExport) expiringExport.hidden = !mcuDataExpiringOnly;
   syncResetIndicator();
 }
 
