@@ -6082,3 +6082,71 @@ a.app-tab {
   .ref-actions { width: 100%; }
   .ref-add { flex: 1 1 100%; } /* the button gets its own full-width row under the search box */
 }
+
+/* SOFI tab (Screening > Fatigue): the same compact, themed look as the Sleep Score tab.
+   WHY separate ids: the Sleep Score rules above are keyed to #scr-toolbar / #scr-view-table,
+   so the SOFI filter and table fell back to unstyled browser defaults (tall bare select,
+   plain table, loose status line). These rules mirror them instead of editing every list. */
+#sofi-toolbar,
+#sofi-dash-filter {
+  gap: 6px 8px;
+  padding: 6px 16px;
+}
+
+#sofi-toolbar label,
+#sofi-dash-filter label {
+  position: relative;
+}
+
+#sofi-toolbar input[type="text"],
+#sofi-toolbar select,
+#sofi-dash-filter select {
+  box-sizing: border-box;
+  height: 31px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  color: var(--text-1);
+  background: var(--surface-2);
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+  padding: 6px 10px;
+}
+
+#sofi-toolbar input[type="text"] {
+  min-width: 200px;
+}
+
+#scr-view-sofi .sofi-window-status {
+  padding: 4px 16px;
+  font-size: 0.8rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+#scr-view-sofi .table-scroll {
+  margin-top: 0;
+}
+
+#scr-view-sofi .data-table.compact th,
+#scr-view-sofi .data-table.compact td {
+  white-space: nowrap;
+  padding: 3px 4px;
+}
+
+#scr-view-sofi .data-table.compact th {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: #6b3a2c;
+  background: #ead5cb;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+#scr-view-sofi .data-table.compact td {
+  font-size: 0.75rem;
+}
+
+#scr-view-sofi .data-table.compact th:last-child { padding-right: 16px; }
+#scr-view-sofi .data-table.compact td:last-child { padding-right: 12px; }
+#scr-view-sofi .sofi-note { padding-top: 8px; padding-bottom: 8px; font-size: 0.75rem; }
