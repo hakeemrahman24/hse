@@ -67,7 +67,10 @@ func (a *API) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	rows, err := a.listEmployees(q, dob, checkUpID, patientID)
+	// includeExpired=1 also returns a worker whose latest Fit result has run out. Only the permit
+	// app asks, to say "your permit validity has ended"; no other caller needs it.
+	includeExpired := r.URL.Query().Get("includeExpired") == "1"
+	rows, err := a.listEmployees(q, dob, checkUpID, patientID, includeExpired)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})
 		return
@@ -138,8 +141,14 @@ func parsePatientID(raw string) (int64, error) {
 	return strconv.ParseInt(raw, 10, 64)
 }
 
-func (a *API) listEmployees(q, dob, checkUpID string, patientID int64) ([]Employee, error) {
-	query, args := employeeQuery(q, dob, checkUpID, patientID, a.today())
+func (a *API) listEmployees(q, dob, checkUpID string, patientID int64, includeExpired bool) ([]Employee, error) {
+	// The cut-off day is today; asking for expired ones moves it to the beginning of time, which
+	// still drops a result with no valid-until date at all (blank sorts before any date).
+	cutoff := a.today()
+	if includeExpired {
+		cutoff = "0001-01-01"
+	}
+	query, args := employeeQuery(q, dob, checkUpID, patientID, cutoff)
 	rows, err := a.DB.Query(query, args...)
 	if err != nil {
 		return nil, err
