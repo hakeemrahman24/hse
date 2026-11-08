@@ -42,16 +42,26 @@
   var bodyEl = document.getElementById("sofi-window-body");
   var statusEl = document.getElementById("sofi-sched-status");
   var msgEl = document.getElementById("sofi-window-msg");
-  var openNowBtn = document.getElementById("sofi-open-now");
+  var liveSwitch = document.getElementById("sofi-live-switch");
+  var liveNote = document.getElementById("sofi-live-note");
+  var liveDays = document.getElementById("sofi-live-days");
   var emptyEl = document.getElementById("sofi-window-empty");
-  var previewBtn = document.getElementById("sofi-preview-btn");
+  var previewSwitch = document.getElementById("sofi-preview-switch");
+  var previewNote = document.getElementById("sofi-preview-note");
   var previewOn = false; // what the server last said
+  var openWindow = null; // the window open right now, if any (the live switch closes this one)
+
+  function setSwitch(el, on, disabled) {
+    el.setAttribute("aria-checked", on ? "true" : "false");
+    el.classList.toggle("is-on", on);
+    el.disabled = !!disabled;
+  }
 
   var STATE_LABEL = {
     upcoming: "Upcoming", open: "Open", past: "Finished",
     cancelled: "Cancelled", closed_early: "Closed early"
   };
-  var OPEN_NOW_DAYS = 7;
+  var MAX_OPEN_DAYS = 60; // a typo like 700 would leave /sofi open for two years
 
   // The value an <input type="datetime-local"> would hold for this instant in GMT+9.
   function gmt9Input(ms) { return new Date(ms + GMT9_MS).toISOString().slice(0, 16); }
@@ -106,8 +116,20 @@
       bodyEl.replaceChildren.apply(bodyEl, list.map(row));
       emptyEl.hidden = list.length > 0;
       previewOn = !!status.preview;
-      previewBtn.textContent = previewOn ? "Close preview" : "Open preview (answers not saved)";
-      previewBtn.disabled = status.state === "open"; // a real window is already open and recording
+      openWindow = list.find(function (w) { return w.state === "open"; }) || null;
+      var liveOn = !!openWindow;
+      setSwitch(liveSwitch, liveOn, false);
+      liveDays.disabled = liveOn; // the length is only used when turning on
+      liveNote.textContent = liveOn
+        ? "On. Answers are saved. Open until " + openWindow.closes + " (GMT+9)."
+        : "Off. /sofi shows “closed”. Turning on opens it for the number of days set here.";
+      // A real window is already open and recording, so preview has nothing to add.
+      setSwitch(previewSwitch, previewOn, liveOn);
+      previewNote.textContent = liveOn
+        ? "Not needed while the live survey is on."
+        : previewOn
+          ? "On until " + status.previewUntil + " (GMT+9). Answers are not saved."
+          : "Off. Turning on lets anyone with the link try it; nothing is saved. Turns itself off after 2 hours.";
       if (previewOn) {
         statusEl.textContent = "PREVIEW is on until " + status.previewUntil + " (GMT+9). /sofi is open, but nothing sent is saved.";
       } else if (status.state === "open") {
@@ -163,10 +185,19 @@
     load();
   });
 
-  openNowBtn.addEventListener("click", async function () {
+  // Live switch. On = a window that opens now (the same record a scheduled window leaves, so the
+  // audit trail and the Round filter keep working). Off = close the open window now.
+  liveSwitch.addEventListener("click", async function () {
+    if (openWindow) { await endWindow(openWindow, "close"); return; }
+    var days = Number(liveDays.value);
+    if (!Number.isInteger(days) || days < 1 || days > MAX_OPEN_DAYS) {
+      showMessage("Enter a whole number of days from 1 to " + MAX_OPEN_DAYS + ".");
+      liveDays.focus();
+      return;
+    }
     var now = Date.now();
-    var closes = gmt9Input(now + OPEN_NOW_DAYS * 24 * 60 * 60 * 1000);
-    if (!confirm("Open /sofi now until " + closes.replace("T", " ") + " (GMT+9)?")) { return; }
+    var closes = gmt9Input(now + days * 24 * 60 * 60 * 1000);
+    if (!confirm("Turn the live survey on? /sofi opens now until " + closes.replace("T", " ") + " (GMT+9), and answers are saved.")) { return; }
     showMessage("");
     try {
       await send({ label: "", opens: gmt9Input(now), closes: closes });
@@ -178,7 +209,7 @@
 
   // Preview opens /sofi without a window, for looking at it. Answers are scored and shown but never
   // saved. The server turns it off by itself after two hours, so it cannot stay open by mistake.
-  previewBtn.addEventListener("click", async function () {
+  previewSwitch.addEventListener("click", async function () {
     if (!previewOn && !confirm("Open /sofi for preview? Anyone with the link can fill it in, but nothing they send is saved. It turns itself off after 2 hours.")) { return; }
     showMessage("");
     var res = await fetch("/api/sofi-preview", {

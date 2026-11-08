@@ -20,7 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
-  <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref6" />
   <script>
     document.documentElement.classList.remove("vt-cover");
   </script>
@@ -543,6 +543,19 @@
         <div class="settings-panel" data-panel="sofi-schedule">
           <div class="settings-panel-body">
             <p id="sofi-sched-status" class="app-empty" role="status"></p>
+            <!-- Two switches. Live: opens /sofi now for 7 days / closes the open window (the window list below keeps the record).
+                 Preview: opens /sofi without saving answers, self-off after 2 hours. -->
+            <div class="sofi-switches">
+              <div class="sofi-switch-row">
+                <button type="button" class="switch" id="sofi-live-switch" role="switch" aria-checked="false" aria-labelledby="sofi-live-label"><span class="switch-knob"></span></button>
+                <div><strong id="sofi-live-label">Live survey</strong><span id="sofi-live-note" class="sofi-switch-note"></span></div>
+                <label class="sofi-days"><span>for</span> <input type="number" id="sofi-live-days" min="1" max="60" value="7" inputmode="numeric" aria-label="Days to stay open when turned on" /> <span>days</span></label>
+              </div>
+              <div class="sofi-switch-row">
+                <button type="button" class="switch" id="sofi-preview-switch" role="switch" aria-checked="false" aria-labelledby="sofi-preview-label"><span class="switch-knob"></span></button>
+                <div><strong id="sofi-preview-label">Preview</strong><span id="sofi-preview-note" class="sofi-switch-note"></span></div>
+              </div>
+            </div>
             <form id="sofi-window-form" class="settings-grid">
               <label>
                 <span>Name (optional)</span>
@@ -558,8 +571,6 @@
               </label>
               <div style="grid-column:1/-1">
                 <button type="submit" class="btn-primary">Schedule window</button>
-                <button type="button" class="btn-ghost" id="sofi-open-now">Open now for 7 days</button>
-                <button type="button" class="btn-ghost" id="sofi-preview-btn">Open preview (answers not saved)</button>
               </div>
               <p id="sofi-window-msg" class="settings-edit-error" style="grid-column:1/-1" role="alert" hidden></p>
             </form>
