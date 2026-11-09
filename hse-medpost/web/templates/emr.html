@@ -21,7 +21,7 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <!-- ?v= because Cloudflare serves /static for 4 hours; bump it whenever app.css changes in a way this page needs at once. -->
-  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref14" />
+  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref15" />
   <script>
     document.documentElement.classList.remove("vt-cover");
   </script>
@@ -510,7 +510,7 @@
               <!-- Follows the search and the Period, like the table; the file has every match, not only the newest rows shown. -->
               <a href="/api/sofi-log.xlsx" id="sofi-export" class="btn-ghost" style="margin-left:auto">Export to Excel (.xlsx)</a>
             </div>
-            <p class="sofi-note"><i>Swedish Occupational Fatigue Inventory</i>: 25 words rated 0 to 6. Each dimension is the sum of its 5 words (0 to 30); the total is the sum of all 25 (0 to 150). Result bands are <b>provisional</b> until the doctor approves them: dimension Low 0&ndash;10, Moderate 11&ndash;20, High 21&ndash;30; total Low 0&ndash;50, Moderate 51&ndash;100, High 101&ndash;150.</p>
+            <p class="sofi-note"><i>Swedish Occupational Fatigue Inventory</i>, 20-item Indonesian version (Suparman et al., 2022, after &Aring;hsberg et al., 1997; items supplied by the clinic): 20 items rated 0 to 6. Each dimension is the sum of its 4 items (0 to 24); the total is the sum of all 20 (0 to 120). Result bands are <b>provisional</b> until the doctor approves them: dimension Low 0&ndash;8, Moderate 9&ndash;16, High 17&ndash;24; total Low 0&ndash;40, Moderate 41&ndash;80, High 81&ndash;120.</p>
             <div class="table-scroll">
               <table class="data-table compact" id="sofi-table">
                 <thead>
@@ -611,7 +611,7 @@
               <div class="mal-stats scr-stats" id="sofi-weeks"></div>
               <div class="mal-chart">
                 <h3>Result by dimension</h3>
-                <p class="dash-chart-hint">Surveys in each band, and the average score out of 30.</p>
+                <p class="dash-chart-hint">Surveys in each band, and the average score out of 24.</p>
                 <div id="sofi-dim-bars"></div>
               </div>
               <div class="mal-chart">

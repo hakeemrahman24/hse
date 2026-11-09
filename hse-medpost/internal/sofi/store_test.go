@@ -105,15 +105,15 @@ func TestSubmitScoresOnTheServerAndSaves(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &res); err != nil {
 		t.Fatal(err)
 	}
-	// A score or level sent by the browser is ignored: 25 answers of 4 is 100, Moderate.
-	if res.Total != 100 || res.Level != LevelModerate {
+	// A score or level sent by the browser is ignored: 20 answers of 4 is 80, Moderate.
+	if res.Total != 80 || res.Level != LevelModerate {
 		t.Fatalf("result = %+v", res)
 	}
 	var weeks, total int
 	var level string
 	err := api.DB.QueryRow(`SELECT WeeksOnSite, ScoreTotal, ResultLevel FROM SofiScreening WHERE FK_PatientID = ?`,
 		patientID(t, api, "Andi Pratama")).Scan(&weeks, &total, &level)
-	if err != nil || weeks != 12 || total != 100 || level != LevelModerate {
+	if err != nil || weeks != 12 || total != 80 || level != LevelModerate {
 		t.Fatalf("row = %d %d %s err %v", weeks, total, level, err)
 	}
 }
@@ -173,10 +173,10 @@ func TestStaffListShowsSavedRecordsWithLevels(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &rows); err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 1 || rows[0].Name != "Andi Pratama" || rows[0].WeeksOnSite != 7 || rows[0].Total != 150 || rows[0].Level != LevelHigh {
+	if len(rows) != 1 || rows[0].Name != "Andi Pratama" || rows[0].WeeksOnSite != 7 || rows[0].Total != 120 || rows[0].Level != LevelHigh {
 		t.Fatalf("rows = %+v", rows)
 	}
-	if len(rows[0].Dimensions) != 5 || rows[0].Dimensions[0].Score != 30 || rows[0].Dimensions[0].Level != LevelHigh {
+	if len(rows[0].Dimensions) != 5 || rows[0].Dimensions[0].Score != 24 || rows[0].Dimensions[0].Level != LevelHigh {
 		t.Fatalf("dimensions = %+v", rows[0].Dimensions)
 	}
 }

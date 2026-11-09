@@ -75,7 +75,7 @@ func TestItemTextFollowsTheLanguage(t *testing.T) {
 	if first.Text(LangEN) != "Overworked" {
 		t.Fatalf("en = %q", first.Text(LangEN))
 	}
-	if first.Text(LangID) != "Kerja berlebihan" {
+	if first.Text(LangID) != "Terlalu banyak aktivitas yang dikerjakan" {
 		t.Fatalf("id = %q", first.Text(LangID))
 	}
 }
@@ -95,7 +95,7 @@ func TestPagesShowOnlyTheChosenLanguage(t *testing.T) {
 	}
 }
 
-func TestSignedInFormShowsTheHeaderFieldsAndTwentyFiveWordsInOneLanguage(t *testing.T) {
+func TestSignedInFormShowsTheHeaderFieldsAndTwentyItemsInOneLanguage(t *testing.T) {
 	api := newTestAPI(t)
 	c := signedInCookie(t, api)
 	req := httptest.NewRequest(http.MethodGet, "/sofi/start", nil)
@@ -104,16 +104,16 @@ func TestSignedInFormShowsTheHeaderFieldsAndTwentyFiveWordsInOneLanguage(t *test
 	rec := httptest.NewRecorder()
 	api.Start(rec, req)
 	body := rec.Body.String()
-	for _, want := range []string{"Andi Pratama", "14/05/1990", "Weeks on site", "MCU review status", "Overworked", "Lazy"} {
+	for _, want := range []string{"Andi Pratama", "14/05/1990", "Weeks on site", "MCU review status", "Overworked", "Yawning"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("form lacks %q", want)
 		}
 	}
-	if strings.Contains(body, "Kerja berlebihan") {
+	if strings.Contains(body, "Terlalu banyak aktivitas") {
 		t.Fatal("English form shows the Indonesian words")
 	}
 	if n := strings.Count(body, `name="q`); n != ItemCount*7 {
-		t.Fatalf("%d answer buttons, want %d (25 words x 7 points)", n, ItemCount*7)
+		t.Fatalf("%d answer buttons, want %d (20 items x 7 points)", n, ItemCount*7)
 	}
 }
 
@@ -161,7 +161,7 @@ func TestChineseCanBeChosenAndShowsOnlyChinese(t *testing.T) {
 	rec = httptest.NewRecorder()
 	api.Start(rec, req)
 	body := rec.Body.String()
-	for _, want := range []string{`lang="zh"`, "疲劳筛查", "工作过度", "懒洋洋", "中文"} {
+	for _, want := range []string{`lang="zh"`, "疲劳筛查", "工作过度", "频繁打哈欠", "中文"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("Chinese form lacks %q", want)
 		}
@@ -178,7 +178,7 @@ func TestSubmitButtonStartsDisabledUntilEverythingIsAnswered(t *testing.T) {
 	c := signedInCookie(t, api)
 	rec := get(api.Start, "/sofi/start", c)
 	body := rec.Body.String()
-	if !strings.Contains(body, `class="btn-primary" disabled>`) || !strings.Contains(body, "0 / 25") {
-		t.Fatal("the Submit button should start disabled with a 0 / 25 counter")
+	if !strings.Contains(body, `class="btn-primary" disabled>`) || !strings.Contains(body, "0 / 20") {
+		t.Fatal("the Submit button should start disabled with a 0 / 20 counter")
 	}
 }

@@ -51,7 +51,7 @@ func TestPreviewOpensTheFormButSavesNothing(t *testing.T) {
 			Total   int  `json:"total"`
 			Preview bool `json:"preview"`
 		}
-		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &out) != nil || out.Total != 100 || !out.Preview {
+		if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &out) != nil || out.Total != 80 || !out.Preview {
 			t.Fatalf("preview submit %d: %d %s", i, rec.Code, rec.Body.String())
 		}
 	}

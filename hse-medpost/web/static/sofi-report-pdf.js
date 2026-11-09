@@ -30,8 +30,8 @@ const SOFI_RPT_ACCENT = [26, 122, 107];
 const SOFI_RPT_MUTED = [90, 90, 90];
 const SOFI_RPT_GRID = [185, 196, 208];
 const SOFI_RPT_PROVISIONAL =
-  "Result bands are provisional until the doctor approves them: dimension Low 0-10, Moderate 11-20, High 21-30; " +
-  "total Low 0-50, Moderate 51-100, High 101-150. This is a screening result, not a diagnosis.";
+  "Result bands are provisional until the doctor approves them: dimension Low 0-8, Moderate 9-16, High 17-24; " +
+  "total Low 0-40, Moderate 41-80, High 81-120. This is a screening result, not a diagnosis.";
 
 const SOFI_RPT_MARGIN = 40;
 const SOFI_RPT_FOOTER = 60; // space kept free at the bottom of every page for the footer
@@ -277,7 +277,7 @@ function sofiReportModel(input) {
   const noteText = input.note && input.note.text ? input.note.text.trim() : "";
   return {
     title: "SOFI Fatigue Survey report",
-    subtitle: "Swedish Occupational Fatigue Inventory",
+    subtitle: "Swedish Occupational Fatigue Inventory, 20-item Indonesian version (Suparman et al., 2022)",
     // A real period is labelled by its dates; "Before periods were scheduled" has none.
     periodLine: !input.periodLabel ? "All periods" : /\d{4}-\d{2}-\d{2}/.test(input.periodLabel) ? "Period: " + input.periodLabel + " (GMT+9)" : input.periodLabel,
     generatedLine: "Generated " + input.generatedAt + " (GMT+9) by " + input.generatedBy,
@@ -464,7 +464,7 @@ function sofiReportDraw(doc, m, fonts) {
   y += 56;
 
   heading("Result by dimension");
-  paragraph("Surveys in each band, and the average score out of 30.", 8, "normal", SOFI_RPT_MUTED);
+  paragraph("Surveys in each band, and the average score out of 24.", 8, "normal", SOFI_RPT_MUTED);
   y += 2;
   bars(m.dimensions, m.surveys, function (r) { return "avg " + Number(r.average).toFixed(1) + " / " + r.max; });
   legend();

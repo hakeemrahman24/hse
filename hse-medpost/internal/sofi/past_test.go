@@ -45,8 +45,8 @@ func TestStartListsThePersonsEarlierResultsOnly(t *testing.T) {
 	if strings.Index(body, "2026-10-28 00:30") > strings.Index(body, "2026-10-20 09:00") {
 		t.Error("newest result is not first")
 	}
-	// scores come from Score() on the stored answers: every answer 5 on 25 items is total 125 of 150
-	if !strings.Contains(body, "125 / 150") {
+	// scores come from Score() on the stored answers: every answer 5 on 20 items is total 100 of 120
+	if !strings.Contains(body, "100 / 120") {
 		t.Error("page lacks the total score of the second result")
 	}
 }
@@ -208,5 +208,43 @@ func TestStaffListReportsWhenItShowsOnlyTheFirstRows(t *testing.T) {
 	api.StaffList(rec, httptest.NewRequest(http.MethodGet, "/api/sofi-log?q=nobody", nil))
 	if rec.Header().Get("X-Total-Count") != "0" {
 		t.Fatalf("X-Total-Count %q", rec.Header().Get("X-Total-Count"))
+	}
+}
+
+// A result saved by the earlier 25-word form shows on the new 20-item scale in the person's own
+// list and in the staff table: the five dropped words are not counted, and the maximum is 120.
+func TestEarlier25WordResultsShowOnTheNewScale(t *testing.T) {
+	api := newTestAPI(t)
+	me := patientID(t, api, "Andi Pratama")
+	old := make([]int, legacyItemCount)
+	for i := range old {
+		old[i] = 2
+	}
+	for pos := range legacyDropped {
+		old[pos] = 6 // the dropped words must not add to the score
+	}
+	res, err := Score(old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := api.saveAt(me, Profile{Company: "PT A", WorkPosition: "Welder", MCUReviewStatus: "Fit"}, 12, old, res, "2026-10-20T00:00:00", 0); err != nil {
+		t.Fatal(err)
+	}
+
+	if body := startPage(t, api, LangEN); !strings.Contains(body, "40 / 120") {
+		t.Error("the person's earlier result is not 40 / 120")
+	}
+	rec := httptest.NewRecorder()
+	api.StaffList(rec, httptest.NewRequest(http.MethodGet, "/api/sofi-log", nil))
+	var rows []struct {
+		Total    int    `json:"total"`
+		TotalMax int    `json:"totalMax"`
+		Level    string `json:"level"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &rows); err != nil || len(rows) != 1 {
+		t.Fatalf("rows = %v, err %v", rec.Body.String(), err)
+	}
+	if rows[0].Total != 40 || rows[0].TotalMax != 120 || rows[0].Level != LevelLow {
+		t.Errorf("staff row = %+v, want 40 of 120, Low", rows[0])
 	}
 }
