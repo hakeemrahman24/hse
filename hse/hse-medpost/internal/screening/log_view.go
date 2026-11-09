@@ -2,7 +2,9 @@ package screening
 
 import (
 	"bytes"
+	"database/sql"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -235,6 +237,27 @@ type viewSummary struct {
 	By         string         `json:"by"`
 	Groups     []viewGroup    `json:"groups"`
 	MoreGroups int            `json:"moreGroups"`
+	// Weeks is how many weeks the matching tests span (first to last test date,
+	// counted in whole days, at least 1), so the page can show an average per
+	// week for each outcome. 0 when the test has no plain date or nothing matched.
+	Weeks float64 `json:"weeks"`
+}
+
+const daysPerWeek = 7.0
+
+// weeksSpanned turns the first and last test day (YYYY-MM-DD) into a number of
+// weeks, both days included. An unreadable or missing day gives 0, never a guess.
+func weeksSpanned(first, last sql.NullString) float64 {
+	if !first.Valid || !last.Valid {
+		return 0
+	}
+	from, errFrom := time.Parse("2006-01-02", first.String)
+	to, errTo := time.Parse("2006-01-02", last.String)
+	if errFrom != nil || errTo != nil || to.Before(from) {
+		return 0
+	}
+	days := to.Sub(from).Hours()/24 + 1
+	return math.Max(1, days/daysPerWeek)
 }
 
 // resultSums is one SUM column per result class, in order. The conditions are
@@ -293,14 +316,22 @@ func (a *API) LogViewSummary(w http.ResponseWriter, r *http.Request) {
 
 	results, dests := view.resultCounts()
 	out := viewSummary{Test: req.sheet.Key, Results: results, By: by, Groups: []viewGroup{}}
+	// First and last test day, for the per-week averages. Only kinds with a plain
+	// date have one; for the others these stay NULL.
+	spanCols := "NULL, NULL"
+	if view.DateExpr != "" {
+		spanCols = "MIN(" + view.DateExpr + "), MAX(" + view.DateExpr + ")"
+	}
+	var firstDay, lastDay sql.NullString
 	err = a.DB.QueryRow(`
-		SELECT COUNT(*), COUNT(DISTINCT NULLIF(LOWER(TRIM(`+view.Name+`)), ''))`+view.resultSums()+`
+		SELECT COUNT(*), COUNT(DISTINCT NULLIF(LOWER(TRIM(`+view.Name+`)), ''))`+view.resultSums()+`, `+spanCols+`
 		FROM `+req.sheet.Table+` d WHERE 1=1`+req.where, req.args...).
-		Scan(append([]any{&out.Total, &out.People}, dests...)...)
+		Scan(append(append([]any{&out.Total, &out.People}, dests...), &firstDay, &lastDay)...)
 	if err != nil {
 		writeViewError(w, err)
 		return
 	}
+	out.Weeks = weeksSpanned(firstDay, lastDay)
 	view.fillResults(out.Results, dests, out.Total)
 
 	group := "TRIM(" + groupExpr + ")"

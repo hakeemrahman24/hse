@@ -9,8 +9,7 @@
   var SVG_NS = "http://www.w3.org/2000/svg";
 
   var block = document.getElementById("sofi-dash");
-  var sofiTab = document.getElementById("scr-tab-sofi");
-  if (!block || !sofiTab) { return; }
+  if (!block) { return; }
 
   var statsEl = document.getElementById("sofi-stats");
   var dimEl = document.getElementById("sofi-dim-bars");
@@ -20,7 +19,7 @@
   var emptyEl = document.getElementById("sofi-dash-empty");
   var errorEl = document.getElementById("sofi-dash-error");
   var ROUND_ID = "sofi-dash-round"; // this dashboard's Period dropdown (sofi-rounds.js)
-  var byEl = document.getElementById("scr-dash-by");
+  var byEl = document.getElementById("sofi-dash-by"); // this dashboard's own "Chart by"
   var summaryEl = document.getElementById("sofi-summary");
   var seq = 0;
 
@@ -129,8 +128,7 @@
   }
 
   function refresh() {
-    // The SOFI tab is shown for Fatigue only, so it tells which test the panel is on.
-    block.hidden = sofiTab.hidden;
+    // screening-log.js shows this block only while Fatigue's SOFI dashboard tab is open.
     if (block.hidden) { return; }
     var mine = ++seq;
     var params = new URLSearchParams();
@@ -159,10 +157,11 @@
       });
   }
 
-  // Redraw when the dashboard is opened (screening-log.js has by then set the tab state and the
-  // "Chart by" choice, because its handlers are registered first), when "Chart by" changes, and
-  // when another period is picked. The From / To buttons are not listened to: they do not apply here.
+  // Redraw when the dashboard or its SOFI tab is opened (screening-log.js has by then shown or
+  // hidden this block, because its handlers are registered first), when "Chart by" changes, and
+  // when another period is picked.
   document.getElementById("scr-tab-dashboard").addEventListener("click", refresh);
+  document.addEventListener("scr-dash-pane", refresh);
   byEl.addEventListener("change", refresh);
   document.addEventListener("sofi-round-change", function (e) {
     if (e.detail.id === ROUND_ID) { refresh(); }
