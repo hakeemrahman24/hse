@@ -21,7 +21,7 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <!-- ?v= because Cloudflare serves /static for 4 hours; bump it whenever app.css changes in a way this page needs at once. -->
-  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref9" />
+  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref11" />
   <script>
     document.documentElement.classList.remove("vt-cover");
   </script>
@@ -510,6 +510,7 @@
               <!-- Follows the search and the Period, like the table; the file has every match, not only the newest rows shown. -->
               <a href="/api/sofi-log.xlsx" id="sofi-export" class="btn-ghost" style="margin-left:auto">Export to Excel (.xlsx)</a>
             </div>
+            <p class="sofi-note"><i>Swedish Occupational Fatigue Inventory</i>: 25 words rated 0 to 6. Each dimension is the sum of its 5 words (0 to 30); the total is the sum of all 25 (0 to 150). Result bands are <b>provisional</b> until the doctor approves them: dimension Low 0&ndash;10, Moderate 11&ndash;20, High 21&ndash;30; total Low 0&ndash;50, Moderate 51&ndash;100, High 101&ndash;150.</p>
             <div class="table-scroll">
               <table class="data-table compact" id="sofi-table">
                 <thead>
@@ -523,7 +524,6 @@
             <p id="sofi-empty" class="app-empty" hidden>No SOFI questionnaires yet.</p>
             <p id="sofi-truncated" class="app-empty" hidden></p>
             <p id="sofi-error" class="app-empty" hidden></p>
-            <p class="sofi-note"><i>Swedish Occupational Fatigue Inventory</i>: 25 words rated 0 to 6. Each dimension is the sum of its 5 words (0 to 30); the total is the sum of all 25 (0 to 150). Result bands are <b>provisional</b> until the doctor approves them: dimension Low 0&ndash;10, Moderate 11&ndash;20, High 21&ndash;30; total Low 0&ndash;50, Moderate 51&ndash;100, High 101&ndash;150.</p>
           </div>
 
           <div id="scr-view-dashboard" role="tabpanel" aria-labelledby="scr-tab-dashboard" hidden>
