@@ -6,9 +6,9 @@ Production runs MariaDB; SQLite is only the local/test default, so green tests d
 
 ## Every commit and every deploy is pushed to GitHub (owner rule, 2026-11-09)
 
-- After each commit, run `git push` on the current branch, so GitHub always has what is on the Pi. After a deploy (`deploy/deploy.sh`), make sure the commit that was deployed is pushed too (and say which commit went out).
+- After each commit, run `deploy/push-github.sh` (not a plain `git push`: the Git root is `~/Projects` but the GitHub repo `hakeemrahman24/hse` holds only the `hse/` folder, so the script pushes `git subtree split --prefix=hse HEAD` to the same-named branch, never forced), so GitHub always has what is on the Pi. After a deploy (`deploy/deploy.sh`), make sure the commit that was deployed is pushed too (and say which commit went out).
 - Deploy from a clean checkout of the commit (a `git worktree`), not the working tree, when the tree holds unrelated uncommitted work: `deploy.sh` sends whatever is on disk.
-- If the push fails or there is no remote (`git remote -v` empty, the case until 2026-11-09), say so plainly. Do not skip the push silently, and do not invent a remote URL: ask the owner for it.
+- If the push fails or there is no remote (`origin` is `https://github.com/hakeemrahman24/hse.git`, added 2026-11-09), say so plainly. Do not skip the push silently, and do not invent a remote URL: ask the owner for it.
 - Pushing is part of the owner's standing instruction for this project only; it does not cover force-pushes, other branches, or other repositories.
 
 ## Editing the forms in `forms/`
