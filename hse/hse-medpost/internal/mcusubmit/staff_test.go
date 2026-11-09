@@ -768,9 +768,10 @@ func TestCloseReviewedRefusesACheckupWhoseResultWasClearedAfterLinking(t *testin
 	}
 }
 
-// An IncompleteResult checkup stays Open, so its document stays Reviewed: it cannot be closed, and
-// a document closed earlier is put back to Reviewed at start (owner, 2026-11-09).
-func TestIncompleteResultKeepsTheDocumentReviewedNotClosed(t *testing.T) {
+// The submitter can be told about any result (owner, 2026-11-09), but an IncompleteResult checkup
+// stays Open, so notifying then leaves the document Reviewed; the final result closes it and mails
+// again. A document closed earlier with an Incomplete result is put back to Reviewed at start.
+func TestIncompleteResultNotifiesButKeepsTheDocumentReviewed(t *testing.T) {
 	s, _, co := newTestStore(t)
 	ctx := context.Background()
 	sub := activeSubmitter(t, s, co, "hrinc@example.com")
@@ -797,18 +798,63 @@ func TestIncompleteResultKeepsTheDocumentReviewedNotClosed(t *testing.T) {
 	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-INC"); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.CloseReviewed(ctx, a, testStaffID); !errors.Is(err, ErrBadState) {
-		t.Fatalf("closing an incomplete result: %v, want ErrBadState", err)
+	if err := s.CloseReviewed(ctx, a, testStaffID); err != nil {
+		t.Fatalf("notifying about an incomplete result: %v", err)
 	}
-	if _, err := s.DB.Exec(`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ?`, SubClosed, a); err != nil {
+	var status string
+	var requested, told sql.NullString
+	read := func() {
+		t.Helper()
+		if err := s.DB.QueryRow(`SELECT Status, NotifyRequestedAt, CertNotifiedAt FROM McuSubmission WHERE SubmissionID = ?`, a).Scan(&status, &requested, &told); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read()
+	if status != SubReviewed || !requested.Valid {
+		t.Fatalf("after notify: status %q requested %v, want Reviewed and requested", status, requested)
+	}
+	if err := s.CloseReviewed(ctx, a, testStaffID); !errors.Is(err, ErrBadState) {
+		t.Fatalf("notifying twice: %v, want ErrBadState", err)
+	}
+	// The daily mail picks it up while it is still Reviewed.
+	due, err := s.dueClosedNotices(ctx)
+	if err != nil || len(due) != 1 || len(due[0].lines) != 1 {
+		t.Fatalf("due notices %v (%v), want the one Reviewed document", due, err)
+	}
+	// The final result: notifying again closes it and makes it due for the mail once more.
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = 'Fit' WHERE CheckUpID = 'MedC-INC'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET CertNotifiedAt = '2026-11-09T01:00:00' WHERE SubmissionID = ?`, a); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CloseReviewed(ctx, a, testStaffID); err != nil {
+		t.Fatalf("closing with the final result: %v", err)
+	}
+	read()
+	if status != SubClosed || told.Valid || requested.Valid {
+		t.Fatalf("after close: status %q told %v requested %v, want Closed, mail due again", status, told, requested)
+	}
+	// Closed earlier with an Incomplete result: back to Reviewed, and not mailed twice.
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = 'Fit' WHERE CheckUpID = 'MedC-INC'`); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{`PRAGMA ignore_check_constraints = ON`,
+		`UPDATE McuRecord SET ResultCriteria = 'IncompleteResult' WHERE CheckUpID = 'MedC-INC'`,
+		`PRAGMA ignore_check_constraints = OFF`} {
+		if _, err := conn.ExecContext(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET CertNotifiedAt = '2026-11-09T02:00:00' WHERE SubmissionID = ?`, a); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := s.NormalizeReviewed(ctx); err != nil {
 		t.Fatal(err)
 	}
-	var status string
-	if err := s.DB.QueryRow(`SELECT Status FROM McuSubmission WHERE SubmissionID = ?`, a).Scan(&status); err != nil || status != SubReviewed {
-		t.Fatalf("status %q (%v), want Reviewed", status, err)
+	read()
+	if status != SubReviewed || !requested.Valid || !told.Valid {
+		t.Fatalf("after normalize: status %q requested %v told %v, want Reviewed, requested, still marked told", status, requested, told)
 	}
 }
 

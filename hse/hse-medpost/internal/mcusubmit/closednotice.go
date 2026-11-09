@@ -31,6 +31,14 @@ func EnsureNoticeColumn(database *sql.DB) error {
 	return err
 }
 
+// EnsureNotifyRequestedColumn adds McuSubmission.NotifyRequestedAt to SQLite databases; MariaDB gets
+// it from migrations/mysql/043, run by hand. It is set when the reviewer tells the submitter about an
+// IncompleteResult, which leaves the document Reviewed instead of Closed.
+func EnsureNotifyRequestedColumn(database *sql.DB) error {
+	_, err := addSubmissionColumn(database, "NotifyRequestedAt", "TEXT NULL")
+	return err
+}
+
 type closedLine struct {
 	id                        int64
 	worker, position, company string
@@ -84,9 +92,10 @@ func (s *Store) dueClosedNotices(ctx context.Context) ([]closedTarget, error) {
 		`SELECT u.SubmitterID, COALESCE(u.FK_CompanyID, 0), u.Email, CASE WHEN u.EmailBouncedAt IS NULL THEN 0 ELSE 1 END, s.SubmissionID, s.PatName, s.PatPosition, s.PatCompanyText, CASE WHEN s.Status = ? THEN 1 ELSE 0 END
 		 FROM McuSubmission s
 		 JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID
-		 WHERE ((s.Status = ? AND s.FK_McuRecordID IS NOT NULL) OR s.Status = ?) AND s.CertNotifiedAt IS NULL
+		 WHERE ((s.Status = ? AND s.FK_McuRecordID IS NOT NULL) OR s.Status = ?
+		        OR (s.Status = ? AND s.NotifyRequestedAt IS NOT NULL)) AND s.CertNotifiedAt IS NULL
 		   AND u.Status = ? AND u.IsBuiltIn = 0 AND u.ErasedAt IS NULL
-		 ORDER BY u.SubmitterID, s.SubmissionID`, SubRejected, SubClosed, SubRejected, StatusActive)
+		 ORDER BY u.SubmitterID, s.SubmissionID`, SubRejected, SubClosed, SubRejected, SubReviewed, StatusActive)
 	if err != nil {
 		return nil, err
 	}

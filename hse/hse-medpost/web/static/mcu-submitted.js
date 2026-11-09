@@ -77,7 +77,11 @@
   // Optional: a Reviewed document is complete without it. Pressing it closes the document and puts the
   // worker in the submitter's next daily mail (08:00 Jakarta, one mail per submitter).
   function notify(d) {
-    if (!window.confirm('Notify the submitter that ' + d.worker + "'s checkup is done? They are told in the daily mail, and this document is closed.")) return;
+    var incomplete = d.result === 'IncompleteResult';
+    var text = incomplete
+      ? 'Notify the submitter that ' + d.worker + "'s result is incomplete? They are told in the daily mail and see the recommendation. The document stays open until a final result is saved."
+      : 'Notify the submitter that ' + d.worker + "'s checkup is done? They are told in the daily mail, and this document is closed.";
+    if (!window.confirm(text)) return;
     call('/api/mcu-submissions/' + d.id + '/close', 'POST').then(load).catch(function (e) { say(e.message, true); });
   }
 
@@ -159,8 +163,16 @@
     }
     // Once a checkup with a result is linked the document is Reviewed and the next step is telling
     // the submitter; before that the next step is the checkup form.
-    // An Incomplete result is not final (the checkup stays Open), so there is nobody to notify yet.
-    if (d.status === 'Reviewed' && d.hasRecord && d.result !== 'IncompleteResult') {
+    // The submitter can be told about any result. For an Incomplete one the document stays Reviewed
+    // (open) after the notice, so the button gives way to a "Notified" mark until a final result is saved.
+    var incomplete = d.result === 'IncompleteResult';
+    if (d.status === 'Reviewed' && d.hasRecord && incomplete && d.notifyRequested) {
+      var told = document.createElement('span');
+      told.className = 'sub-note';
+      told.textContent = 'Submitter notified';
+      box.appendChild(told);
+      box.appendChild(button('Open checkup', 'btn-primary', function () { startReview(d); }, 'Open the linked checkup of ' + d.worker));
+    } else if (d.status === 'Reviewed' && d.hasRecord) {
       box.appendChild(button('Notify submitter', 'btn-primary', function () { notify(d); }, 'Notify the submitter about ' + d.worker));
     } else if (d.hasRecord) {
       // Linked but without a result yet: finish that checkup, do not start another.
