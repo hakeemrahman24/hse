@@ -137,14 +137,15 @@ func (a *API) Submit(w http.ResponseWriter, r *http.Request) {
 	var in submission
 	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4096)).Decode(&in); err != nil ||
 		in.WeeksOnSite == nil || !validWeeks(*in.WeeksOnSite) {
-		writeError(w, r, http.StatusBadRequest, "Enter the weeks on site and answer every word.")
+		writeError(w, r, http.StatusBadRequest, "Enter the weeks on site and answer every item.")
 		return
 	}
 	res, err := Score(in.Answers)
 	if err != nil {
-		writeError(w, r, http.StatusBadRequest, "Enter the weeks on site and answer every word.")
+		writeError(w, r, http.StatusBadRequest, "Enter the weeks on site and answer every item.")
 		return
 	}
+	res = named(res, a.dimensions()) // the result page shows the dimension names as set in Settings
 	// Preview: score it and show it, save nothing and take no lock.
 	if winID == previewWindowID {
 		writeJSON(w, http.StatusOK, struct {
@@ -302,6 +303,7 @@ func (a *API) staffRecords(r *http.Request, limit int) ([]Record, int, *recordsE
 		return nil, 0, readFailed
 	}
 	defer rows.Close()
+	dims := a.dimensions()
 	out := []Record{}
 	for rows.Next() {
 		var rec Record
@@ -321,6 +323,7 @@ func (a *API) staffRecords(r *http.Request, limit int) ([]Record, int, *recordsE
 			log.Printf("sofi: record %d: %v", rec.ID, err)
 			continue
 		}
+		res = named(res, dims)
 		rec.Dimensions, rec.Total, rec.TotalMax, rec.Level = res.Dimensions, res.Total, res.TotalMax, res.Level
 		rec.WeeksOverYear = rec.WeeksOnSite == WeeksOverYear
 		out = append(out, rec)

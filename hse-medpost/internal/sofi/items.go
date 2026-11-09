@@ -1,7 +1,9 @@
 package sofi
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,15 +13,18 @@ import (
 	"unicode/utf8"
 )
 
-// The administrator can reword the 20 questionnaire items in Settings (and see the form as workers
-// see it). Only the words change: which dimension an item belongs to, how many items there are and
-// how they are scored stay in scoring.go, so no wording change can alter a score. Wording is kept in
-// SofiItem as a difference from the built-in text, so deleting a row (or blanking a field) brings the
-// built-in text back and a missing table just means "built-in wording everywhere".
+// The administrator can reword the 20 questionnaire items and rename the 5 dimensions in Settings (and
+// see the form as workers see it). Only the words change: which dimension an item belongs to, how many
+// items there are and how they are scored stay in scoring.go, so no wording change can alter a score.
+//
+// The words live in two complete tables, SofiDimension (5 rows) and SofiItem (20 rows, each with a
+// foreign key to its dimension). The server fills them at start-up from the built-in text and never
+// overwrites a row that is already there. A blank field falls back to the built-in text and a missing
+// table just means "built-in wording everywhere", so /sofi never breaks over them.
 
 const maxItemTextRunes = 300
 
-// itemTexts is one item's wording in the three languages of /sofi.
+// itemTexts is one item's wording, or one dimension's name, in the three languages of /sofi.
 type itemTexts struct {
 	EN string `json:"en"`
 	ID string `json:"id"`
@@ -33,7 +38,7 @@ func (a *API) itemOverrides() map[int]itemTexts {
 	rows, err := a.DB.Query(`SELECT ItemNumber, TextEN, TextID, TextZH FROM SofiItem`)
 	if err != nil {
 		if !a.itemsWarned.Swap(true) {
-			log.Printf("sofi: item wording unreadable, using the built-in wording (run migrations/mysql/040_sofi_items.sql?): %v", err)
+			log.Printf("sofi: item wording unreadable, using the built-in wording (run migrations/mysql/040_sofi_dimensions.sql and 041_sofi_items.sql?): %v", err)
 		}
 		return out
 	}
@@ -77,6 +82,14 @@ func (a *API) items() []Item {
 	return out
 }
 
+type dimensionView struct {
+	Key string `json:"key"`
+	itemTexts
+	Default itemTexts `json:"default"`
+	Custom  bool      `json:"custom"`
+	Items   []int     `json:"items"` // numbers of the items in this dimension
+}
+
 type itemView struct {
 	Number    int    `json:"number"`
 	Dimension string `json:"dimension"`
@@ -95,9 +108,19 @@ func (a *API) AdminItems(w http.ResponseWriter, r *http.Request) {
 		def := itemTexts{EN: it.EN, ID: it.ID, ZH: it.ZH}
 		items[i] = itemView{Number: it.Number, Dimension: it.Dimension, itemTexts: now, Default: def, Custom: now != def}
 	}
-	dims := make([]map[string]string, len(Dimensions))
+	// Each dimension with its current names, the built-in names, and the numbers of its items, so the
+	// editor can list items under their dimension and offer "use built-in names".
+	shownDims := a.dimensions()
+	dims := make([]dimensionView, len(Dimensions))
 	for i, d := range Dimensions {
-		dims[i] = map[string]string{"key": d.Key, "en": d.EN, "id": d.ID, "zh": d.ZH}
+		now := itemTexts{EN: shownDims[i].EN, ID: shownDims[i].ID, ZH: shownDims[i].ZH}
+		def := itemTexts{EN: d.EN, ID: d.ID, ZH: d.ZH}
+		dims[i] = dimensionView{Key: d.Key, itemTexts: now, Default: def, Custom: now != def}
+		for _, it := range Items {
+			if it.Dimension == d.Key {
+				dims[i].Items = append(dims[i].Items, it.Number)
+			}
+		}
 	}
 	say := func(key string) itemTexts {
 		return itemTexts{EN: tr(LangEN, key), ID: tr(LangID, key), ZH: tr(LangZH, key)}
@@ -152,9 +175,10 @@ func (a *API) AdminPutItem(w http.ResponseWriter, r *http.Request) {
 			staffError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if clean != f.builtIn {
-			*f.out = clean
+		if clean == "" {
+			clean = f.builtIn // blank means "use the built-in text"
 		}
+		*f.out = clean
 	}
 	if err := a.saveItem(n, set, staffName(r)); err != nil {
 		log.Printf("sofi: save item %d: %v", n, err)
@@ -165,22 +189,188 @@ func (a *API) AdminPutItem(w http.ResponseWriter, r *http.Request) {
 	a.AdminItems(w, r)
 }
 
-// saveItem stores one item's changed wording, or removes the row when nothing differs. Delete then
-// insert in one transaction, because "upsert" is spelled differently on SQLite and MariaDB.
+// saveItem stores the wording of one item. The row always exists once the server has started
+// (seedQuestionnaire); if it does not yet, it is created with the item's own dimension.
 func (a *API) saveItem(n int, t itemTexts, by string) error {
-	tx, err := a.DB.Begin()
+	if err := a.seedQuestionnaire(); err != nil {
+		return err
+	}
+	now := a.now().UTC().Format(timeLayoutDB)
+	_, err := a.DB.Exec(`UPDATE SofiItem SET TextEN = ?, TextID = ?, TextZH = ?, UpdatedBy = ?, UpdatedAt = ? WHERE ItemNumber = ?`,
+		t.EN, t.ID, t.ZH, by, now, n)
+	return err
+}
+
+// dimensionOverrides reads every renamed dimension, keyed by dimension key. A missing table is logged
+// once and treated as "nothing renamed".
+func (a *API) dimensionOverrides() map[string]itemTexts {
+	out := map[string]itemTexts{}
+	rows, err := a.DB.Query(`SELECT DimensionKey, NameEN, NameID, NameZH FROM SofiDimension`)
 	if err != nil {
-		return err
+		if !a.dimsWarned.Swap(true) {
+			log.Printf("sofi: dimension names unreadable, using the built-in names (run migrations/mysql/040_sofi_dimensions.sql?): %v", err)
+		}
+		return out
 	}
-	defer tx.Rollback()
-	if _, err := tx.Exec(`DELETE FROM SofiItem WHERE ItemNumber = ?`, n); err != nil {
-		return err
+	defer rows.Close()
+	for rows.Next() {
+		var key string
+		var t itemTexts
+		if err := rows.Scan(&key, &t.EN, &t.ID, &t.ZH); err != nil {
+			log.Printf("sofi: dimension name row: %v", err)
+			continue
+		}
+		out[key] = t
 	}
-	if t != (itemTexts{}) {
-		if _, err := tx.Exec(`INSERT INTO SofiItem (ItemNumber, TextEN, TextID, TextZH, UpdatedBy, UpdatedAt) VALUES (?, ?, ?, ?, ?, ?)`,
-			n, t.EN, t.ID, t.ZH, by, a.now().UTC().Format(timeLayoutDB)); err != nil {
-			return err
+	if err := rows.Err(); err != nil {
+		log.Printf("sofi: dimension name rows: %v", err)
+	}
+	return out
+}
+
+// dimensions is the five dimensions with the administrator's names laid over the built-in ones. The
+// result is a copy, safe to change.
+func (a *API) dimensions() []Dimension {
+	over := a.dimensionOverrides()
+	out := make([]Dimension, len(Dimensions))
+	copy(out, Dimensions)
+	for i := range out {
+		t, ok := over[out[i].Key]
+		if !ok {
+			continue
+		}
+		if t.EN != "" {
+			out[i].EN = t.EN
+		}
+		if t.ID != "" {
+			out[i].ID = t.ID
+		}
+		if t.ZH != "" {
+			out[i].ZH = t.ZH
 		}
 	}
-	return tx.Commit()
+	return out
+}
+
+// named gives a scored result the current dimension names. Score itself works from the built-in
+// names, so every place that shows a result passes it through here (dims is read once per request).
+func named(res Result, dims []Dimension) Result {
+	shown := make([]DimensionResult, len(res.Dimensions))
+	copy(shown, res.Dimensions)
+	for i := range shown {
+		if i < len(dims) && dims[i].Key == shown[i].Key {
+			shown[i].EN, shown[i].ID, shown[i].ZH = dims[i].EN, dims[i].ID, dims[i].ZH
+		}
+	}
+	res.Dimensions = shown
+	return res
+}
+
+// AdminPutDimension is PUT /api/sofi-dimensions/{key} {"en","id","zh"}: renames one dimension, with the
+// same rules as AdminPutItem (blank or built-in goes back to the built-in name). Administrator only.
+func (a *API) AdminPutDimension(w http.ResponseWriter, r *http.Request) {
+	key := r.PathValue("key")
+	var def *Dimension
+	for i := range Dimensions {
+		if Dimensions[i].Key == key {
+			def = &Dimensions[i]
+		}
+	}
+	if def == nil {
+		staffError(w, http.StatusNotFound, "No such dimension.")
+		return
+	}
+	var in itemTexts
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8<<10)).Decode(&in); err != nil {
+		staffError(w, http.StatusBadRequest, "Send the name as {\"en\", \"id\", \"zh\"}.")
+		return
+	}
+	var set itemTexts
+	for _, f := range []struct {
+		in, builtIn string
+		out         *string
+	}{{in.EN, def.EN, &set.EN}, {in.ID, def.ID, &set.ID}, {in.ZH, def.ZH, &set.ZH}} {
+		clean, err := cleanItemText(f.in)
+		if err != nil {
+			staffError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if clean == "" {
+			clean = f.builtIn // blank means "use the built-in text"
+		}
+		*f.out = clean
+	}
+	if err := a.saveDimension(key, set, staffName(r)); err != nil {
+		log.Printf("sofi: save dimension %s: %v", key, err)
+		staffError(w, http.StatusInternalServerError, "Could not save the name.")
+		return
+	}
+	log.Printf("sofi: dimension %s renamed by %s", key, staffName(r))
+	a.AdminItems(w, r)
+}
+
+// saveDimension stores the names of one dimension (the row exists once the server has started).
+func (a *API) saveDimension(key string, t itemTexts, by string) error {
+	if err := a.seedQuestionnaire(); err != nil {
+		return err
+	}
+	_, err := a.DB.Exec(`UPDATE SofiDimension SET NameEN = ?, NameID = ?, NameZH = ?, UpdatedBy = ?, UpdatedAt = ? WHERE DimensionKey = ?`,
+		t.EN, t.ID, t.ZH, by, a.now().UTC().Format(timeLayoutDB), key)
+	return err
+}
+
+// seedQuestionnaire adds the built-in dimensions and items to SofiDimension and SofiItem when they are
+// missing, dimensions first because every item points at one. A row that exists is left alone, so the
+// administrator's wording survives every restart. Selecting first and inserting after, rather than
+// "INSERT IGNORE", keeps one spelling for SQLite and MariaDB. Safe to call often.
+func (a *API) seedQuestionnaire() error {
+	now := a.now().UTC().Format(timeLayoutDB)
+	for i, d := range Dimensions {
+		var have int
+		if err := a.DB.QueryRow(`SELECT COUNT(*) FROM SofiDimension WHERE DimensionKey = ?`, d.Key).Scan(&have); err != nil {
+			return fmt.Errorf("check dimension %s: %w", d.Key, err)
+		}
+		if have > 0 {
+			continue
+		}
+		if _, err := a.DB.Exec(`INSERT INTO SofiDimension (DimensionKey, SortOrder, NameEN, NameID, NameZH, UpdatedBy, UpdatedAt) VALUES (?, ?, ?, ?, ?, '', ?)`,
+			d.Key, i+1, d.EN, d.ID, d.ZH, now); err != nil {
+			return fmt.Errorf("add dimension %s: %w", d.Key, err)
+		}
+	}
+	for _, it := range Items {
+		var have int
+		if err := a.DB.QueryRow(`SELECT COUNT(*) FROM SofiItem WHERE ItemNumber = ?`, it.Number).Scan(&have); err != nil {
+			return fmt.Errorf("check item %d: %w", it.Number, err)
+		}
+		if have > 0 {
+			continue
+		}
+		if _, err := a.DB.Exec(`INSERT INTO SofiItem (ItemNumber, DimensionKey, TextEN, TextID, TextZH, UpdatedBy, UpdatedAt) VALUES (?, ?, ?, ?, ?, '', ?)`,
+			it.Number, it.Dimension, it.EN, it.ID, it.ZH, now); err != nil {
+			return fmt.Errorf("add item %d: %w", it.Number, err)
+		}
+	}
+	return nil
+}
+
+// DropOldQuestionnaireTables removes the first version of SofiItem and SofiDimension from a SQLite
+// database that has it: those tables held only changed wording and had no foreign key. They are
+// replaced by the complete tables (migrations 026 and 027). Call it before the SQLite migrations.
+// Nothing happens on a database that has the new shape or no such tables.
+func DropOldQuestionnaireTables(database *sql.DB) error {
+	var dimensionKey string
+	err := database.QueryRow(`SELECT DimensionKey FROM SofiItem LIMIT 1`).Scan(&dimensionKey)
+	if err == nil || errors.Is(err, sql.ErrNoRows) {
+		return nil // the new shape
+	}
+	if !strings.Contains(err.Error(), "no such column") {
+		return nil // no SofiItem table yet (or another problem the migrations will report)
+	}
+	for _, name := range []string{"SofiItem", "SofiDimension"} {
+		if _, err := database.Exec(`DROP TABLE IF EXISTS ` + name); err != nil {
+			return fmt.Errorf("drop old %s: %w", name, err)
+		}
+	}
+	return nil
 }

@@ -52,11 +52,12 @@ type Dimension struct {
 
 // Dimensions is in form order: items 1-4 belong to the first, 5-8 to the second, and so on.
 var Dimensions = []Dimension{
-	{"lack_of_energy", "Lack of energy", "Kekurangan energi pada pekerjaan", "精力不足"},
-	{"physical_exertion", "Physical exertion", "Mengerahkan tenaga fisik", "体力消耗"},
-	{"physical_discomfort", "Physical discomfort", "Ketidaknyamanan fisik", "身体不适"},
-	{"lack_of_motivation", "Lack of motivation", "Kurangnya motivasi pada pekerjaan", "缺乏动力"},
-	{"sleepiness", "Sleepiness", "Perasaan mengantuk", "嗜睡"},
+	// The Indonesian names are the clinic's table; the English and Chinese translate them.
+	{"lack_of_energy", "Lack of Energy at Work", "Kekurangan energi pada Pekerjaan", "工作中精力不足"},
+	{"physical_exertion", "Exerting Physical Effort", "Mengerahkan Tenaga Fisik", "付出体力"},
+	{"physical_discomfort", "Physical Discomfort", "Ketidaknyamanan Fisik", "身体不适"},
+	{"lack_of_motivation", "Lack of Motivation at Work", "Kurangnya Motivasi pada Pekerjaan", "工作动力不足"},
+	{"sleepiness", "Feeling of Sleepiness", "Perasaan Mengantuk", "困倦感"},
 }
 
 // Item is one word of the inventory.

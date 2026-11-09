@@ -23,7 +23,7 @@ func newBareTestAPI(t *testing.T) *API {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { database.Close() })
-	for _, name := range []string{"004_company.sql", "005_patient.sql", "006_entrymcu.sql", "015_sofi.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "024_sofi_preview.sql", "026_sofi_items.sql"} {
+	for _, name := range []string{"004_company.sql", "005_patient.sql", "006_entrymcu.sql", "015_sofi.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "024_sofi_preview.sql", "026_sofi_dimensions.sql", "027_sofi_items.sql"} {
 		sqlText, err := db.LoadMigrationFile(filepath.Join("..", "..", "migrations", "sqlite", name))
 		if err != nil {
 			t.Fatal(err)

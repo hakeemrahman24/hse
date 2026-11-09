@@ -35,7 +35,7 @@ func (a *API) StaffExport(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusInternalServerError, "Could not build the Excel file.")
 		return
 	}
-	for i, row := range exportRows(records) {
+	for i, row := range exportRows(records, a.dimensions()) {
 		cells := make([]any, len(row))
 		for j, v := range row {
 			cells[j] = v
@@ -59,9 +59,9 @@ func (a *API) StaffExport(w http.ResponseWriter, r *http.Request) {
 
 // exportRows is the header row followed by one row per record. Scores are numbers so Excel can
 // sort and average them; the rest is text.
-func exportRows(records []Record) [][]any {
+func exportRows(records []Record, dims []Dimension) [][]any {
 	header := []any{"Submitted (GMT+9)", "Name", "Position", "Company", "Age", "Weeks on site", "MCU review"}
-	for _, d := range Dimensions {
+	for _, d := range dims {
 		header = append(header, d.EN)
 	}
 	header = append(header, "Total", "Result")

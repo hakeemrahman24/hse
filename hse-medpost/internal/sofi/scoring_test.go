@@ -33,7 +33,7 @@ func TestItemsAreFiveDimensionsOfFourItems(t *testing.T) {
 
 func TestScoreSumsEachDimension(t *testing.T) {
 	a := answers(0)
-	// Items 1-4 are Lack of energy: 6+5+4+3 = 18.
+	// Items 1-4 are Lack of Energy at Work: 6+5+4+3 = 18.
 	copy(a[0:4], []int{6, 5, 4, 3})
 	r, err := Score(a)
 	if err != nil {
