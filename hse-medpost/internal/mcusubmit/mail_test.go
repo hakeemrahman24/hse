@@ -64,3 +64,20 @@ func TestSMTPMailerRefusesToSendWithoutAHost(t *testing.T) {
 		t.Fatal("an unconfigured SMTPMailer must return an error, not silently drop the mail")
 	}
 }
+
+func TestBuildMessageHTMLIsMultipartWithTextFirst(t *testing.T) {
+	msg := string(buildMessageHTML("a@example.com", "b@example.com", "Subject", "plain part", "<p>html part</p>"))
+	if !strings.Contains(msg, "multipart/alternative") {
+		t.Fatalf("not multipart/alternative:\n%s", msg)
+	}
+	text, html := strings.Index(msg, "text/plain"), strings.Index(msg, "text/html")
+	if text < 0 || html < 0 || text > html {
+		t.Fatalf("the text part must come before the HTML part (clients show the last one they understand):\n%s", msg)
+	}
+	if !strings.Contains(msg, "--=_mcu_alt_7f3a9c--") {
+		t.Fatalf("the closing boundary is missing:\n%s", msg)
+	}
+	if plain := string(buildMessageHTML("a@example.com", "b@example.com", "S", "just text", "")); strings.Contains(plain, "multipart") {
+		t.Fatalf("no HTML given, but the message is multipart:\n%s", plain)
+	}
+}

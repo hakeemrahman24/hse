@@ -24,6 +24,22 @@ type Mailer interface {
 	Send(ctx context.Context, to, subject, body string) error
 }
 
+// HTMLMailer is a Mailer that can also send an HTML version next to the plain text. Both real
+// senders (SMTP and the development log) do; a test fake that only records Send keeps working and
+// gets the text. Callers go through sendRich, never assert this themselves.
+type HTMLMailer interface {
+	SendHTML(ctx context.Context, to, subject, text, html string) error
+}
+
+// sendRich sends text plus an HTML table version when the mailer supports it, and the text alone
+// otherwise, so the plain-text body stays the one every client and every test can read.
+func sendRich(ctx context.Context, m Mailer, to, subject, text, html string) error {
+	if hm, ok := m.(HTMLMailer); ok && html != "" {
+		return hm.SendHTML(ctx, to, subject, text, html)
+	}
+	return m.Send(ctx, to, subject, text)
+}
+
 // LogMailer writes each message to the log instead of sending it. Development only: the body holds
 // working links, so it must never be used in production.
 type LogMailer struct {
@@ -39,6 +55,10 @@ func (m LogMailer) Send(_ context.Context, to, subject, body string) error {
 	return nil
 }
 
+func (m LogMailer) SendHTML(ctx context.Context, to, subject, text, _ string) error {
+	return m.Send(ctx, to, subject, text) // the log shows the readable text part only
+}
+
 // SMTPMailer sends through an SMTP relay such as Brevo (smtp-relay.brevo.com:587). It insists on
 // STARTTLS before it sends the login, so credentials never cross the network in clear.
 type SMTPMailer struct {
@@ -49,6 +69,11 @@ type SMTPMailer struct {
 const smtpTimeout = 20 * time.Second
 
 func (m *SMTPMailer) Send(ctx context.Context, to, subject, body string) error {
+	return m.SendHTML(ctx, to, subject, body, "")
+}
+
+// SendHTML sends multipart/alternative (text first, HTML second) when html is not empty.
+func (m *SMTPMailer) SendHTML(ctx context.Context, to, subject, body, html string) error {
 	if m == nil || m.Host == "" || m.From == "" {
 		return errors.New("mcusubmit: SMTP is not configured")
 	}
@@ -97,7 +122,7 @@ func (m *SMTPMailer) Send(ctx context.Context, to, subject, body string) error {
 	if err != nil {
 		return fmt.Errorf("mcusubmit: smtp data: %w", err)
 	}
-	if _, err := w.Write(buildMessage(m.From, rcpt.Address, subject, body)); err != nil {
+	if _, err := w.Write(buildMessageHTML(m.From, rcpt.Address, subject, body, html)); err != nil {
 		return fmt.Errorf("mcusubmit: smtp write: %w", err)
 	}
 	if err := w.Close(); err != nil {
@@ -124,18 +149,40 @@ func encodeSubject(s string) string {
 
 // buildMessage returns the full RFC 5322 message: CRLF headers, then a quoted-printable UTF-8 body.
 func buildMessage(from, to, subject, body string) []byte {
+	return buildMessageHTML(from, to, subject, body, "")
+}
+
+// buildMessageHTML is buildMessage with an optional HTML alternative. Mail clients show the LAST
+// part they understand, so the plain text goes first and the HTML second. The boundary is fixed
+// text that cannot occur in a quoted-printable body (it contains "=_").
+func buildMessageHTML(from, to, subject, body, html string) []byte {
+	const boundary = "=_mcu_alt_7f3a9c"
 	var b bytes.Buffer
 	b.WriteString("From: " + headerValue(from) + "\r\n")
 	b.WriteString("To: " + headerValue(to) + "\r\n")
 	b.WriteString("Subject: " + encodeSubject(subject) + "\r\n")
 	b.WriteString("Date: " + time.Now().UTC().Format(time.RFC1123Z) + "\r\n")
 	b.WriteString("MIME-Version: 1.0\r\n")
-	b.WriteString("Content-Type: text/plain; charset=UTF-8\r\n")
+	if html == "" {
+		writeQPPart(&b, "text/plain", body)
+		return b.Bytes()
+	}
+	b.WriteString("Content-Type: multipart/alternative; boundary=\"" + boundary + "\"\r\n\r\n")
+	b.WriteString("--" + boundary + "\r\n")
+	writeQPPart(&b, "text/plain", body)
+	b.WriteString("\r\n--" + boundary + "\r\n")
+	writeQPPart(&b, "text/html", html)
+	b.WriteString("\r\n--" + boundary + "--\r\n")
+	return b.Bytes()
+}
+
+// writeQPPart writes one part's headers, a blank line and the quoted-printable UTF-8 content.
+func writeQPPart(b *bytes.Buffer, contentType, content string) {
+	b.WriteString("Content-Type: " + contentType + "; charset=UTF-8\r\n")
 	b.WriteString("Content-Transfer-Encoding: quoted-printable\r\n")
 	b.WriteString("\r\n")
-	text := strings.ReplaceAll(strings.ReplaceAll(body, "\r\n", "\n"), "\n", "\r\n")
-	qp := quotedprintable.NewWriter(&b)
+	text := strings.ReplaceAll(strings.ReplaceAll(content, "\r\n", "\n"), "\n", "\r\n")
+	qp := quotedprintable.NewWriter(b)
 	_, _ = qp.Write([]byte(text))
 	_ = qp.Close()
-	return b.Bytes()
 }
