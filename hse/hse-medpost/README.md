@@ -232,7 +232,7 @@ Same (eligible) token, read-only, for the register's Medical Activities pages.
 
 ### GET /api/directory/checkups
 
-Requires the all-checkups token. Returns every checkup, including exam sections, result, notes, and company parent / project / depth. `hcValidityStatus` is the standing a reader sees.
+Requires the all-checkups token. Returns every checkup, including exam sections, result, notes, and company parent / project / depth. `hcValidityStatus` is the standing a reader sees. `resultCriteria` is the result in words: `Fit`, `Fit with note`, `Unfit`, `Temporarily Unfit`, `Need follow up` or `Incomplete` (not the stored codes `FitWithNote`, `TemporaryUnfit`, `NeedFollowUp`, `IncompleteResult`).
 
 The eligible token and the all-checkups token are separate. A database that has only the eligible token can call the employee search and `/api/directory/fitness`. It cannot call `/api/directory/checkups`. Settings → Employee API shows both. Update each one on its own button. The token already stored for other databases stays the eligible token.
 

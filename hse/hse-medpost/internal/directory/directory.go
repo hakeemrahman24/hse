@@ -301,9 +301,19 @@ func (a *API) today() string {
 	return a.now().Format("2006-01-02")
 }
 
+// reviewLabel turns the stored result code into the words a reader sees. The employee endpoints only
+// ever hold Fit and FitWithNote; the all-checkups API also carries the open results, so those are
+// spelled out here too (same words as the certificate and the MCU page).
 func reviewLabel(stored string) string {
-	if stored == "FitWithNote" {
+	switch stored {
+	case "FitWithNote":
 		return "Fit with note"
+	case "TemporaryUnfit":
+		return "Temporarily Unfit"
+	case "NeedFollowUp":
+		return "Need follow up"
+	case "IncompleteResult":
+		return "Incomplete"
 	}
 	return stored
 }
