@@ -28,6 +28,7 @@ const lightbox = document.getElementById("lightbox");
 const lightboxImg = document.getElementById("lightbox-img");
 const programTabs = document.getElementById("program-tabs");
 const tabActivitiesEl = document.getElementById("tab-activities");
+const tabCorrectiveEl = document.getElementById("tab-corrective");
 const tabReferenceEl = document.getElementById("tab-reference");
 const referenceBody = document.getElementById("reference-body");
 const referenceEmpty = document.getElementById("reference-empty");
@@ -108,6 +109,16 @@ function canEditActivity(a) {
 function renderEditButton(a) {
   if (!canEditActivity(a)) return "";
   return `<button type="button" class="btn-ghost" data-edit-activity="${a.activityId}">Edit</button>`;
+}
+
+// Any staff member can raise a corrective-action finding from an activity: it opens the Add finding form
+// with the activity's program, date and location filled in and the finding linked back to it.
+function renderReportButton(a) {
+  const procId = a.procId || selectedId;
+  if (!window.CA || !procId || procId === "home") return "";
+  return `<button type="button" class="btn-ghost" data-report-finding="${a.activityId}" data-proc-id="${procId}"
+    data-date="${escapeHtml(a.activityDate || "")}" data-location="${escapeHtml(a.location || "")}"
+    data-title="${escapeHtml(a.activityTitle || "")}">Report finding</button>`;
 }
 
 function renderDeleteButton(a) {
@@ -351,6 +362,16 @@ function dropEmptyFiles(fd, name) {
 }
 
 function wireActivityEditButtons() {
+  groupsEl.querySelectorAll("[data-report-finding]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      window.CA.openForm(null, Number(btn.dataset.procId), {
+        activityId: Number(btn.dataset.reportFinding),
+        title: btn.dataset.title,
+        date: btn.dataset.date,
+        location: btn.dataset.location,
+      });
+    });
+  });
   groupsEl.querySelectorAll("[data-edit-activity]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const form = groupsEl.querySelector(`[data-edit-form="${btn.dataset.editActivity}"]`);
@@ -596,6 +617,7 @@ function renderHomeFeed(data) {
         <div class="app-post-head">
           <div class="app-post-date">${escapeHtml(a.activityDate || "No date")}${a.uploadedBy ? ` · Uploaded by ${escapeHtml(a.uploadedBy)}` : ""} · ${escapeHtml(a.programTitle || "")} · ${escapeHtml(a.activityType)}</div>
           <div style="display:flex;gap:6px;align-items:center">
+            ${renderReportButton(a)}
             ${renderEditButton(a)}
             ${renderDeleteButton(a)}
           </div>
@@ -658,6 +680,7 @@ function renderFeed(data) {
             <div class="app-post-head">
               <div class="app-post-date">${escapeHtml(date)}${a.uploadedBy ? ` · Uploaded by ${escapeHtml(a.uploadedBy)}` : ""}</div>
               <div style="display:flex;gap:6px;align-items:center">
+                ${renderReportButton(a)}
                 ${renderEditButton(a)}
                 ${renderDeleteButton(a)}
               </div>
@@ -690,6 +713,7 @@ const ACTIVITY_SECTION_LABELS = {
   activities: "Activity",
   reference: "Reference",
   subheaders: "Sub-headers",
+  corrective: "Corrective actions",
 };
 let activitySection = "Activity";
 let refreshPresence = () => {};
@@ -715,11 +739,14 @@ function showTab(tab) {
     btn.classList.toggle("active", btn.dataset.tab === tab);
   });
   tabActivitiesEl.hidden = tab !== "activities";
+  if (tabCorrectiveEl) tabCorrectiveEl.hidden = tab !== "corrective";
   tabReferenceEl.hidden = tab !== "reference";
   if (tabSubheadersEl) tabSubheadersEl.hidden = tab !== "subheaders";
   activitySection = ACTIVITY_SECTION_LABELS[tab] || "Activity";
   refreshPresence();
   renderSidebar();
+  // Corrective actions: one program's findings, or every program's on the all-programs home view (0).
+  if (tab === "corrective" && window.CA) return window.CA.show(selectedId === "home" ? 0 : selectedId);
   if (tab === "reference") return loadReferences();
   if (tab === "subheaders") return loadSubHeaders();
 }
@@ -746,6 +773,7 @@ function showSubHeaderEntries(id, name) {
 
     programTabs?.querySelectorAll(".app-tab").forEach((btn) => btn.classList.remove("active"));
     tabActivitiesEl.hidden = true;
+    if (tabCorrectiveEl) tabCorrectiveEl.hidden = true;
     tabReferenceEl.hidden = true;
     if (tabSubheadersEl) tabSubheadersEl.hidden = true;
     if (tabSubheaderEntriesEl) tabSubheaderEntriesEl.hidden = false;
@@ -1178,8 +1206,13 @@ async function loadActivities() {
   if (from) q.set("from", from);
   if (to) q.set("to", to);
 
+  // Reference and Sub-headers belong to one program; on the all-programs home view only Activities and
+  // Corrective actions are shown.
+  const showProgramOnlyTabs = selectedId !== "home";
+  programTabs.querySelectorAll('[data-scope="program"]').forEach((btn) => (btn.hidden = !showProgramOnlyTabs));
+
   if (selectedId === "home") {
-    programTabs.hidden = true;
+    programTabs.hidden = false;
     const res = await fetch(`/api/activities-view?${q}`, { credentials: "same-origin" });
     if (res.status === 401) {
       location.href = "/";

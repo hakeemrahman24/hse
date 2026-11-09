@@ -1,4 +1,4 @@
-<!-- Generated: 2026-10-20 | Files scanned: cmd/server/main.go + internal/* | Token estimate: ~900 -->
+<!-- Generated: 2026-10-20, corrective actions added 2026-11-09 | Files scanned: cmd/server/main.go + internal/* | Token estimate: ~900 -->
 # Backend (routes in cmd/server/main.go)
 
 Auth levels: `RequireAuth` (any staff) · `RequireAdmin` · `RequireProgramManager` · `clinician` (RequireDoctorOrCMO).
@@ -38,3 +38,13 @@ PascalCase tables, FK_<Name>ID, UTC `YYYY-MM-DDTHH:MM:SS` stamps (dates.Stamp), 
 
 Drug & Alcohol web entry (RequireAuth, session staff): POST /api/screening-log/alcohol → screening.CreateAlcoholEntry (web_entry.go; parseRecord + insert, 201 new / 200 repeat by ClientID).
 Fatigue web entry: POST /api/screening-log/fatigue → screening.CreateFatigueEntry (web_fatigue.go; parseFatigueRecord + insertFatigue, 201 new / 200 repeat by ClientID).
+
+## Corrective actions (internal/correctiveaction) — RequireAuth, DELETE finding = admin
+GET  /api/corrective-actions?procId&status&severity&q&from&to&limit → List (Overdue = computed)
+GET  /api/corrective-actions.xlsx            → Export (same filters; Findings + Follow-ups sheets; photos as thumbnails in uniform cells; max 500 rows)
+GET  /api/corrective-actions/employees?q     → PIC dropdown (Patient search; picked id is a lookup key only, name/employee ID copied as TEXT)
+POST /api/corrective-actions · GET/PUT/DELETE /{id} · POST /{id}/close|reopen · GET /{id}/history
+POST /api/corrective-actions/{id}/photos     → multipart phase+photos (≤3 per phase, PreparePhoto → JPEG ≤600 KB, thumb sidecar name.thumb.jpg)
+GET|DELETE /api/corrective-action-photos/{id} (?thumb=1 = 240 px copy) · POST /{id}/follow-ups
+PUT|DELETE /api/corrective-action-follow-ups/{id} · POST …/{id}/done|reopen (finding can't close while a follow-up is open; status computed)
+Files: types.go, query.go (reads), store.go (writes + history), followup.go, photo.go, api.go, export.go. Plan: plan/corrective-action-plan.md.
