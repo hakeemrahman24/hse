@@ -9,7 +9,7 @@ import (
 )
 
 // addSurvey saves one survey straight into the table: every answer is value, so each dimension
-// scores 5*value and the total 25*value.
+// scores 4*value and the total 20*value.
 func addSurvey(t *testing.T, api *API, patientID int64, company, position, submittedAt string, value int) {
 	t.Helper()
 	res, err := Score(answers(value))
@@ -62,9 +62,9 @@ func TestSummaryCountsLevelsPeopleAndDimensionAverages(t *testing.T) {
 	api := newTestAPI(t)
 	andi := patientID(t, api, "Andi Pratama")
 	andini := patientID(t, api, "Andini Putri")
-	addSurvey(t, api, andi, "PT A", "Welder", "2026-10-01T08:00:00", 1) // total 25  Low, each dimension 5 Low
-	addSurvey(t, api, andi, "PT A", "Welder", "2026-10-02T08:00:00", 3) // total 75  Moderate, 15 Moderate
-	addSurvey(t, api, andini, "PT B", "Cook", "2026-10-03T08:00:00", 6) // total 150 High, 30 High
+	addSurvey(t, api, andi, "PT A", "Welder", "2026-10-01T08:00:00", 1) // total 20  Low, each dimension 4 Low
+	addSurvey(t, api, andi, "PT A", "Welder", "2026-10-02T08:00:00", 3) // total 60  Moderate, 12 Moderate
+	addSurvey(t, api, andini, "PT B", "Cook", "2026-10-03T08:00:00", 6) // total 120 High, 24 High
 	code, s := getSummary(t, api, "")
 	if code != http.StatusOK {
 		t.Fatalf("status %d", code)
@@ -79,7 +79,7 @@ func TestSummaryCountsLevelsPeopleAndDimensionAverages(t *testing.T) {
 		t.Fatalf("dimensions = %d", len(s.Dimensions))
 	}
 	d := s.Dimensions[0]
-	if d.Key != "lack_of_energy" || d.Max != 30 || d.Average != 16.7 { // (5+15+30)/3
+	if d.Key != "lack_of_energy" || d.Max != 24 || d.Average != 13.3 { // (4+12+24)/3
 		t.Fatalf("first dimension = %+v", d)
 	}
 	if d.Results["low"] != 1 || d.Results["moderate"] != 1 || d.Results["high"] != 1 {

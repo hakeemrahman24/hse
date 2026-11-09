@@ -10,8 +10,8 @@ func answers(v int) []int {
 	return out
 }
 
-func TestItemsAreFiveDimensionsOfFiveWords(t *testing.T) {
-	if len(Items) != ItemCount || ItemCount != 25 {
+func TestItemsAreFiveDimensionsOfFourItems(t *testing.T) {
+	if len(Items) != ItemCount || ItemCount != 20 {
 		t.Fatalf("items = %d", len(Items))
 	}
 	per := map[string]int{}
@@ -33,13 +33,13 @@ func TestItemsAreFiveDimensionsOfFiveWords(t *testing.T) {
 
 func TestScoreSumsEachDimension(t *testing.T) {
 	a := answers(0)
-	// Items 1-5 are Lack of energy: 6+5+4+3+2 = 20.
-	copy(a[0:5], []int{6, 5, 4, 3, 2})
+	// Items 1-4 are Lack of energy: 6+5+4+3 = 18.
+	copy(a[0:4], []int{6, 5, 4, 3})
 	r, err := Score(a)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if r.Dimensions[0].Key != "lack_of_energy" || r.Dimensions[0].Score != 20 {
+	if r.Dimensions[0].Key != "lack_of_energy" || r.Dimensions[0].Score != 18 {
 		t.Fatalf("lack of energy = %+v", r.Dimensions[0])
 	}
 	for _, d := range r.Dimensions[1:] {
@@ -47,7 +47,7 @@ func TestScoreSumsEachDimension(t *testing.T) {
 			t.Fatalf("%s = %d, want 0", d.Key, d.Score)
 		}
 	}
-	if r.Total != 20 {
+	if r.Total != 18 {
 		t.Fatalf("total = %d", r.Total)
 	}
 }
@@ -55,16 +55,16 @@ func TestScoreSumsEachDimension(t *testing.T) {
 func TestScoreBandsAtTheEdges(t *testing.T) {
 	cases := []struct {
 		name  string
-		value int // every answer; each dimension then scores 5 * value and the total 25 * value
+		value int // every answer; each dimension then scores 4 * value and the total 20 * value
 		dim   string
 		total string
 	}{
 		{"all zero", 0, LevelLow, LevelLow},
-		{"all two", 2, LevelLow, LevelLow},             // 10 per dimension (top of Low), total 50 (top of Low)
-		{"all three", 3, LevelModerate, LevelModerate}, // 15, total 75
-		{"all four", 4, LevelModerate, LevelModerate},  // 20 (top of Moderate), total 100 (top of Moderate)
-		{"all five", 5, LevelHigh, LevelHigh},          // 25, total 125
-		{"all six", 6, LevelHigh, LevelHigh},           // 30, total 150
+		{"all two", 2, LevelLow, LevelLow},             // 8 per dimension (top of Low), total 40 (top of Low)
+		{"all three", 3, LevelModerate, LevelModerate}, // 12, total 60
+		{"all four", 4, LevelModerate, LevelModerate},  // 16 (top of Moderate), total 80 (top of Moderate)
+		{"all five", 5, LevelHigh, LevelHigh},          // 20, total 100
+		{"all six", 6, LevelHigh, LevelHigh},           // 24, total 120
 	}
 	for _, c := range cases {
 		r, err := Score(answers(c.value))
@@ -92,5 +92,32 @@ func TestScoreRejectsBadAnswers(t *testing.T) {
 		if _, err := Score(a); err == nil {
 			t.Fatalf("%s accepted", name)
 		}
+	}
+}
+
+// Answers saved by the earlier 25-word form still score: the five words the 20-item version left
+// out (Exhausted, Warm, Hurting, Lack of concern, Lazy) are ignored and the rest are summed.
+func TestScoreReadsTheEarlier25WordAnswers(t *testing.T) {
+	old := make([]int, legacyItemCount)
+	for i := range old {
+		old[i] = 1
+	}
+	for pos := range legacyDropped {
+		old[pos] = 6 // would push the score up if it were counted
+	}
+	r, err := Score(old)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Total != ItemCount || r.TotalMax != ItemCount*MaxAnswer {
+		t.Fatalf("total = %d of %d, want %d of %d", r.Total, r.TotalMax, ItemCount, ItemCount*MaxAnswer)
+	}
+	for _, d := range r.Dimensions {
+		if d.Score != itemsPerDimension || d.Max != itemsPerDimension*MaxAnswer {
+			t.Fatalf("%s = %d of %d", d.Key, d.Score, d.Max)
+		}
+	}
+	if _, err := Score(make([]int, 24)); err == nil {
+		t.Fatal("24 answers were accepted")
 	}
 }

@@ -2,27 +2,39 @@ package sofi
 
 import "fmt"
 
-// The Swedish Occupational Fatigue Inventory (SOFI) as the clinic uses it: five dimensions of five
-// words each (25 words, given by the clinic with an Indonesian explanation for every word). The
-// person rates how much each word describes how they feel, from 0 ("not at all") to 6 ("to a very
-// large extent"), the seven-point scale the published SOFI uses. A dimension score is the sum of
-// its five words (0-30); the total is the sum of all twenty-five (0-150). Higher means more fatigue.
+// The Swedish Occupational Fatigue Inventory (SOFI) as the clinic uses it: the 20-item Indonesian
+// version (Suparman et al., 2022, Indonesian Journal of Community and Occupational Medicine 2(2),
+// adapted from Ahsberg et al., 1997): five dimensions of four items each, every item an Indonesian
+// sentence supplied by the clinic. The person rates how much each item describes how they feel,
+// from 0 ("not at all") to 6 ("to a very large extent"). A dimension score is the sum of its four
+// items (0-24); the total is the sum of all twenty (0-120). Higher means more fatigue.
+//
+// Until 2026-11-09 the form had 25 words (five per dimension). Answers saved then still have 25
+// values; Score drops the five words the 20-item version left out (legacyDropped) and scores the
+// rest, so old records stay on the same scale as new ones.
 //
 // PROVISIONAL CRITERIA: the SOFI has no published cut-offs. The bands below split each range into
 // equal thirds so the form can show a Low / Moderate / High reading. They are a placeholder until
 // the doctor approves or replaces them: change only the constants in this block.
 const (
-	ItemCount         = 25
-	itemsPerDimension = 5
+	ItemCount         = 20
+	itemsPerDimension = 4
 	MaxAnswer         = 6
 
-	// Dimension score 0-30.
-	dimLowMax      = 10 // 0-10 Low
-	dimModerateMax = 20 // 11-20 Moderate, 21-30 High
-	// Total score 0-150.
-	totalLowMax      = 50  // 0-50 Low
-	totalModerateMax = 100 // 51-100 Moderate, 101-150 High
+	// Dimension score 0-24.
+	dimLowMax      = 8  // 0-8 Low
+	dimModerateMax = 16 // 9-16 Moderate, 17-24 High
+	// Total score 0-120.
+	totalLowMax      = 40 // 0-40 Low
+	totalModerateMax = 80 // 41-80 Moderate, 81-120 High
+
+	// The earlier 25-word form (five items per dimension), still found in saved answers.
+	legacyItemCount = 25
 )
+
+// legacyDropped are the positions (0-based, in the old 25-word order) of the five words the
+// 20-item version does not have: Exhausted, Warm, Hurting, Lack of concern and Lazy.
+var legacyDropped = map[int]bool{2: true, 8: true, 13: true, 19: true, 24: true}
 
 const (
 	LevelLow      = "Low"
@@ -40,11 +52,11 @@ type Dimension struct {
 
 // Dimensions is in form order: items 1-4 belong to the first, 5-8 to the second, and so on.
 var Dimensions = []Dimension{
-	{"lack_of_energy", "Lack of energy", "Kurang energi", "精力不足"},
-	{"physical_exertion", "Physical exertion", "Pengerahan tenaga fisik", "体力消耗"},
+	{"lack_of_energy", "Lack of energy", "Kekurangan energi pada pekerjaan", "精力不足"},
+	{"physical_exertion", "Physical exertion", "Mengerahkan tenaga fisik", "体力消耗"},
 	{"physical_discomfort", "Physical discomfort", "Ketidaknyamanan fisik", "身体不适"},
-	{"lack_of_motivation", "Lack of motivation", "Kurang motivasi", "缺乏动力"},
-	{"sleepiness", "Sleepiness", "Kantuk", "嗜睡"},
+	{"lack_of_motivation", "Lack of motivation", "Kurangnya motivasi pada pekerjaan", "缺乏动力"},
+	{"sleepiness", "Sleepiness", "Perasaan mengantuk", "嗜睡"},
 }
 
 // Item is one word of the inventory.
@@ -60,12 +72,13 @@ type Item struct {
 var Items = buildItems()
 
 func buildItems() []Item {
+	// English word, then the clinic's Indonesian item (the sentence the worker reads).
 	words := [][][2]string{
-		{{"Overworked", "kerja berlebihan"}, {"Worn out", "energi terkuras setelah bekerja"}, {"Exhausted", "sangat lelah"}, {"Spent", "tenaga terkuras untuk hal lain"}, {"Drained", "energi banyak berkurang"}},
-		{{"Sweaty", "berkeringat"}, {"Breathing heavily", "bernafas berat"}, {"Palpitations", "jantung berdebar"}, {"Warm", "tubuh terasa hangat"}, {"Out of breath", "nafas tersengal-sengal"}},
-		{{"Tense muscles", "otot menegang"}, {"Stiff joints", "merasa kaku di persendian"}, {"Numbness", "merasa kram di beberapa titik tubuh"}, {"Hurting", "tubuh terasa sakit"}, {"Aching", "tubuh terasa nyeri"}},
-		{{"Uninterested", "tidak tertarik keadaan sekitar"}, {"Passive", "tidak banyak bergerak"}, {"Listless", "lesu tidak bersemangat"}, {"Indifferent", "acuh tak acuh"}, {"Lack of concern", "merasa tidak peduli"}},
-		{{"Sleepy", "mengantuk"}, {"Falling asleep", "ingin segera tidur"}, {"Drowsy", "pandangan kabur karena mengantuk"}, {"Yawning", "sering menguap"}, {"Lazy", "merasa malas"}},
+		{{"Overworked", "terlalu banyak aktivitas yang dikerjakan"}, {"Worn out", "merasa kehabisan tenaga saat melakukan aktivitas"}, {"Spent", "merasa sangat kelelahan hingga kehabisan tenaga untuk melakukan aktivitas lain"}, {"Drained", "terkurasnya energi saat melakukan aktivitas"}},
+		{{"Sweaty", "berkeringat"}, {"Breathing heavily", "bernafas dengan berat hingga terengah-engah"}, {"Palpitations", "merasa berdebar-debar"}, {"Out of breath", "mengalami sesak nafas"}},
+		{{"Tense muscles", "otot merasa tegang"}, {"Stiff joints", "sendi mengalami rasa kaku"}, {"Numbness", "rasa mati rasa/ baal pada bagian tubuh"}, {"Aching", "rasa nyeri pada bagian tubuh"}},
+		{{"Uninterested", "tidak tertarik pada aktivitas pekerjaan"}, {"Passive", "pasif/ tidak giat dalam aktivitas pekerjaan"}, {"Listless", "kurang berkonsentrasi saat melakukan aktivitas"}, {"Indifferent", "tidak tertarik/ tidak peduli/ sikap masa bodoh dengan hasil/ kualitas mutu pekerjaan"}},
+		{{"Sleepy", "mengantuk/ letih saat melakukan aktifitas"}, {"Falling asleep", "merasa akan tertidur saat melakukan aktifitas"}, {"Drowsy", "merasa aktifitas pekerjaan membuat mengantuk"}, {"Yawning", "menguap saat melakukan aktifitas"}},
 	}
 	items := make([]Item, 0, ItemCount)
 	for d, group := range words {
@@ -95,9 +108,12 @@ type Result struct {
 	Level      string            `json:"level"`
 }
 
-// Score reads twenty answers (0-6, in item order). It is the only place scores are worked out:
-// the server never trusts a score sent by the browser.
+// Score reads twenty answers (0-6, in item order), or the twenty-five of the earlier form. It is
+// the only place scores are worked out: the server never trusts a score sent by the browser.
 func Score(answers []int) (Result, error) {
+	if len(answers) == legacyItemCount {
+		answers = withoutLegacyDropped(answers)
+	}
 	if len(answers) != ItemCount {
 		return Result{}, fmt.Errorf("expected %d answers, got %d", ItemCount, len(answers))
 	}
@@ -129,4 +145,16 @@ func band(score, lowMax, moderateMax int) string {
 	default:
 		return LevelHigh
 	}
+}
+
+// withoutLegacyDropped keeps the twenty answers of the earlier 25-word form that the 20-item
+// version still asks, in the same order.
+func withoutLegacyDropped(answers []int) []int {
+	kept := make([]int, 0, ItemCount)
+	for i, a := range answers {
+		if !legacyDropped[i] {
+			kept = append(kept, a)
+		}
+	}
+	return kept
 }

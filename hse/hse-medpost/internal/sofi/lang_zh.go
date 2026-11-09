@@ -1,17 +1,17 @@
 package sofi
 
 // Simplified Chinese (简体中文) for /sofi. Same idea as messages in i18n.go: the English text is the
-// key. The 25 words are a plain translation of the English SOFI words; the clinic's own explanations
+// key. The 20 words are a plain translation of the English SOFI words; the clinic's own explanations
 // exist in Indonesian only, so the Chinese words are for the medical team to read through before
 // they are relied on.
 
-// zhItems are the 25 words in form order, the same order as the English ones in buildItems.
+// zhItems are the 20 words in form order, the same order as the English ones in buildItems.
 var zhItems = [ItemCount]string{
-	"工作过度", "精疲力竭", "极度疲劳", "体力耗尽", "精力被耗光",
-	"出汗", "呼吸沉重", "心悸", "身体发热", "上气不接下气",
-	"肌肉紧绷", "关节僵硬", "身体麻木", "身体疼痛", "身体酸痛",
-	"对周围提不起兴趣", "不爱活动", "无精打采", "漠不关心", "毫不在乎",
-	"困倦", "想马上睡觉", "昏昏欲睡，视线模糊", "频繁打哈欠", "懒洋洋",
+	"工作过度", "精疲力竭", "体力耗尽", "精力被耗光",
+	"出汗", "呼吸沉重", "心悸", "上气不接下气",
+	"肌肉紧绷", "关节僵硬", "身体麻木", "身体酸痛",
+	"对工作提不起兴趣", "不爱活动", "无精打采", "漠不关心",
+	"困倦", "想马上睡觉", "工作让人昏昏欲睡", "频繁打哈欠",
 }
 
 // zhMessages maps the English key to its Chinese text.

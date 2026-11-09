@@ -1,4 +1,4 @@
-// /sofi questionnaire: 25 words rated 0-6, weeks on site, then the result. The server works out
+// /sofi questionnaire: 20 items rated 0-6, weeks on site, then the result. The server works out
 // every score and level; this script only collects the answers and shows what comes back.
 (function () {
   "use strict";
@@ -7,7 +7,7 @@
   // reloading lets the server send a signed-out visitor back to /sofi.
   window.addEventListener("pageshow", function (e) { if (e.persisted) location.reload(); });
 
-  var ITEM_COUNT = 25;
+  var ITEM_COUNT = 20;
   var form = document.getElementById("sofi-form");
   var errEl = document.getElementById("sofi-error");
   var resultEl = document.getElementById("sofi-result");
@@ -45,7 +45,7 @@
   }
 
   // Every word and the weeks are mandatory, so the button stays disabled until all are answered.
-  // "n / 25" shows how far along the person is, so a long form never hides what is still missing.
+  // "n / 20" shows how far along the person is, so a long form never hides what is still missing.
   function refreshSubmit() {
     var answered = 0;
     for (var n = 1; n <= ITEM_COUNT; n++) {
