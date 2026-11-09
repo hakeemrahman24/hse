@@ -6094,6 +6094,25 @@ a.app-tab {
   padding: 6px 16px;
 }
 
+/* The table's filter is one short row: each caption sits beside its box instead of above it,
+   and the boxes are 28px high, so the table starts higher up. */
+#sofi-toolbar {
+  align-items: center;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  gap: 4px 14px;
+}
+
+#sofi-toolbar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#sofi-toolbar label span {
+  margin-bottom: 0;
+}
+
 #sofi-toolbar label,
 #sofi-dash-filter label {
   position: relative;
@@ -6119,7 +6138,7 @@ a.app-tab {
 
 #scr-view-sofi .sofi-window-status {
   padding: 4px 16px;
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
@@ -6150,7 +6169,8 @@ a.app-tab {
 
 #scr-view-sofi .data-table.compact th:last-child { padding-right: 16px; }
 #scr-view-sofi .data-table.compact td:last-child { padding-right: 12px; }
-#scr-view-sofi .sofi-note { padding-top: 8px; padding-bottom: 8px; font-size: 0.8125rem; }
+/* The table cells are 0.75rem, so the text around the table is too (it was 0.8125rem and read as bigger). */
+#scr-view-sofi .sofi-note { padding-top: 8px; padding-bottom: 8px; font-size: 0.75rem; }
 
 /* Settings > SOFI schedule: on/off switches for the live survey and the preview.
    WHY role="switch" buttons: one click flips the state and a screen reader says "on"/"off". */
@@ -6195,4 +6215,17 @@ a.app-tab {
 #scr-view-dashboard .mal-stat span,
 #scr-view-dashboard .app-filter label span {
   letter-spacing: 0; /* the wide spacing was sized for the smaller caption */
+}
+
+/* SOFI table filter: 28px boxes. Last in the file so it beats the 31px rules for the same ids above. */
+#sofi-toolbar input[type="text"],
+#sofi-toolbar select,
+#sofi-toolbar .btn-ghost {
+  height: 28px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+#sofi-toolbar input[type="text"] {
+  min-width: 170px;
 }
