@@ -186,7 +186,7 @@ func (s *Store) RunReminders(ctx context.Context, m Mailer, portalURL string) (s
 	}
 	var failures []error
 	for _, t := range due {
-		if err := m.Send(ctx, t.email, "Medical checkups that expire soon", reminderBody(portalURL, t.lines)); err != nil {
+		if err := sendRich(ctx, m, t.email, "Medical checkups that expire soon", reminderBody(portalURL, t.lines), reminderHTML(portalURL, t.lines)); err != nil {
 			log.Printf("mcu reminders: mail to submitter %d failed: %v", t.id, err)
 			failures = append(failures, err)
 			continue
@@ -201,6 +201,21 @@ func (s *Store) RunReminders(ctx context.Context, m Mailer, portalURL string) (s
 		workers += len(t.lines)
 	}
 	return submitters, workers, errors.Join(failures...)
+}
+
+// reminderHTML is reminderBody as one table, soonest expiry first (the order the lines arrive in).
+func reminderHTML(portalURL string, lines []Expiring) string {
+	rows := make([][]string, 0, len(lines))
+	for _, l := range lines {
+		rows = append(rows, []string{l.Name, l.Position, l.Company, l.ValidUntil})
+	}
+	return htmlPage(
+		htmlPara("These medical checkups of the workers you submitted will expire soon:"),
+		htmlTable([]string{"Employee", "Position", "Company", "Valid until"}, rows),
+		htmlLink("Submit the renewed checkup here:", portalURL+basePath+"/batch"),
+		htmlLink("To stop these mails, switch them off in Settings:", portalURL+basePath+"/settings"),
+		htmlPara("This mail holds no ID numbers or birth dates on purpose."),
+	)
 }
 
 func reminderBody(portalURL string, lines []Expiring) string {

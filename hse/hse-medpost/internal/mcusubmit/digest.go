@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -235,9 +236,10 @@ func (s *Store) RunDigest(ctx context.Context, m Mailer, staffURL string) (int, 
 	}
 	subject := fmt.Sprintf("Medical checkups: %d waiting for review, %d reviewed and not notified", len(lines), len(reviewed))
 	body := digestBody(lines, reviewed, staffURL)
+	page := digestHTML(lines, reviewed, staffURL)
 	sent := 0
 	for _, addr := range to {
-		if err := m.Send(ctx, addr, subject, body); err != nil {
+		if err := sendRich(ctx, m, addr, subject, body, page); err != nil {
 			log.Printf("mcu digest: mail to a reviewer failed: %v", err)
 			continue
 		}
@@ -272,6 +274,37 @@ func digestBody(waiting, reviewed []digestLine, staffURL string) string {
 	}
 	b.WriteString("\nThis list holds no ID numbers, birth dates or results on purpose.\n")
 	return b.String()
+}
+
+// digestHTML is digestBody as tables: one for the waiting documents, one for the reviewed ones.
+func digestHTML(waiting, reviewed []digestLine, staffURL string) string {
+	headers := []string{"Employee", "Position", "Company", "Sent by", "Sent (UTC)"}
+	var parts []string
+	section := func(intro string, lines []digestLine) {
+		shown := lines
+		if len(shown) > digestMaxLines {
+			shown = shown[:digestMaxLines]
+		}
+		rows := make([][]string, 0, len(shown))
+		for _, l := range shown {
+			rows = append(rows, []string{l.worker, l.position, l.company, l.submitter, l.sentAt})
+		}
+		parts = append(parts, htmlPara(intro), htmlTable(headers, rows))
+		if more := len(lines) - len(shown); more > 0 {
+			parts = append(parts, htmlPara("and "+strconv.Itoa(more)+" more."))
+		}
+	}
+	if len(waiting) > 0 {
+		section(strconv.Itoa(len(waiting))+" medical checkup documents are waiting for review.", waiting)
+	}
+	if len(reviewed) > 0 {
+		section(strconv.Itoa(len(reviewed))+" reviewed documents have not been notified to their submitter (press Notify submitter on the Submitted tab).", reviewed)
+	}
+	if staffURL != "" {
+		parts = append(parts, htmlLink("Open them here (sign in required):", staffURL))
+	}
+	parts = append(parts, htmlPara("This list holds no ID numbers, birth dates or results on purpose."))
+	return htmlPage(parts...)
 }
 
 func writeDigestList(b *strings.Builder, lines []digestLine) {
