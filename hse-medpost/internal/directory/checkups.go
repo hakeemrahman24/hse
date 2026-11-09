@@ -89,13 +89,20 @@ type FitnessReview struct {
 	HcValidityStatus string `json:"hcValidityStatus"`
 }
 
-// Checkups returns every medical checkup, including exam sections. The
-// caller is another database using the same bearer token as the employee search.
+// Checkups returns every medical checkup, including exam sections, or only the ones that match the
+// filters in the query string (patientId, employeeId, checkUpId, q, result, from, to; see
+// filter.go). The caller is another database using the all-checkups bearer token.
 func (a *API) Checkups(w http.ResponseWriter, r *http.Request) {
 	if !a.authorizeFull(w, r) {
 		return
 	}
-	rows, err := a.DB.Query(checkupQuery)
+	f, err := parseFilter(r)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+		return
+	}
+	query, args := checkupQueryFor(f)
+	rows, err := a.DB.Query(query, args...)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})
 		return
@@ -130,7 +137,9 @@ func (a *API) Checkups(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, records)
 }
 
-const checkupQuery = `
+// checkupSelect is the whole read without its ORDER BY, so checkupQueryFor can add the caller's
+// filters in between (see filter.go).
+const checkupSelect = `
 	SELECT m.FK_PatientID, m.CheckUpID, p.Name, COALESCE(p.DateOfBirth,''),
 	       COALESCE(p.Gender,''), COALESCE(n.Name,''), COALESCE(m.BloodType,''), COALESCE(p.EmployeeID,''),
 	       COALESCE(m.PersonalID,''),
@@ -158,8 +167,7 @@ const checkupQuery = `
 	LEFT JOIN NationalityTable n ON n.NationalityID = p.FK_NationalityID
 	LEFT JOIN Company co ON co.CompanyID = COALESCE(m.FK_CompanyID, p.FK_CompanyID)
 	LEFT JOIN CheckUpCriteriaTable c ON c.CheckUpCriteriaID = m.FK_CheckUpCriteriaID
-	LEFT JOIN McuRecord parent ON parent.McuRecordID = m.FK_ParentRecordID
-	ORDER BY m.ReviewDate, m.CheckUpID`
+	LEFT JOIN McuRecord parent ON parent.McuRecordID = m.FK_ParentRecordID`
 
 var checkupKeys = []string{
 	"patientId", "checkUpId", "patientName", "dateOfBirth", "gender", "nationality", "bloodType", "employeeId",

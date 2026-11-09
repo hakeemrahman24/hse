@@ -234,6 +234,12 @@ Same (eligible) token, read-only, for the register's Medical Activities pages.
 
 Requires the all-checkups token. Returns every checkup, including exam sections, result, notes, and company parent / project / depth. `hcValidityStatus` is the standing a reader sees. `resultCriteria` is the result in words: `Fit`, `Fit with note`, `Unfit`, `Temporarily Unfit`, `Need follow up` or `Incomplete` (not the stored codes `FitWithNote`, `TemporaryUnfit`, `NeedFollowUp`, `IncompleteResult`).
 
+Optional filters, so an outside database does not have to download every checkup: `patientId`, `employeeId`, `checkUpId`, `q` (part of the name, two letters or more), `result` (the words above or the stored code), `from` and `to` (`yyyy-MM-dd`, on the checkup date, else the review date). With none, the route returns everything. A bad value answers 400.
+
+### GET /api/directory/latest-checkups
+
+Requires the all-checkups token. Returns one row per employee that has any checkup: the latest by checkup date (else review date, then the newest record), whatever its result, so Unfit, Temporarily Unfit, Need follow up, Incomplete, overdue and archived ones are included (the employee search skips open, incomplete and renewed rows when it picks "latest"; this route does not). Each row has the employee fields of the employee search plus `reviewDate`, `recommendation`, `checkUpStatus` and `hcValidityStatus`, with `dateCheckUp`, `resultCriteria` (in words) and `resultValidUntil`. No exam sections and no ID number. It takes the same filters as `/api/directory/checkups` ; they apply to each employee's latest checkup, so `result=Unfit` returns the people whose latest checkup is Unfit.
+
 The eligible token and the all-checkups token are separate. A database that has only the eligible token can call the employee search and `/api/directory/fitness`. It cannot call `/api/directory/checkups`. Settings → Employee API shows both. Update each one on its own button. The token already stored for other databases stays the eligible token.
 
 ### Employee API response

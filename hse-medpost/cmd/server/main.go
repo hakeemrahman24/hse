@@ -496,6 +496,7 @@ func main() {
 	mux.HandleFunc("GET /api/directory/employees", directoryAPI.List)
 	mux.HandleFunc("GET /api/directory/fitness", directoryAPI.Fitness)
 	mux.HandleFunc("GET /api/directory/checkups", directoryAPI.Checkups)
+	mux.HandleFunc("GET /api/directory/latest-checkups", directoryAPI.LatestCheckups)
 	mux.HandleFunc("GET /api/directory/activities", directoryAPI.Activities)
 	mux.HandleFunc("GET /api/directory/subheaders", directoryAPI.SubHeaders)
 	mux.HandleFunc("GET /api/directory/regions", directoryAPI.Regions)
