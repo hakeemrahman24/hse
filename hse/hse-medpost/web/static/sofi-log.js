@@ -12,6 +12,7 @@
   var bodyEl = document.getElementById("sofi-body");
   var emptyEl = document.getElementById("sofi-empty");
   var errorEl = document.getElementById("sofi-error");
+  var exportEl = document.getElementById("sofi-export");
   var truncatedEl = document.getElementById("sofi-truncated");
   var timer = null;
   var seq = 0;
@@ -142,6 +143,7 @@
     var params = new URLSearchParams();
     if (searchEl.value.trim()) { params.set("q", searchEl.value.trim()); }
     if (window.SofiRounds && window.SofiRounds.param(ROUND_ID)) { params.set("window", window.SofiRounds.param(ROUND_ID)); }
+    exportEl.href = "/api/sofi-log.xlsx" + (params.toString() ? "?" + params : "");
     fetch("/api/sofi-log?" + params, { credentials: "same-origin" })
       .then(function (res) {
         if (res.status === 401) { location.href = "/"; return Promise.reject(new Error("signed out")); }

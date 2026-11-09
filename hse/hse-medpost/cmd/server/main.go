@@ -440,6 +440,7 @@ func main() {
 	sofiAPI.TrustCloudflareHeader(os.Getenv("SOFI_TRUST_CF_HEADER") == "1")
 	// The saved questionnaires, for the SOFI tab on the Medical Record page (staff only).
 	mux.Handle("GET /api/sofi-log", middleware.RequireAuth(http.HandlerFunc(sofiAPI.StaffList)))
+	mux.Handle("GET /api/sofi-log.xlsx", middleware.RequireAuth(http.HandlerFunc(sofiAPI.StaffExport)))
 	mux.Handle("GET /api/sofi-log/summary", middleware.RequireAuth(http.HandlerFunc(sofiAPI.StaffSummary)))
 	// When /sofi is open (plan/sofi-window-plan.md). Any staff may read the status and the rounds
 	// for the results' filter; only an admin may list the full schedule, add a window or end one.

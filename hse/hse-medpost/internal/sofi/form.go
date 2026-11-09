@@ -241,6 +241,28 @@ type Record struct {
 // Scores and levels are worked out again from the stored answers, so a change to the criteria in
 // scoring.go applies to old records too.
 func (a *API) StaffList(w http.ResponseWriter, r *http.Request) {
+	out, total, qerr := a.staffRecords(r, listLimit)
+	if qerr != nil {
+		writeError(w, r, qerr.status, qerr.msg)
+		return
+	}
+	// The table shows at most listLimit rows; the total is sent in a header so the page can say
+	// "showing the first 500 of N" instead of silently disagreeing with the dashboard's count.
+	w.Header().Set("X-Total-Count", strconv.Itoa(total))
+	writeJSON(w, http.StatusOK, out)
+}
+
+// recordsError is a failed list query: the HTTP status and the message to show.
+type recordsError struct {
+	status int
+	msg    string
+}
+
+// staffRecords runs the query behind the SOFI table and its Excel export, so both follow the
+// same filters (q, from, to, window) and the same scoring. It returns at most limit rows, newest
+// first, and how many rows matched in all. Details of a failure are logged here, not shown.
+func (a *API) staffRecords(r *http.Request, limit int) ([]Record, int, *recordsError) {
+	readFailed := &recordsError{http.StatusInternalServerError, "Could not read the SOFI records."}
 	where := []string{"1 = 1"}
 	var args []any
 	if q := strings.TrimSpace(r.URL.Query().Get("q")); q != "" {
@@ -249,29 +271,24 @@ func (a *API) StaffList(w http.ResponseWriter, r *http.Request) {
 	}
 	dayWhere, dayArgs, derr := siteDayFilter(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
 	if derr != nil {
-		writeError(w, r, http.StatusBadRequest, derr.Error())
-		return
+		return nil, 0, &recordsError{http.StatusBadRequest, derr.Error()}
 	}
 	where, args = append(where, dayWhere...), append(args, dayArgs...)
 	clause, wargs, werr := windowFilter(r.URL.Query().Get("window"))
 	if werr != nil {
-		writeError(w, r, http.StatusBadRequest, werr.Error())
-		return
+		return nil, 0, &recordsError{http.StatusBadRequest, werr.Error()}
 	}
 	if clause != "" {
 		where, args = append(where, clause), append(args, wargs...)
 	}
-	// The table shows at most listLimit rows; the total is sent in a header so the page can say
-	// "showing the first 500 of N" instead of silently disagreeing with the dashboard's count.
 	var total int
 	if err := a.DB.QueryRow(`
 		SELECT COUNT(*) FROM SofiScreening s JOIN Patient p ON p.PatientID = s.FK_PatientID
 		WHERE `+strings.Join(where, " AND "), args...).Scan(&total); err != nil {
 		log.Printf("sofi: list count: %v", err)
-		writeError(w, r, http.StatusInternalServerError, "Could not read the SOFI records.")
-		return
+		return nil, 0, readFailed
 	}
-	args = append(args, listLimit)
+	args = append(args, limit)
 	rows, err := a.DB.Query(`
 		SELECT s.SofiID, p.Name, s.SubmittedAt, s.WeeksOnSite, COALESCE(s.AgeYears, 0), s.WorkPosition, s.Company,
 		       s.McuReviewStatus, s.Answers
@@ -282,8 +299,7 @@ func (a *API) StaffList(w http.ResponseWriter, r *http.Request) {
 		LIMIT ?`, args...)
 	if err != nil {
 		log.Printf("sofi: list: %v", err)
-		writeError(w, r, http.StatusInternalServerError, "Could not read the SOFI records.")
-		return
+		return nil, 0, readFailed
 	}
 	defer rows.Close()
 	out := []Record{}
@@ -293,8 +309,7 @@ func (a *API) StaffList(w http.ResponseWriter, r *http.Request) {
 		if err := rows.Scan(&rec.ID, &rec.Name, &rec.SubmittedAt, &rec.WeeksOnSite, &rec.Age, &rec.WorkPosition,
 			&rec.Company, &rec.MCUReviewStatus, &raw); err != nil {
 			log.Printf("sofi: list scan: %v", err)
-			writeError(w, r, http.StatusInternalServerError, "Could not read the SOFI records.")
-			return
+			return nil, 0, readFailed
 		}
 		var answers []int
 		if err := json.Unmarshal([]byte(raw), &answers); err != nil {
@@ -312,11 +327,9 @@ func (a *API) StaffList(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := rows.Err(); err != nil {
 		log.Printf("sofi: list rows: %v", err)
-		writeError(w, r, http.StatusInternalServerError, "Could not read the SOFI records.")
-		return
+		return nil, 0, readFailed
 	}
-	w.Header().Set("X-Total-Count", strconv.Itoa(total))
-	writeJSON(w, http.StatusOK, out)
+	return out, total, nil
 }
 
 // hasSubmitted tells whether the person already sent a questionnaire in this window.

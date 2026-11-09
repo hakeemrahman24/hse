@@ -21,7 +21,7 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <!-- ?v= because Cloudflare serves /static for 4 hours; bump it whenever app.css changes in a way this page needs at once. -->
-  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref8" />
+  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref9" />
   <script>
     document.documentElement.classList.remove("vt-cover");
   </script>
@@ -507,6 +507,8 @@
                 <span>Period</span>
                 <select id="sofi-round" class="sofi-round-select" data-default="all" aria-label="Period"></select>
               </label>
+              <!-- Follows the search and the Period, like the table; the file has every match, not only the newest rows shown. -->
+              <a href="/api/sofi-log.xlsx" id="sofi-export" class="btn-ghost" style="margin-left:auto">Export to Excel (.xlsx)</a>
             </div>
             <div class="table-scroll">
               <table class="data-table compact" id="sofi-table">
