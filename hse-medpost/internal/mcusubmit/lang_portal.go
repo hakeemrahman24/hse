@@ -89,6 +89,9 @@ var portalText = map[string][2]string{
 	"Indonesian citizens: the 16-digit NIK. Everyone else: the passport number (6 to 12 letters or digits).": {"Warga negara Indonesia: NIK 16 digit. Lainnya: nomor paspor (6 sampai 12 huruf atau angka).", "印度尼西亚公民：16 位 NIK。其他人：护照号码(6 到 12 位字母或数字)。"},
 	"Checkup result (PDF, up to 10 MB)": {"Hasil check-up (PDF, maksimal 10 MB)", "体检结果(PDF,最大 10 MB)"},
 	"The file is rebuilt when it is uploaded and is refused if it is over 10 MB. Password-protected PDFs and PDFs with scripts or attachments are refused.": {"File dibangun ulang saat diunggah dan ditolak jika lebih dari 10 MB. PDF yang dilindungi kata sandi serta PDF dengan skrip atau lampiran ditolak.", "文件上传时会被重新生成,超过 10 MB 将被拒绝。受密码保护的 PDF,以及带脚本或附件的 PDF 将被拒绝。"},
+	// New batch: the company can only be picked from the list
+	"Company not listed yet? Contact the medical team before submitting.": {"Perusahaan belum ada di daftar? Hubungi tim medis sebelum mengirim.", "没有找到您的公司？请在提交前联系医疗团队。"},
+
 	// The NIK / passport field follows the nationality
 	"NIK: exactly 16 digits, numbers only.":                    {"NIK: tepat 16 digit, hanya angka.", "NIK:正好 16 位,只能是数字。"},
 	"Passport number: 6 to 12 letters or digits, in capitals.": {"Nomor paspor: 6 sampai 12 huruf atau angka, huruf kapital.", "护照号码:6 至 12 位字母或数字,字母需大写。"},

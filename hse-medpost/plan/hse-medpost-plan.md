@@ -309,6 +309,10 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 ## Progress Log
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
+### 2026-11-09 — MCU portal: hint under the Company field on New batch
+
+- **What changed:** the new-employee Company field on New batch now shows "Company not listed yet? Contact the medical team before submitting." (Indonesian: Perusahaan belum ada di daftar? Hubungi tim medis sebelum mengirim.; Chinese added). Why: company is pick-only (owner's earlier decision), so a submitter whose company is missing must ask the medical team to add it first; the sign-up page already had a similar hint. Not deployed yet.
+
 ### 2026-11-09 — MCU portal: Indonesian "batch" instead of "kumpulan"
 
 - **What changed:** in the Indonesian texts (`lang_id.go`, `lang_portal.go`, and the test that quotes them) "kumpulan" became "batch" (Batch baru, Dokumen dalam batch ini, Kirim batch ke tim medis, Kembali ke batch). Why: "kumpulan" means a collection and did not sound right to the owner; "batch" is the word Indonesian offices already use. Chinese keeps 批次. Not deployed yet.
