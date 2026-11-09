@@ -309,6 +309,21 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 ## Progress Log
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
+### 2026-11-09 — MCU portal: desktop layout, live name/position/ID rules
+
+- **What changed (all in the browser; the server rules in `web_upload.go` and `sanitize.go` are unchanged and still decide):** (1) *Desktop layout* (`mcu-portal.css`, `portal.html`): from 900px a card is no longer capped at the phone width of 420px; on New batch (from 1100px) the form column is 540 to 680px wide and the new-employee fields sit two to a row (name / date of birth, position / company, nationality / gender, NIK full width); the review card shows its details in two pairs per row. The phone layout is unchanged. (2) *Name and position* (`mcu-portal-name.js`, v3): characters the field can never hold are now dropped while typing or pasting (it used to happen only when leaving the box); title case and spacing still apply on leaving the box. (3) *NIK / passport* (new `mcu-portal-id.js`): the field follows the nationality; Indonesia means digits only, at most 16; any other nation means capitals and digits only, at most 12; none chosen means capitals and digits, at most 16. The hint and placeholder change with it. No `pattern` attribute on purpose, so a half-typed hidden field cannot block the submit of an existing worker.
+- **Bug found on the way:** the upload progress bar (`.mp-progress`) was always visible, because `display:block` beat the `hidden` attribute; fixed with `.mp-progress[hidden]`.
+- **Verified:** headless Chromium screenshots at 1440, 1100 and 390 px; the typing rules driven in the real page (NIK `12a34-5678 9012345678` gives 16 digits, passport `ab-12 cd34efgh567890` gives `AB12CD34EFGH`); `go test ./internal/mcusubmit/`.
+- **Open:** My documents, Home and Settings only got the wider card rule, not a separate desktop design; the Chinese texts need the medical post's read-through.
+
+### 2026-11-09 — MCU upload: 10 MB hard limit, no server-side shrinking, "make a PDF smaller" tool in the browser
+
+- **What changed:** `MaxUploadBytes` is now 10 MB (was 15) and `PortalTargetBytes` equals it, so a file under 10 MB is stored as the lossless Ghostscript rebuild and nothing is squeezed; a bigger file is refused at once (client check in `mcu-portal-upload.js`, server 413 in `web_upload.go`). The automatic in-browser reduction (`mcu-portal-reduce.js`) is deleted. Instead the New batch page has an optional **Make it smaller here** tool (`web/static/mcu-portal-compress.js`, markup in `portal.html`, Indonesian and Chinese texts in `lang_portal.go`): pdf.js draws each page, jsPDF rebuilds the PDF from JPEGs, with a 9 / 5 / 2 MB target, then **Use this file for the upload** or **Save to my device**. It opens by itself with the file already in it when a chosen file is over 10 MB. Nothing leaves the device until the person uploads.
+- **Why:** the 12 MB scan failed with "too large even after compression" because the server needed 2 MB and Ghostscript only reached 7.8 MB; the owner decided on a plain 10 MB limit instead. R2 was considered and dropped by the owner: files stay on the Pi's disk behind `FileStore` (the R2 code was written and removed again, nothing deployed).
+- **Cost the tool states on the page:** the smaller PDF holds pictures of the pages, so its text cannot be selected or searched.
+- **Verified:** `go test ./internal/mcusubmit/` and a headless Chromium run of the real script on a 22.6 MB, 6-page noisy scan (4.4 MB result, retries worked, tool opened with the file loaded). Not yet looked at on the real page with the portal CSS, or on a phone.
+- **Open:** the Chinese texts need the medical team's read-through; the stage-two idea of moving files to R2 is closed unless the Pi's disk becomes a problem.
+
 ### 2026-11-09 (latest) — Corrective action tracking planned (not built)
 
 - **What changed:** only a plan, `plan/corrective-action-plan.md`. No code, no migrations.

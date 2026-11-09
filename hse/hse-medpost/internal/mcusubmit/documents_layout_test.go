@@ -134,19 +134,19 @@ func TestCompanyShowsItsAbbreviationFirst(t *testing.T) {
 func TestNewBatchHasTheUploadProgressBlockInEveryLanguage(t *testing.T) {
 	u := newUploadEnv(t)
 	body := u.get("/mcu-submit/batch", u.cookie).Body.String()
-	for _, want := range []string{`id="up-progress"`, `id="up-status"`, `data-m="checking"`, "/static/mcu-portal-upload.js"} {
+	for _, want := range []string{`id="up-progress"`, `id="up-status"`, `data-m="checking"`, "/static/mcu-portal-upload.js", `id="cp-tool"`, `id="cp-run"`, "/static/mcu-portal-compress.js", `id="id-hint"`, `data-m="hintnik"`, "/static/mcu-portal-id.js"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("New batch lacks %q", want)
 		}
 	}
 	for _, text := range []string{
-		"Uploading the file…", "The file is larger than 15 MB. Split it or scan at a lower resolution.",
+		"Uploading the file…", "PDF over 10 MB? Make it smaller here", "NIK: exactly 16 digits, numbers only.", "Passport number: 6 to 12 letters or digits, in capitals.", "Make smaller", "Use this file for the upload", "The file is larger than 10 MB. Split it or scan at a lower resolution.",
 	} {
 		if _, ok := portalText[text]; !ok {
 			t.Errorf("no Indonesian/Chinese text for %q", text)
 		}
 	}
-	for _, key := range []string{"Uploaded. Checking and shrinking the file now.", "This file is over 10 MB, so uploading", "This file is over 10 MB. Making it smaller first", "Made smaller: {from} MB", "The connection was cut or timed out."} {
+	for _, key := range []string{"Uploaded. Checking the file now.", "The connection was cut or timed out."} {
 		found := false
 		for en := range portalText {
 			if strings.HasPrefix(en, key) {

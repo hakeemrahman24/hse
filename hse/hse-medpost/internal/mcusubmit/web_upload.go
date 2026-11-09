@@ -202,7 +202,7 @@ func (a *API) AddDocument(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseMultipartForm(maxUploadForm); err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
-			a.renderBatch(w, r.Context(), http.StatusRequestEntityTooLarge, u, nil, "The file is larger than 15 MB. Split it or scan at a lower resolution.")
+			a.renderBatch(w, r.Context(), http.StatusRequestEntityTooLarge, u, nil, "The file is larger than 10 MB. Split it or scan at a lower resolution.")
 			return
 		}
 		a.renderBatch(w, r.Context(), http.StatusBadRequest, u, nil, "The upload could not be read. Please try again.")
@@ -264,7 +264,7 @@ func (a *API) uploadFailed(w http.ResponseWriter, r *http.Request, u *Submitter,
 	case errors.Is(err, ErrDailyLimit):
 		status, msg = http.StatusTooManyRequests, "You have reached the limit of uploads for today. Please continue tomorrow."
 	case errors.Is(err, ErrTooLarge):
-		status, msg = http.StatusRequestEntityTooLarge, "The file is larger than 15 MB. Split it or scan at a lower resolution."
+		status, msg = http.StatusRequestEntityTooLarge, "The file is larger than 10 MB. Split it or scan at a lower resolution."
 	case errors.Is(err, ErrNotPDF):
 		msg = "This file is not a PDF. Upload the checkup result as a PDF."
 	case errors.Is(err, ErrEncrypted):
