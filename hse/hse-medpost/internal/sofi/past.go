@@ -34,6 +34,7 @@ func (a *API) pastResults(patientID int64) ([]PastResult, error) {
 		return nil, fmt.Errorf("list past results: %w", err)
 	}
 	defer rows.Close()
+	dims := a.dimensions()
 	out := []PastResult{}
 	for rows.Next() {
 		var at, raw string
@@ -50,6 +51,7 @@ func (a *API) pastResults(patientID int64) ([]PastResult, error) {
 			log.Printf("sofi: past result for patient %d: %v", patientID, err)
 			continue
 		}
+		res = named(res, dims)
 		out = append(out, PastResult{SubmittedAt: siteFromDB(at), Dimensions: res.Dimensions, Total: res.Total, TotalMax: res.TotalMax, Level: res.Level})
 	}
 	return out, rows.Err()

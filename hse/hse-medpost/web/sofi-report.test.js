@@ -31,7 +31,7 @@ function summaryData(groupCount) {
     total: 3, people: 3, by: "company", moreGroups: 5,
     results: { low: 1, moderate: 0, high: 2 },
     weeksOnSite: { low: { average: 12.5, counted: 1, overYear: 2 }, moderate: { average: 0, counted: 0, overYear: 0 }, high: { average: 30, counted: 2, overYear: 0 } },
-    dimensions: ["Lack of energy", "Physical exertion", "Physical discomfort", "Lack of motivation", "Sleepiness"].map(dim),
+    dimensions: ["Lack of Energy at Work", "Exerting Physical Effort", "Physical Discomfort", "Lack of Motivation at Work", "Feeling of Sleepiness"].map(dim),
     groups,
   };
 }

@@ -289,7 +289,7 @@ const sectionMeta = {
   },
   "sofi-questionnaire": {
     title: "SOFI questionnaire",
-    hint: "The 20 items workers rate at /sofi, as they see them. Edit changes the wording of one item in English, Indonesian or Chinese; the dimensions and the scoring stay as they are.",
+    hint: "The 20 items workers rate at /sofi, as they see them. Edit changes the wording of one item, and Rename the name of a dimension, in English, Indonesian or Chinese; which items belong to which dimension and the scoring stay as they are.",
   },
   "mcu-notifications": {
     title: "Email notifications",

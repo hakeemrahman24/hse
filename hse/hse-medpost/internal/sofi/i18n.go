@@ -56,7 +56,7 @@ var messages = [][2]string{
 	{"Too many searches, please wait a minute.", "Terlalu banyak pencarian, tunggu satu menit."},
 	{"Sign-in is not available right now. Please try again later.", "Masuk sedang tidak tersedia. Silakan coba lagi nanti."},
 	{"Please sign in first.", "Silakan masuk terlebih dahulu."},
-	{"Enter the weeks on site and answer every word.", "Isi minggu di lokasi dan jawab semua kata."},
+	{"Enter the weeks on site and answer every item.", "Isi minggu di lokasi dan jawab semua pernyataan."},
 	{"Too many submissions, please try again later.", "Terlalu banyak pengiriman, silakan coba lagi nanti."},
 
 	{"Signed in as", "Masuk sebagai"},
@@ -77,7 +77,7 @@ var messages = [][2]string{
 	{"Not at all", "Tidak sama sekali"},
 	{"To a very large extent", "Sangat besar"},
 	{"Submit", "Kirim"},
-	{"Please answer every word.", "Jawab semua kata."},
+	{"Please answer every item.", "Jawab semua pernyataan."},
 	{"Choose the weeks on site.", "Pilih lama di lokasi (minggu)."},
 	{"More than 1 year", "Lebih dari 1 tahun"},
 	{"Choose", "Pilih"},

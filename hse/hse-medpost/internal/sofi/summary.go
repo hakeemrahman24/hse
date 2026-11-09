@@ -98,7 +98,7 @@ func (a *API) StaffSummary(w http.ResponseWriter, r *http.Request) {
 	out := summary{Results: newLevelCounts(), By: by, Groups: []groupSummary{}}
 	sums := make([]int, len(Dimensions))
 	out.Dimensions = make([]dimensionSummary, len(Dimensions))
-	for i, d := range Dimensions {
+	for i, d := range a.dimensions() {
 		out.Dimensions[i] = dimensionSummary{Key: d.Key, EN: d.EN, ID: d.ID, Max: itemsPerDimension * MaxAnswer, Results: newLevelCounts()}
 	}
 	weekSums := map[string]int{}

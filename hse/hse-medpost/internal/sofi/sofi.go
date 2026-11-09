@@ -71,6 +71,7 @@ type API struct {
 	submitMu      sync.Mutex  // makes "already submitted?" and the insert one step
 	previewWarned atomic.Bool // the missing-preview-table warning is logged once, not on every request
 	itemsWarned   atomic.Bool // same, for the SofiItem table
+	dimsWarned    atomic.Bool // same, for the SofiDimension table
 }
 
 // New builds the handlers. The signing key is derived from the staff session secret, so a staff
@@ -88,13 +89,20 @@ func New(database *sql.DB, sessionSecret, templateDir string) (*API, error) {
 		return nil, fmt.Errorf("sofi templates: %w", err)
 	}
 	sum := sha256.Sum256([]byte("sofi|" + sessionSecret))
-	return &API{
+	api := &API{
 		DB:    database,
 		store: auth.NewStore(hex.EncodeToString(sum[:])),
 		pages: pages,
 		lim:   ratelimit.New(),
 		now:   time.Now,
-	}, nil
+	}
+	// Fill the questionnaire tables with the built-in dimensions and items if they are empty. A
+	// failure (the MariaDB tables are created by hand and may not exist yet) only means /sofi keeps
+	// the built-in wording, so it is logged, not fatal.
+	if err := api.seedQuestionnaire(); err != nil {
+		log.Printf("sofi: questionnaire tables not filled, using the built-in wording (run migrations/mysql/040_sofi_dimensions.sql and 041_sofi_items.sql?): %v", err)
+	}
+	return api, nil
 }
 
 // TrustCloudflareHeader makes the rate limits use CF-Connecting-IP and marks the cookie Secure.

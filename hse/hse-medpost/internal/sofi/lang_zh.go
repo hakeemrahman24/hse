@@ -39,7 +39,7 @@ var zhMessages = map[string]string{
 	"Too many searches, please wait a minute.":                           "搜索次数过多，请等待一分钟。",
 	"Sign-in is not available right now. Please try again later.":        "暂时无法登录，请稍后再试。",
 	"Please sign in first.":                                              "请先登录。",
-	"Enter the weeks on site and answer every word.":                     "请填写在场周数并回答每一个词。",
+	"Enter the weeks on site and answer every item.":                     "请填写在场周数并回答每一项。",
 	"Too many submissions, please try again later.":                      "提交次数过多，请稍后再试。",
 
 	"Signed in as":      "当前登录：",
@@ -61,7 +61,7 @@ var zhMessages = map[string]string{
 	"Not at all":                "完全没有",
 	"To a very large extent":    "非常强烈",
 	"Submit":                    "提交",
-	"Please answer every word.": "请回答每一个词。",
+	"Please answer every item.": "请回答每一项。",
 	"Choose the weeks on site.": "请选择在场周数。",
 	"More than 1 year":          "超过 1 年",
 	"Choose":                    "请选择",
