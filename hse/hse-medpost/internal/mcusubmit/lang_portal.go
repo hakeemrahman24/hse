@@ -37,7 +37,7 @@ var portalText = map[string][2]string{
 	"soon":     {"kedaluwarsa", "到期"},
 	"Workers you submitted whose checkup is about to expire": {"Pekerja yang Anda kirim dan medical check-up-nya akan segera kedaluwarsa", "您提交的员工中，体检即将到期的人员"},
 	"Valid until":               {"Berlaku sampai", "有效期至"},
-	"Start or continue a batch": {"Mulai atau lanjutkan kumpulan", "开始或继续批次"},
+	"Start or continue a batch": {"Mulai atau lanjutkan batch", "开始或继续批次"},
 
 	// The documents table (My documents and the batch page)
 	"Sent":                 {"Dikirim", "发送时间"},
@@ -72,8 +72,8 @@ var portalText = map[string][2]string{
 
 	// New batch
 	"New":   {"Buat", "新建"},
-	"batch": {"kumpulan", "批次"},
-	"Add the workers one by one. Each document is checked by you first. When all are confirmed, send the batch to the medical team. Nothing is visible to the medical team until you press Send.": {"Tambahkan pekerja satu per satu. Setiap dokumen Anda periksa lebih dulu. Setelah semuanya dikonfirmasi, kirim kumpulan ke tim medis. Tim medis tidak dapat melihat apa pun sampai Anda menekan Kirim.", "请逐个添加员工。每份文件都先由您自己检查。全部确认后，把批次发送给医疗团队。在您点击发送之前，医疗团队看不到任何内容。"},
+	"batch": {"batch", "批次"},
+	"Add the workers one by one. Each document is checked by you first. When all are confirmed, send the batch to the medical team. Nothing is visible to the medical team until you press Send.": {"Tambahkan pekerja satu per satu. Setiap dokumen Anda periksa lebih dulu. Setelah semuanya dikonfirmasi, kirim batch ke tim medis. Tim medis tidak dapat melihat apa pun sampai Anda menekan Kirim.", "请逐个添加员工。每份文件都先由您自己检查。全部确认后，把批次发送给医疗团队。在您点击发送之前，医疗团队看不到任何内容。"},
 	"Find the worker (type at least 3 letters of the name)":                 {"Cari pekerja (ketik minimal 3 huruf nama)", "查找员工(至少输入姓名中的 3 个字母)"},
 	"Choose another worker":                                                 {"Pilih pekerja lain", "选择其他员工"},
 	"Search needs JavaScript. Without it, use the new employee form below.": {"Pencarian memerlukan JavaScript. Tanpa itu, gunakan formulir karyawan baru di bawah.", "搜索需要 JavaScript。如果不可用，请使用下方的新员工表单。"},
@@ -116,7 +116,7 @@ var portalText = map[string][2]string{
 	"Uploading the file…": {"Mengunggah file…", "正在上传文件…"},
 	"Uploaded. The portal is now checking that the file is a safe, readable PDF. A large file can take a minute. Keep this page open.":        {"Sudah terunggah. Portal sedang memeriksa apakah file ini PDF yang aman dan bisa dibaca. File besar bisa memakan waktu sekitar satu menit. Biarkan halaman ini tetap terbuka.", "已上传。系统正在检查该文件是否为安全、可读取的 PDF。较大的文件可能需要一分钟左右。请保持此页面打开。"},
 	"The file is larger than 10 MB. Split it or scan at a lower resolution.":                                                                  {"File lebih besar dari 10 MB. Bagi file atau pindai dengan resolusi lebih rendah.", "文件超过 10 MB。请拆分文件或降低扫描分辨率。"},
-	"The connection was cut or timed out. The file may have arrived: look in the list of documents in this batch before you upload it again.": {"Koneksi terputus atau habis waktu. File mungkin sudah sampai: lihat daftar dokumen di kumpulan ini sebelum mengunggah ulang.", "连接中断或超时。文件可能已送达：请先查看本批次的文件列表，再重新上传。"},
+	"The connection was cut or timed out. The file may have arrived: look in the list of documents in this batch before you upload it again.": {"Koneksi terputus atau habis waktu. File mungkin sudah sampai: lihat daftar dokumen di batch ini sebelum mengunggah ulang.", "连接中断或超时。文件可能已送达：请先查看本批次的文件列表，再重新上传。"},
 	"Already sent: waiting for the medical team": {"Sudah dikirim: menunggu tim medis", "已发送：等待医疗团队处理"},
 	"Checkup done {last}, valid until {until}. A new one is accepted only more than 180 days after the last, from {from}.": {"Check-up dilakukan {last}, berlaku sampai {until}. Yang baru diterima hanya lebih dari 180 hari setelah yang terakhir, yaitu mulai {from}.", "体检日期 {last}，有效期至 {until}。仅在上次体检 180 天之后才接受新的体检，从 {from} 起。"},
 	"This worker already has a document waiting for the medical team. Wait for its result before sending another.":         {"Pekerja ini sudah memiliki dokumen yang menunggu tim medis. Tunggu hasilnya sebelum mengirim yang lain.", "该员工已有文件在等待医疗团队处理。请等待结果后再提交新的。"},
@@ -127,7 +127,7 @@ var portalText = map[string][2]string{
 
 	// Send the batch
 	"Send the":          {"Kirim", "发送"},
-	"Back to the batch": {"Kembali ke kumpulan", "返回批次"},
+	"Back to the batch": {"Kembali ke batch", "返回批次"},
 
 	// Review one document
 	"document": {"dokumen", "文件"},
@@ -137,7 +137,7 @@ var portalText = map[string][2]string{
 	"New employee (not on file yet)": {"Karyawan baru (belum terdaftar)", "新员工(尚无档案)"},
 	"Existing worker on file":        {"Pekerja yang sudah terdaftar", "已有档案的员工"},
 	"Open the PDF in a new tab":      {"Buka PDF di tab baru", "在新标签页中打开 PDF"},
-	"Confirm and add to batch":       {"Konfirmasi dan tambahkan ke kumpulan", "确认并加入批次"},
+	"Confirm and add to batch":       {"Konfirmasi dan tambahkan ke batch", "确认并加入批次"},
 	"Already confirmed.":             {"Sudah dikonfirmasi.", "已确认。"},
 
 	// Settings
@@ -174,13 +174,13 @@ var portalPatterns = []portalPattern{
 		"Pekerja ini sudah memiliki medical check-up yang berlaku (dilakukan $1, berlaku sampai $2). Check-up baru diterima hanya lebih dari 180 hari setelah yang terakhir, yaitu mulai $3.", "该员工已有有效体检（体检日期 $1，有效期至 $2）。仅在上次体检 180 天之后才接受新的体检，从 $3 起。"},
 	{regexp.MustCompile(`^(\d+) documents need your action$`), "$1 dokumen perlu tindakan Anda", "$1 份文件需要您处理"},
 	{regexp.MustCompile(`^(\d+) documents?, page (\d+) of (\d+)$`), "$1 dokumen, halaman $2 dari $3", "共 $1 份文件，第 $2 页，共 $3 页"},
-	{regexp.MustCompile(`^Send batch of (\d+) for review$`), "Kirim kumpulan berisi $1 dokumen untuk ditinjau", "发送包含 $1 份文件的批次以供审核"},
+	{regexp.MustCompile(`^Send batch of (\d+) for review$`), "Kirim batch berisi $1 dokumen untuk ditinjau", "发送包含 $1 份文件的批次以供审核"},
 	{regexp.MustCompile(`^Yes, send (\d+)$`), "Ya, kirim $1", "是，发送 $1 份"},
 	{regexp.MustCompile(`^(\d+) document\(s\) still need your review\. Confirm or discard them, then you can send the batch\.$`),
-		"$1 dokumen masih perlu Anda periksa. Konfirmasi atau buang, lalu Anda dapat mengirim kumpulan.",
+		"$1 dokumen masih perlu Anda periksa. Konfirmasi atau buang, lalu Anda dapat mengirim batch.",
 		"还有 $1 份文件需要您检查。请先确认或放弃，然后才能发送批次。"},
 	{regexp.MustCompile(`^The medical team will see these (\d+) documents\. After sending you cannot add more to this batch or take a document back, except by withdrawing it while it is waiting for review\.$`),
-		"Tim medis akan melihat $1 dokumen ini. Setelah dikirim, Anda tidak dapat menambah dokumen ke kumpulan ini atau mengambil kembali dokumen, kecuali dengan menariknya selama menunggu peninjauan.",
+		"Tim medis akan melihat $1 dokumen ini. Setelah dikirim, Anda tidak dapat menambah dokumen ke batch ini atau mengambil kembali dokumen, kecuali dengan menariknya selama menunggu peninjauan.",
 		"医疗团队将看到这 $1 份文件。发送后，您不能再向此批次添加文件，也不能收回文件，但在文件等待审核期间可以撤回。"},
 	{regexp.MustCompile(`^You signed this statement on (.+)\.$`), "Anda menandatangani pernyataan ini pada $1.", "您已于 $1 签署此声明。"},
 	{regexp.MustCompile(`^Now: (.+)$`), "Sekarang: $1", "当前：$1"},

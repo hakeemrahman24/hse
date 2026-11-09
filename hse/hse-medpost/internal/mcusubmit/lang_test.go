@@ -132,7 +132,7 @@ func TestChoosingChineseSetsTheCookieAndTranslatesThePages(t *testing.T) {
 
 func TestSignedInPagesAreTranslatedAndSentencesWithNumbersToo(t *testing.T) {
 	for lang, want := range map[string][]string{
-		"id": {"Kirim kumpulan berisi 3 dokumen untuk ditinjau", "Dokumen", "Perlu tindakan"},
+		"id": {"Kirim batch berisi 3 dokumen untuk ditinjau", "Dokumen", "Perlu tindakan"},
 		"zh": {"发送包含 3 份文件的批次以供审核", "我的", "需要处理"},
 	} {
 		page := translateHTML(`<html lang="en"><h1>My <span>documents</span></h1><label><span>Needs action</span></label><button>Send batch of 3 for review</button>`, lang)
