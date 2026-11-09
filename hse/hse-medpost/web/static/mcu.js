@@ -2305,6 +2305,10 @@ function showMcuTab(tab) {
     patientForm.hidden = true;
     patientDetail.hidden = true;
   }
+  // Leaving the list tabs (Submitted after Cancel or Save on a review, or Dashboard mid-form) must also
+  // tear down the form chrome: the floating Save/Cancel bar and the is-form-focus layout are only
+  // removed by this call, so skipping it left the bar on screen.
+  if (!listTab) setDataEntryListVisible(true);
   const dashboardPane = document.getElementById("tab-dashboard");
   if (dashboardPane) dashboardPane.hidden = tab !== "dashboard";
   mcuSection = MCU_SECTION_LABELS[tab] || "MCU data";
