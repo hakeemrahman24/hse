@@ -211,7 +211,18 @@ func (s *Store) NormalizeReviewed(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	n, _ := res.RowsAffected()
-	return int(n), nil
+	// Documents closed before the IncompleteResult rule existed go back to Reviewed: the checkup is
+	// still open, so the document must be too.
+	res2, err := s.DB.ExecContext(ctx,
+		`UPDATE McuSubmission SET Status = ?
+		 WHERE Status = ? AND EXISTS (
+		   SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria = 'IncompleteResult')`,
+		SubReviewed, SubClosed)
+	if err != nil {
+		return int(n), err
+	}
+	n2, _ := res2.RowsAffected()
+	return int(n + n2), nil
 }
 
 // RemoveSubmission permanently removes a sent document (admin only, enforced where it is routed).
@@ -244,10 +255,13 @@ func (s *Store) RemoveSubmission(ctx context.Context, id, staffID int64) (fileRe
 // 2026-10-31: Closed means the submitter was told). The daily "your checkups are done" mail looks
 // for Closed documents. Only a Reviewed document with a
 // linked checkup can close, which is the same as "the worker has a checkup with a result".
+// An IncompleteResult is a saved-but-undecided checkup (the checkup itself stays Open), so its
+// document stays Reviewed and open until a real result is saved (owner, 2026-11-09).
 func (s *Store) CloseReviewed(ctx context.Context, id, staffID int64) error {
 	res, err := s.DB.ExecContext(ctx,
 		`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ? AND Status = ? AND FK_McuRecordID IS NOT NULL
-		   AND EXISTS (SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria IS NOT NULL)`,
+		   AND EXISTS (SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria IS NOT NULL
+		     AND r.ResultCriteria <> 'IncompleteResult')`,
 		SubClosed, id, SubReviewed)
 	if err != nil {
 		return err
