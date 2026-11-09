@@ -507,3 +507,38 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
 .mp .mp-docs .mp-pdf { margin-right: 6px; }
 .mp .mp-docs td.mp-decide { white-space: nowrap; }
 
+/* Phone navigation chips (Home, New batch, My documents, Settings): all the same size (owner,
+   2026-11-09). The first group ("Home") had its own padding, font size and 4px top margin from the
+   desktop sidebar rules, so it sat lower and looked bigger than the rest. Same height as the
+   buttons (30px), same padding, text centred; the current page has the pink border. */
+@media (max-width: 640px) {
+  .mp .app-sidebar .app-program-list,
+  .mp .app-sidebar .app-program-list:first-child { margin: 0; }
+  .mp .app-sidebar .app-program-list .app-program-item,
+  .mp .app-sidebar .app-program-list:first-child .app-program-item {
+    display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+    height: 30px; padding: 0 14px; min-width: 0; line-height: 1;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 2px; box-shadow: none;
+  }
+  .mp .app-sidebar .app-program-list .app-program-item-title,
+  .mp .app-sidebar .app-program-list:first-child .app-program-item-title {
+    font-size: 0.8125rem; font-weight: 600; line-height: 1;
+  }
+  .mp .app-sidebar a.app-program-item.active,
+  .mp .app-sidebar .app-program-list:first-child a.app-program-item.active {
+    background: var(--hl); border-color: var(--accent); box-shadow: none;
+  }
+}
+
+/* Very narrow phones (360px): the header has to fit the name, Sign out and three language buttons on
+   one line, so those buttons give up a little padding and width (the 30px height stays). */
+@media (max-width: 380px) {
+  .mp .mp-nav-links { gap: 4px; }
+  .mp .mp-nav-links .btn-primary, .mp .mp-nav-links .btn-ghost, .mp .mp-lang .btn-ghost { padding: 0 6px !important; }
+  .mp .mp-lang .btn-ghost { min-width: 30px; }
+  .mp .mp-lang { gap: 4px; }
+}
+@media (max-width: 340px) {
+  .mp .nav-logo { font-size: 0.72rem !important; }
+}
+
