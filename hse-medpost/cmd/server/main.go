@@ -12,6 +12,7 @@ import (
 	"hse-medpost/internal/auth"
 	"hse-medpost/internal/company"
 	"hse-medpost/internal/config"
+	"hse-medpost/internal/correctiveaction"
 	"hse-medpost/internal/db"
 	"hse-medpost/internal/directory"
 	"hse-medpost/internal/emr"
@@ -48,7 +49,7 @@ func main() {
 		if err := sofi.DropOldQuestionnaireTables(database); err != nil {
 			log.Fatal(err)
 		}
-		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "020_mcu_portal_digest.sql", "021_mcu_mail_setting.sql", "022_mcu_submission_record_unique.sql", "023_unfit_is_open.sql", "024_sofi_preview.sql", "025_document_reference.sql", "026_sofi_dimensions.sql", "027_sofi_items.sql"} {
+		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "020_mcu_portal_digest.sql", "021_mcu_mail_setting.sql", "022_mcu_submission_record_unique.sql", "023_unfit_is_open.sql", "024_sofi_preview.sql", "025_document_reference.sql", "026_sofi_dimensions.sql", "027_sofi_items.sql", "028_corrective_action.sql"} {
 			sqlText, err := db.LoadMigrationFile(filepath.Join("migrations", "sqlite", name))
 			if err != nil {
 				log.Fatal(err)
@@ -338,6 +339,13 @@ func main() {
 	mux.Handle("DELETE /api/uploads/{evidenceId}", middleware.RequireAuth(http.HandlerFunc(logAPI.DeleteEvidence)))
 	mux.Handle("GET /api/uploads/download-all/info", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(logAPI.DownloadAllUploadsInfo))))
 	mux.Handle("GET /api/uploads/download-all", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(logAPI.DownloadAllUploads))))
+
+	// Corrective actions: any signed-in staff may add, edit, close and reopen; only an admin may delete a
+	// finding (plan/corrective-action-plan.md). Photos live under the same upload root as other evidence.
+	correctiveActionAPI := &correctiveaction.API{Store: &correctiveaction.Store{DB: database}, UploadDir: cfg.UploadDir}
+	correctiveActionAPI.Register(mux, middleware.RequireAuth, func(h http.Handler) http.Handler {
+		return middleware.RequireAuth(middleware.RequireAdmin(h))
+	})
 
 	mux.Handle("GET /api/documents", middleware.RequireAuth(http.HandlerFunc(logAPI.ListDocuments)))
 	mux.Handle("GET /api/documents/{id}/file", middleware.RequireAuth(http.HandlerFunc(logAPI.DocumentFile)))

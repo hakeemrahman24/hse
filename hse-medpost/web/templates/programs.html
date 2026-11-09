@@ -21,6 +21,7 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
+  <link rel="stylesheet" href="/static/corrective.css" />
   <script>
     document.documentElement.classList.remove("vt-cover");
   </script>
@@ -59,8 +60,9 @@
 
         <div id="program-tabs" class="app-tabs" hidden>
           <button type="button" class="app-tab active" data-tab="activities">Activities</button>
-          <button type="button" class="app-tab" data-tab="reference">Reference</button>
-          {{if eq .Role "admin"}}<button type="button" class="app-tab" data-tab="subheaders">Sub-headers</button>{{end}}
+          <button type="button" class="app-tab" data-tab="corrective">Corrective actions</button>
+          <button type="button" class="app-tab" data-tab="reference" data-scope="program">Reference</button>
+          {{if eq .Role "admin"}}<button type="button" class="app-tab" data-tab="subheaders" data-scope="program">Sub-headers</button>{{end}}
         </div>
 
         <div id="tab-activities">
@@ -137,6 +139,76 @@
 
           <div id="groups" class="app-groups"></div>
           <p id="empty" class="app-empty">No program selected yet.</p>
+        </div>
+
+        <div id="tab-corrective" hidden>
+          <form id="ca-filter" class="app-filter">
+            <label class="search-field">
+              <span>Search</span>
+              <input type="text" name="q" placeholder="Finding, location or PIC" />
+            </label>
+            <label>
+              <span>Status</span>
+              <select name="status">
+                <option value="">All</option>
+                <option value="Open">Open</option>
+                <option value="In Progress">In progress</option>
+                <option value="Overdue">Overdue</option>
+                <option value="Closed">Closed</option>
+              </select>
+            </label>
+            <label>
+              <span>Severity</span>
+              <select name="severity">
+                <option value="">All</option>
+                <option value="Minor">Minor</option>
+                <option value="Major">Major</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </label>
+            <label id="ca-program-wrap" hidden>
+              <span>Program</span>
+              <select name="procId"><option value="">All programs</option></select>
+            </label>
+            <label>
+              <span>From</span>
+              <input type="date" name="from" />
+            </label>
+            <label>
+              <span>To</span>
+              <input type="date" name="to" />
+            </label>
+            <button type="submit" class="btn-primary">Apply</button>
+            <button type="button" id="ca-reset" class="btn-ghost">Reset</button>
+          </form>
+          <div class="ca-toolbar">
+            <p id="ca-summary" class="ca-summary" aria-live="polite"></p>
+            <div class="ca-toolbar-actions">
+              <a id="ca-export" class="btn-ghost" href="/api/corrective-actions.xlsx">Export to Excel (.xlsx)</a>
+              <button type="button" id="ca-add" class="btn-ghost">Add finding</button>
+            </div>
+          </div>
+          <div class="table-scroll">
+            <table id="ca-table" class="data-table ca-table">
+              <thead>
+                <tr>
+                  <th class="ca-col-program">Program</th>
+                  <th>Inspected</th>
+                  <th>Location</th>
+                  <th>Finding</th>
+                  <th>Recommendation</th>
+                  <th>PIC</th>
+                  <th>Due</th>
+                  <th>Closed</th>
+                  <th title="Before / After photos">Photos</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="ca-body"></tbody>
+            </table>
+          </div>
+          <p id="ca-empty" class="app-empty" hidden></p>
+          <button type="button" id="ca-more" class="btn-ghost" hidden>Show more</button>
         </div>
 
         <div id="tab-reference" hidden>
@@ -232,6 +304,51 @@
     </section>
   </div>
 
+  <dialog id="ca-form-dialog" class="ca-dialog" aria-labelledby="ca-form-title">
+    <form id="ca-form">
+      <h2 id="ca-form-title">Add finding</h2>
+      <p id="ca-form-source" class="ca-note" hidden></p>
+      <div class="ca-grid">
+        <label class="ca-field"><span>Program</span><select name="procId" required></select></label>
+        <label class="ca-field"><span>Inspection date</span><input type="date" name="inspectionDate" required /></label>
+        <label class="ca-field"><span>Location</span><input type="text" name="location" maxlength="255" /></label>
+        <label class="ca-field">
+          <span>Severity</span>
+          <select name="severity">
+            <option value="Minor">Minor</option>
+            <option value="Major">Major</option>
+            <option value="Critical">Critical</option>
+          </select>
+        </label>
+        <label class="ca-field"><span>Due date</span><input type="date" name="dueDate" /></label>
+        <div class="ca-field"><span>Person in charge (PIC)</span><div id="ca-form-pic"></div></div>
+        <label class="ca-field ca-span"><span>Finding</span><textarea name="finding" rows="3" required maxlength="4000"></textarea></label>
+        <label class="ca-field ca-span"><span>Recommendation</span><textarea name="recommendation" rows="3" required maxlength="4000"></textarea></label>
+        <label class="ca-field" id="ca-form-status-wrap" hidden>
+          <span>Status</span>
+          <select name="status">
+            <option value="Open">Open</option>
+            <option value="In Progress">In progress</option>
+          </select>
+        </label>
+        <label class="ca-field ca-span" id="ca-form-photos-wrap">
+          <span>Before photos (up to 3, JPEG or PNG, reduced to under 600 KB)</span>
+          <input type="file" name="beforePhotos" accept="image/jpeg,image/png" multiple />
+        </label>
+      </div>
+      <p id="ca-form-msg" class="ca-note" role="status"></p>
+      <div class="ca-actions">
+        <button type="submit" class="btn-primary" id="ca-form-save">Save</button>
+        <button type="button" class="btn-ghost" id="ca-form-cancel">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="ca-detail-dialog" class="ca-dialog ca-dialog-wide" aria-labelledby="ca-detail-title">
+    <div id="ca-detail-note" class="ca-note ca-error" role="alert"></div>
+    <div id="ca-detail-body"></div>
+  </dialog>
+
   <dialog id="lightbox" class="app-lightbox">
     <img id="lightbox-img" class="app-lightbox-img" alt="" />
   </dialog>
@@ -249,10 +366,16 @@
   <script src="/static/case-guard.js"></script>
   <script src="/static/summary-format.js"></script>
   <script src="/static/image-compress.js"></script>
+  <script src="/static/corrective-core.js"></script>
+  <script src="/static/corrective-photo.js"></script>
+  <script src="/static/corrective-pic.js"></script>
   <script src="/static/clearwave/app-nav.js"></script>
   <script src="/static/presence.js"></script>
   <script src="/static/clinic-date.js"></script>
   <script src="/static/app.js"></script>
+  <script src="/static/corrective.js"></script>
+  <script src="/static/corrective-form.js"></script>
+  <script src="/static/corrective-detail.js"></script>
 
   <footer class="app-dev-credit">
     <p>Developed by dr. Arif Rahman Hakim.</p>

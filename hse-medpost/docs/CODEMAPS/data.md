@@ -25,3 +25,8 @@ Planned, not built: VisitOutpatient, VisitVitals, Referral, SickLeave (see plan/
 ## Migration history (recent)
 013/021 region · 014/022 visit+malaria · 023 malaria purpose · 024 MalariaID own key (mysql only; sqlite via emr.EnsureMalariaID)
 019 rename screening tables · 018 audit/documents · 011-017 screening, fatigue, alcohol fields, test-log kind/title
+
+## Corrective actions (sqlite 028 / mysql 042)
+CorrectiveActionTable (finding, Program FK_ProcID, optional FK_ActivityID, PicName+PicEmployeeID text copies, Due, Severity, Status, closing date, action taken)
+CorrectiveActionPhotoTable (Before|After, FileLink, SortOrder, ≤3 per phase) · CorrectiveActionFollowUpTable (own PIC text + due, Open|Done)
+CorrectiveActionHistoryTable (edit history, goes with the finding on delete)

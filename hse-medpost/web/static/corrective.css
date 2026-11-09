@@ -1,0 +1,561 @@
+/* Corrective actions tab, its dialogs and the PIC dropdown. Loaded only by programs.html.
+   Colours come from the app's own tokens (--accent, --text-*, --border, --surface) with fallbacks, so the
+   tab looks like the rest of the staff app. The status chips pair a colour with a WORD (Open, Overdue,
+   Closed), so colour is never the only signal. */
+
+.ca-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.ca-summary {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+
+/* The line under the filters: the "N findings" summary on the left, Export and Add on the right. */
+.ca-toolbar {
+  --ca-control-h: 2.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 10px 16px 0;
+}
+
+.ca-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ca-note {
+  margin: 8px 0;
+  font-size: 0.8125rem;
+  color: var(--text-3);
+}
+
+.ca-note:empty {
+  display: none;
+}
+
+.ca-error {
+  color: var(--danger, #b91c1c);
+  font-weight: 600;
+}
+
+.ca-none {
+  color: var(--text-3);
+}
+
+.ca-sub {
+  font-size: 0.75rem;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.ca-prewrap {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+
+/* ---- table ---- */
+
+/* Compact list: one line per finding, long text cut with an ellipsis (full text in the hover title).
+   Photos are not drawn here; they show in the details dialog. */
+.ca-table th,
+.ca-table td {
+  padding: 5px 8px;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.ca-cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ca-w-sm { max-width: 8rem; }
+.ca-w-md { max-width: 11rem; }
+.ca-w-lg { max-width: 16rem; }
+
+.ca-center { text-align: center; }
+
+.ca-row { cursor: pointer; }
+.ca-row:hover { background: var(--surface-2, rgba(0, 0, 0, 0.04)); }
+
+.ca-status-cell .ca-chip {
+  margin-right: 6px;
+}
+
+
+.ca-fu-badge {
+  font-size: 0.6875rem;
+  color: var(--text-3);
+  border: 1px solid var(--border);
+  padding: 0 5px;
+}
+
+.ca-table.ca-hide-program .ca-col-program {
+  display: none;
+}
+
+.ca-link {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  color: var(--accent, #1a7a6e);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ca-link:hover {
+  color: var(--text-1);
+}
+
+.ca-thumb {
+  border: 1px solid var(--border);
+  background: var(--surface, #fff);
+  padding: 0;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.ca-thumb img {
+  display: block;
+  object-fit: cover;
+}
+
+.ca-thumb-large img {
+  width: 120px;
+  height: 90px;
+}
+
+/* ---- status chips ---- */
+
+.ca-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border: 1px solid currentColor;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ca-chip-open {
+  color: #8a5a00;
+  background: #fff6e0;
+}
+
+.ca-chip-inprogress {
+  color: #1f4f8f;
+  background: #e8f0fb;
+}
+
+.ca-chip-overdue {
+  color: #fff;
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+
+.ca-chip-closed {
+  color: #1a6b3d;
+  background: #e6f4ec;
+}
+
+.ca-sev-minor {
+  color: var(--text-3);
+}
+
+.ca-sev-major {
+  color: #8a5a00;
+}
+
+.ca-sev-critical {
+  color: #b91c1c;
+}
+
+/* ---- dialogs ---- */
+
+.ca-dialog {
+  width: min(44rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 20px;
+  border: 1px solid var(--border);
+  background: var(--surface, #fff);
+  color: var(--text-1);
+  box-shadow: var(--shadow-md);
+}
+
+.ca-dialog-wide {
+  width: min(56rem, calc(100vw - 2rem));
+}
+
+.ca-dialog::backdrop {
+  background: rgba(13, 30, 28, 0.45);
+}
+
+.ca-dialog h2 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+
+.ca-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.ca-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  font-size: 0.8125rem;
+}
+
+.ca-field[hidden] {
+  display: none; /* display:flex above would otherwise beat the [hidden] attribute */
+}
+
+/* One label style for the filter bar and every dialog field: the same small, spaced, muted caption the
+   app's other filter bars use (.app-filter label span), so nothing here looks like a different system. */
+.ca-field > span,
+#ca-filter label span {
+  display: block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-3);
+}
+
+.ca-field {
+  gap: 3px;
+}
+
+.ca-span {
+  grid-column: 1 / -1;
+}
+
+/* One control size. Every single-line control in the filter bar and in the dialogs (text, date, select,
+   the PIC box) and the buttons beside them are the same height, so a row of mixed controls lines up.
+   The look (border, background, type size) is the app's own input look. */
+#ca-filter,
+.ca-dialog {
+  --ca-control-h: 2.25rem;
+}
+
+#ca-filter input[type="text"],
+#ca-filter input[type="date"],
+#ca-filter select,
+.ca-field input[type="text"],
+.ca-field input[type="date"],
+.ca-field select {
+  box-sizing: border-box;
+  height: var(--ca-control-h);
+  min-width: 0;
+  padding: 0 10px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  color: var(--text-1);
+  background: var(--surface-2, #fff);
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+}
+
+#ca-filter input[type="text"] {
+  width: 100%;
+  max-width: 320px;
+}
+
+.ca-field textarea {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--text-1);
+  background: var(--surface-2, #fff);
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+  resize: vertical;
+}
+
+.ca-field input[type="file"] {
+  box-sizing: border-box;
+  min-height: var(--ca-control-h);
+  padding: 4px 8px;
+  font-family: inherit;
+  font-size: 0.8125rem;
+  background: var(--surface-2, #fff);
+  border: 1px solid rgba(13, 30, 28, 0.3);
+  border-radius: 2px;
+}
+
+/* Buttons that sit in a row with the controls above are the same height as them. */
+#ca-filter .btn-primary,
+#ca-filter .btn-ghost,
+.ca-toolbar .btn-ghost,
+.ca-dialog .btn-primary,
+.ca-dialog .btn-ghost {
+  box-sizing: border-box;
+  height: var(--ca-control-h);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
+.ca-field input:focus-visible,
+.ca-field select:focus-visible,
+.ca-field textarea:focus-visible,
+.ca-link:focus-visible,
+.ca-thumb:focus-visible,
+.ca-btn-small:focus-visible {
+  outline: 2px solid var(--accent, #1a7a6e);
+  outline-offset: 2px;
+}
+
+.ca-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ca-btn-small {
+  border: 1px solid var(--border);
+  background: var(--surface, #fff);
+  color: var(--text-1);
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.ca-btn-small:hover {
+  border-color: var(--accent, #1a7a6e);
+  color: var(--accent, #1a7a6e);
+}
+
+.ca-danger,
+.ca-btn-small.ca-danger,
+.btn-ghost.ca-danger {
+  background: #b91c1c;
+  border-color: #b91c1c;
+  color: #fff;
+}
+
+/* ---- detail ---- */
+
+.ca-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.ca-detail-title {
+  margin: 0;
+}
+
+.ca-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0 0 12px;
+  font-size: 0.875rem;
+}
+
+.ca-facts dt {
+  color: var(--text-3);
+}
+
+.ca-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.ca-section {
+  margin: 14px 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.ca-section h3 {
+  margin: 0 0 6px;
+  font-size: 0.875rem;
+}
+
+.ca-photo-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.ca-photo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  margin: 0;
+}
+
+.ca-followup {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.ca-followup-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ca-inline {
+  margin-top: 8px;
+  padding: 10px;
+  background: var(--surface-2, rgba(26, 122, 110, 0.06));
+}
+
+.ca-form-inline {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 1fr 1fr;
+  align-items: end;
+  margin-top: 8px;
+}
+
+.ca-form-inline .ca-field:first-child,
+.ca-form-inline .btn-primary,
+.ca-form-inline .btn-ghost {
+  align-self: end;
+}
+
+.ca-blockers {
+  margin: 4px 0 8px;
+  padding-left: 18px;
+  color: #8a5a00;
+  font-size: 0.8125rem;
+}
+
+.ca-history-list {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  font-size: 0.8125rem;
+}
+
+.ca-history-list li {
+  margin-bottom: 6px;
+}
+
+.ca-history summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* ---- PIC dropdown ---- */
+
+.ca-pic {
+  position: relative;
+  display: flex;
+}
+
+.ca-pic {
+  width: 100%;
+}
+
+/* Beats the shared control rule above (which resets padding) so the text clears the × button. */
+.ca-field .ca-pic input[type="text"] {
+  flex: 1;
+  padding-right: 28px;
+}
+
+.ca-pic-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--text-3);
+  cursor: pointer;
+}
+
+.ca-pic-clear[hidden] {
+  display: none;
+}
+
+.ca-pic-list {
+  top: 100%;
+}
+
+.ca-pic-option {
+  display: block;
+  cursor: pointer;
+}
+
+.ca-pic-option.ca-pic-active {
+  background: var(--accent, #1a7a6e);
+  color: #fff;
+}
+
+.ca-pic-option.ca-pic-active .app-program-item-meta {
+  color: #fff;
+}
+
+.ca-pic-none {
+  padding: 8px 12px;
+}
+
+@media (max-width: 640px) {
+  .ca-grid,
+  .ca-form-inline {
+    grid-template-columns: 1fr;
+  }
+
+  .ca-dialog {
+    padding: 14px;
+  }
+
+  .ca-facts {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+
+  .ca-facts dd {
+    margin-bottom: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ca-link,
+  .ca-btn-small {
+    transition: none;
+  }
+}
