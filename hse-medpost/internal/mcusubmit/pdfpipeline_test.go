@@ -472,11 +472,11 @@ func TestIngestScannerVerdictsAreFinalAndFailClosed(t *testing.T) {
 	}
 }
 
-// The portal limit is higher than the activity uploads' 1 MB so that dense scans keep the gentle
-// Ghostscript passes; this pins the constant and the unset-TargetBytes default.
+// The stored-file limit equals the upload limit, so the portal never has to squeeze a file that was
+// accepted; this pins that and the unset-TargetBytes default.
 func TestIngestDefaultLimitIsThePortalTarget(t *testing.T) {
-	if PortalTargetBytes <= 1_000_000 {
-		t.Fatalf("PortalTargetBytes = %d, want more than the 1 MB of activity uploads", PortalTargetBytes)
+	if PortalTargetBytes != MaxUploadBytes {
+		t.Fatalf("PortalTargetBytes = %d, want it equal to MaxUploadBytes (%d)", PortalTargetBytes, MaxUploadBytes)
 	}
 	p, _ := newPipeline(t)
 	if p.TargetBytes != 0 {

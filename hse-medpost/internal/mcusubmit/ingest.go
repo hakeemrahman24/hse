@@ -11,15 +11,17 @@ import (
 	"path/filepath"
 )
 
-// MaxUploadBytes is the largest file we accept. The stored copy is later squeezed to about 1 MB,
-// but the original has to be read into memory first, so this bounds that.
-const MaxUploadBytes = 15 << 20
+// MaxUploadBytes is the largest file we accept; a bigger one is refused outright. The portal does
+// not shrink files to fit (owner, 2026-11-09): the limit is 10 MB because larger transfers stall on
+// the way to the Pi, and the submitter splits or rescans a bigger file. The original is read into
+// memory first, so this also bounds that.
+const MaxUploadBytes = 10 << 20
 
-// PortalTargetBytes is the size limit of a stored checkup PDF. It is deliberately larger than the
-// 1 MB of activity uploads: reviewers must read lab values and small print, and at 1 MB a dense
-// scan is pushed to the 100 dpi pass where fine print smears (checked by eye on a 300 dpi scan).
-// At 2 MB the gentler 150 and 120 dpi passes nearly always fit; disk on the Pi is cheap.
-const PortalTargetBytes = 2_000_000
+// PortalTargetBytes is the size limit of a stored checkup PDF. It equals the upload limit on
+// purpose: the Ghostscript rebuild is kept for safety (it drops scripts and attachments), but it
+// writes the pages back losslessly and the stronger shrinking passes only run if that rebuild
+// itself came out above the limit, which is rare. Nothing is squeezed to a small size any more.
+const PortalTargetBytes = MaxUploadBytes
 
 // Scanner is an optional virus scanner. It returns the signature name when the file is infected
 // and "" when it is clean. Any error means "could not tell", which is never treated as clean.

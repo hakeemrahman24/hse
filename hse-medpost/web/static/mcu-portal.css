@@ -461,3 +461,28 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
 .mp-results li.mp-blocked button { cursor: not-allowed; }
 .mp-results li.mp-blocked button:disabled { color: var(--text-3); }
 .mp-results li.mp-blocked button .mp-blocked-why { display: block; color: #a12a1b; font-weight: 700; margin-top: 2px; opacity: 1; }
+
+/* The "make a PDF smaller" tool under the upload field. */
+.mp-compress { margin: 0 0 14px; padding: 10px 12px; border: 1px solid var(--border, #d9d9d9); border-radius: 6px; }
+.mp-compress summary { cursor: pointer; color: var(--accent-light); font-size: 0.8125rem; }
+.mp-compress[open] summary { margin-bottom: 10px; }
+.mp-compress-done { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+/* A hidden progress bar stays hidden: the display rule above would otherwise override the hidden
+   attribute and show an empty bar above the Upload button (seen on a phone, 2026-11-09). */
+.mp-progress[hidden] { display: none; }
+
+/* Desktop (owner, 2026-11-09: the portal was still laid out for a phone). From 900px a card in the
+   signed-in pages is no longer capped at the phone-width 420px; it fills its column. The review card
+   keeps a readable width, and its details sit in two pairs per row. On New batch the form gets a
+   wider left column and the new-employee fields sit two to a row (.mp-form2, defined above). */
+@media (min-width: 900px) {
+  .mp-shell .login-card.mp-wide { max-width: none; }
+  .mp-shell .login-card.mp-wide:has(> .mp-review) { max-width: 880px; }
+  .mp-review { grid-template-columns: max-content minmax(0, 1fr) max-content minmax(0, 1fr); gap: 8px 20px; }
+  .mp-review dd { margin: 0; overflow-wrap: anywhere; }
+  .mp-new .mp-form2 { gap: 0 18px; }
+}
+@media (min-width: 1100px) {
+  .mp-panes-batch { grid-template-columns: minmax(540px, 680px) minmax(0, 1fr); gap: 0 32px; }
+}

@@ -15,9 +15,9 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=40" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=41" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
-  <script src="/static/mcu-portal-name.js?v=2" defer></script>
+  <script src="/static/mcu-portal-name.js?v=3" defer></script>
   <script src="/static/mcu-portal-cards.js?v=5" defer></script>
 </head>
 <body class="mp">
@@ -425,6 +425,7 @@
           </div>
           <details id="new-employee" class="mp-new"{{if and (not (index .Form "patient_id")) (index .Form "name")}} open{{end}}>
             <summary>The worker is not in the list (new employee)</summary>
+            <div class="mp-form2">
             <div class="field"><label for="name"><span>Worker's name</span></label><input id="name" name="name" type="text" maxlength="128" data-name value="{{index .Form "name"}}" /></div>
             <div class="field"><label for="dob"><span>Date of birth</span></label><input id="dob" name="dob" type="date" value="{{index .Form "dob"}}" /></div>
             <div class="field"><label for="position"><span>Position</span></label><input id="position" name="position" type="text" maxlength="128" data-position value="{{index .Form "position"}}" /></div>
@@ -444,19 +445,51 @@
                 <option value="Male"{{if eq (index $.Form "gender") "Male"}} selected{{end}}>Male</option>
                 <option value="Female"{{if eq (index $.Form "gender") "Female"}} selected{{end}}>Female</option>
               </select></div>
-            <div class="field"><label for="id_number"><span>NIK or passport number (required)</span></label><input id="id_number" name="id_number" type="text" maxlength="32" autocomplete="off" value="{{index .Form "id_number"}}" />
-              <p class="mp-hint">Indonesian citizens: the 16-digit NIK. Everyone else: the passport number (6 to 12 letters or digits).</p></div>
+            <div class="field mp-full"><label for="id_number"><span>NIK or passport number (required)</span></label><input id="id_number" name="id_number" type="text" maxlength="32" autocomplete="off" value="{{index .Form "id_number"}}" />
+              <p id="id-hint" class="mp-hint">Indonesian citizens: the 16-digit NIK. Everyone else: the passport number (6 to 12 letters or digits).</p>
+              <div id="id-msgs" hidden>
+                <span data-m="hintany">Indonesian citizens: the 16-digit NIK. Everyone else: the passport number (6 to 12 letters or digits).</span>
+                <span data-m="hintnik">NIK: exactly 16 digits, numbers only.</span>
+                <span data-m="hintpassport">Passport number: 6 to 12 letters or digits, in capitals.</span>
+                <span data-m="phany">Choose the nationality first</span>
+                <span data-m="phnik">16 digits</span>
+                <span data-m="phpassport">6 to 12 letters or digits</span>
+              </div></div>
+            </div>
           </details>
-          <div class="field"><label for="file"><span>Checkup result (PDF, up to 15 MB)</span></label><input id="file" name="file" type="file" accept="application/pdf,.pdf" required />
-            <p class="mp-hint">The file is rebuilt and compressed when it is uploaded. Password-protected PDFs and PDFs with scripts or attachments are refused.</p></div>
-          <p id="up-warn" class="mp-hint mp-warnline" hidden></p>
+          <div class="field"><label for="file"><span>Checkup result (PDF, up to 10 MB)</span></label><input id="file" name="file" type="file" accept="application/pdf,.pdf" required />
+            <p class="mp-hint">The file is rebuilt when it is uploaded and is refused if it is over 10 MB. Password-protected PDFs and PDFs with scripts or attachments are refused.</p></div>
+          <details id="cp-tool" class="mp-compress">
+            <summary>PDF over 10 MB? Make it smaller here</summary>
+            <p class="mp-hint">This works on your own device: the file is not sent anywhere until you press Upload and review. The pages are saved as pictures, so the text in the smaller PDF can no longer be selected or searched. The medical post sees the same pages.</p>
+            <div class="field"><label for="cp-file"><span>PDF to make smaller</span></label><input id="cp-file" type="file" accept="application/pdf,.pdf" /></div>
+            <div class="field"><label for="cp-target"><span>Make it smaller than</span></label>
+              <select id="cp-target">
+                <option value="9" selected>9 MB (best quality that is accepted)</option>
+                <option value="5">5 MB</option>
+                <option value="2">2 MB (smallest)</option>
+              </select></div>
+            <button type="button" id="cp-run" class="btn-ghost">Make smaller</button>
+            <progress id="cp-progress" class="mp-progress" max="100" hidden></progress>
+            <p id="cp-status" class="mp-hint" role="status" hidden></p>
+            <div id="cp-done" class="mp-compress-done" hidden>
+              <button type="button" id="cp-use" class="btn-primary">Use this file for the upload</button>
+              <button type="button" id="cp-save" class="btn-ghost">Save to my device</button>
+            </div>
+            <div id="cp-msgs" hidden>
+              <span data-m="choose">Choose the PDF first.</span>
+              <span data-m="working">Making the file smaller…</span>
+              <span data-m="done">Made smaller: {from} MB to {to} MB.</span>
+              <span data-m="used">The smaller file is chosen for the upload. Press Upload and review.</span>
+              <span data-m="nogain">This PDF could not be made smaller. Split it into smaller files or scan at a lower resolution.</span>
+              <span data-m="still">The result is still {to} MB. Choose a smaller size above, or split the file.</span>
+              <span data-m="fail">This PDF could not be read. It may be damaged or protected by a password.</span>
+            </div>
+          </details>
           <div id="up-msgs" hidden>
             <span data-m="uploading">Uploading the file…</span>
-            <span data-m="checking">Uploaded. Checking and shrinking the file now. A large scan can take a minute or two. Keep this page open.</span>
-            <span data-m="slow">This file is over 10 MB, so uploading and checking it can take a few minutes. Keep this page open until it finishes.</span>
-            <span data-m="toobig">The file is larger than 15 MB. Split it or scan at a lower resolution.</span>
-            <span data-m="reducing">This file is over 10 MB. Making it smaller first…</span>
-            <span data-m="reduced">Made smaller: {from} MB to {to} MB. The pages are saved as pictures, so the text in this PDF can no longer be selected. The medical post sees the same pages.</span>
+            <span data-m="checking">Uploaded. Checking the file now. A large scan can take a minute or two. Keep this page open.</span>
+            <span data-m="toobig">The file is larger than 10 MB. Split it or scan at a lower resolution.</span>
             <span data-m="cut">The connection was cut or timed out. The file may have arrived: look in the list of documents in this batch before you upload it again.</span>
           </div>
           <progress id="up-progress" class="mp-progress" max="100" hidden></progress>
@@ -465,8 +498,9 @@
         </form>
       </div>
       <script src="/static/mcu-worker-picker.js?v=3"></script>
-      <script src="/static/mcu-portal-reduce.js?v=2"></script>
       <script src="/static/mcu-portal-upload.js?v=3"></script>
+      <script src="/static/mcu-portal-id.js?v=1"></script>
+      <script src="/static/mcu-portal-compress.js?v=1"></script>
 
       </div>
       <div class="mp-pane">

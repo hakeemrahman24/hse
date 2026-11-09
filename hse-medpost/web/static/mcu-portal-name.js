@@ -53,10 +53,26 @@
     });
   }
 
+  // Characters that are never kept (the opposite of what cleanName / cleanPosition keep above).
+  var BANNED_NAME = /[^\p{L}\p{M}\s'.\-‘’]/gu;
+  var BANNED_POSITION = /[^\p{L}\p{M}\p{Nd}\s'.\/&,()\-‘’]/gu;
+
   var inputs = document.querySelectorAll('input[data-name], input[data-position]');
   Array.prototype.forEach.call(inputs, function (input) {
     var clean = input.hasAttribute('data-position') ? cleanPosition : cleanName;
     function tidy() { input.value = clean(input.value); }
+    // While typing or pasting, characters the field can never hold are dropped at once, and the caret
+    // stays where it was; case and spacing are tidied when the person leaves the box.
+    var banned = input.hasAttribute('data-position') ? BANNED_POSITION : BANNED_NAME;
+    input.addEventListener('input', function () {
+      var before = input.value;
+      var caret = input.selectionStart == null ? before.length : input.selectionStart;
+      var after = before.replace(banned, '');
+      if (after === before) return;
+      var kept = before.slice(0, caret).replace(banned, '').length;
+      input.value = after;
+      try { input.setSelectionRange(kept, kept); } catch (e) { /* some types refuse */ }
+    });
     input.addEventListener('blur', tidy);
     if (input.form) input.form.addEventListener('submit', tidy);
   });
