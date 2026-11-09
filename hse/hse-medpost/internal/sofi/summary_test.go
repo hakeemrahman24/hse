@@ -35,11 +35,16 @@ func getSummary(t *testing.T, api *API, query string) (int, summaryJSON) {
 }
 
 type summaryJSON struct {
-	Total      int            `json:"total"`
-	People     int            `json:"people"`
-	Results    map[string]int `json:"results"`
-	By         string         `json:"by"`
-	MoreGroups int            `json:"moreGroups"`
+	Total       int            `json:"total"`
+	People      int            `json:"people"`
+	Results     map[string]int `json:"results"`
+	By          string         `json:"by"`
+	MoreGroups  int            `json:"moreGroups"`
+	WeeksOnSite map[string]struct {
+		Average  float64 `json:"average"`
+		Counted  int     `json:"counted"`
+		OverYear int     `json:"overYear"`
+	} `json:"weeksOnSite"`
 	Dimensions []struct {
 		Key     string         `json:"key"`
 		Average float64        `json:"average"`
@@ -170,5 +175,38 @@ func TestSummaryShowsOnlyTheBusiestGroups(t *testing.T) {
 	_, s := getSummary(t, api, "by=company")
 	if len(s.Groups) != summaryGroupLimit || s.MoreGroups != 3 {
 		t.Fatalf("groups %d more %d", len(s.Groups), s.MoreGroups)
+	}
+}
+
+// The average weeks on site of each result band leaves out "more than 1 year" (stored as a marker,
+// not a number) and counts those people apart.
+func TestSummaryAverageWeeksOnSiteByResult(t *testing.T) {
+	api := newTestAPI(t)
+	andi := patientID(t, api, "Andi Pratama")
+	andini := patientID(t, api, "Andini Putri")
+	save := func(patient int64, value, weeks int) {
+		t.Helper()
+		res, err := Score(answers(value))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := api.saveAt(patient, Profile{Company: "PT A", WorkPosition: "Welder", MCUReviewStatus: "Fit"}, weeks, answers(value), res, "2026-10-01T08:00:00", 0); err != nil {
+			t.Fatal(err)
+		}
+	}
+	save(andi, 1, 10)            // Low
+	save(andini, 1, 15)          // Low
+	save(andi, 1, WeeksOverYear) // Low, over a year: not in the average
+	save(andini, 6, 30)          // High
+	_, s := getSummary(t, api, "")
+	low := s.WeeksOnSite["low"]
+	if low.Average != 12.5 || low.Counted != 2 || low.OverYear != 1 {
+		t.Errorf("low = %+v, want average 12.5 over 2 people and 1 over a year", low)
+	}
+	if high := s.WeeksOnSite["high"]; high.Average != 30 || high.Counted != 1 || high.OverYear != 0 {
+		t.Errorf("high = %+v", high)
+	}
+	if mod := s.WeeksOnSite["moderate"]; mod.Average != 0 || mod.Counted != 0 {
+		t.Errorf("moderate with no surveys = %+v, want zeros", mod)
 	}
 }

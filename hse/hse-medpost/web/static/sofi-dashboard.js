@@ -12,6 +12,7 @@
   if (!block) { return; }
 
   var statsEl = document.getElementById("sofi-stats");
+  var weeksEl = document.getElementById("sofi-weeks");
   var dimEl = document.getElementById("sofi-dim-bars");
   var groupEl = document.getElementById("sofi-group-bars");
   var groupTitle = document.getElementById("sofi-group-title");
@@ -31,6 +32,19 @@
     var number = document.createElement("strong");
     number.textContent = String(value);
     box.append(caption, number);
+    return box;
+  }
+
+  // "12.5" for the average weeks on site of one result band; a dash when nobody gave a number of
+  // weeks. "(+2 over 1 year)" says how many chose "more than 1 year" and so are not in the average.
+  function weeksTile(label, className, stat) {
+    stat = stat || { average: 0, counted: 0, overYear: 0 };
+    var box = tile(label + ": avg weeks on site", stat.counted > 0 ? stat.average.toFixed(1) : "—", className);
+    if (stat.overYear > 0) {
+      var note = document.createElement("span");
+      note.textContent = "+" + stat.overYear + " over 1 year, not in the average";
+      box.appendChild(note);
+    }
     return box;
   }
 
@@ -111,6 +125,11 @@
       tile("Low", data.results.low, "scr-stat--low"),
       tile("Moderate", data.results.moderate, "scr-stat--moderate"),
       tile("High", data.results.high, "scr-stat--high"),
+    );
+    weeksEl.replaceChildren(
+      weeksTile("Low", "scr-stat--low", data.weeksOnSite && data.weeksOnSite.low),
+      weeksTile("Moderate", "scr-stat--moderate", data.weeksOnSite && data.weeksOnSite.moderate),
+      weeksTile("High", "scr-stat--high", data.weeksOnSite && data.weeksOnSite.high)
     );
     dimEl.replaceChildren(bars(data.dimensions.map(function (d) {
       return row(d.en, d.results, data.total, "avg " + d.average.toFixed(1) + " / " + d.max);
