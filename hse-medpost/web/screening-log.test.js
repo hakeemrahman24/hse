@@ -19,6 +19,7 @@ const {
   screeningGroupName,
   screeningSegments,
   screeningAlertLabel,
+  screeningWeeklyAverage,
 } = context;
 
 test("a stored result is classified the way the server counts it", () => {
@@ -123,4 +124,12 @@ test("each tab in the screening panel is registered with its view", () => {
     assert.ok(views.includes(`${view}: $("scr-view-${view}")`), `view ${view} is not registered`);
     assert.ok(panel.includes(`id="scr-view-${view}"`), `no panel for ${view}`);
   }
+});
+
+test("the weekly average is a count over the weeks, to one decimal", () => {
+  assert.equal(screeningWeeklyAverage(10, 4), "2.5");
+  assert.equal(screeningWeeklyAverage(1, 3), "0.3");
+  assert.equal(screeningWeeklyAverage(0, 2), "0.0");
+  assert.equal(screeningWeeklyAverage(5, 0), "—");
+  assert.equal(screeningWeeklyAverage(5, undefined), "—");
 });

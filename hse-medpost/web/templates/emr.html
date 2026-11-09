@@ -525,6 +525,13 @@
           </div>
 
           <div id="scr-view-dashboard" role="tabpanel" aria-labelledby="scr-tab-dashboard" hidden>
+            <!-- Fatigue only (screening-log.js shows it): the dashboard is split into the sleep-score
+                 charts and the SOFI survey, one at a time. Drug and Alcohol has no SOFI, so no tabs. -->
+            <div class="app-tabs" id="scr-dash-tabs" role="tablist" aria-label="Fatigue dashboards" hidden>
+              <button type="button" class="app-tab active" id="scr-dash-tab-sleep" role="tab" aria-selected="true" aria-controls="scr-dash-sleep" data-dash="sleep">Sleep Score</button>
+              <button type="button" class="app-tab" id="scr-dash-tab-sofi" role="tab" aria-selected="false" aria-controls="sofi-dash" data-dash="sofi">SOFI Fatigue Survey</button>
+            </div>
+            <div id="scr-dash-sleep">
             <form id="scr-dash-filter" class="app-filter">
               <label>
                 <span>From</span>
@@ -550,6 +557,8 @@
             <p id="scr-dash-error" class="app-empty" hidden></p>
             <div id="scr-dash-board">
               <div class="mal-stats scr-stats" id="scr-stats"></div>
+              <!-- Average per week of each outcome over the weeks the filtered tests span (the server's `weeks`). -->
+              <div class="mal-stats scr-stats" id="scr-weekly" hidden></div>
               <div class="mal-chart">
                 <h3 id="scr-chart-title"></h3>
                 <p class="dash-chart-hint" id="scr-chart-hint"></p>
@@ -558,21 +567,27 @@
                 <p class="mal-legend" id="scr-legend"></p>
               </div>
             </div>
+            </div>
 
-            <!-- Fatigue only: the SOFI Fatigue Survey, under the sleep-score charts. sofi-dashboard.js
-                 shows it for Fatigue and fills it from GET /api/sofi-log/summary, using the same
-                 From / To dates and "Chart by" company or position as the charts above. -->
+            <!-- Fatigue only: the SOFI Fatigue Survey, its own tab of the dashboard. sofi-dashboard.js
+                 fills it from GET /api/sofi-log/summary for the chosen Period and its own "Chart by". -->
             <div id="sofi-dash" hidden>
-              <h2 class="sofi-dash-title">SOFI Fatigue Survey</h2>
               <p class="sofi-window-status" role="status"></p>
               <div class="app-filter" id="sofi-dash-filter">
                 <label>
                   <span>Period (when the survey was conducted)</span>
                   <select id="sofi-dash-round" class="sofi-round-select" data-default="latest" aria-label="Period"></select>
                 </label>
+                <label>
+                  <span>Chart by</span>
+                  <select id="sofi-dash-by" aria-label="Chart by">
+                    <option value="company">Company</option>
+                    <option value="position">Position</option>
+                  </select>
+                </label>
               </div>
               <p id="sofi-summary" class="sofi-summary" hidden></p>
-              <p class="sofi-note">The From / To dates above do not apply to the SOFI survey: pick the period it was conducted. Dates are GMT+9.</p>
+              <p class="sofi-note">The survey is reported by the period it was conducted. Dates are GMT+9.</p>
               <!-- The doctor's note of the chosen period (sofi-report.js, GET/PUT /api/sofi-windows/{id}/note).
                    Shown only for a real period; only a doctor / CMO gets a text box, others read it. -->
               <div id="sofi-note-box" class="sofi-note-box" hidden>

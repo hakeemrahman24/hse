@@ -165,6 +165,13 @@ function screeningAlertLabel(kind, results) {
     .join(", ");
 }
 
+// A count as an average per week over `weeks` weeks, to one decimal ("2.5"). With no
+// weeks to divide by there is no average, so a dash.
+function screeningWeeklyAverage(count, weeks) {
+  if (!(weeks > 0)) return "—";
+  return (Math.round((count / weeks) * 10) / 10).toFixed(1);
+}
+
 function initScreeningLog() {
   const panel = document.getElementById("mr-panel-screening");
   if (!panel) return;
@@ -188,6 +195,10 @@ function initScreeningLog() {
     dashReset: $("scr-dash-reset"),
     dashError: $("scr-dash-error"),
     stats: $("scr-stats"),
+    weekly: $("scr-weekly"),
+    dashTabs: $("scr-dash-tabs"),
+    dashSleep: $("scr-dash-sleep"),
+    dashSofi: $("sofi-dash"),
     chartTitle: $("scr-chart-title"),
     chartHint: $("scr-chart-hint"),
     bars: $("scr-bars"),
@@ -378,6 +389,22 @@ function initScreeningLog() {
   });
 
   // ---- dashboard -----------------------------------------------------------
+  // Fatigue's dashboard has two tabs: the sleep-score charts and the SOFI survey.
+  // sofi-dashboard.js owns the SOFI one; it redraws when told the pane changed.
+  function showDashPane(name) {
+    for (const tab of els.dashTabs.querySelectorAll("[data-dash]")) {
+      const on = tab.dataset.dash === name;
+      tab.classList.toggle("active", on);
+      tab.setAttribute("aria-selected", String(on));
+    }
+    els.dashSleep.hidden = name !== "sleep";
+    els.dashSofi.hidden = name !== "sofi";
+    document.dispatchEvent(new CustomEvent("scr-dash-pane", { detail: { pane: name } }));
+  }
+  for (const tab of els.dashTabs.querySelectorAll("[data-dash]")) {
+    tab.addEventListener("click", () => showDashPane(tab.dataset.dash));
+  }
+
   function svgStack(segments) {
     const ns = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(ns, "svg");
@@ -427,8 +454,23 @@ function initScreeningLog() {
     }
   }
 
+  // The average per week of each outcome, under the totals. Shown only when the
+  // server could tell how many weeks the tests span (a test with a plain date).
+  function drawWeekly(data) {
+    const config = SCREENING_KINDS[kind];
+    els.weekly.hidden = !(data.weeks > 0) || data.total === 0;
+    if (els.weekly.hidden) return;
+    els.weekly.replaceChildren(
+      tile(config.doneLabel + " per week", screeningWeeklyAverage(data.total, data.weeks)),
+      ...config.results
+        .filter((r) => r.key !== "other" || data.results.other > 0)
+        .map((r) => tile(r.label + " per week", screeningWeeklyAverage(data.results[r.key] || 0, data.weeks), "scr-stat--" + r.key)),
+    );
+  }
+
   function drawDashboard(data) {
     const config = SCREENING_KINDS[kind];
+    drawWeekly(data);
     els.stats.replaceChildren(
       tile(config.doneLabel, data.total),
       tile("People", data.people),
@@ -505,6 +547,8 @@ function initScreeningLog() {
       // Drug and Alcohol keeps a plain Table.
       els.tabs[0].textContent = kind === "fatigue" ? "Sleep Score" : "Table";
       $("scr-tab-sofi").hidden = kind !== "fatigue"; // by id, not by position: the tab list order must not matter
+      els.dashTabs.hidden = kind !== "fatigue";
+      showDashPane("sleep");
       els.search.value = "";
       clearDates(els.from, els.to, els.dashFrom, els.dashTo);
       setUpDashboard();

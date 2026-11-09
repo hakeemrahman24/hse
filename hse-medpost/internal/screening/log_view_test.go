@@ -181,7 +181,8 @@ type viewSummaryBody struct {
 		Count   int            `json:"count"`
 		Results map[string]int `json:"results"`
 	} `json:"groups"`
-	MoreGroups int `json:"moreGroups"`
+	MoreGroups int     `json:"moreGroups"`
+	Weeks      float64 `json:"weeks"`
 }
 
 func summaryView(t *testing.T, api *API, query string) viewSummaryBody {
@@ -277,5 +278,26 @@ func TestLogViewSummaryWithNoDataHasZeroedResults(t *testing.T) {
 				t.Errorf("%s results[%s] = %d (present %v), want 0", test, k, n, ok)
 			}
 		}
+	}
+}
+
+// The dashboard's weekly average needs the number of weeks the tests span: first
+// to last test day, both included, never less than one week.
+func TestLogViewFatigueSummaryWeeks(t *testing.T) {
+	database, staffID := openScreeningTestDB(t)
+	api := newAPI(database)
+	addFatigue(t, database, staffID, "w1", "2026-10-01T01:00:00", "2026-10-01", "Budi", "PT A", "Driver", "Low")
+	if got := summaryView(t, api, "test=fatigue").Weeks; got != 1 {
+		t.Errorf("one day spans %v weeks, want 1 (the minimum)", got)
+	}
+	addFatigue(t, database, staffID, "w2", "2026-10-21T01:00:00", "2026-10-21", "Siti", "PT A", "Cook", "High")
+	if got := summaryView(t, api, "test=fatigue").Weeks; got != 3 {
+		t.Errorf("21 days span %v weeks, want 3", got)
+	}
+	if got := summaryView(t, api, "test=fatigue&from=2030-01-01").Weeks; got != 0 {
+		t.Errorf("no matching tests gave %v weeks, want 0", got)
+	}
+	if got := summaryView(t, api, "test=alcohol").Weeks; got != 0 {
+		t.Errorf("alcohol has no plain date, got %v weeks, want 0", got)
 	}
 }
