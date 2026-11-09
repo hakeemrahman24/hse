@@ -166,12 +166,13 @@
     // The submitter can be told about any result. For an Incomplete one the document stays Reviewed
     // (open) after the notice, so the button gives way to a "Notified" mark until a final result is saved.
     var incomplete = d.result === 'IncompleteResult';
+    // There is no "Open checkup" for it: the submitter sends a new document, and reviewing that one
+    // creates a new checkup (consultation result) linked to this one.
     if (d.status === 'Reviewed' && d.hasRecord && incomplete && d.notifyRequested) {
       var told = document.createElement('span');
       told.className = 'sub-note';
-      told.textContent = 'Submitter notified';
+      told.textContent = 'Submitter notified, waiting for a new submission';
       box.appendChild(told);
-      box.appendChild(button('Open checkup', 'btn-primary', function () { startReview(d); }, 'Open the linked checkup of ' + d.worker));
     } else if (d.status === 'Reviewed' && d.hasRecord) {
       box.appendChild(button('Notify submitter', 'btn-primary', function () { notify(d); }, 'Notify the submitter about ' + d.worker));
     } else if (d.hasRecord) {
@@ -260,6 +261,7 @@
       cell(tr, d.submitter);
       var st = cell(tr, d.status);
       note(st, d.result ? 'Result: ' + (RESULTS[d.result] || d.result) : '');
+      note(st, d.renewedBy); // same words as the MCU table: Renewed by <checkup ID>
       note(st, d.rejectReason);
       var rev = cell(tr, d.reviewedBy || '');
       note(rev, when(d.reviewedAt));

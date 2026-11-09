@@ -858,6 +858,73 @@ func TestIncompleteResultNotifiesButKeepsTheDocumentReviewed(t *testing.T) {
 	}
 }
 
+// Saving the follow-up checkup (the MCU table stamps the open record "Renewed by <ID>") closes the
+// old document with an Incomplete result, as the table closes the record, without a second mail.
+// A Fit document renewed the same way is left alone: it keeps its own notify step.
+func TestCloseSupersededDocumentsFollowsTheMcuTableRenewal(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrsup@example.com")
+	linked := func(name, checkUpID string) int64 {
+		w := seedWorker(t, s, name, "1990-04-12", co)
+		addRecord(t, s, w, checkUpID, "Fit", "2027-01-01", "Open", 0)
+		id, _ := sentDocIn(t, s, sub, name, "Other "+name)
+		if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w, id); err != nil {
+			t.Fatal(err)
+		}
+		if err := s.LinkRecord(ctx, id, testStaffID, checkUpID); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	inc, fit := linked("Sup Incomplete", "MedC-SUP1"), linked("Sup Fit", "MedC-SUP2")
+	conn, err := s.DB.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	for _, q := range []string{`PRAGMA ignore_check_constraints = ON`,
+		`UPDATE McuRecord SET ResultCriteria = 'IncompleteResult' WHERE CheckUpID = 'MedC-SUP1'`,
+		`PRAGMA ignore_check_constraints = OFF`} {
+		if _, err := conn.ExecContext(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	status := func(id int64) (st string, told sql.NullString) {
+		t.Helper()
+		if err := s.DB.QueryRow(`SELECT Status, CertNotifiedAt FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&st, &told); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	if n, err := s.CloseSupersededDocuments(ctx); err != nil || n != 0 {
+		t.Fatalf("nothing renewed yet: closed %d (%v), want 0", n, err)
+	}
+	// What closeParentRecord writes when the follow-up is saved.
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET HcValidityStatus = 'Renewed by MedC-NEW' WHERE CheckUpID IN ('MedC-SUP1', 'MedC-SUP2')`); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := s.CloseSupersededDocuments(ctx); err != nil || n != 1 {
+		t.Fatalf("closed %d (%v), want only the Incomplete one", n, err)
+	}
+	if st, told := status(inc); st != SubClosed || !told.Valid {
+		t.Fatalf("incomplete document: %q told %v, want Closed and marked told (no second mail)", st, told)
+	}
+	if st, _ := status(fit); st != SubReviewed {
+		t.Fatalf("fit document: %q, want it left Reviewed", st)
+	}
+	if _, err := s.NormalizeReviewed(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ := status(inc); st != SubClosed {
+		t.Fatalf("after normalize: %q, a superseded document must stay Closed", st)
+	}
+	docs, err := s.querySubmissions(ctx, `WHERE s.SubmissionID = ?`, inc)
+	if err != nil || len(docs) != 1 || docs[0].RenewedBy != "Renewed by MedC-NEW" {
+		t.Fatalf("detail %v (%v), want \"Renewed by MedC-NEW\"", docs, err)
+	}
+}
+
 func TestWithdrawFreesALinkedCheckupAndAskedBeforeInThePage(t *testing.T) {
 	s, _, co := newTestStore(t)
 	ctx := context.Background()
