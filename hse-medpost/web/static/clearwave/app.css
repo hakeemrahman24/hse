@@ -5492,6 +5492,7 @@ tr.detail-row > td .detail-group {
 #mal-dash-filter select,
 #scr-toolbar .btn-primary,
 #scr-toolbar .btn-ghost,
+#sofi-toolbar .btn-ghost,
 #scr-toolbar input[type="text"],
 #scr-dash-filter .btn-primary,
 #scr-dash-filter .btn-ghost,
@@ -5504,6 +5505,7 @@ tr.detail-row > td .detail-group {
 #mal-toolbar .btn-ghost,
 #mal-dash-filter .btn-ghost,
 #scr-toolbar .btn-ghost,
+#sofi-toolbar .btn-ghost,
 #scr-dash-filter .btn-ghost {
   display: inline-flex;
   align-items: center;
