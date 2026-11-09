@@ -146,7 +146,7 @@ func TestNewBatchHasTheUploadProgressBlockInEveryLanguage(t *testing.T) {
 			t.Errorf("no Indonesian/Chinese text for %q", text)
 		}
 	}
-	for _, key := range []string{"Uploaded. Checking the file now.", "The connection was cut or timed out."} {
+	for _, key := range []string{"Uploaded. The portal is now checking that the file is a safe, readable PDF.", "The connection was cut or timed out."} {
 		found := false
 		for en := range portalText {
 			if strings.HasPrefix(en, key) {

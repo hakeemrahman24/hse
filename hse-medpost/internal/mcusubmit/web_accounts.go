@@ -127,7 +127,7 @@ func (a *API) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 
 // companyFullMsg tells the person what to do instead: the two people of the company can change their
 // own login email or username when someone leaves, so nobody needs a third account.
-const companyFullMsg = "This company already has two accounts. Ask your colleague to sign in, or ask the medical post administrator."
+const companyFullMsg = "This company already has two accounts. Ask your colleague to sign in, or ask the medical team administrator."
 
 func (a *API) mailVerifyLink(r *http.Request, id int64, email string) {
 	raw, err := a.Store.IssueToken(r.Context(), id, PurposeVerify, "", verifyTTL)

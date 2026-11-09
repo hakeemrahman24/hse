@@ -374,7 +374,7 @@ func (s *Store) SendBatch(ctx context.Context, submitterID, batchID int64) (int,
 // Withdraw lets a submitter take back a document while it is still Pending. The row stays as an
 // audit stub with FilePath cleared; the returned path is the file the caller must delete now.
 // (FK_McuRecordID is cleared too: staff may already have linked a checkup that has no result yet,
-// and that record must not stay tied to a document the medical post no longer sees. The checkup
+// and that record must not stay tied to a document the medical team no longer sees. The checkup
 // itself is medical data and is kept.)
 func (s *Store) Withdraw(ctx context.Context, submitterID, id int64) (string, error) {
 	var p sql.NullString

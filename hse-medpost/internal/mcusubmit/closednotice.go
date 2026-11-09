@@ -185,14 +185,14 @@ func closedNoticeBody(portalURL string, lines []closedLine) string {
 	}
 	var b strings.Builder
 	if len(done) > 0 {
-		fmt.Fprintf(&b, "%d of the medical checkups you submitted have been completed by the medical post:\n\n", len(done))
+		fmt.Fprintf(&b, "%d of the medical checkups you submitted have been completed by the medical team:\n\n", len(done))
 		writeNoticeList(&b, done)
 	}
 	if len(rejected) > 0 {
 		if len(done) > 0 {
 			b.WriteString("\n")
 		}
-		fmt.Fprintf(&b, "%d of your documents could not be used by the medical post (for example, the file could not be read). Please upload a corrected document for:\n\n", len(rejected))
+		fmt.Fprintf(&b, "%d of your documents could not be used by the medical team (for example, the file could not be read). Please upload a corrected document for:\n\n", len(rejected))
 		writeNoticeList(&b, rejected)
 	}
 	fmt.Fprintf(&b, "\nSign in to see the details and download the health certificates that are available: %s/documents\n", portalURL+basePath)

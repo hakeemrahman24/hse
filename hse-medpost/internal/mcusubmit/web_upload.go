@@ -51,7 +51,7 @@ func (a *API) BatchPage(w http.ResponseWriter, r *http.Request) {
 
 func (a *API) renderBatch(w http.ResponseWriter, ctx context.Context, status int, u *Submitter, form map[string]string, errMsg string) {
 	p := a.newPage("New batch")
-	p.User, p.Error, p.Caption = u, errMsg, "Drafts: not yet visible to the medical post"
+	p.User, p.Error, p.Caption = u, errMsg, "Drafts: not yet visible to the medical team"
 	if form != nil {
 		p.Form = form
 	}
@@ -567,7 +567,7 @@ func (a *API) SendBatchSubmit(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, ErrBatchUnfinished):
 		a.message(w, http.StatusConflict, "Cannot send", "Confirm or discard the documents that still need your review first.", u)
 	case errors.Is(err, ErrBadState):
-		a.message(w, http.StatusConflict, "Cannot send", "Your account cannot send documents right now. Contact the medical post.", u)
+		a.message(w, http.StatusConflict, "Cannot send", "Your account cannot send documents right now. Contact the medical team.", u)
 	default:
 		a.serverError(w, "send batch", err)
 	}
