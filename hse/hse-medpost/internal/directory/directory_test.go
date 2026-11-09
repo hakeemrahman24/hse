@@ -313,7 +313,9 @@ func TestCheckupsReturnsEveryRecord(t *testing.T) {
 			t.Fatal("exam field missing")
 		}
 	}
-	if unfit == nil || unfit["resultCriteria"] != "Unfit" || unfit["hcValidityStatus"] != "Archived / Exit" {
+	// WHY empty: Unfit is an open result (entrymcu.ShownValidity), so it has no validity standing
+	// even when its stored status is Close.
+	if unfit == nil || unfit["resultCriteria"] != "Unfit" || unfit["hcValidityStatus"] != "" {
 		t.Fatalf("unfit = %v", unfit)
 	}
 	var fit map[string]any

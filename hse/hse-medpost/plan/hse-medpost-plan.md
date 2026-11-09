@@ -309,7 +309,27 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 ## Progress Log
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
-### 2026-11-07 (latest) — Employees route can include expired checkups (opt-in)
+### 2026-11-09 (latest) — SOFI on/off switches and a black and orange /sofi
+
+- **What changed (Settings > SOFI schedule):** two switches replace the "Open now for 7 days" and "Open preview" buttons. **Live survey** on = a window that opens now for the number of days in the "for [7] days" box (whole days, 1 to 60), off = close the open window now; both ask for confirmation. **Preview** is the same preview as before (answers not saved, self-off after 2 hours) as a switch, greyed out while a live window is open. The Schedule form and window table are unchanged. `sofi-schedule.js`, `settings.html`, `app.css`.
+- **Why a window, not a flag:** the switch writes the same `SofiWindow` row a scheduled window does, so the audit trail, the Round filter and the no-overlap rule keep working. The cap of 60 days stops a typo (700) from leaving `/sofi` open for two years.
+- **Public /sofi look:** the sign-in, questionnaire, closed and result pages use a black and orange palette (`web/static/sofi.css`, which only these pages load, so staff screens stay teal). It redefines the clearwave colour tokens in one block; filled orange buttons use near-black text because white on that orange is about 2.8:1. Low / Moderate / High result colours are unchanged.
+- **Open:** the switch's days box is not wired to the schedule form (a window for exact dates still goes through the form). Moderate (amber) is close to the new orange; say if it should change. Not checked in a browser beyond one screenshot of the sign-in page.
+
+### 2026-11-09 — Fatigue dashboard: Sleep Score / SOFI tabs and weekly averages
+
+- Fatigue > Dashboard now has two tabs, **Sleep Score** (From / To, Chart by company, position or examiner, as before) and **SOFI Fatigue Survey** (Period and its own Chart by company or position), instead of the SOFI charts sitting under the sleep-score ones. Drug and Alcohol has no tabs. The tab bar and tiles reuse `.app-tabs`, `.app-tab` and `.mal-stat`, so type sizes and colours match the page. The unused `.sofi-dash-title` rule is gone.
+- A second row of tiles under the totals shows the average per week of each risk level (Low, Mild, Medium, High, Not stated when present) and of all assessments. `GET /api/screening-log/summary` now returns `weeks`: first to last exam date, both days counted, at least 1 week (0 when nothing matched, or for alcohol, which has no plain date). The page divides each count by it, to one decimal.
+- Why `weeks` comes from the data, not the From / To boxes: with no dates picked there is no range to divide by.
+- Open: the SOFI tab has no weekly average yet (its levels are Low / Moderate / High, not the four risk levels); ask if wanted. Not looked at in a browser; Go and Node tests pass.
+
+### 2026-11-07 (latest) — Stale checkups test fixed; medpost suite is green
+
+- **What changed:** `TestCheckupsReturnsEveryRecord` (`internal/directory/directory_test.go`) now expects an empty `hcValidityStatus` for the Unfit record. Only the test changed, no production code.
+- **Why:** the test was written before `079e033` made Unfit an open result. `entrymcu.ShownValidity` is documented to give open results (Unfit, TemporaryUnfit, NeedFollowUp, IncompleteResult) no validity standing even when the stored status is Close, so "Archived / Exit" was the old behaviour, not a bug. Confirmed it failed on a clean checkout, so it was never caused by the directory changes below.
+- **Open:** nothing for this item. The `includeExpired` and `/companies` routes are committed (`80a582b`) but reach the Pi only with the next medpost deploy, which must happen before entry-permit's.
+
+### 2026-11-07 — Employees route can include expired checkups (opt-in)
 
 - **What changed:** `GET /api/directory/employees` takes `includeExpired=1` (exactly `1`; any other value means off). With it, a worker whose latest decided result is Fit or Fit with note is returned even when `ResultValidUntil` is in the past (a result with no valid-until date is still left out). Everything else is unchanged: Unfit and newer-decision rules, archived and renewed rows, the 20-row limit, and the default (no parameter) still returns valid checkups only. `internal/directory/directory.go`, test `TestEmployeesCanIncludeAnExpiredFitCheckupOnlyWhenAsked`.
 - **Why:** entry-permit's "My Layar Entry Permit" page must tell a worker "Your permit validity has ended" (a permit lasts as long as the medical checkup). Without this they were indistinguishable from an unknown name. Only that one lookup sends the flag; the name picker, gate officer eligibility and the permit request form never do, so no permit can be requested for a worker with no valid checkup.
