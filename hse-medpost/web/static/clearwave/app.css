@@ -6164,3 +6164,33 @@ a.app-tab {
 .sofi-days { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; font-size: 0.75rem; color: var(--text-2); }
 .sofi-days input { box-sizing: border-box; width: 56px; height: 28px; padding: 2px 6px; font: inherit; font-size: 0.8125rem; color: var(--text-1); background: var(--surface-2); border: 1px solid rgba(13, 30, 28, 0.3); border-radius: 2px; }
 .sofi-days input:disabled { opacity: 0.45; }
+
+/* Screening dashboard (Sleep Score and SOFI tabs): one text size, 0.8125rem, for every label,
+   caption, hint, bar label, legend, status line and note, so no line looks bigger than its
+   neighbour. Only the chart headings (h3) and the big tile numbers stay larger. These rules
+   come last on purpose: the shared .app-filter / .mal-* / .dash-* rules above set 0.65 to
+   0.875rem for the same kinds of text. */
+#scr-view-dashboard .app-filter label span,
+#scr-view-dashboard .mal-stat span,
+#scr-view-dashboard .dash-chart-hint,
+#scr-view-dashboard .dash-bar-row span,
+#scr-view-dashboard .dash-bar-row b,
+#scr-view-dashboard .mal-legend,
+#scr-view-dashboard .app-empty,
+#scr-view-dashboard .sofi-window-status,
+#scr-view-dashboard .sofi-summary,
+#scr-view-dashboard .sofi-note,
+#scr-view-dashboard .sofi-note-label,
+#scr-view-dashboard .sofi-report-actions,
+#scr-view-dashboard .sofi-note-box textarea,
+#scr-view-dashboard .app-filter select,
+#scr-view-dashboard .app-filter input,
+#scr-view-dashboard .btn-primary,
+#scr-view-dashboard .btn-ghost {
+  font-size: 0.8125rem;
+}
+
+#scr-view-dashboard .mal-stat span,
+#scr-view-dashboard .app-filter label span {
+  letter-spacing: 0; /* the wide spacing was sized for the smaller caption */
+}
