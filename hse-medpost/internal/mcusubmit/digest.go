@@ -163,8 +163,8 @@ func (s *Store) digestLines(ctx context.Context, status string) ([]digestLine, e
 		 FROM McuSubmission s
 		 JOIN McuBatch b ON b.BatchID = s.FK_BatchID
 		 JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID
-		 WHERE s.Status = ?
-		 ORDER BY b.SentAt, s.SubmissionID`, status)
+		 WHERE s.Status = ? AND s.NotifyRequestedAt IS NULL
+		 ORDER BY b.SentAt, s.SubmissionID`, status) // already told about an Incomplete result: nothing left to remind
 	if err != nil {
 		return nil, err
 	}

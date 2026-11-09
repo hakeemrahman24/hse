@@ -33,6 +33,42 @@ func TestWorkerBlockWaitsForADocumentThatIsPendingOrReviewed(t *testing.T) {
 	}
 }
 
+// A Reviewed document with an Incomplete result is still open, and the way forward is a new
+// document from the submitter, so it must not make the worker "wait" (owner, 2026-11-10).
+func TestWorkerBlockDoesNotWaitForAReviewedDocumentWithAnIncompleteResult(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrinc2@example.com")
+	w := seedWorker(t, s, "Open Worker", "1990-04-12", co)
+	addRecord(t, s, w, "MedC-OPEN", "Fit", "2027-01-01", "Open", 0)
+	a, _ := sentDocIn(t, s, sub, "Open Worker", "Other Four")
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w, a); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-OPEN"); err != nil { // Reviewed with a Fit result
+		t.Fatal(err)
+	}
+	if b, _ := s.WorkerBlock(ctx, sub, w); b.Kind != BlockWaiting {
+		t.Fatalf("a Reviewed document with a Fit result: %+v, want waiting", b)
+	}
+	// The local SQLite schema has the old CHECK list, so write IncompleteResult with it switched off.
+	conn, err := s.DB.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	for _, q := range []string{`PRAGMA ignore_check_constraints = ON`,
+		`UPDATE McuRecord SET ResultCriteria = 'IncompleteResult', ResultValidUntil = NULL WHERE CheckUpID = 'MedC-OPEN'`,
+		`PRAGMA ignore_check_constraints = OFF`} {
+		if _, err := conn.ExecContext(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if b, err := s.WorkerBlock(ctx, sub, w); err != nil || b.Kind != "" {
+		t.Fatalf("a Reviewed document with an Incomplete result: %+v, %v; want a new document accepted", b, err)
+	}
+}
+
 func TestWorkerBlockTreatsOnlyTheOwnDraftAsWaiting(t *testing.T) {
 	s, _, co := newTestStore(t)
 	ctx := context.Background()

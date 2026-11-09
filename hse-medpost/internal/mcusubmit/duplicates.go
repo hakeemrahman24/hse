@@ -43,7 +43,10 @@ const minDaysBetweenCheckups = 180
 // WorkerBlock decides whether submitterID may send a document for patientID now.
 //
 // Waiting: a document for the patient is Pending or Reviewed (sent, not closed yet), or is the
-// submitter's own Draft or Review (already in their open batch). Another company's unsent draft
+// submitter's own Draft or Review (already in their open batch). A Reviewed document whose checkup
+// result is Incomplete does NOT wait: its checkup is still open and the way forward is for the
+// submitter to send a new document, which staff review as a new checkup (consultation result)
+// linked to the old one (owner, 2026-11-10). Another company's unsent draft
 // does not count: it is invisible to this submitter and may never be sent.
 //
 // Valid: the patient has a final Fit or Fit-with-note record that is not archived, is still valid
@@ -58,7 +61,9 @@ func (s *Store) WorkerBlock(ctx context.Context, submitterID, patientID int64) (
 	var waiting int
 	if err := s.DB.QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM McuSubmission
-		 WHERE FK_PatientID = ? AND (Status IN (?, ?) OR (FK_SubmitterID = ? AND Status IN (?, ?)))`,
+		 WHERE FK_PatientID = ? AND (Status = ?
+		   OR (Status = ? AND NOT EXISTS (SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria = 'IncompleteResult'))
+		   OR (FK_SubmitterID = ? AND Status IN (?, ?)))`,
 		patientID, SubPending, SubReviewed, submitterID, SubDraft, SubReview).Scan(&waiting); err != nil {
 		return Block{}, err
 	}

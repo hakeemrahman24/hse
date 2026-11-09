@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -78,8 +79,9 @@ type Submission struct {
 	Recommendation        string // the linked checkup's recommendation
 	PatNik, PatPassportNo string
 	PatGender             string
-	RecordID              int64 // the checkup record a Closed document was linked to, 0 = none
-	NotifyRequested       bool  // the submitter was told about an Incomplete result; the document stays Reviewed
+	RecordID              int64  // the checkup record a Closed document was linked to, 0 = none
+	NotifyRequested       bool   // the submitter was told about an Incomplete result; the document stays Reviewed
+	RenewedBy             string // "Renewed by <checkup ID>" once a follow-up checkup replaced the linked record
 	PatientID, CompanyID  int64
 	// PatCompanyAbbr is the abbreviation of the company named in PatCompanyText ("" when it has none
 	// or the text matches no company). Lists show it first and the full name small.
@@ -92,7 +94,7 @@ const submissionColumns = `s.SubmissionID, s.FK_BatchID, s.FK_SubmitterID, COALE
 	s.IsNewEmployee, CASE WHEN s.FilePath IS NULL THEN 0 ELSE 1 END, s.ScanStatus, s.Status, COALESCE(s.RejectReason, ''),
 	s.SubmittedAt, COALESCE(b.SentAt, ''), COALESCE(s.WithdrawnAt, ''), COALESCE(s.FileExpiresAt, ''),
 	COALESCE(s.ReviewedAt, ''), COALESCE(rs.StaffName, ''), COALESCE(s.PatNik, ''), COALESCE(s.PatPassportNo, ''), COALESCE(s.PatGender, ''),
-	COALESCE(s.FK_PatientID, 0), COALESCE(s.FK_CompanyID, 0), COALESCE(s.FK_McuRecordID, 0), COALESCE(rec.ResultCriteria, ''), COALESCE(rec.ResultNotes, ''), COALESCE(rec.Recommendation, ''), COALESCE(u.FK_CompanyID, 0), COALESCE(co.Abbreviation, ''), CASE WHEN s.NotifyRequestedAt IS NULL THEN 0 ELSE 1 END`
+	COALESCE(s.FK_PatientID, 0), COALESCE(s.FK_CompanyID, 0), COALESCE(s.FK_McuRecordID, 0), COALESCE(rec.ResultCriteria, ''), COALESCE(rec.ResultNotes, ''), COALESCE(rec.Recommendation, ''), COALESCE(u.FK_CompanyID, 0), COALESCE(co.Abbreviation, ''), CASE WHEN s.NotifyRequestedAt IS NULL THEN 0 ELSE 1 END, COALESCE(rec.HcValidityStatus, '')`
 
 const submissionFrom = ` FROM McuSubmission s
 	JOIN McuBatch b ON b.BatchID = s.FK_BatchID
@@ -134,10 +136,13 @@ func (s *Store) querySubmissions(ctx context.Context, where string, args ...any)
 		if err := rows.Scan(&d.ID, &d.BatchID, &d.SubmitterID, &d.SubmitterName, &d.PatName, &d.PatDateOfBirth,
 			&d.PatPosition, &d.PatCompanyText, &d.PatNationality, &isNew, &hasFile, &d.ScanStatus, &d.Status,
 			&d.RejectReason, &d.SubmittedAt, &d.SentAt, &d.WithdrawnAt, &d.FileExpiresAt,
-			&d.ReviewedAt, &d.ReviewedBy, &d.PatNik, &d.PatPassportNo, &d.PatGender, &d.PatientID, &d.CompanyID, &d.RecordID, &d.Result, &d.ResultNotes, &d.Recommendation, &d.SubmitterCompanyID, &d.PatCompanyAbbr, &notify); err != nil {
+			&d.ReviewedAt, &d.ReviewedBy, &d.PatNik, &d.PatPassportNo, &d.PatGender, &d.PatientID, &d.CompanyID, &d.RecordID, &d.Result, &d.ResultNotes, &d.Recommendation, &d.SubmitterCompanyID, &d.PatCompanyAbbr, &notify, &d.RenewedBy); err != nil {
 			return nil, err
 		}
 		d.IsNewEmployee, d.HasFile, d.NotifyRequested = isNew == 1, hasFile == 1, notify == 1
+		if !strings.HasPrefix(d.RenewedBy, "Renewed by ") {
+			d.RenewedBy = "" // HcValidityStatus also holds Archived / Exit; only the renewal text is shown
+		}
 		out = append(out, d)
 	}
 	return out, rows.Err()
