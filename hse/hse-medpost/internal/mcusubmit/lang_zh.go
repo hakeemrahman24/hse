@@ -22,7 +22,7 @@ var simplifiedChineseText = map[string]string{
 	"information":                                                                              "披露同意书",
 	"Please read and sign this once to keep using the portal.":                                 "请阅读并签署一次，以便继续使用本门户。",
 	"Sign and continue":                                                                        "签署并继续",
-	"Withdraw this document? The medical post will no longer see it and the file is deleted. You can upload a corrected one in a new batch.": "撤回此文件？医疗站将不再看到它，文件会被删除。您可以在新的批次中上传更正后的文件。",
+	"Withdraw this document? The medical team will no longer see it and the file is deleted. You can upload a corrected one in a new batch.": "撤回此文件？医疗团队将不再看到它，文件会被删除。您可以在新的批次中上传更正后的文件。",
 
 	// Header and shared
 	"Skip to content":            "跳到正文",
@@ -43,10 +43,10 @@ var simplifiedChineseText = map[string]string{
 	// Landing
 	"Medical checkup ": "体检结果",
 	"submission":       "提交",
-	"Send a worker's medical checkup result to the medical post as a PDF, and follow what happens to it.": "以 PDF 形式向医疗站发送员工的体检结果，并跟踪处理进度。",
+	"Send a worker's medical checkup result to the medical team as a PDF, and follow what happens to it.": "以 PDF 形式向医疗团队发送员工的体检结果，并跟踪处理进度。",
 	"How it works":        "使用方法",
 	"Request an account.": "申请账户。",
-	"Confirm your email; a medical post administrator approves it.": "确认您的邮箱；医疗站管理员会审批。",
+	"Confirm your email; a medical team administrator approves it.": "确认您的邮箱；医疗团队管理员会审批。",
 	"Choose a login.": "设置登录信息。",
 	"You get a link to pick a username and password.": "您会收到一个链接，用来设置用户名和密码。",
 	"Send results.": "发送结果。",
@@ -61,7 +61,7 @@ var simplifiedChineseText = map[string]string{
 	"We send a link to confirm this address.": "我们会发送一个链接来确认此邮箱地址。",
 	"Company":             "公司",
 	"Choose your company": "请选择您的公司",
-	"Company not listed? Ask the medical post administrator to add it.": "没有找到您的公司？请联系医疗站管理员添加。",
+	"Company not listed? Ask the medical team administrator to add it.": "没有找到您的公司？请联系医疗团队管理员添加。",
 	"Position":              "职位",
 	"Request account":       "申请账户",
 	"Already have a login?": "已有登录账号？",
@@ -120,7 +120,7 @@ var simplifiedChineseText = map[string]string{
 	"If this address can register, we sent a link to confirm it. The link works for 24 hours.": "如果此地址可以注册，我们已发送确认链接。链接 24 小时内有效。",
 	"Check your email":                                                                         "请查收邮件",
 	"Email confirmed":                                                                          "邮箱已确认",
-	"Thank you. A medpost administrator will review your request. You will get an email when it is decided.": "谢谢。医疗站管理员将审核您的申请，有结果时您会收到邮件。",
+	"Thank you. A medpost administrator will review your request. You will get an email when it is decided.": "谢谢。医疗团队管理员将审核您的申请，有结果时您会收到邮件。",
 	"Link not valid": "链接无效",
 	"This link is invalid, has already been used, or has expired.": "此链接无效、已被使用或已过期。",
 	"Your login is ready": "您的登录账号已就绪",
@@ -134,6 +134,6 @@ var simplifiedChineseText = map[string]string{
 	"There is nothing at this address.": "此地址没有内容。",
 	"Invalid request":                   "无效的请求",
 	"The form could not be read.":       "无法读取表单。",
-	"This company already has two accounts. Ask your colleague to sign in, or ask the medical post administrator.": "该公司已有两个账户。请联系您的同事登录，或联系医疗站管理员。",
+	"This company already has two accounts. Ask your colleague to sign in, or ask the medical team administrator.": "该公司已有两个账户。请联系您的同事登录，或联系医疗团队管理员。",
 	"Something went wrong.": "出错了。",
 }

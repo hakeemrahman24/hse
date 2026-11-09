@@ -77,7 +77,7 @@ func (a *API) DocumentCertificate(w http.ResponseWriter, r *http.Request) {
 	cert, err := a.certs.Certificate(r.Context(), record)
 	var unavailable *CertificateUnavailable
 	if errors.As(err, &unavailable) {
-		a.message(w, http.StatusConflict, "No certificate available", "A certificate cannot be issued for this checkup: "+unavailable.Reason+". Please contact the medical post.", u)
+		a.message(w, http.StatusConflict, "No certificate available", "A certificate cannot be issued for this checkup: "+unavailable.Reason+". Please contact the medical team.", u)
 		return
 	}
 	if err != nil {

@@ -486,3 +486,24 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
 @media (min-width: 1100px) {
   .mp-panes-batch { grid-template-columns: minmax(540px, 680px) minmax(0, 1fr); gap: 0 32px; }
 }
+
+/* One button size everywhere in the portal (owner, 2026-11-09). Before, the height changed with the
+   screen width, buttons in one row had different widths (Review next to Discard) and "Open PDF" was
+   plain text. Now primary and ghost buttons, links and form buttons are all 30px high with the same
+   text size; a button never gets narrower than 80px so a row of them looks even; the header's
+   Sign out and language buttons keep their short width. This block comes last on purpose: the
+   earlier rules use !important for padding and font size, and the later one wins at equal weight. */
+.mp .btn-primary, .mp .btn-ghost {
+  height: 30px;
+  min-width: 80px;
+  padding: 0 14px !important;
+  font-size: 0.8125rem !important;
+}
+.mp .mp-nav-links .btn-primary, .mp .mp-nav-links .btn-ghost, .mp .mp-lang .btn-ghost {
+  min-width: 0;
+  padding: 0 10px !important;
+}
+.mp .mp-lang .btn-ghost { min-width: 38px; }
+.mp .mp-docs .mp-pdf { margin-right: 6px; }
+.mp .mp-docs td.mp-decide { white-space: nowrap; }
+

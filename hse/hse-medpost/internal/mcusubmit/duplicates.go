@@ -27,7 +27,7 @@ type Block struct {
 func (b Block) Message() string {
 	switch b.Kind {
 	case BlockWaiting:
-		return "This worker already has a document waiting for the medical post. Wait for its result before sending another."
+		return "This worker already has a document waiting for the medical team. Wait for its result before sending another."
 	case BlockValid:
 		return fmt.Sprintf("This worker already has a valid medical checkup (done on %s, valid until %s). A new checkup is accepted only more than 180 days after the last one, from %s.", b.Last, b.Until, b.From)
 	}

@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=41" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=42" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
   <script src="/static/mcu-portal-name.js?v=3" defer></script>
   <script src="/static/mcu-portal-cards.js?v=5" defer></script>
@@ -87,7 +87,7 @@
 {{define "landing.html"}}{{template "head" .}}
     <section class="mp-hero">
       <h1>Medical checkup <span>submission</span></h1>
-      <p class="mp-lead">Send a worker's medical checkup result to the medical post as a PDF, and follow what happens to it.</p>
+      <p class="mp-lead">Send a worker's medical checkup result to the medical team as a PDF, and follow what happens to it.</p>
       <div class="mp-actions">
         <a class="btn-primary" href="/mcu-submit/signin">Sign in</a>
         <a class="btn-ghost" href="/mcu-submit/register">Request an account</a>
@@ -95,7 +95,7 @@
     </section>
     <section class="mp-steps" aria-label="How it works">
       <ol>
-        <li><strong>Request an account.</strong> Confirm your email; a medical post administrator approves it.</li>
+        <li><strong>Request an account.</strong> Confirm your email; a medical team administrator approves it.</li>
         <li><strong>Choose a login.</strong> You get a link to pick a username and password.</li>
         <li><strong>Send results.</strong> One PDF per worker. You can see the status of each one.</li>
       </ol>
@@ -173,7 +173,7 @@
               <option value="">Choose your company</option>
               {{range .Companies}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) $.Form.company_id}} selected{{end}}>{{.Name}}</option>{{end}}
             </select>
-            <p class="mp-hint">Company not listed? Ask the medical post administrator to add it.</p></div>
+            <p class="mp-hint">Company not listed? Ask the medical team administrator to add it.</p></div>
           <div class="field"><label for="position"><span>Position</span></label>
             <input id="position" name="position" type="text" maxlength="128" data-position required value="{{.Form.position}}" /></div>
           {{template "romif-statement" .}}
@@ -391,12 +391,12 @@
           <td><div class="mp-cell">{{if .SentAt}}<span class="mp-when">{{.SentAt}}</span>{{else}}Draft{{end}}{{if $.ShowUploader}}<div class="mp-sub">{{.SubmitterName}}</div>{{end}}</div></td>
           <td><div class="mp-cell"><span class="mp-badge" data-s="{{.Status}}">{{.Status}}</span>{{if .RejectReason}}<div class="mp-hint">{{.RejectReason}}</div>{{end}}{{with .ResultMessage}}<div class="mp-hint">{{.}}</div>{{end}}</div></td>
           <td class="mp-decide">
-            {{if and .HasFile (eq .ScanStatus "Clean")}}<a class="mp-pdf" href="/mcu-submit/documents/{{.ID}}/file" target="_blank" rel="noopener">Open PDF</a>{{else}}<span class="mp-hint">No file</span>{{end}}
+            {{if and .HasFile (eq .ScanStatus "Clean")}}<a class="btn-ghost mp-pdf" href="/mcu-submit/documents/{{.ID}}/file" target="_blank" rel="noopener">Open PDF</a>{{else}}<span class="mp-hint">No file</span>{{end}}
             {{if eq .SubmitterID $.User.ID}}{{if eq .Status "Review"}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/review">Review</a>{{end}}
             {{if or (eq .Status "Draft") (eq .Status "Review")}}<form method="post" action="/mcu-submit/documents/{{.ID}}/remove" class="mp-inline"><button type="submit" class="btn-ghost">{{if eq .Status "Draft"}}Remove{{else}}Discard{{end}}</button></form>{{end}}
             {{end}}
             {{if and (eq .Status "Closed") .RecordID}}<a class="btn-ghost" href="/mcu-submit/documents/{{.ID}}/certificate">Download certificate</a>{{end}}
-            {{if and (eq .Status "Pending") (or (eq .SubmitterID $.User.ID) (and $.User.CompanyID (eq .SubmitterCompanyID $.User.CompanyID)))}}<form method="post" action="/mcu-submit/documents/{{.ID}}/withdraw" class="mp-inline" data-confirm="Withdraw this document? The medical post will no longer see it and the file is deleted. You can upload a corrected one in a new batch."><button type="submit" class="btn-ghost">Withdraw</button></form>{{end}}
+            {{if and (eq .Status "Pending") (or (eq .SubmitterID $.User.ID) (and $.User.CompanyID (eq .SubmitterCompanyID $.User.CompanyID)))}}<form method="post" action="/mcu-submit/documents/{{.ID}}/withdraw" class="mp-inline" data-confirm="Withdraw this document? The medical team will no longer see it and the file is deleted. You can upload a corrected one in a new batch."><button type="submit" class="btn-ghost">Withdraw</button></form>{{end}}
           </td></tr>{{end}}
         </tbody></table></div>
 {{end}}
@@ -404,7 +404,7 @@
 {{define "batch.html"}}{{template "head" .}}
     <section class="mp-section">
       <h1>New <span>batch</span></h1>
-      <p class="mp-lead">Add the workers one by one. Each document is checked by you first. When all are confirmed, send the batch to the medical post. Nothing is visible to the medical post until you press Send.</p>
+      <p class="mp-lead">Add the workers one by one. Each document is checked by you first. When all are confirmed, send the batch to the medical team. Nothing is visible to the medical team until you press Send.</p>
       <div class="mp-panes mp-panes-batch">
       <div class="mp-pane">
       <div class="login-card mp-wide">
@@ -415,7 +415,7 @@
             <input id="worker-q" type="search" autocomplete="off" />
             <ul id="worker-results" class="mp-results" aria-label="Matching workers"></ul>
             <div id="picker-msgs" hidden>
-              <span data-m="waiting">Already sent: waiting for the medical post</span>
+              <span data-m="waiting">Already sent: waiting for the medical team</span>
               <span data-m="valid">Checkup done {last}, valid until {until}. A new one is accepted only more than 180 days after the last, from {from}.</span>
             </div>
             <input type="hidden" name="patient_id" id="patient-id" value="{{index .Form "patient_id"}}" />
@@ -461,7 +461,7 @@
             <p class="mp-hint">The file is rebuilt when it is uploaded and is refused if it is over 10 MB. Password-protected PDFs and PDFs with scripts or attachments are refused.</p></div>
           <details id="cp-tool" class="mp-compress">
             <summary>PDF over 10 MB? Make it smaller here</summary>
-            <p class="mp-hint">This works on your own device: the file is not sent anywhere until you press Upload and review. The pages are saved as pictures, so the text in the smaller PDF can no longer be selected or searched. The medical post sees the same pages.</p>
+            <p class="mp-hint">This works on your own device: the file is not sent anywhere until you press Upload and review. The pages are saved as pictures, so the text in the smaller PDF can no longer be selected or searched. The medical team sees the same pages.</p>
             <div class="field"><label for="cp-file"><span>PDF to make smaller</span></label><input id="cp-file" type="file" accept="application/pdf,.pdf" /></div>
             <div class="field"><label for="cp-target"><span>Make it smaller than</span></label>
               <select id="cp-target">
@@ -488,7 +488,7 @@
           </details>
           <div id="up-msgs" hidden>
             <span data-m="uploading">Uploading the file…</span>
-            <span data-m="checking">Uploaded. Checking the file now. A large scan can take a minute or two. Keep this page open.</span>
+            <span data-m="checking">Uploaded. The portal is now checking that the file is a safe, readable PDF. A large file can take a minute. Keep this page open.</span>
             <span data-m="toobig">The file is larger than 10 MB. Split it or scan at a lower resolution.</span>
             <span data-m="cut">The connection was cut or timed out. The file may have arrived: look in the list of documents in this batch before you upload it again.</span>
           </div>
@@ -500,7 +500,7 @@
       <script src="/static/mcu-worker-picker.js?v=3"></script>
       <script src="/static/mcu-portal-upload.js?v=3"></script>
       <script src="/static/mcu-portal-id.js?v=1"></script>
-      <script src="/static/mcu-portal-compress.js?v=1"></script>
+      <script src="/static/mcu-portal-compress.js?v=2"></script>
 
       </div>
       <div class="mp-pane">
@@ -521,7 +521,7 @@
 {{define "sendconfirm.html"}}{{template "head" .}}
     <section class="mp-section">
       <h1>Send the <span>batch</span>?</h1>
-      <p class="mp-lead">The medical post will see these {{len .Docs}} documents. After sending you cannot add more to this batch or take a document back, except by withdrawing it while it is waiting for review.</p>
+      <p class="mp-lead">The medical team will see these {{len .Docs}} documents. After sending you cannot add more to this batch or take a document back, except by withdrawing it while it is waiting for review.</p>
       {{template "doctable" .}}
       <div class="mp-actions">
         <form method="post" action="/mcu-submit/batch/send" class="mp-inline"><input type="hidden" name="batch" value="{{.BatchID}}" /><input type="hidden" name="confirm" value="yes" /><button type="submit" class="btn-primary">Yes, send {{len .Docs}}</button></form>
@@ -534,7 +534,7 @@
     <section class="mp-section">
       <h1>Review <span>document</span></h1>
       {{range .Docs}}
-      <p class="mp-lead">Check that this is the right worker and the right file. This is exactly what the medical post will see.</p>
+      <p class="mp-lead">Check that this is the right worker and the right file. This is exactly what the medical team will see.</p>
       <div class="login-card mp-wide">
         <dl class="mp-review">
           <dt>Worker</dt><dd>{{.PatName}}</dd>

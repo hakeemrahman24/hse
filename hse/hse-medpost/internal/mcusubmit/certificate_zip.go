@@ -103,7 +103,7 @@ func (a *API) CertificatesZip(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if len(files) == 0 {
-		a.message(w, http.StatusConflict, "No certificates available", "A certificate cannot be issued for these checkups. Please contact the medical post.", u)
+		a.message(w, http.StatusConflict, "No certificates available", "A certificate cannot be issued for these checkups. Please contact the medical team.", u)
 		return
 	}
 

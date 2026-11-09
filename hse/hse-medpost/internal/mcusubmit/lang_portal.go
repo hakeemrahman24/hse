@@ -5,7 +5,7 @@ import "regexp"
 // The signed-in submitter pages in Indonesian and Chinese (owner, 2026-11-05, item 5 of the
 // follow-ups): home, New batch, the send question, the review page, My documents and Settings. Each
 // entry holds both languages next to its English, so the two can never drift apart. The reviewer and
-// admin pages stay English: they are for the medical post's own staff.
+// admin pages stay English: they are for the medical team's own staff.
 //
 // Like lang_id.go and lang_zh.go these are written for plain office readers and should be read
 // through by someone who speaks the language before they go to real users.
@@ -73,7 +73,7 @@ var portalText = map[string][2]string{
 	// New batch
 	"New":   {"Buat", "新建"},
 	"batch": {"kumpulan", "批次"},
-	"Add the workers one by one. Each document is checked by you first. When all are confirmed, send the batch to the medical post. Nothing is visible to the medical post until you press Send.": {"Tambahkan pekerja satu per satu. Setiap dokumen Anda periksa lebih dulu. Setelah semuanya dikonfirmasi, kirim kumpulan ke pos medis. Pos medis tidak dapat melihat apa pun sampai Anda menekan Kirim.", "请逐个添加员工。每份文件都先由您自己检查。全部确认后，把批次发送给医疗站。在您点击发送之前，医疗站看不到任何内容。"},
+	"Add the workers one by one. Each document is checked by you first. When all are confirmed, send the batch to the medical team. Nothing is visible to the medical team until you press Send.": {"Tambahkan pekerja satu per satu. Setiap dokumen Anda periksa lebih dulu. Setelah semuanya dikonfirmasi, kirim kumpulan ke tim medis. Tim medis tidak dapat melihat apa pun sampai Anda menekan Kirim.", "请逐个添加员工。每份文件都先由您自己检查。全部确认后，把批次发送给医疗团队。在您点击发送之前，医疗团队看不到任何内容。"},
 	"Find the worker (type at least 3 letters of the name)":                 {"Cari pekerja (ketik minimal 3 huruf nama)", "查找员工(至少输入姓名中的 3 个字母)"},
 	"Choose another worker":                                                 {"Pilih pekerja lain", "选择其他员工"},
 	"Search needs JavaScript. Without it, use the new employee form below.": {"Pencarian memerlukan JavaScript. Tanpa itu, gunakan formulir karyawan baru di bawah.", "搜索需要 JavaScript。如果不可用，请使用下方的新员工表单。"},
@@ -97,7 +97,7 @@ var portalText = map[string][2]string{
 	"6 to 12 letters or digits":                                {"6 sampai 12 huruf atau angka", "6 至 12 位字母或数字"},
 	// The "make a PDF smaller" tool on the New batch page
 	"PDF over 10 MB? Make it smaller here": {"PDF lebih dari 10 MB? Perkecil di sini", "PDF 超过 10 MB?在此压缩"},
-	"This works on your own device: the file is not sent anywhere until you press Upload and review. The pages are saved as pictures, so the text in the smaller PDF can no longer be selected or searched. The medical post sees the same pages.": {"Ini berjalan di perangkat Anda sendiri: file tidak dikirim ke mana pun sampai Anda menekan Unggah dan periksa. Halaman disimpan sebagai gambar, sehingga teks di PDF yang lebih kecil tidak bisa lagi dipilih atau dicari. Pos medis melihat halaman yang sama.", "此功能在您自己的设备上运行:在您点击“上传并检查”之前,文件不会发送到任何地方。页面会保存为图片,因此变小后的 PDF 中的文字无法再被选择或搜索。医务站看到的页面相同。"},
+	"This works on your own device: the file is not sent anywhere until you press Upload and review. The pages are saved as pictures, so the text in the smaller PDF can no longer be selected or searched. The medical team sees the same pages.": {"Ini berjalan di perangkat Anda sendiri: file tidak dikirim ke mana pun sampai Anda menekan Unggah dan periksa. Halaman disimpan sebagai gambar, sehingga teks di PDF yang lebih kecil tidak bisa lagi dipilih atau dicari. Tim medis melihat halaman yang sama.", "此功能在您自己的设备上运行:在您点击“上传并检查”之前,文件不会发送到任何地方。页面会保存为图片,因此变小后的 PDF 中的文字无法再被选择或搜索。医疗团队看到的页面相同。"},
 	"PDF to make smaller":                  {"PDF yang akan diperkecil", "要压缩的 PDF"},
 	"Make it smaller than":                 {"Perkecil hingga kurang dari", "压缩到小于"},
 	"9 MB (best quality that is accepted)": {"9 MB (kualitas terbaik yang diterima)", "9 MB(可接受的最佳画质)"},
@@ -114,12 +114,12 @@ var portalText = map[string][2]string{
 	"The result is still {to} MB. Choose a smaller size above, or split the file.":                   {"Hasilnya masih {to} MB. Pilih ukuran yang lebih kecil di atas, atau bagi file.", "结果仍有 {to} MB。请在上方选择更小的尺寸,或拆分文件。"},
 	"This PDF could not be read. It may be damaged or protected by a password.":                      {"PDF ini tidak bisa dibaca. Mungkin rusak atau dilindungi kata sandi.", "无法读取此 PDF。文件可能已损坏或受密码保护。"},
 	"Uploading the file…": {"Mengunggah file…", "正在上传文件…"},
-	"Uploaded. Checking the file now. A large scan can take a minute or two. Keep this page open.":                                            {"Sudah terunggah. File sedang diperiksa. Pindaian besar bisa memakan satu atau dua menit. Biarkan halaman ini tetap terbuka.", "已上传。正在检查文件。较大的扫描件可能需要一两分钟。请保持此页面打开。"},
+	"Uploaded. The portal is now checking that the file is a safe, readable PDF. A large file can take a minute. Keep this page open.":        {"Sudah terunggah. Portal sedang memeriksa apakah file ini PDF yang aman dan bisa dibaca. File besar bisa memakan waktu sekitar satu menit. Biarkan halaman ini tetap terbuka.", "已上传。系统正在检查该文件是否为安全、可读取的 PDF。较大的文件可能需要一分钟左右。请保持此页面打开。"},
 	"The file is larger than 10 MB. Split it or scan at a lower resolution.":                                                                  {"File lebih besar dari 10 MB. Bagi file atau pindai dengan resolusi lebih rendah.", "文件超过 10 MB。请拆分文件或降低扫描分辨率。"},
 	"The connection was cut or timed out. The file may have arrived: look in the list of documents in this batch before you upload it again.": {"Koneksi terputus atau habis waktu. File mungkin sudah sampai: lihat daftar dokumen di kumpulan ini sebelum mengunggah ulang.", "连接中断或超时。文件可能已送达：请先查看本批次的文件列表，再重新上传。"},
-	"Already sent: waiting for the medical post":                                                                                              {"Sudah dikirim: menunggu pos medis", "已发送：等待医务室处理"},
-	"Checkup done {last}, valid until {until}. A new one is accepted only more than 180 days after the last, from {from}.":                    {"Check-up dilakukan {last}, berlaku sampai {until}. Yang baru diterima hanya lebih dari 180 hari setelah yang terakhir, yaitu mulai {from}.", "体检日期 {last}，有效期至 {until}。仅在上次体检 180 天之后才接受新的体检，从 {from} 起。"},
-	"This worker already has a document waiting for the medical post. Wait for its result before sending another.":                            {"Pekerja ini sudah memiliki dokumen yang menunggu pos medis. Tunggu hasilnya sebelum mengirim yang lain.", "该员工已有文件在等待医务室处理。请等待结果后再提交新的。"},
+	"Already sent: waiting for the medical team": {"Sudah dikirim: menunggu tim medis", "已发送：等待医疗团队处理"},
+	"Checkup done {last}, valid until {until}. A new one is accepted only more than 180 days after the last, from {from}.": {"Check-up dilakukan {last}, berlaku sampai {until}. Yang baru diterima hanya lebih dari 180 hari setelah yang terakhir, yaitu mulai {from}.", "体检日期 {last}，有效期至 {until}。仅在上次体检 180 天之后才接受新的体检，从 {from} 起。"},
+	"This worker already has a document waiting for the medical team. Wait for its result before sending another.":         {"Pekerja ini sudah memiliki dokumen yang menunggu tim medis. Tunggu hasilnya sebelum mengirim yang lain.", "该员工已有文件在等待医疗团队处理。请等待结果后再提交新的。"},
 	"Upload and review": {"Unggah dan periksa", "上传并检查"},
 	"Documents in this": {"Dokumen dalam", "本批次中的"},
 	"No documents yet.": {"Belum ada dokumen.", "暂无文件。"},
@@ -131,7 +131,7 @@ var portalText = map[string][2]string{
 
 	// Review one document
 	"document": {"dokumen", "文件"},
-	"Check that this is the right worker and the right file. This is exactly what the medical post will see.": {"Periksa bahwa ini pekerja dan file yang benar. Inilah yang akan dilihat pos medis.", "请检查员工和文件是否正确。医疗站将看到的正是这些内容。"},
+	"Check that this is the right worker and the right file. This is exactly what the medical team will see.": {"Periksa bahwa ini pekerja dan file yang benar. Inilah yang akan dilihat tim medis.", "请检查员工和文件是否正确。医疗团队将看到的正是这些内容。"},
 	"Not given":                      {"Tidak diisi", "未填写"},
 	"Worker record":                  {"Data pekerja", "员工记录"},
 	"New employee (not on file yet)": {"Karyawan baru (belum terdaftar)", "新员工(尚无档案)"},
@@ -179,9 +179,9 @@ var portalPatterns = []portalPattern{
 	{regexp.MustCompile(`^(\d+) document\(s\) still need your review\. Confirm or discard them, then you can send the batch\.$`),
 		"$1 dokumen masih perlu Anda periksa. Konfirmasi atau buang, lalu Anda dapat mengirim kumpulan.",
 		"还有 $1 份文件需要您检查。请先确认或放弃，然后才能发送批次。"},
-	{regexp.MustCompile(`^The medical post will see these (\d+) documents\. After sending you cannot add more to this batch or take a document back, except by withdrawing it while it is waiting for review\.$`),
-		"Pos medis akan melihat $1 dokumen ini. Setelah dikirim, Anda tidak dapat menambah dokumen ke kumpulan ini atau mengambil kembali dokumen, kecuali dengan menariknya selama menunggu peninjauan.",
-		"医疗站将看到这 $1 份文件。发送后，您不能再向此批次添加文件，也不能收回文件，但在文件等待审核期间可以撤回。"},
+	{regexp.MustCompile(`^The medical team will see these (\d+) documents\. After sending you cannot add more to this batch or take a document back, except by withdrawing it while it is waiting for review\.$`),
+		"Tim medis akan melihat $1 dokumen ini. Setelah dikirim, Anda tidak dapat menambah dokumen ke kumpulan ini atau mengambil kembali dokumen, kecuali dengan menariknya selama menunggu peninjauan.",
+		"医疗团队将看到这 $1 份文件。发送后，您不能再向此批次添加文件，也不能收回文件，但在文件等待审核期间可以撤回。"},
 	{regexp.MustCompile(`^You signed this statement on (.+)\.$`), "Anda menandatangani pernyataan ini pada $1.", "您已于 $1 签署此声明。"},
 	{regexp.MustCompile(`^Now: (.+)$`), "Sekarang: $1", "当前：$1"},
 }

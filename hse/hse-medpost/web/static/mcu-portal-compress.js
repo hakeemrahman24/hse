@@ -33,8 +33,9 @@
   var START_DPI = 200; // start sharp: fine print on lab sheets must stay readable
   var MIN_DPI = 72;
   var START_QUALITY = 0.82;
-  var MIN_QUALITY = 0.45;
-  var TRIES = 5;
+  var MIN_QUALITY = 0.5;
+  var PAGE_TRIES = 4; // draws of one page at fewer and fewer pixels
+  var MIN_BUDGET = 20 * 1024; // never ask a page for less than this
 
   var result = null; // the smaller File, once there is one
   var runToken = 0; // choosing another file cancels the result of an older run
@@ -82,15 +83,14 @@
     });
   }
 
-  // One try: every page at one resolution and quality. Pages are kept as JPEG bytes (small), and the
-  // canvas is released after each page so a phone is not holding 30 full-size bitmaps.
-  async function renderPages(pdf, dpi, quality, token, onPage) {
-    var scale = dpi / 72, pages = [], total = 0;
-    for (var i = 1; i <= pdf.numPages; i++) {
-      if (token !== runToken) throw new Error('cancelled');
-      var page = await pdf.getPage(i);
-      var size = page.getViewport({ scale: 1 }); // PDF points: the page size the new file keeps
-      var vp = page.getViewport({ scale: scale });
+  // Encodes ONE page so that it fits its share of the size budget. It draws the page once, then
+  // lowers the JPEG quality on that same drawing (cheap, no second render); only when the lowest
+  // quality is still too big does it draw again with fewer pixels. The smallest result is kept.
+  async function encodePage(page, budget) {
+    var size = page.getViewport({ scale: 1 }); // PDF points: the page size the new file keeps
+    var dpi = START_DPI, quality = START_QUALITY, best = null;
+    for (var attempt = 0; attempt < PAGE_TRIES; attempt++) {
+      var vp = page.getViewport({ scale: dpi / 72 });
       var canvas = document.createElement('canvas');
       canvas.width = Math.ceil(vp.width);
       canvas.height = Math.ceil(vp.height);
@@ -98,14 +98,20 @@
       ctx.fillStyle = '#fff'; // JPEG has no transparency: an unpainted page would turn black
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       await page.render({ canvasContext: ctx, viewport: vp }).promise;
-      var bytes = new Uint8Array(await (await toJpeg(canvas, quality)).arrayBuffer());
-      pages.push({ bytes: bytes, w: size.width, h: size.height });
-      total += bytes.length;
-      canvas.width = canvas.height = 0;
-      page.cleanup();
-      onPage(i, pdf.numPages);
+      var q = quality, bytes;
+      for (;;) {
+        bytes = new Uint8Array(await (await toJpeg(canvas, q)).arrayBuffer());
+        if (!best || bytes.length < best.bytes.length) best = { bytes: bytes, w: size.width, h: size.height };
+        if (bytes.length <= budget || q <= MIN_QUALITY) break;
+        q = Math.max(MIN_QUALITY, q - 0.1);
+      }
+      canvas.width = canvas.height = 0; // release the bitmap before the next page
+      if (best.bytes.length <= budget || dpi <= MIN_DPI) break;
+      // Still too big at the lowest quality: JPEG size follows the pixel count, so aim with a root.
+      dpi = Math.max(MIN_DPI, Math.floor(dpi * Math.sqrt(budget / bytes.length) * 0.95));
+      quality = 0.7;
     }
-    return { pages: pages, total: total };
+    return best;
   }
 
   function buildPdf(pages) {
@@ -120,26 +126,28 @@
     return doc.output('blob');
   }
 
-  // Tries again with a lower resolution and quality until the pages add up to the chosen size (a
-  // little under it, because the PDF around the pictures adds a few KB), or the tries run out and the
-  // smallest result is kept.
+  // One pass over the pages, so the progress bar only ever moves forward (an earlier version redid the
+  // whole file when the first try was too big, and the bar jumped back, which confused people). Each
+  // page gets an equal share of what is left of the size aimed at (a little under the chosen size,
+  // because the PDF around the pictures adds a few KB), so a light page leaves room for a heavy one.
   async function reduce(file, targetBytes, token, onPage) {
     await loadLibraries();
     var data = new Uint8Array(await file.arrayBuffer());
     // isEvalSupported off: the portal's policy forbids eval, and pdf.js would otherwise try it.
     var pdf = await window.pdfjsLib.getDocument({ data: data, isEvalSupported: false }).promise;
-    if (!pdf.numPages) throw new Error('no pages');
-    var dpi = START_DPI, quality = START_QUALITY, best = null;
-    var aim = targetBytes * 0.92;
-    for (var attempt = 0; attempt < TRIES; attempt++) {
-      var r = await renderPages(pdf, dpi, quality, token, onPage);
-      if (!best || r.total < best.total) best = r;
-      if (r.total <= aim) break;
-      // JPEG size grows roughly with the pixel count, so aim the next try with a square root.
-      dpi = Math.max(MIN_DPI, Math.floor(dpi * Math.sqrt((aim * 0.95) / r.total)));
-      quality = Math.max(MIN_QUALITY, quality - 0.08);
+    var count = pdf.numPages;
+    if (!count) throw new Error('no pages');
+    var aim = targetBytes * 0.92, used = 0, pages = [];
+    for (var i = 1; i <= count; i++) {
+      if (token !== runToken) throw new Error('cancelled');
+      var page = await pdf.getPage(i);
+      var enc = await encodePage(page, Math.max(MIN_BUDGET, (aim - used) / (count - i + 1)));
+      pages.push(enc);
+      used += enc.bytes.length;
+      page.cleanup();
+      onPage(i, count);
     }
-    var blob = buildPdf(best.pages);
+    var blob = buildPdf(pages);
     return new File([blob], file.name.replace(/\.pdf$/i, '') + '-smaller.pdf', { type: 'application/pdf' });
   }
 
