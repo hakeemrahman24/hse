@@ -351,6 +351,17 @@ type Patient struct {
 	CompanyName     string `json:"companyName"`
 	WorkPosition    string `json:"workPosition"`
 	PersonalID      string `json:"personalId"`
+	// MCUDate and MCUValidUntil come from the person's LATEST checkup (its checkup date, else its
+	// review date; ties go to the newest record). Both are "" for someone with no checkup, and
+	// MCUValidUntil is "" while that checkup is still open (no result, so nothing to expire).
+	MCUDate       string `json:"mcuDate"`
+	MCUValidUntil string `json:"mcuValidUntil"`
+}
+
+// latestCheckupDate is the date a checkup counts under: the date it was done, else the day it was
+// reviewed. The same expression orders the records and is shown, so the two can never disagree.
+func checkupDateSQL(alias string) string {
+	return "COALESCE(NULLIF(" + alias + ".DateCheckUp, ''), " + alias + ".ReviewDate)"
 }
 
 // ListPatients supports an optional ?q= substring filter against Name, for
@@ -362,10 +373,14 @@ func (a *API) ListPatients(w http.ResponseWriter, r *http.Request) {
 		SELECT p.PatientID, p.Name, COALESCE(p.Gender,''), COALESCE(p.DateOfBirth,''),
 		       p.FK_NationalityID, COALESCE(n.Name,''), COALESCE(` + db.LatestBloodTypeSQL("p") + `,''),
 		       COALESCE(p.EmployeeID,''), p.FK_CompanyID, COALESCE(c.Name,''), COALESCE(p.WorkPosition,''),
-		       COALESCE(p.PersonalID,'')
+		       COALESCE(p.PersonalID,''),
+		       COALESCE(` + checkupDateSQL("lm") + `, ''), COALESCE(lm.ResultValidUntil, '')
 		FROM Patient p
 		LEFT JOIN NationalityTable n ON n.NationalityID = p.FK_NationalityID
-		LEFT JOIN Company c ON c.CompanyID = p.FK_CompanyID`
+		LEFT JOIN Company c ON c.CompanyID = p.FK_CompanyID
+		LEFT JOIN McuRecord lm ON lm.McuRecordID = (
+		    SELECT m.McuRecordID FROM McuRecord m WHERE m.FK_PatientID = p.PatientID
+		    ORDER BY ` + checkupDateSQL("m") + ` DESC, m.McuRecordID DESC LIMIT 1)`
 	args := []any{}
 	if q != "" {
 		query += ` WHERE ` + db.NameLikeSQL("p.Name")
@@ -386,7 +401,7 @@ func (a *API) ListPatients(w http.ResponseWriter, r *http.Request) {
 		if err := rows.Scan(&p.PatientID, &p.Name, &p.Gender, &p.DateOfBirth,
 			&p.NationalityID, &p.NationalityName, &p.BloodType,
 			&p.EmployeeID, &p.CompanyID, &p.CompanyName, &p.WorkPosition,
-			&p.PersonalID); err != nil {
+			&p.PersonalID, &p.MCUDate, &p.MCUValidUntil); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})
 			return
 		}
