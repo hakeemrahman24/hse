@@ -1,10 +1,36 @@
 /* /sofi pages: the searchable name list and the date-of-birth row. Everything else is clearwave. */
+
+/* Black and orange palette for the public /sofi pages only (this file is loaded by no staff page).
+   WHY override the tokens instead of restyling each rule: clearwave reads every colour from these
+   variables, so redefining them here recolours the nav, card, inputs, links and answer buttons at
+   once and the staff screens keep their teal. Orange text on black passes contrast; white text on
+   this orange does not (about 2.8:1), so filled orange buttons use near-black text. */
+:root {
+  color-scheme: dark;
+  --bg: #0d0d0d;
+  --bg-alt: #141414;
+  --surface: #161616;
+  --surface-2: #1d1d1d;
+  --accent: #f97316;
+  --accent-mid: #fb923c;
+  --accent-light: #fdba74;
+  --accent-ghost: rgba(249, 115, 22, 0.14);
+  --accent-border: rgba(249, 115, 22, 0.35);
+  --text-1: #f5f0ea;
+  --text-2: #cfc6bc;
+  --text-3: #968c82;
+  --border: rgba(255, 255, 255, 0.14);
+  --sofi-line: rgba(255, 255, 255, 0.28); /* borders of inputs and answer buttons */
+}
+.nav.scrolled { background: rgba(13, 13, 13, 0.92); }
+.btn-primary, .login-card .sofi-scale input:checked + span { color: #111 !important; }
+.btn-primary:hover { background: var(--accent-mid); }
 /* One text size for everything in the form (labels, values, words, hints, buttons, messages). Headings keep their own. */
 :root { --sofi-fs: 0.9rem; }
 .sofi-field { margin-bottom: 14px; }
-.sofi-error { color: #b42318; font-size: var(--sofi-fs); margin: 12px 0 0; }
+.sofi-error { color: #ff8a7a; font-size: var(--sofi-fs); margin: 12px 0 0; }
 .sofi-error[hidden] { display: none; }
-.sofi-preview { margin: 12px 0 0; padding: 8px 12px; font-size: var(--sofi-fs); font-weight: 600; color: #b54708; background: #fffaeb; border: 1px solid #fedf89; border-radius: 6px; }
+.sofi-preview { margin: 12px 0 0; padding: 8px 12px; font-size: var(--sofi-fs); font-weight: 600; color: #fdba74; background: rgba(249, 115, 22, 0.12); border: 1px solid rgba(249, 115, 22, 0.45); border-radius: 6px; }
 
 .combo { position: relative; display: block; }
 .combo-list {
@@ -25,7 +51,7 @@
 .dob-row #dob-input { flex: 1 1 auto; width: auto; min-width: 0; }
 .dob-pick {
   display: inline-flex; align-items: center; justify-content: center; padding: 0 10px;
-  background: var(--surface); border: 1px solid rgba(13, 30, 28, 0.3); border-radius: 2px;
+  background: var(--surface); border: 1px solid var(--sofi-line); border-radius: 2px;
   color: var(--text-2); cursor: pointer;
 }
 .dob-pick:hover { color: var(--accent); }
@@ -57,7 +83,7 @@
 .sofi-anchors { display: flex; justify-content: space-between; gap: 12px; margin: 4px 0 2px; }
 .sofi-items { list-style: none; margin: 0; padding: 0; counter-reset: sofi; }
 .sofi-item { counter-increment: sofi; padding: 8px 0; border-bottom: 1px solid var(--border, #e5e7eb); }
-.sofi-item.missing { background: rgba(180, 35, 24, 0.07); }
+.sofi-item.missing { background: rgba(255, 138, 122, 0.12); }
 .sofi-item fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
 .sofi-item legend { float: left; width: 100%; padding: 0; margin: 0 0 6px; font-size: var(--sofi-fs); font-weight: 600; line-height: 1.4; color: var(--text-1); }
 .sofi-item legend::before { content: counter(sofi) ". "; font-weight: 600; color: var(--text-2); }
@@ -67,16 +93,16 @@
 /* ".login-card label > span" (clearwave) styles every label's span as a small bold caption; the
    longer selector keeps the answer buttons on the form's 0.9rem text. */
 .login-card .sofi-scale label > span {
-  display: block; margin: 0; text-align: center; padding: 6px 0; border: 1px solid rgba(13, 30, 28, 0.3); border-radius: 2px;
+  display: block; margin: 0; text-align: center; padding: 6px 0; border: 1px solid var(--sofi-line); border-radius: 2px;
   background: var(--surface); color: var(--text-1); font-size: var(--sofi-fs); font-weight: 500; line-height: 1.2;
 }
-.login-card .sofi-scale input:checked + span { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.login-card .sofi-scale input:checked + span { background: var(--accent); border-color: var(--accent); color: #111; font-weight: 600; }
 .login-card .sofi-scale input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Result */
 #sofi-result h2 { font-size: 1.1rem; margin: 24px 0 12px; }
 .sofi-bar { display: grid; grid-template-columns: minmax(120px, 190px) 1fr minmax(110px, auto); gap: 10px; align-items: center; margin: 8px 0; font-size: var(--sofi-fs); line-height: 1.4; }
-.sofi-bar-track { height: 10px; background: rgba(13, 30, 28, 0.1); border-radius: 5px; overflow: hidden; }
+.sofi-bar-track { height: 10px; background: rgba(255, 255, 255, 0.12); border-radius: 5px; overflow: hidden; }
 .sofi-bar-fill { display: block; height: 100%; border-radius: 5px; }
 .sofi-low { background: #2f855a; }
 .sofi-moderate { background: #b7791f; }
@@ -120,3 +146,5 @@
   .sofi-anchors { flex-direction: column; gap: 0; }
   .sofi-past-table th, .sofi-past-table td { padding: 5px 4px; }
 }
+/* clearwave draws input borders in a dark teal-black that vanishes on black. */
+.login-card input, .login-card select, .dob-pick { border-color: var(--sofi-line); }
