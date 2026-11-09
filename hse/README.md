@@ -2,8 +2,7 @@
 
 Health, safety and environment systems for the site.
 
-> **Vibe-coded project.** This code was written with AI assistance (Claude Code) through
-> conversational prompting, not hand-written line by line. Review it before relying on it,
+> **Vibe-coded project.** Review it before relying on it,
 > especially anything that handles patient or medical data.
 
 | Folder | What it is |
