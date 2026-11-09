@@ -462,7 +462,10 @@
             <p style="color:var(--text-2);font-size:0.875rem;margin:0 0 8px">For a database that may receive every checkup, including unfit, overdue, and archived. This token can also read the eligible list.</p>
             <ul class="directory-links">
               <li><a href="https://medical-activities.ayahaif.my.id/api/directory/checkups">https://medical-activities.ayahaif.my.id/api/directory/checkups</a></li>
+              <li><a href="https://medical-activities.ayahaif.my.id/api/directory/latest-checkups">https://medical-activities.ayahaif.my.id/api/directory/latest-checkups</a></li>
             </ul>
+            <p style="color:var(--text-2);font-size:0.875rem;margin:8px 0 4px"><strong>checkups</strong>: every checkup of every employee, with the exam sections. <strong>latest-checkups</strong>: one row per employee with their latest checkup, whatever the result (Unfit, Incomplete, overdue and archived included), without exam sections or ID numbers.</p>
+            <p style="color:var(--text-2);font-size:0.875rem;margin:0 0 8px">Both accept these optional filters, so a database does not have to download everything: <code>patientId</code>, <code>employeeId</code>, <code>q</code> (part of the name), <code>result</code> (Fit, Fit with note, Unfit, Temporarily Unfit, Need follow up, Incomplete), <code>from</code> and <code>to</code> (yyyy-MM-dd, on the checkup date). <code>checkups</code> also accepts <code>checkUpId</code>. On latest-checkups the filters apply to each employee's latest checkup. Send <code>Authorization: Bearer &lt;all-checkups token&gt;</code>.</p>
             <form class="settings-grid" onsubmit="return false">
               <label style="grid-column:1/-1">
                 <span>All checkups token</span>
