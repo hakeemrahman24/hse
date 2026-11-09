@@ -288,6 +288,17 @@ function sofiReportModel(input) {
       const count = (d.results && d.results[key]) || 0;
       return { key: key, label: SOFI_RPT_LABEL[key], count: count, pct: sofiReportPct(count, d.total) };
     }),
+    // Average weeks on site per overall result; "—" when nobody gave a number of weeks, and a note
+    // when some chose "more than 1 year" (they are not in the average).
+    weeksOnSite: SOFI_RPT_LEVELS.map(function (key) {
+      const s = (d.weeksOnSite && d.weeksOnSite[key]) || { average: 0, counted: 0, overYear: 0 };
+      return {
+        key: key,
+        label: SOFI_RPT_LABEL[key],
+        average: s.counted > 0 ? Number(s.average).toFixed(1) : "—",
+        note: s.overYear > 0 ? "+" + s.overYear + " over 1 year" : "",
+      };
+    }),
     dimensions: d.dimensions.map(function (x) {
       return { name: x.en, average: x.average, max: x.max, results: x.results };
     }),
@@ -431,6 +442,24 @@ function sofiReportDraw(doc, m, fonts) {
     put(String(level.count), x + 10, y + 38);
     setText(10, "normal", SOFI_RPT_MUTED);
     put(level.pct + "%", x + tileW - 10, y + 38, "right");
+  });
+  y += 56;
+
+  heading("Average weeks on site");
+  paragraph("By the overall result of each survey. People who chose \"more than 1 year\" are not in the average.", 8, "normal", SOFI_RPT_MUTED);
+  y += 4;
+  ensure(56);
+  m.weeksOnSite.forEach(function (w, i) {
+    const x = M + i * (tileW + gap);
+    doc.setDrawColor.apply(doc, SOFI_RPT_GRID);
+    doc.setLineWidth(0.5);
+    doc.rect(x, y, tileW, 48, "S");
+    setText(8, "bold", SOFI_RPT_MUTED);
+    put(w.label.toUpperCase(), x + 10, y + 14);
+    setText(22, "bold", SOFI_RPT_RGB[w.key]);
+    put(w.average, x + 10, y + 38);
+    setText(8, "normal", SOFI_RPT_MUTED);
+    put(w.note, x + tileW - 10, y + 38, "right");
   });
   y += 56;
 

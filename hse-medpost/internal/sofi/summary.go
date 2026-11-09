@@ -35,6 +35,15 @@ type groupSummary struct {
 	Results map[string]int `json:"results"`
 }
 
+// weeksOnSiteStat is how long the surveys of one result band have been on site. Average is over
+// the people who gave a number of weeks (Counted); those who chose "more than 1 year" have no
+// number, so they are counted apart (OverYear) and left out of the average rather than guessed.
+type weeksOnSiteStat struct {
+	Average  float64 `json:"average"`
+	Counted  int     `json:"counted"`
+	OverYear int     `json:"overYear"`
+}
+
 type summary struct {
 	Total      int                `json:"total"`
 	People     int                `json:"people"`
@@ -43,6 +52,8 @@ type summary struct {
 	By         string             `json:"by"`
 	Groups     []groupSummary     `json:"groups"`
 	MoreGroups int                `json:"moreGroups"`
+	// WeeksOnSite is keyed like Results: low, moderate, high (the overall result of each survey).
+	WeeksOnSite map[string]weeksOnSiteStat `json:"weeksOnSite"`
 }
 
 // StaffSummary counts the saved questionnaires for the Fatigue dashboard (staff sign-in only).
@@ -76,7 +87,7 @@ func (a *API) StaffSummary(w http.ResponseWriter, r *http.Request) {
 		where, args = append(where, clause), append(args, wargs...)
 	}
 
-	rows, err := a.DB.Query(`SELECT s.FK_PatientID, TRIM(`+column+`), s.Answers FROM SofiScreening s WHERE `+strings.Join(where, " AND "), args...)
+	rows, err := a.DB.Query(`SELECT s.FK_PatientID, TRIM(`+column+`), s.Answers, s.WeeksOnSite FROM SofiScreening s WHERE `+strings.Join(where, " AND "), args...)
 	if err != nil {
 		log.Printf("sofi: summary: %v", err)
 		writeError(w, r, http.StatusInternalServerError, "Could not read the SOFI records.")
@@ -90,12 +101,18 @@ func (a *API) StaffSummary(w http.ResponseWriter, r *http.Request) {
 	for i, d := range Dimensions {
 		out.Dimensions[i] = dimensionSummary{Key: d.Key, EN: d.EN, ID: d.ID, Max: itemsPerDimension * MaxAnswer, Results: newLevelCounts()}
 	}
+	weekSums := map[string]int{}
+	weekStats := map[string]*weeksOnSiteStat{}
+	for key := range out.Results {
+		weekStats[key] = &weeksOnSiteStat{}
+	}
 	people := map[int64]bool{}
 	groups := map[string]*groupSummary{}
 	for rows.Next() {
 		var patient int64
 		var group, raw string
-		if err := rows.Scan(&patient, &group, &raw); err != nil {
+		var weeks int
+		if err := rows.Scan(&patient, &group, &raw, &weeks); err != nil {
 			log.Printf("sofi: summary scan: %v", err)
 			writeError(w, r, http.StatusInternalServerError, "Could not read the SOFI records.")
 			return
@@ -113,6 +130,12 @@ func (a *API) StaffSummary(w http.ResponseWriter, r *http.Request) {
 		out.Total++
 		people[patient] = true
 		out.Results[levelKey(res.Level)]++
+		if stat := weekStats[levelKey(res.Level)]; weeks == WeeksOverYear {
+			stat.OverYear++
+		} else {
+			stat.Counted++
+			weekSums[levelKey(res.Level)] += weeks
+		}
 		for i, d := range res.Dimensions {
 			sums[i] += d.Score
 			out.Dimensions[i].Results[levelKey(d.Level)]++
@@ -132,6 +155,13 @@ func (a *API) StaffSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	out.People = len(people)
+	out.WeeksOnSite = make(map[string]weeksOnSiteStat, len(weekStats))
+	for key, stat := range weekStats {
+		if stat.Counted > 0 {
+			stat.Average = math.Round(float64(weekSums[key])/float64(stat.Counted)*10) / 10
+		}
+		out.WeeksOnSite[key] = *stat
+	}
 	if out.Total > 0 {
 		for i := range out.Dimensions {
 			out.Dimensions[i].Average = math.Round(float64(sums[i])/float64(out.Total)*10) / 10

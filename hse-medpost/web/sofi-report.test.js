@@ -30,6 +30,7 @@ function summaryData(groupCount) {
   return {
     total: 3, people: 3, by: "company", moreGroups: 5,
     results: { low: 1, moderate: 0, high: 2 },
+    weeksOnSite: { low: { average: 12.5, counted: 1, overYear: 2 }, moderate: { average: 0, counted: 0, overYear: 0 }, high: { average: 30, counted: 2, overYear: 0 } },
     dimensions: ["Lack of energy", "Physical exertion", "Physical discomfort", "Lack of motivation", "Sleepiness"].map(dim),
     groups,
   };
@@ -264,4 +265,16 @@ test("Arabic is measured as shaped, the way jsPDF draws it", () => {
   assert.equal(sofiTextWidth(doc, FONTS, ARABIC), Math.ceil(ARABIC.length / 2) * 5);
   const plain = fakeDoc(); // an older jsPDF without processArabic: measure the text as it is
   assert.equal(sofiTextWidth(plain, FONTS, ARABIC), ARABIC.length * 5);
+});
+
+test("the report carries the average weeks on site of each result", () => {
+  const m = sofiReportModel(input());
+  assert.deepEqual(json(m.weeksOnSite.map((w) => [w.label, w.average, w.note])), [
+    ["Low", "12.5", "+2 over 1 year"],
+    ["Moderate", "—", ""],
+    ["High", "30.0", ""],
+  ]);
+  const old = summaryData(1);
+  delete old.weeksOnSite; // a summary from before this field existed still draws
+  assert.deepEqual(json(sofiReportModel(input({ data: old })).weeksOnSite.map((w) => w.average)), ["—", "—", "—"]);
 });
