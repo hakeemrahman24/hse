@@ -140,7 +140,7 @@ func TestNewBatchHasTheUploadProgressBlockInEveryLanguage(t *testing.T) {
 		}
 	}
 	for _, text := range []string{
-		"Uploading the file…", "PDF over 10 MB? Make it smaller here", "NIK: exactly 16 digits, numbers only.", "Passport number: 6 to 12 letters or digits, in capitals.", "Make smaller", "Use this file for the upload", "The file is larger than 10 MB. Split it or scan at a lower resolution.",
+		"Uploading the file…", "PDF over 10 MB? Make it smaller here", "Company not listed yet? Contact the medical team before submitting.", "NIK: exactly 16 digits, numbers only.", "Passport number: 6 to 12 letters or digits, in capitals.", "Make smaller", "Use this file for the upload", "The file is larger than 10 MB. Split it or scan at a lower resolution.",
 	} {
 		if _, ok := portalText[text]; !ok {
 			t.Errorf("no Indonesian/Chinese text for %q", text)

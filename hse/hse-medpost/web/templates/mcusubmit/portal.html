@@ -433,7 +433,8 @@
               <select id="company_id" name="company_id" data-combobox>
                 <option value="">Choose a company</option>
                 {{range .Companies}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) (index $.Form "company_id")}} selected{{end}}>{{.Name}}</option>{{end}}
-              </select></div>
+              </select>
+              <p class="mp-hint">Company not listed yet? Contact the medical team before submitting.</p></div>
             <div class="field"><label for="nationality"><span>Nationality</span></label>
               <select id="nationality" name="nationality">
                 <option value="">Choose a nationality</option>
