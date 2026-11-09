@@ -72,10 +72,10 @@ func TestEveryPublicMessageHasAnIndonesianText(t *testing.T) {
 
 func TestItemTextFollowsTheLanguage(t *testing.T) {
 	first := Items[0]
-	if first.Text(LangEN) != "Overworked" {
+	if first.Text(LangEN) != "Having too many activities to do" {
 		t.Fatalf("en = %q", first.Text(LangEN))
 	}
-	if first.Text(LangID) != "Terlalu banyak aktivitas yang dikerjakan" {
+	if first.Text(LangID) != "Terlalu banyak aktifitas yang dikerjakan" {
 		t.Fatalf("id = %q", first.Text(LangID))
 	}
 }
@@ -104,12 +104,12 @@ func TestSignedInFormShowsTheHeaderFieldsAndTwentyItemsInOneLanguage(t *testing.
 	rec := httptest.NewRecorder()
 	api.Start(rec, req)
 	body := rec.Body.String()
-	for _, want := range []string{"Andi Pratama", "14/05/1990", "Weeks on site", "MCU review status", "Overworked", "Yawning"} {
+	for _, want := range []string{"Andi Pratama", "14/05/1990", "Weeks on site", "MCU review status", "Having too many activities to do", "Yawning while doing activities"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("form lacks %q", want)
 		}
 	}
-	if strings.Contains(body, "Terlalu banyak aktivitas") {
+	if strings.Contains(body, "Terlalu banyak aktifitas") {
 		t.Fatal("English form shows the Indonesian words")
 	}
 	if n := strings.Count(body, `name="q`); n != ItemCount*7 {
@@ -161,12 +161,12 @@ func TestChineseCanBeChosenAndShowsOnlyChinese(t *testing.T) {
 	rec = httptest.NewRecorder()
 	api.Start(rec, req)
 	body := rec.Body.String()
-	for _, want := range []string{`lang="zh"`, "疲劳筛查", "工作过度", "频繁打哈欠", "中文"} {
+	for _, want := range []string{`lang="zh"`, "疲劳筛查", "需要完成的活动过多", "活动时打哈欠", "中文"} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("Chinese form lacks %q", want)
 		}
 	}
-	for _, other := range []string{"Overworked", "Kerja berlebihan", "Weeks on site"} {
+	for _, other := range []string{"Having too many activities to do", "Terlalu banyak aktifitas", "Weeks on site"} {
 		if strings.Contains(body, other) {
 			t.Fatalf("Chinese form still shows %q", other)
 		}

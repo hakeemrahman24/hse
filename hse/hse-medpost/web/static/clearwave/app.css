@@ -6259,3 +6259,25 @@ a.app-tab {
   background: var(--accent);
   border-color: var(--accent);
 }
+
+/* Settings > SOFI questionnaire: the form as workers see it, each item editable. One text size
+   (0.8125rem) like the rest of the SOFI screens; sharp corners like the rest of the page. */
+.sofiq-bar { border: 1px solid var(--border); margin-bottom: 8px; }
+.sofiq-note { margin: 0; flex: 1 1 280px; font-size: 0.8125rem; color: var(--text-2); }
+.sofiq-instruction { margin: 8px 0 2px; font-size: 0.8125rem; font-weight: 600; color: var(--text-1); }
+.sofiq-anchors { display: flex; justify-content: space-between; margin: 0 0 8px; font-size: 0.8125rem; color: var(--text-2); }
+.sofiq-list { list-style: none; margin: 0; padding: 0; counter-reset: sofiq; }
+.sofiq-item { counter-increment: sofiq; padding: 8px 10px; border: 1px solid var(--border); margin-bottom: 6px; background: var(--surface-2); font-size: 0.8125rem; }
+.sofiq-head { display: flex; align-items: center; gap: 8px; }
+.sofiq-text { flex: 1 1 auto; color: var(--text-1); }
+.sofiq-text::before { content: counter(sofiq) ". "; color: var(--text-3); }
+.sofiq-tag { font-size: 0.75rem; font-weight: 600; color: var(--accent); border: 1px solid var(--accent); padding: 0 6px; }
+.sofiq-dim { margin: 2px 0 6px; font-size: 0.75rem; color: var(--text-3); }
+.sofiq-scale { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; max-width: 360px; }
+.sofiq-scale span { text-align: center; padding: 3px 0; border: 1px solid var(--border); background: #fff; color: var(--text-2); }
+.sofiq-editing { border-color: var(--accent); }
+.sofiq-field { display: block; margin-bottom: 6px; }
+.sofiq-field span { display: block; margin-bottom: 2px; font-size: 0.75rem; font-weight: 600; color: var(--text-3); }
+.sofiq-field input { box-sizing: border-box; width: 100%; height: 28px; padding: 2px 8px; font: inherit; font-size: 0.8125rem; color: var(--text-1); background: #fff; border: 1px solid rgba(13, 30, 28, 0.3); border-radius: 0; }
+.sofiq-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.sofiq-item .btn-ghost, .sofiq-item .btn-primary { height: 28px; padding-top: 0; padding-bottom: 0; font-size: 0.8125rem; }

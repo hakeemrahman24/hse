@@ -287,6 +287,10 @@ const sectionMeta = {
     title: "SOFI schedule",
     hint: "When the public fatigue questionnaire (/sofi) is open. Times are GMT+9. Windows are never deleted: cancelling or closing one keeps it in the list for audit.",
   },
+  "sofi-questionnaire": {
+    title: "SOFI questionnaire",
+    hint: "The 20 items workers rate at /sofi, as they see them. Edit changes the wording of one item in English, Indonesian or Chinese; the dimensions and the scoring stay as they are.",
+  },
   "mcu-notifications": {
     title: "Email notifications",
     hint: "SMTP account, recipients (To/Cc), and schedule for the near-expiry MCU fitness certificate warning email. Archived/closed patients are never included.",

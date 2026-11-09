@@ -44,7 +44,7 @@ func main() {
 		if err := screening.EnsureScreeningTableNames(database); err != nil {
 			log.Fatal(err)
 		}
-		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "020_mcu_portal_digest.sql", "021_mcu_mail_setting.sql", "022_mcu_submission_record_unique.sql", "023_unfit_is_open.sql", "024_sofi_preview.sql", "025_document_reference.sql"} {
+		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "020_mcu_portal_digest.sql", "021_mcu_mail_setting.sql", "022_mcu_submission_record_unique.sql", "023_unfit_is_open.sql", "024_sofi_preview.sql", "025_document_reference.sql", "026_sofi_items.sql"} {
 			sqlText, err := db.LoadMigrationFile(filepath.Join("migrations", "sqlite", name))
 			if err != nil {
 				log.Fatal(err)
@@ -447,6 +447,8 @@ func main() {
 	mux.Handle("GET /api/sofi-windows/status", middleware.RequireAuth(http.HandlerFunc(sofiAPI.WindowStatus)))
 	mux.Handle("GET /api/sofi-windows", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminWindows))))
 	mux.Handle("POST /api/sofi-windows", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminCreateWindow))))
+	mux.Handle("GET /api/sofi-items", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminItems))))
+	mux.Handle("PUT /api/sofi-items/{number}", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminPutItem))))
 	mux.Handle("POST /api/sofi-preview", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminPreview))))
 	mux.Handle("POST /api/sofi-windows/{id}/end", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(sofiAPI.AdminEndWindow))))
 	// The doctor's note of a test period, printed on the PDF report. Any signed-in staff may read

@@ -20,7 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
-  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref7" />
+  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref16" />
   <script>
     document.documentElement.classList.remove("vt-cover");
   </script>
@@ -93,6 +93,9 @@
         <div class="app-program-list">
           <button type="button" class="app-program-item" data-section="sofi-schedule">
             <span class="app-program-item-title">SOFI schedule</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="sofi-questionnaire">
+            <span class="app-program-item-title">SOFI questionnaire</span>
           </button>
         </div>
         {{end}}
@@ -593,6 +596,29 @@
             <p id="sofi-window-empty" class="app-empty" hidden>No window has been scheduled yet.</p>
           </div>
         </div>
+
+        <!-- The questionnaire as workers see it at /sofi, with each item's wording editable (sofi-questionnaire.js,
+             GET /api/sofi-items and PUT /api/sofi-items/{number}). Only the words change: the number of items,
+             their dimensions and the scoring are fixed in code. -->
+        <div class="settings-panel" data-panel="sofi-questionnaire">
+          <div class="settings-panel-body">
+            <p id="sofiq-msg" class="settings-edit-error" role="alert" hidden></p>
+            <div class="app-filter sofiq-bar">
+              <label>
+                <span>Language</span>
+                <select id="sofiq-lang" aria-label="Preview language">
+                  <option value="en">English</option>
+                  <option value="id">Bahasa Indonesia</option>
+                  <option value="zh">简体中文</option>
+                </select>
+              </label>
+              <p class="sofiq-note">Preview of the form workers fill in. Edit changes the words only, not the dimension or the scoring. Earlier answers were given to the old wording, so change it between survey periods.</p>
+            </div>
+            <p id="sofiq-instruction" class="sofiq-instruction"></p>
+            <p class="sofiq-anchors"><span id="sofiq-low"></span><span id="sofiq-high"></span></p>
+            <ol id="sofiq-list" class="sofiq-list"></ol>
+          </div>
+        </div>
         {{end}}
 
         <div class="settings-panel" data-panel="programs">
@@ -724,8 +750,9 @@
   <script src="/static/case-guard.js"></script>
   <script src="/static/clearwave/app-nav.js"></script>
   <script src="/static/presence.js"></script>
-  <script src="/static/settings.js?v=20261003-full-token"></script>
-  {{if eq .Role "admin"}}<script src="/static/sofi-schedule.js"></script>{{end}}
+  <script src="/static/settings.js?v=20261109-sofiq"></script>
+  {{if eq .Role "admin"}}<script src="/static/sofi-schedule.js"></script>
+  <script src="/static/sofi-questionnaire.js"></script>{{end}}
 
   <footer class="app-dev-credit">
     <p>Developed by dr. Arif Rahman Hakim.</p>

@@ -309,12 +309,31 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 ## Progress Log
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
-### 2026-11-09 (latest) — SOFI on/off switches and a black and orange /sofi
+### 2026-11-09 (latest) — Corrective action tracking planned (not built)
+
+- **What changed:** only a plan, `plan/corrective-action-plan.md`. No code, no migrations.
+- **Decided (owner):** a Corrective Actions tab on every program's activities page plus an overall tab beside the Activities header; PIC is a searchable dropdown of staff; any staff can add, edit, close and reopen; up to 3 before and 3 after photos per finding, each under 600 KB (browser resize plus a server check); an edit history is kept; Excel export embeds thumbnails only, with the same row height and column width on every row.
+- **Why thumbnails:** full 600 KB photos would make a 200-row workbook about 240 MB, too much for the Pi's 2 GB shared with the database.
+- **Open:** whether the UI needs an admin delete; confirm "employee" means `MedpostStaffTable` only; approve `golang.org/x/image` for thumbnail resizing (or use a stdlib downscale). Build order is in section 9 of the plan.
+
+### 2026-11-09 — SOFI on/off switches and a black and orange /sofi
 
 - **What changed (Settings > SOFI schedule):** two switches replace the "Open now for 7 days" and "Open preview" buttons. **Live survey** on = a window that opens now for the number of days in the "for [7] days" box (whole days, 1 to 60), off = close the open window now; both ask for confirmation. **Preview** is the same preview as before (answers not saved, self-off after 2 hours) as a switch, greyed out while a live window is open. The Schedule form and window table are unchanged. `sofi-schedule.js`, `settings.html`, `app.css`.
 - **Why a window, not a flag:** the switch writes the same `SofiWindow` row a scheduled window does, so the audit trail, the Round filter and the no-overlap rule keep working. The cap of 60 days stops a typo (700) from leaving `/sofi` open for two years.
 - **Public /sofi look:** the sign-in, questionnaire, closed and result pages use a black and orange palette (`web/static/sofi.css`, which only these pages load, so staff screens stay teal). It redefines the clearwave colour tokens in one block; filled orange buttons use near-black text because white on that orange is about 2.8:1. Low / Moderate / High result colours are unchanged.
 - **Open:** the switch's days box is not wired to the schedule form (a window for exact dates still goes through the form). Moderate (amber) is close to the new orange; say if it should change. Not checked in a browser beyond one screenshot of the sign-in page.
+
+### 2026-11-09 — SOFI items: the clinic's Indonesian sentences are the source; English and Chinese translate them
+
+- Each of the 20 items is now the clinic's Indonesian sentence exactly as in its table (spelling "aktifitas" kept), and the English and Simplified Chinese are translations of that sentence, not of the old one-word SOFI labels. The instruction line now says "statement" instead of "word" in all three languages. Item order is unchanged (it must stay the old 25-word order minus five, so saved answers still line up); the SOFI word each sentence stands for is in a comment beside it in `buildItems`.
+- The translations are mine. The medical team should read the English and the Chinese before relying on them. Two things to check: "aktifitas" is translated "activities" ("while doing activities"), and the table's "Kurang Berkonsentrasi" is now "Lacking concentration" on the item that stands for the SOFI word Listless.
+- No SofiItem edits existed yet, so nothing in the editor was overwritten; an edited item would still win over this text.
+
+### 2026-11-09 — Settings > SOFI questionnaire: preview and wording editor (admin)
+
+- New Settings section **SOFI questionnaire** (admin only, under Fatigue survey): the 20 items as workers see them at /sofi, in English, Indonesian or Chinese, with the 0-6 boxes and the instruction line. **Edit** on an item changes its wording in the three languages; blank (or the built-in text) goes back to the built-in wording, and **Use built-in wording** resets it. Only words can change: item count, dimensions and scoring stay in `internal/sofi/scoring.go`, so no edit can move a score.
+- Storage: new table `SofiItem` (one row per item that differs from the built-in text). `migrations/sqlite/026_sofi_items.sql` is loaded by the server; **`migrations/mysql/040_sofi_items.sql` must be run by hand on the Pi (after a mysqldump) before deploying**. Until it is, /sofi keeps the built-in wording (a log line says so once) and Save answers "Could not save the wording". API: `GET /api/sofi-items`, `PUT /api/sofi-items/{number}` (admin). `/sofi` reads the wording on every page load (`a.items()` in `internal/sofi/items.go`).
+- Decided: dimension names are not editable (they feed the dashboard and report). Open: earlier answers were given to the old wording, so the page tells the admin to edit between survey periods; nothing records which wording a past answer saw. Not looked at in a browser.
 
 ### 2026-11-09 — SOFI is now the 20-item Indonesian version
 

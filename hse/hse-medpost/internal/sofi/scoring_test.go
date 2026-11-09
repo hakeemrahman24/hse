@@ -96,7 +96,7 @@ func TestScoreRejectsBadAnswers(t *testing.T) {
 }
 
 // Answers saved by the earlier 25-word form still score: the five words the 20-item version left
-// out (Exhausted, Warm, Hurting, Lack of concern, Lazy) are ignored and the rest are summed.
+// out (the SOFI words Exhausted, Warm, Hurting, Lack of concern, Lazy) are ignored and the rest are summed.
 func TestScoreReadsTheEarlier25WordAnswers(t *testing.T) {
 	old := make([]int, legacyItemCount)
 	for i := range old {
