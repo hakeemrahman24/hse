@@ -64,22 +64,15 @@
   // a "(UTC)" heading, and the prompt spells the zone out.
   function when(t) { return t ? t.replace('T', ' ').slice(0, 16) : ''; }
 
-  function reviewPrompt(d) {
-    return d.hasRecord
-      ? 'Open the checkup already linked to ' + d.worker + "'s document?"
-      : 'Open ' + d.worker + "'s checkup form, filled in from the submission? Nothing is saved until you save the checkup.";
-  }
-
   // Opening a document changes nothing on the server. A document counts as reviewed only once a
   // checkup with a result (fit, unfit, ...) is saved for the worker, so a reviewer who opens it and
   // leaves leaves it exactly as it was.
   function startReview(d) {
-    if (!window.confirm(reviewPrompt(d))) return;
     window.openSubmission(d.id);
   }
 
   // The checkup result has its own column: it is a medical outcome, not a step in the document's life.
-  var RESULTS = { Fit: 'Fit', FitWithNote: 'Fit with note', Unfit: 'Unfit', TemporaryUnfit: 'Temporarily unfit', NeedFollowUp: 'Needs follow-up' };
+  var RESULTS = { Fit: 'Fit', FitWithNote: 'Fit with note', Unfit: 'Unfit', TemporaryUnfit: 'Temporarily unfit', NeedFollowUp: 'Needs follow-up', IncompleteResult: 'Incomplete' };
 
   // Optional: a Reviewed document is complete without it. Pressing it closes the document and puts the
   // worker in the submitter's next daily mail (08:00 Jakarta, one mail per submitter).
@@ -166,7 +159,8 @@
     }
     // Once a checkup with a result is linked the document is Reviewed and the next step is telling
     // the submitter; before that the next step is the checkup form.
-    if (d.status === 'Reviewed' && d.hasRecord) {
+    // An Incomplete result is not final (the checkup stays Open), so there is nobody to notify yet.
+    if (d.status === 'Reviewed' && d.hasRecord && d.result !== 'IncompleteResult') {
       box.appendChild(button('Notify submitter', 'btn-primary', function () { notify(d); }, 'Notify the submitter about ' + d.worker));
     } else if (d.hasRecord) {
       // Linked but without a result yet: finish that checkup, do not start another.

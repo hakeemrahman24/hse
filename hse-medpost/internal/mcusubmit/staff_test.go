@@ -768,6 +768,50 @@ func TestCloseReviewedRefusesACheckupWhoseResultWasClearedAfterLinking(t *testin
 	}
 }
 
+// An IncompleteResult checkup stays Open, so its document stays Reviewed: it cannot be closed, and
+// a document closed earlier is put back to Reviewed at start (owner, 2026-11-09).
+func TestIncompleteResultKeepsTheDocumentReviewedNotClosed(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hrinc@example.com")
+	w := seedWorker(t, s, "Inc Omplete", "1990-04-12", co)
+	addRecord(t, s, w, "MedC-INC", "Fit", "2027-01-01", "Open", 1)
+	// The local SQLite schema still has the old CHECK list (no IncompleteResult, which the settings
+	// list adds), so write the value on one connection with that check switched off.
+	conn, err := s.DB.Conn(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	for _, q := range []string{`PRAGMA ignore_check_constraints = ON`,
+		`UPDATE McuRecord SET ResultCriteria = 'IncompleteResult' WHERE CheckUpID = 'MedC-INC'`,
+		`PRAGMA ignore_check_constraints = OFF`} {
+		if _, err := conn.ExecContext(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	a, _ := sentDocIn(t, s, sub, "Inc Omplete", "Other Three")
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w, a); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-INC"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.CloseReviewed(ctx, a, testStaffID); !errors.Is(err, ErrBadState) {
+		t.Fatalf("closing an incomplete result: %v, want ErrBadState", err)
+	}
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ?`, SubClosed, a); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.NormalizeReviewed(ctx); err != nil {
+		t.Fatal(err)
+	}
+	var status string
+	if err := s.DB.QueryRow(`SELECT Status FROM McuSubmission WHERE SubmissionID = ?`, a).Scan(&status); err != nil || status != SubReviewed {
+		t.Fatalf("status %q (%v), want Reviewed", status, err)
+	}
+}
+
 func TestWithdrawFreesALinkedCheckupAndAskedBeforeInThePage(t *testing.T) {
 	s, _, co := newTestStore(t)
 	ctx := context.Background()

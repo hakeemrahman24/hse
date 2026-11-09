@@ -910,13 +910,18 @@ function setNewPatientCombined(on) {
 }
 
 function closeCombinedPatientCheckup() {
-  clearLinkedSubmission();
+  const wasReviewing = clearLinkedSubmission();
   setNewPatientCombined(false);
   checkupForm.hidden = true;
   patientForm.hidden = true;
   patientFormInline = false;
   visitPositionLinked = false;
   visitCompanyLinked = false;
+  if (wasReviewing) {
+    // Cancelling a review goes back to where it started, not to the Employee list.
+    showMcuTab("submitted");
+    return;
+  }
   patientDetail.hidden = true;
   setDataEntryListVisible(true);
   loadMcuDataTable();
@@ -1535,13 +1540,17 @@ document.getElementById("new-checkup-btn")?.addEventListener("click", () => {
   openCheckupForm(null);
 });
 document.getElementById("checkup-cancel")?.addEventListener("click", () => {
-  clearLinkedSubmission();
+  const wasReviewing = clearLinkedSubmission();
   setNewPatientCombined(false);
   checkupForm.hidden = true;
   patientForm.hidden = true;
   patientFormInline = false;
   visitPositionLinked = false;
   visitCompanyLinked = false;
+  if (wasReviewing) {
+    showMcuTab("submitted");
+    return;
+  }
   if (checkupReturnTo === "patientDetail") {
     patientDetail.hidden = false;
   } else {
@@ -2316,6 +2325,8 @@ function showMcuTab(tab) {
 document.getElementById("mcu-tabs")?.addEventListener("click", (e) => {
   const btn = e.target.closest("[data-tab]");
   if (!btn) return;
+  // Switching tabs mid-review abandons it, so the next checkup saved is not linked to the document.
+  clearLinkedSubmission();
   showMcuTab(btn.dataset.tab);
 });
 
@@ -3122,10 +3133,17 @@ function openSubmissionFromLink() {
   if (raw && Number.isInteger(id) && id > 0) openSubmission(id);
 }
 
+function highlightSubmittedTab() {
+  document.querySelectorAll("#mcu-tabs .app-tab").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tab === "submitted");
+  });
+}
+
 // Opens the checkup form for one submitted document, in place: the Employee view with the form
 // filled in from what the submitter typed. Called by the Submitted tab's Review button.
 async function openSubmission(id) {
   showMcuTab("employee");
+  highlightSubmittedTab(); // the review belongs to Submitted, even though the form is the Employee view
   const res = await fetch(`/api/mcu-submissions/${id}`, { credentials: "same-origin" });
   if (!res.ok) {
     showMcuTab("submitted");
@@ -3244,9 +3262,11 @@ async function closeLinkedSubmission(checkUpId, savedPatientId, hasResult) {
 
 // Forgets the document being reviewed when the form is closed without saving, so the next checkup
 // saved for anybody else is never linked to it.
+// Returns true when a review was open, so the caller can send the user back to the Submitted tab.
 function clearLinkedSubmission() {
-  if (!linkedSubmission) return;
+  if (!linkedSubmission) return false;
   linkedSubmission = null;
   const box = document.getElementById("submission-banner");
   if (box) box.hidden = true;
+  return true;
 }
