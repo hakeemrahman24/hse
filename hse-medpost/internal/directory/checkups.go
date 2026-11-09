@@ -123,6 +123,9 @@ func (a *API) Checkups(w http.ResponseWriter, r *http.Request) {
 		until, _ := records[i]["resultValidUntil"].(string)
 		result, _ := records[i]["resultCriteria"].(string)
 		records[i]["hcValidityStatus"] = entrymcu.ShownValidity(stored, status, until, result, today)
+		// WHY after ShownValidity: that call needs the stored code (FitWithNote), and the reader
+		// gets the words, the same as the employee endpoints.
+		records[i]["resultCriteria"] = reviewLabel(result)
 	}
 	writeJSON(w, http.StatusOK, records)
 }

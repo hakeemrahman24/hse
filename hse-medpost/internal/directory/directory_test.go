@@ -456,3 +456,36 @@ func TestEmployeesCanIncludeAnExpiredFitCheckupOnlyWhenAsked(t *testing.T) {
 		t.Fatalf("a loose value switched it on: %v", got)
 	}
 }
+
+// resultCriteria comes back in words (Fit with note, Temporarily Unfit, Need follow up), not as the
+// stored code, the same as the employee endpoints.
+func TestCheckupsResultCriteriaIsReadable(t *testing.T) {
+	database := openDirectoryTestDB(t)
+	seedDirectoryFixture(t, database)
+	insertMCU(t, database, 2, "MedC-temp", "2026-04-01", "TemporaryUnfit", "", "bp high", "Open")
+	insertMCU(t, database, 2, "MedC-nfu", "2026-05-01", "NeedFollowUp", "", "", "Open")
+	insertMCU(t, database, 2, "MedC-inc", "2026-06-01", "IncompleteResult", "", "", "Open")
+	api := &API{DB: database, Token: "secret", FullToken: "secret", Now: fixedNow}
+	want := map[string]string{
+		"MedC-inc":   "Incomplete",
+		"MedC-new":   "Fit",
+		"MedC-note":  "Fit with note",
+		"MedC-unfit": "Unfit",
+		"MedC-temp":  "Temporarily Unfit",
+		"MedC-nfu":   "Need follow up",
+	}
+	for _, row := range getJSONList(t, api, "/api/directory/checkups", api.Checkups) {
+		id, _ := row["checkUpId"].(string)
+		w, ok := want[id]
+		if !ok {
+			continue
+		}
+		if row["resultCriteria"] != w {
+			t.Errorf("%s: resultCriteria=%v, want %v", id, row["resultCriteria"], w)
+		}
+		delete(want, id)
+	}
+	if len(want) != 0 {
+		t.Fatalf("rows not returned: %v", want)
+	}
+}
