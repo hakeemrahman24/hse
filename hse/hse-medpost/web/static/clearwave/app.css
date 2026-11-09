@@ -6229,3 +6229,33 @@ a.app-tab {
 #sofi-toolbar input[type="text"] {
   min-width: 170px;
 }
+
+/* The dashboard's two views (Sleep Score / SOFI Fatigue Survey) are a second level under the
+   page tabs, so they look different from them: small square-edged buttons (the page uses sharp corners), the open one filled, with no
+   underline. The page tabs keep the underline style. Last in the file to beat .app-tab above. */
+#scr-dash-tabs {
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+#scr-dash-tabs .app-tab {
+  margin-bottom: 0;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+  font-size: 0.75rem;
+}
+
+#scr-dash-tabs .app-tab:hover {
+  color: var(--text-1);
+  border-color: var(--accent);
+}
+
+#scr-dash-tabs .app-tab.active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
