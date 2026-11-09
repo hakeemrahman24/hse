@@ -211,13 +211,14 @@ func (s *Store) NormalizeReviewed(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	n, _ := res.RowsAffected()
-	// Documents closed before the IncompleteResult rule existed go back to Reviewed: the checkup is
-	// still open, so the document must be too.
+	// Documents closed with an IncompleteResult go back to Reviewed: the checkup is still open, so
+	// the document must be too. They were (or are about to be) told, so that is kept as the notify
+	// request and CertNotifiedAt is left alone: nobody is mailed twice.
 	res2, err := s.DB.ExecContext(ctx,
-		`UPDATE McuSubmission SET Status = ?
+		`UPDATE McuSubmission SET Status = ?, NotifyRequestedAt = COALESCE(NotifyRequestedAt, CertNotifiedAt, ?)
 		 WHERE Status = ? AND EXISTS (
 		   SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria = 'IncompleteResult')`,
-		SubReviewed, SubClosed)
+		SubReviewed, s.stamp(), SubClosed)
 	if err != nil {
 		return int(n), err
 	}
@@ -255,13 +256,28 @@ func (s *Store) RemoveSubmission(ctx context.Context, id, staffID int64) (fileRe
 // 2026-10-31: Closed means the submitter was told). The daily "your checkups are done" mail looks
 // for Closed documents. Only a Reviewed document with a
 // linked checkup can close, which is the same as "the worker has a checkup with a result".
-// An IncompleteResult is a saved-but-undecided checkup (the checkup itself stays Open), so its
-// document stays Reviewed and open until a real result is saved (owner, 2026-11-09).
+// The submitter can be told about ANY result (owner, 2026-11-09). An IncompleteResult is a
+// saved-but-undecided checkup (the checkup itself stays Open), so telling the submitter about it
+// only records the request (NotifyRequestedAt): the daily mail goes out, the submitter reads the
+// Recommendation, and the document stays Reviewed (open) until a final result is saved and the
+// reviewer notifies again, which closes it and mails the final result.
 func (s *Store) CloseReviewed(ctx context.Context, id, staffID int64) error {
+	const hasResult = ` AND FK_McuRecordID IS NOT NULL AND EXISTS (SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria IS NOT NULL`
 	res, err := s.DB.ExecContext(ctx,
-		`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ? AND Status = ? AND FK_McuRecordID IS NOT NULL
-		   AND EXISTS (SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria IS NOT NULL
-		     AND r.ResultCriteria <> 'IncompleteResult')`,
+		`UPDATE McuSubmission SET NotifyRequestedAt = ? WHERE SubmissionID = ? AND Status = ? AND NotifyRequestedAt IS NULL`+hasResult+
+			` AND r.ResultCriteria = 'IncompleteResult')`,
+		s.stamp(), id, SubReviewed)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 1 {
+		return s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "NotifyRequested"})
+	}
+	// Closing also clears CertNotifiedAt and NotifyRequestedAt: a submitter already told about an
+	// incomplete result is mailed again for the final one.
+	res, err = s.DB.ExecContext(ctx,
+		`UPDATE McuSubmission SET Status = ?, CertNotifiedAt = NULL, NotifyRequestedAt = NULL WHERE SubmissionID = ? AND Status = ?`+hasResult+
+			` AND r.ResultCriteria <> 'IncompleteResult')`,
 		SubClosed, id, SubReviewed)
 	if err != nil {
 		return err
@@ -377,6 +393,8 @@ type staffRow struct {
 	ReviewedBy    string `json:"reviewedBy"`
 	Result        string `json:"result"`    // the linked checkup's result, "" when none is linked
 	HasRecord     bool   `json:"hasRecord"` // a checkup is linked (Close needs one)
+	// NotifyRequested: the submitter was told about an Incomplete result while the document stays Reviewed.
+	NotifyRequested bool `json:"notifyRequested"`
 }
 
 // staffDetail is what the checkup form pre-fills from: the row plus the identity the submitter
@@ -396,7 +414,7 @@ func rowOf(d Submission) staffRow {
 		ID: d.ID, Worker: d.PatName, DateOfBirth: d.PatDateOfBirth, Position: d.PatPosition, Company: d.PatCompanyText,
 		Nationality: d.PatNationality, Submitter: d.SubmitterName, Status: d.Status, RejectReason: d.RejectReason,
 		SentAt: d.SentAt, HasFile: d.HasFile, IsNewEmployee: d.IsNewEmployee, ReviewedAt: d.ReviewedAt, ReviewedBy: d.ReviewedBy,
-		Result: d.Result, HasRecord: d.RecordID != 0,
+		Result: d.Result, HasRecord: d.RecordID != 0, NotifyRequested: d.NotifyRequested,
 	}
 }
 

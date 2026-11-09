@@ -32,6 +32,10 @@ func newTestStore(t *testing.T) (*Store, *fixedClock, int64) {
 			t.Fatalf("%s: %v", name, err)
 		}
 	}
+	// NotifyRequestedAt is added by the startup, as for an older SQLite database.
+	if err := EnsureNotifyRequestedColumn(database); err != nil {
+		t.Fatal(err)
+	}
 	// Patient.PersonalID (the NIK or passport) is added to Patient by the entrymcu startup, not by 005.
 	if _, err := database.Exec(`ALTER TABLE Patient ADD COLUMN PersonalID TEXT NULL`); err != nil {
 		t.Fatal(err)

@@ -64,6 +64,9 @@ func main() {
 		if err := mcusubmit.EnsureNoticeColumn(database); err != nil {
 			log.Fatal(err)
 		}
+		if err := mcusubmit.EnsureNotifyRequestedColumn(database); err != nil {
+			log.Fatal(err)
+		}
 		if err := sofi.EnsureWindowColumn(database); err != nil {
 			log.Fatal(err)
 		}
