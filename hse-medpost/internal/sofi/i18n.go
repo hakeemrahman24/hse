@@ -73,7 +73,7 @@ var messages = [][2]string{
 	{"Temporary unfit", "Tidak layak sementara"},
 	{"Need follow up", "Perlu tindak lanjut"},
 	{noMcuStatus, "Belum ada hasil MCU"},
-	{"How much does each word describe how you feel? Choose 0 to 6.", "Seberapa besar setiap kata menggambarkan perasaan Anda? Pilih 0 sampai 6."},
+	{"How much does each statement describe how you feel? Choose 0 to 6.", "Seberapa besar setiap pernyataan menggambarkan perasaan Anda? Pilih 0 sampai 6."},
 	{"Not at all", "Tidak sama sekali"},
 	{"To a very large extent", "Sangat besar"},
 	{"Submit", "Kirim"},

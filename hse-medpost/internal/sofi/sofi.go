@@ -70,6 +70,7 @@ type API struct {
 	devCheck      bool        // show a stub button instead of the Cloudflare box
 	submitMu      sync.Mutex  // makes "already submitted?" and the insert one step
 	previewWarned atomic.Bool // the missing-preview-table warning is logged once, not on every request
+	itemsWarned   atomic.Bool // same, for the SofiItem table
 }
 
 // New builds the handlers. The signing key is derived from the staff session secret, so a staff
@@ -287,7 +288,7 @@ func (a *API) Start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	d := a.pageData(r, "/sofi/start")
-	d.Name, d.Profile, d.Items, d.Scale, d.LevelHelp = s.Name, p, Items, scalePoints, levelHelp
+	d.Name, d.Profile, d.Items, d.Scale, d.LevelHelp = s.Name, p, a.items(), scalePoints, levelHelp
 	d.WeekChoices, d.WeeksOverYear = weekChoices, WeeksOverYear
 	if winID, werr := a.sessionWindowID(s); werr == nil && winID > 0 {
 		d.Done, err = a.hasSubmitted(s.UserID, winID)

@@ -1,17 +1,17 @@
 package sofi
 
 // Simplified Chinese (简体中文) for /sofi. Same idea as messages in i18n.go: the English text is the
-// key. The 20 words are a plain translation of the English SOFI words; the clinic's own explanations
-// exist in Indonesian only, so the Chinese words are for the medical team to read through before
-// they are relied on.
+// key. The 20 items are a translation of the clinic's Indonesian sentences, written by an assistant,
+// so the medical team should read them through before they are relied on.
 
-// zhItems are the 20 words in form order, the same order as the English ones in buildItems.
+// zhItems are the 20 items in form order, the same order as in buildItems. They translate the
+// clinic's Indonesian sentences (scoring.go), not the English SOFI words.
 var zhItems = [ItemCount]string{
-	"工作过度", "精疲力竭", "体力耗尽", "精力被耗光",
-	"出汗", "呼吸沉重", "心悸", "上气不接下气",
-	"肌肉紧绷", "关节僵硬", "身体麻木", "身体酸痛",
-	"对工作提不起兴趣", "不爱活动", "无精打采", "漠不关心",
-	"困倦", "想马上睡觉", "工作让人昏昏欲睡", "频繁打哈欠",
+	"需要完成的活动过多", "活动时感到精力耗尽", "累到没有精力再做其他活动", "活动时精力被消耗殆尽",
+	"出汗", "呼吸沉重、气喘吁吁", "感到心悸、心跳加速", "感到气短、呼吸困难",
+	"感到肌肉紧绷", "关节感觉僵硬", "身体部位麻木", "身体部位感到酸痛",
+	"对工作活动不感兴趣", "对工作活动被动、不积极", "活动时注意力不集中", "对工作成果和质量不感兴趣、不在乎、抱无所谓的态度",
+	"活动时感到困倦或疲乏", "活动时感觉快要睡着", "觉得工作活动让人犯困", "活动时打哈欠",
 }
 
 // zhMessages maps the English key to its Chinese text.
@@ -57,7 +57,7 @@ var zhMessages = map[string]string{
 	"Need follow up":    "需要跟进",
 	noMcuStatus:         "暂无体检结果",
 
-	"How much does each word describe how you feel? Choose 0 to 6.": "每个词在多大程度上描述了您的感受？请选择 0 到 6。",
+	"How much does each statement describe how you feel? Choose 0 to 6.": "每项描述在多大程度上符合您的感受？请选择 0 到 6。",
 	"Not at all":                "完全没有",
 	"To a very large extent":    "非常强烈",
 	"Submit":                    "提交",

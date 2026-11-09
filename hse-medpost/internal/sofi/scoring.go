@@ -72,13 +72,41 @@ type Item struct {
 var Items = buildItems()
 
 func buildItems() []Item {
-	// English word, then the clinic's Indonesian item (the sentence the worker reads).
+	// English, then the clinic's Indonesian item exactly as in its table (the source text; the
+	// English and Chinese translate these sentences). The SOFI word each one stands for is in the
+	// comment: the order is the old 25-word order with five words left out (see legacyDropped), so
+	// old answers still line up.
 	words := [][][2]string{
-		{{"Overworked", "terlalu banyak aktivitas yang dikerjakan"}, {"Worn out", "merasa kehabisan tenaga saat melakukan aktivitas"}, {"Spent", "merasa sangat kelelahan hingga kehabisan tenaga untuk melakukan aktivitas lain"}, {"Drained", "terkurasnya energi saat melakukan aktivitas"}},
-		{{"Sweaty", "berkeringat"}, {"Breathing heavily", "bernafas dengan berat hingga terengah-engah"}, {"Palpitations", "merasa berdebar-debar"}, {"Out of breath", "mengalami sesak nafas"}},
-		{{"Tense muscles", "otot merasa tegang"}, {"Stiff joints", "sendi mengalami rasa kaku"}, {"Numbness", "rasa mati rasa/ baal pada bagian tubuh"}, {"Aching", "rasa nyeri pada bagian tubuh"}},
-		{{"Uninterested", "tidak tertarik pada aktivitas pekerjaan"}, {"Passive", "pasif/ tidak giat dalam aktivitas pekerjaan"}, {"Listless", "kurang berkonsentrasi saat melakukan aktivitas"}, {"Indifferent", "tidak tertarik/ tidak peduli/ sikap masa bodoh dengan hasil/ kualitas mutu pekerjaan"}},
-		{{"Sleepy", "mengantuk/ letih saat melakukan aktifitas"}, {"Falling asleep", "merasa akan tertidur saat melakukan aktifitas"}, {"Drowsy", "merasa aktifitas pekerjaan membuat mengantuk"}, {"Yawning", "menguap saat melakukan aktifitas"}},
+		{ // Lack of energy
+			{"Having too many activities to do", "Terlalu banyak aktifitas yang dikerjakan"},                                                                           // Overworked
+			{"Feeling out of energy while doing activities", "Merasa kehabisan tenaga saat melakukan aktifitas"},                                                       // Worn out
+			{"Feeling so exhausted that I have no energy left for other activities", "Merasa sangat kelelahan hingga kehabisan tenaga untuk melakukan aktifitas lain"}, // Spent
+			{"Energy being drained while doing activities", "Terkurasnya energi saat melakukan aktifitas"},                                                             // Drained
+		},
+		{ // Physical exertion
+			{"Sweating", "Berkeringat"}, // Sweaty
+			{"Breathing heavily to the point of gasping", "Bernafas dengan berat hingga terengah-engah"}, // Breathing heavily
+			{"Feeling heart palpitations", "Merasa berdebar-debar"},                                      // Palpitations
+			{"Experiencing shortness of breath", "Mengalami sesak nafas"},                                // Out of breath
+		},
+		{ // Physical discomfort
+			{"Feeling tense muscles", "Otot merasa tegang"},                             // Tense muscles
+			{"Joints feeling stiff", "Sendi mengalami rasa kaku"},                       // Stiff joints
+			{"Numbness in parts of the body", "Rasa Mati Rasa/ Baal pada bagian tubuh"}, // Numbness
+			{"Aching pain in parts of the body", "Rasa Nyeri pada bagian tubuh"},        // Aching
+		},
+		{ // Lack of motivation
+			{"Not interested in work activities", "Tidak tertarik pada aktifitas pekerjaan"},                                                                                                        // Uninterested
+			{"Being passive or not active in work activities", "Pasif/ tidak giat dalam aktifitas pekerjaan"},                                                                                       // Passive
+			{"Lacking concentration while doing activities", "Kurang Berkonsentrasi saat melakukan aktifitas"},                                                                                      // Listless
+			{"Not interested in, not caring about, and indifferent to the results and quality of the work", "Tidak tertarik/ tidak peduli/ sikap masa bodoh dengan hasil/ kualitas mutu pekerjaan"}, // Indifferent
+		},
+		{ // Sleepiness
+			{"Feeling sleepy or tired while doing activities", "Mengantuk/ Letih saat melakukan aktifitas"},         // Sleepy
+			{"Feeling like falling asleep while doing activities", "Merasa akan tertidur saat melakukan aktifitas"}, // Falling asleep
+			{"Feeling that work activities make me sleepy", "Merasa aktifitas pekerjaan membuat mengantuk"},         // Drowsy
+			{"Yawning while doing activities", "Menguap saat melakukan aktifitas"},                                  // Yawning
+		},
 	}
 	items := make([]Item, 0, ItemCount)
 	for d, group := range words {
