@@ -5946,7 +5946,8 @@ a.app-tab {
   #tab-submitted .data-table td[data-label="Action"] .sub-act { flex-wrap: nowrap; gap: 10px; }
   #tab-submitted .data-table td[data-label="More"] { padding-left: 10px; }
   #tab-submitted .data-table td[data-label="Status"],
-  #tab-submitted .data-table td[data-label="Company"] { white-space: normal; }
+  #tab-submitted .data-table td[data-label="Company"],
+  #tab-submitted .data-table td[data-label="Submitter"] { white-space: normal; }
 }
 
 /* Row tint by status: Pending amber (waiting for review), Reviewed blue (checkup done, submitter not told), Closed green
