@@ -5878,8 +5878,14 @@ a.app-tab {
 #tab-submitted .sub-reject:hover { background: #fbeceb; }
 #tab-submitted .sub-toggle, #tab-submitted .sub-row .btn-ghost { border: 1px solid var(--border); }
 #tab-submitted .sub-row .sub-reject { border-color: #c98a82; }
-/* The Action column keeps one width on every row, whatever the status. */
-#tab-submitted .data-table.compact td:last-child { min-width: 11rem; }
+/* The More column holds one small button, so it keeps one narrow width on every row. */
+#tab-submitted .data-table.compact td:last-child { width: 4.5rem; }
+/* Details shown under a document when More is pressed: label/value pairs, then the actions. */
+.sub-facts { grid-column: 1 / -1; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 14px; margin: 0; font-size: 0.75rem; }
+.sub-facts dt { color: var(--text-3); font-weight: 600; }
+.sub-facts dd { margin: 0; color: var(--text-1); overflow-wrap: anywhere; }
+.sub-facts:empty { display: none; }
+.sub-panel-act { grid-column: 1 / -1; }
 .sub-pager { display: flex; gap: 12px; align-items: center; margin: 8px 12px; font-size: 0.8125rem; color: var(--text-2); }
 
 /* Submitted tab below 1100px (where eleven columns no longer fit): each document is a card, values under their own labels, the actions
@@ -5912,8 +5918,10 @@ a.app-tab {
   #tab-submitted .data-table tr { min-width: 0; }
   #tab-submitted .data-table.compact td { min-width: 0; white-space: normal; overflow-wrap: anywhere; padding: 3px 0; }
   #tab-submitted .data-table td[data-label="Name"] { flex-wrap: wrap; }
-  #tab-submitted .data-table td[data-label="Action"] { display: block; text-align: left; padding-top: 8px; margin-top: 4px; border-top: 1px solid var(--border); }
+  #tab-submitted .data-table td[data-label="Action"] { justify-content: flex-start; text-align: left; }
   #tab-submitted .data-table td[data-label="Action"]::before { content: none; }
+  #tab-submitted .data-table td[data-label="More"] { display: block; text-align: left; padding-top: 8px; margin-top: 4px; border-top: 1px solid var(--border); width: auto; }
+  #tab-submitted .data-table td[data-label="More"]::before { content: none; }
   .sub-row { flex-wrap: wrap; }
   .sub-panel { grid-template-columns: minmax(0, 1fr); }
   #tab-submitted .data-table tr.sub-detail.open { display: block; grid-column: 1 / -1; }
@@ -5926,7 +5934,7 @@ a.app-tab {
   #tab-submitted .data-table td[data-label="Name"] { max-width: 22rem; white-space: normal; overflow-wrap: break-word; min-width: 12rem; }
   #tab-submitted .data-table td { vertical-align: top; padding-top: 6px; padding-bottom: 6px; }
   #tab-submitted .data-table td[data-label="Status"],
-  #tab-submitted .data-table td[data-label="Reviewed (UTC)"] { white-space: normal; }
+  #tab-submitted .data-table td[data-label="Company"] { white-space: normal; }
 }
 
 /* Row tint by status: Pending amber (waiting for review), Reviewed blue (checkup done, submitter not told), Closed green

@@ -140,20 +140,50 @@
     }).catch(function (e) { row.textContent = e.message; row.className = 'sub-row sub-none'; });
   }
 
-  // The row's own cell holds only the next step (Review or Open checkup; a reviewed document only shows who was told) and a
-  // More toggle. The two rare actions open in a full-width detail row under the document, so the row
-  // stays one line tall and the other columns keep their width. Returns that detail row, or null.
-  function actions(d, box, colspan) {
-    var canAct = d.status === 'Pending' || d.status === 'Reviewed';
-    if (!canAct && !isAdmin) return null;
-    if (!canAct) { // Closed, Rejected, Withdrawn: only an admin has anything to do here
-      box.appendChild(button('Remove', 'btn-ghost sub-reject', function () { remove(d); }, 'Remove the document of ' + d.worker));
-      return null;
+  // The row itself is one compact line: Sent, Name, Company, Status, Result, Open PDF and a More toggle.
+  // Everything else (submitter, position, who reviewed, the next step, Remove, Reject, Link) lives in
+  // the detail row under the document, so the list stays short until someone asks for more.
+  // Returns the detail row; the caller wires the toggle to it.
+  function detailRow(d, colspan) {
+    var row = document.createElement('tr');
+    row.className = 'sub-detail';
+    var cellEl = document.createElement('td');
+    cellEl.colSpan = colspan;
+    var panel = document.createElement('div');
+    panel.className = 'sub-panel';
+
+    // Facts first: the details that used to be columns of their own. Empty ones are left out.
+    var facts = document.createElement('dl');
+    facts.className = 'sub-facts';
+    function fact(label, value) {
+      if (!value) return;
+      var dt = document.createElement('dt'); dt.textContent = label;
+      var dd = document.createElement('dd'); dd.textContent = value;
+      facts.appendChild(dt); facts.appendChild(dd);
     }
-    // Nobody presses a button to tell the submitter: the system mails them every 12 hours about every
-    // reviewed document it has not told them about yet. Only Fit and Fit with note then close the
-    // document; any other result stays Reviewed. A reviewed document therefore shows only a note, and
-    // there is no "Open checkup": a follow-up is a new submission, reviewed as a new checkup.
+    fact('Submitter', d.submitter);
+    fact('Position', d.position);
+    fact('New employee', d.isNewEmployee ? 'Yes' : '');
+    fact('Reviewed by', d.reviewedBy);
+    fact('Reviewed (UTC)', when(d.reviewedAt));
+    fact('Renewed by', d.renewedBy); // same words as the MCU table: Renewed by <checkup ID>
+    fact('Reject reason', d.rejectReason);
+    panel.appendChild(facts);
+
+    var canAct = d.status === 'Pending' || d.status === 'Reviewed';
+    var box = document.createElement('div');
+    box.className = 'sub-act sub-panel-act';
+    // Closed, Rejected, Withdrawn: only an admin has anything to do here.
+    if (!canAct) {
+      if (isAdmin) box.appendChild(button('Remove', 'btn-ghost sub-reject', function () { remove(d); }, 'Remove the document of ' + d.worker));
+      if (box.children.length) panel.appendChild(box);
+      cellEl.appendChild(panel); row.appendChild(cellEl);
+      return { row: row, onOpen: null };
+    }
+    // Nobody presses a button to tell the submitter: the system mails them on the schedule set in
+    // Settings about every reviewed document it has not told them about yet. Only Fit and Fit with note
+    // then close the document; any other result stays Reviewed. A reviewed document therefore shows only
+    // a note, and there is no "Open checkup": a follow-up is a new submission, reviewed as a new checkup.
     if (d.status === 'Reviewed' && d.hasRecord) {
       var told = document.createElement('span');
       told.className = 'sub-note';
@@ -166,17 +196,9 @@
       box.appendChild(button('Review', 'btn-primary', function () { startReview(d); }, 'Review the checkup of ' + d.worker));
     }
     if (isAdmin) box.appendChild(button('Remove', 'btn-ghost sub-reject', function () { remove(d); }, 'Remove the document of ' + d.worker));
-    var toggle = button('More', 'btn-ghost sub-toggle', null, 'More actions for ' + d.worker);
-    toggle.setAttribute('aria-expanded', 'false');
-    box.appendChild(toggle);
+    panel.appendChild(box);
 
-    var row = document.createElement('tr');
-    row.className = 'sub-detail';
-    var cellEl = document.createElement('td');
-    cellEl.colSpan = colspan;
-    var panel = document.createElement('div');
-    panel.className = 'sub-panel';
-    // A problem with these two actions is shown here, next to the button that was pressed.
+    // A problem with these actions is shown here, next to the button that was pressed.
     var err = document.createElement('p');
     err.className = 'sub-panel-err';
     err.setAttribute('role', 'alert');
@@ -196,7 +218,7 @@
     }));
     panel.appendChild(reject.box);
 
-    var loaded = false, link;
+    var link;
     if (d.hasRecord) {
       link = section('Linked checkup');
       link.row.appendChild(document.createTextNode(d.result ? 'A checkup with a result is linked.' : 'A checkup is linked but has no result yet.'));
@@ -206,32 +228,21 @@
       // Link is for a checkup that was entered before the document was opened from here: the
       // reviewer picks it from that worker's own unlinked checkups, so nobody types a Checkup ID.
       link = section('Link a checkup already entered');
-      link.row.textContent = 'Looking\u2026';
+      link.row.textContent = 'Looking…';
     }
     panel.appendChild(link.box);
     panel.appendChild(err);
     cellEl.appendChild(panel);
     row.appendChild(cellEl);
 
-    toggle.addEventListener('click', function () {
-      var open = row.classList.toggle('open');
-      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-      toggle.textContent = open ? 'Less' : 'More';
-      if (open && !loaded && !d.hasRecord) { loaded = true; loadCandidates(d, link.row, fail); }
-    });
-    return row;
+    var loaded = false;
+    return { row: row, onOpen: function () {
+      if (!loaded && !d.hasRecord) { loaded = true; loadCandidates(d, link.row, fail); }
+    } };
   }
 
-  function note(td, text) {
-    if (!text) return;
-    var n = document.createElement('div');
-    n.className = 'sub-note'; n.textContent = text;
-    td.appendChild(n);
-  }
-
-  // Six columns instead of ten: what belongs together shares a cell. Company and position sit under
-  // the worker's name, the checkup result under the status, the reviewer's name over the time, and
-  // the PDF link beside the buttons, so a row reads left to right as who, by whom, where it stands.
+  // Seven columns, one line per document: who sent it and when, who it is about, where it stands and
+  // the checkup result. The PDF link is the only action in the row; More opens the rest.
   function render(list) {
     body.textContent = '';
     list.forEach(function (d) {
@@ -239,30 +250,31 @@
       // One tint per status (see .sub-st-* in app.css) so the state shows at a glance without reading the column.
       tr.className = 'sub-st-' + String(d.status || '').toLowerCase();
       cell(tr, when(d.sentAt));
-      var worker = cell(tr, d.worker);
-      note(worker, d.isNewEmployee ? 'New employee' : '');
-      note(worker, [d.company, d.position].filter(Boolean).join(' \u00b7 '));
-      cell(tr, d.submitter);
-      var st = cell(tr, d.status);
-      note(st, d.result ? 'Result: ' + (RESULTS[d.result] || d.result) : '');
-      note(st, d.renewedBy); // same words as the MCU table: Renewed by <checkup ID>
-      note(st, d.rejectReason);
-      var rev = cell(tr, d.reviewedBy || '');
-      note(rev, when(d.reviewedAt));
-      var box = document.createElement('div');
-      box.className = 'sub-act';
+      cell(tr, d.worker);
+      cell(tr, d.company);
+      cell(tr, d.status);
+      cell(tr, d.result ? (RESULTS[d.result] || d.result) : '');
+      var act = cell(tr, '');
       if (d.hasFile) {
         var a = document.createElement('a');
         a.href = '/api/mcu-submissions/' + d.id + '/file';
         a.target = '_blank'; a.rel = 'noopener'; a.className = 'sub-pdf'; a.textContent = 'Open PDF';
         a.setAttribute('aria-label', 'Open the PDF of ' + d.worker);
-        box.appendChild(a);
+        act.appendChild(a);
       }
-      var td = cell(tr, '');
-      td.appendChild(box);
-      var detail = actions(d, box, headings.length);
+      var moreCell = cell(tr, '');
+      var toggle = button('More', 'btn-ghost sub-toggle', null, 'More about the document of ' + d.worker);
+      toggle.setAttribute('aria-expanded', 'false');
+      moreCell.appendChild(toggle);
+      var detail = detailRow(d, headings.length);
+      toggle.addEventListener('click', function () {
+        var open = detail.row.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        toggle.textContent = open ? 'Less' : 'More';
+        if (open && detail.onOpen) detail.onOpen();
+      });
       body.appendChild(tr);
-      if (detail) body.appendChild(detail);
+      body.appendChild(detail.row);
     });
     if (!list.length) say('No documents with this status.', false); else say('');
   }
