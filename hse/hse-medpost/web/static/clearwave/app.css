@@ -5879,7 +5879,9 @@ a.app-tab {
 #tab-submitted .sub-toggle, #tab-submitted .sub-row .btn-ghost { border: 1px solid var(--border); }
 #tab-submitted .sub-row .sub-reject { border-color: #c98a82; }
 /* The More column holds one small button, so it keeps one narrow width on every row. */
-#tab-submitted .data-table.compact td:last-child { width: 3rem; }
+#tab-submitted .data-table.compact td:last-child { width: 3rem; padding-right: 14px; }
+/* The More column has no visible heading; the text stays for screen readers and the phone card label. */
+.sub-th-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 /* More is a plain text link like Open PDF and the links in the MCU list, not a boxed button. */
 #tab-submitted .data-table td .sub-toggle { border: 0; background: transparent; padding: 0 !important; height: auto; font: inherit; font-size: 0.75rem; font-weight: 500; color: var(--accent); cursor: pointer; }
 #tab-submitted .data-table td .sub-toggle:hover { text-decoration: underline; background: transparent; }
