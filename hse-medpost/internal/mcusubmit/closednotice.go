@@ -132,6 +132,14 @@ func (s *Store) RunClosedNotices(ctx context.Context, m Mailer, portalURL string
 		return 0, 0, err
 	}
 	var failures []error
+	// The reviewers set in the portal admin's settings are copied on every notice (owner,
+	// 2026-11-10), so they see what the submitter was told. Read once per run; a failure only
+	// means no copies this time, never that a submitter goes untold.
+	reviewers, err := s.activeReviewerEmails(ctx)
+	if err != nil {
+		log.Printf("mcu closed notice: reviewer copies: %v", err)
+		reviewers = nil
+	}
 	for _, t := range due {
 		// The uploader gets the mail, and so does the company's other account (owner, 2026-11-05:
 		// a backup for when the first mailbox has trouble). When the uploader's mailbox is
@@ -162,6 +170,7 @@ func (s *Store) RunClosedNotices(ctx context.Context, m Mailer, portalURL string
 			}
 			continue // nobody could be reached: the documents stay due and the next daily run tries again
 		}
+		s.copyToReviewers(ctx, m, reviewers, to, t, portalURL)
 		for _, l := range t.lines {
 			if err := s.markNotified(ctx, l.id); err != nil {
 				failures = append(failures, err)
@@ -174,6 +183,28 @@ func (s *Store) RunClosedNotices(ctx context.Context, m Mailer, portalURL string
 		documents += len(t.lines)
 	}
 	return mails, documents, errors.Join(failures...)
+}
+
+// copyToReviewers sends each reviewer a copy of a notice the submitter side already accepted. It is
+// a separate mail per reviewer, not a Cc header: a Cc would show the reviewers' addresses to every
+// submitter. The copy says who it went to, since the reviewer is not the addressee. A reviewer who
+// is also one of the addressees is skipped, and a failed copy is only logged: the documents count
+// as told because the submitter's mail was accepted, whatever happens to the copies.
+func (s *Store) copyToReviewers(ctx context.Context, m Mailer, reviewers, addressed []string, t closedTarget, portalURL string) {
+	already := make(map[string]bool, len(addressed))
+	for _, a := range addressed {
+		already[strings.ToLower(a)] = true
+	}
+	subject := "Copy: " + noticeSubject(t)
+	body := "This is a copy for the reviewers of the mail sent to " + oneLine(t.email) + ".\n\n" + closedNoticeBody(portalURL, t.lines)
+	for _, addr := range reviewers {
+		if already[strings.ToLower(addr)] {
+			continue
+		}
+		if err := m.Send(ctx, addr, subject, body); err != nil {
+			log.Printf("mcu closed notice: reviewer copy failed: %v", err)
+		}
+	}
 }
 
 // markNotified records that the submitter was mailed about one document. A Reviewed document with a
