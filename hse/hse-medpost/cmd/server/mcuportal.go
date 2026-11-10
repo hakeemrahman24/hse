@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"time"
 
 	"hse-medpost/internal/mcusubmit"
@@ -51,8 +50,6 @@ const (
 //	MCU_PORTAL_TRUST_CF_HEADER=1   read the visitor address from CF-Connecting-IP (tunnel-only port)
 //	MCU_BREVO_WEBHOOK_SECRET       optional; turns on POST /mcu-submit/webhooks/brevo. Put the same value in
 //	                               Brevo's webhook settings as an "Authorization: Bearer <secret>" header
-//	MCU_STAFF_BASE_URL             optional, the staff app's address; the reviewer digest links to its
-//	                               /mcu-submissions page when set, e.g. https://emr.example.com
 //	MCU_PORTAL_FILES_DIR           where the rebuilt PDFs are kept, default data/mcu-files (needs Ghostscript;
 //	                               uploads stay off without it, the rest of the portal still works)
 //
@@ -141,7 +138,7 @@ func startMcuPortal(database *sql.DB, sessionSecret string, mux *http.ServeMux, 
 	go runRetention(ctx, store, files)
 	go runReminders(ctx, store, mailer, baseURL)
 	go runSubmitterNotices(ctx, store, mailer, baseURL)
-	go runReviewerDigest(ctx, store, mailer, os.Getenv("MCU_STAFF_BASE_URL"))
+	go runReviewerDigest(ctx, store, mailer)
 	log.Print("MCU portal (/mcu-submit) is on.")
 }
 
@@ -182,13 +179,9 @@ func startMcuUploads(ctx context.Context, api *mcusubmit.API, files mcusubmit.Fi
 // runReviewerDigest mails the reviewers the list of documents still waiting for review. It wakes
 // every digestCheckIn; RunDigest decides whether the admin's interval has passed and whether
 // anything is waiting.
-func runReviewerDigest(ctx context.Context, store *mcusubmit.Store, mailer mcusubmit.Mailer, staffBase string) {
-	link := ""
-	if staffBase != "" {
-		link = strings.TrimRight(staffBase, "/") + "/mcu-submissions"
-	}
+func runReviewerDigest(ctx context.Context, store *mcusubmit.Store, mailer mcusubmit.Mailer) {
 	for {
-		if n, err := store.RunDigest(ctx, mailer, link); err != nil {
+		if n, err := store.RunDigest(ctx, mailer); err != nil {
 			log.Printf("MCU portal: reviewer digest: %v", err)
 		} else if n > 0 {
 			log.Printf("MCU portal: reviewer digest sent to %d reviewers", n)

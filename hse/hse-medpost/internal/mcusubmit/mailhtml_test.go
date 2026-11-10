@@ -8,14 +8,17 @@ import (
 
 func TestDigestHTMLIsATableAndEscapesWhatSubmittersType(t *testing.T) {
 	waiting := []digestLine{{worker: `<script>alert(1)</script> & Co`, position: "Welder", company: `PT "Quote"`, submitter: "Budi", sentAt: "2026-11-09 08:00"}}
-	got := digestHTML(waiting, "https://example.com/mcu?view=submitted")
-	for _, want := range []string{"<table", "<th", "Employee", "Sent by", "&lt;script&gt;alert(1)&lt;/script&gt; &amp; Co", "&#34;Quote&#34;", `href="https://example.com/mcu?view=submitted"`} {
+	got := digestHTML(waiting)
+	for _, want := range []string{"<table", "<th", "Employee", "Sent by", "&lt;script&gt;alert(1)&lt;/script&gt; &amp; Co", "&#34;Quote&#34;", "Open them in medisite medical checkup section"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("digest HTML lacks %q:\n%s", want, got)
 		}
 	}
 	if strings.Contains(got, "<script>") {
 		t.Errorf("a submitter-typed value reached the HTML unescaped:\n%s", got)
+	}
+	if strings.Contains(got, "href=") {
+		t.Errorf("the digest must carry no link, it points to the medisite section in words:\n%s", got)
 	}
 }
 
@@ -24,7 +27,7 @@ func TestDigestHTMLCapsTheRowsLikeTheText(t *testing.T) {
 	for i := 0; i < digestMaxLines+3; i++ {
 		lines = append(lines, digestLine{worker: "W", position: "P", company: "C", submitter: "S", sentAt: "t"})
 	}
-	got := digestHTML(lines, "")
+	got := digestHTML(lines)
 	if rows := strings.Count(got, "<tr>") - 1; rows != digestMaxLines { // minus the header row
 		t.Errorf("%d body rows, want %d", rows, digestMaxLines)
 	}
@@ -70,10 +73,10 @@ func TestSendRichFallsBackToTheTextForAMailerWithoutHTML(t *testing.T) {
 // The digest closes with the signature in both the text and the HTML version.
 func TestDigestEndsWithTheSignatureInTextAndHTML(t *testing.T) {
 	waiting := []digestLine{{worker: "A Worker", position: "Welder", company: "PT X", submitter: "Budi", sentAt: "2026-11-09 08:00"}}
-	if text := digestBody(waiting, ""); !strings.HasSuffix(text, "\nKind Regards,\nLNG Medical Team\n") {
+	if text := digestBody(waiting); !strings.HasSuffix(text, "\nKind Regards,\nLNG Medical Team\n") {
 		t.Errorf("the digest text does not end with the signature:\n%s", text)
 	}
-	if page := digestHTML(waiting, ""); !strings.Contains(page, "Kind Regards,<br>LNG Medical Team") {
+	if page := digestHTML(waiting); !strings.Contains(page, "Kind Regards,<br>LNG Medical Team") {
 		t.Errorf("the digest HTML lacks the signature:\n%s", page)
 	}
 }
