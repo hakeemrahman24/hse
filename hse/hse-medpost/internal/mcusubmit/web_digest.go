@@ -29,6 +29,8 @@ func (a *API) digestPage(w http.ResponseWriter, r *http.Request, status int, adm
 	}
 	p := a.newPage("Reviewer mail")
 	p.User, p.Digest, p.Reviewers, p.Intervals, p.Error = admin, cfg, list, DigestIntervals, errMsg
+	p.NoticeCfg, p.NoticeIntervals, p.NoticeZones, p.NoticeHours = a.Store.NoticeSettings(r.Context()), NoticeIntervals, NoticeZones, noticeStartHours
+	p.NoticeNext = a.Store.NextNoticeRun(p.NoticeCfg).Format("2006-01-02 15:04 MST")
 	a.render(w, status, "digest.html", p)
 }
 
@@ -49,6 +51,36 @@ func (a *API) DigestSave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		a.serverError(w, "save digest interval", err)
+		return
+	}
+	http.Redirect(w, r, basePath+"/admin/digest", http.StatusSeeOther)
+}
+
+// NoticeSave stores when submitters are told about reviewed and rejected documents (every 6, 12, 24
+// or 48 hours from a start hour in a time zone) and whether the reviewers are copied. The copy switch is a checkbox: absent means off.
+func (a *API) NoticeSave(w http.ResponseWriter, r *http.Request) {
+	admin := a.requireAdmin(w, r)
+	if admin == nil {
+		return
+	}
+	if !parseForm(w, r) {
+		a.digestPage(w, r, http.StatusBadRequest, admin, "The form could not be read.")
+		return
+	}
+	hours, _ := strconv.Atoi(r.PostFormValue("hours"))
+	startHour, convErr := strconv.Atoi(r.PostFormValue("start"))
+	if convErr != nil {
+		startHour = -1 // refused by the store
+	}
+	copyOn := r.PostFormValue("copy") == "1"
+	if err := a.Store.SaveNoticeSettings(r.Context(), NoticeConfig{
+		IntervalHours: hours, StartHour: startHour, Timezone: r.PostFormValue("zone"), CopyReviewers: copyOn,
+	}); err != nil {
+		if errors.Is(err, ErrBadNoticeSetting) {
+			a.digestPage(w, r, http.StatusBadRequest, admin, "Choose 6, 12, 24 or 48 hours, a start hour from 0 to 23, and one of the time zones.")
+			return
+		}
+		a.serverError(w, "save notice settings", err)
 		return
 	}
 	http.Redirect(w, r, basePath+"/admin/digest", http.StatusSeeOther)

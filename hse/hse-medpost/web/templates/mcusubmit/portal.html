@@ -670,7 +670,7 @@
 {{define "digest.html"}}{{template "head" .}}
     <section class="mp-section">
       <h1>Reviewer <span>mail</span></h1>
-      <p class="mp-hint">Reviewers get one mail listing every medical checkup document that has been sent and not yet reviewed; no mail goes out while nothing is waiting. They are also copied on every mail the system sends to a submitter about reviewed or rejected documents (every 12 hours), as a separate mail marked "Copy". None of these mails holds ID numbers, birth dates or results.</p>
+      <p class="mp-hint">Reviewers get one mail listing every medical checkup document that has been sent and not yet reviewed; no mail goes out while nothing is waiting. None of these mails holds ID numbers, birth dates or results.</p>
       {{template "error" .}}
 
       <div class="mp-row">
@@ -702,10 +702,29 @@
         </div>
       </div>
 
+      <h2>Mail to <span>submitters</span></h2>
+      <p class="mp-hint">Submitters are told by mail about the documents that were reviewed or rejected, with no button to press: a result saved by a reviewer is picked up at the next run. Only documents not yet told about are included, and a failed send is tried again an hour later. The runs are every chosen number of hours counted from the start hour, in the chosen time zone (12 hours from 08:00 means 08:00 and 20:00).</p>
+      <div class="login-card mp-compact">
+        <form method="post" action="/mcu-submit/admin/notices" class="mp-inlineform">
+          <fieldset class="mp-choices">
+            <legend class="mp-sr">How often are submitters told?</legend>
+            {{range .NoticeIntervals}}<label class="mp-check"><input type="radio" name="hours" value="{{.}}"{{if eq . $.NoticeCfg.IntervalHours}} checked{{end}} /> <span>Every {{.}} h</span></label>
+            {{end}}
+          </fieldset>
+          <label for="nt-start">Start hour</label>
+          <select id="nt-start" name="start">{{range .NoticeHours}}<option value="{{.}}"{{if eq . $.NoticeCfg.StartHour}} selected{{end}}>{{printf "%02d" .}}:00</option>{{end}}</select>
+          <label for="nt-zone">Time zone</label>
+          <select id="nt-zone" name="zone">{{range .NoticeZones}}<option value="{{.Code}}"{{if eq .Code $.NoticeCfg.Timezone}} selected{{end}}>{{.Label}}</option>{{end}}</select>
+          <label class="mp-check"><input type="checkbox" name="copy" value="1"{{if .NoticeCfg.CopyReviewers}} checked{{end}} /> <span>Copy the active reviewers below on every mail to a submitter (a separate mail marked "Copy")</span></label>
+          <button type="submit" class="btn-primary">Save</button>
+        </form>
+      </div>
+      <p class="mp-hint">{{if .NoticeCfg.LastRunAt}}Last run {{.NoticeCfg.LastRunAt}} (UTC).{{else}}Not run yet.{{end}} Next run {{.NoticeNext}}.</p>
+
       <h2>Who <span>receives it</span></h2>
       {{if .Reviewers}}
       <div class="mp-scroll"><table class="mp-table">
-        <caption>Digest recipients</caption>
+        <caption>Reviewers: digest recipients and copies of submitter mails</caption>
         <thead><tr><th scope="col">Email</th><th scope="col">Name</th><th scope="col">Status</th><th scope="col">Action</th></tr></thead>
         <tbody>
         {{range .Reviewers}}<tr>

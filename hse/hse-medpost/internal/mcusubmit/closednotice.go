@@ -135,10 +135,13 @@ func (s *Store) RunClosedNotices(ctx context.Context, m Mailer, portalURL string
 	// The reviewers set in the portal admin's settings are copied on every notice (owner,
 	// 2026-11-10), so they see what the submitter was told. Read once per run; a failure only
 	// means no copies this time, never that a submitter goes untold.
-	reviewers, err := s.activeReviewerEmails(ctx)
-	if err != nil {
-		log.Printf("mcu closed notice: reviewer copies: %v", err)
-		reviewers = nil
+	// The admin can switch the copies off (Reviewer mail page).
+	var reviewers []string
+	if s.NoticeSettings(ctx).CopyReviewers {
+		if reviewers, err = s.activeReviewerEmails(ctx); err != nil {
+			log.Printf("mcu closed notice: reviewer copies: %v", err)
+			reviewers = nil
+		}
 	}
 	for _, t := range due {
 		// The uploader gets the mail, and so does the company's other account (owner, 2026-11-05:
