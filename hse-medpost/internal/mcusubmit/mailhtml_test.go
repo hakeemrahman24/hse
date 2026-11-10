@@ -66,3 +66,24 @@ func TestSendRichFallsBackToTheTextForAMailerWithoutHTML(t *testing.T) {
 		t.Fatalf("got %v, want the text body", m.got)
 	}
 }
+
+// The digest closes with the signature in both the text and the HTML version.
+func TestDigestEndsWithTheSignatureInTextAndHTML(t *testing.T) {
+	waiting := []digestLine{{worker: "A Worker", position: "Welder", company: "PT X", submitter: "Budi", sentAt: "2026-11-09 08:00"}}
+	if text := digestBody(waiting, ""); !strings.HasSuffix(text, "\nKind Regards,\nLNG Medical Team\n") {
+		t.Errorf("the digest text does not end with the signature:\n%s", text)
+	}
+	if page := digestHTML(waiting, ""); !strings.Contains(page, "Kind Regards,<br>LNG Medical Team") {
+		t.Errorf("the digest HTML lacks the signature:\n%s", page)
+	}
+}
+
+func TestReminderEndsWithTheSignatureInTextAndHTML(t *testing.T) {
+	lines := []Expiring{{Name: "A Worker", Position: "Welder", Company: "PT X", ValidUntil: "2026-12-01"}}
+	if text := reminderBody("https://p", lines); !strings.HasSuffix(text, "\nKind Regards,\nLNG Medical Team\n") {
+		t.Errorf("the reminder text does not end with the signature:\n%s", text)
+	}
+	if page := reminderHTML("https://p", lines); !strings.Contains(page, "Kind Regards,<br>LNG Medical Team") {
+		t.Errorf("the reminder HTML lacks the signature:\n%s", page)
+	}
+}

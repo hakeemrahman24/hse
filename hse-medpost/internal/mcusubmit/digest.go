@@ -259,6 +259,7 @@ func digestBody(waiting []digestLine, staffURL string) string {
 		fmt.Fprintf(&b, "\nOpen them here (sign in required): %s\n", staffURL)
 	}
 	b.WriteString("\nThis list holds no ID numbers, birth dates or results on purpose.\n")
+	b.WriteString(noticeSignature)
 	return b.String()
 }
 
@@ -283,7 +284,7 @@ func digestHTML(waiting []digestLine, staffURL string) string {
 	if staffURL != "" {
 		parts = append(parts, htmlLink("Open them here (sign in required):", staffURL))
 	}
-	parts = append(parts, htmlPara("This list holds no ID numbers, birth dates or results on purpose."))
+	parts = append(parts, htmlPara("This list holds no ID numbers, birth dates or results on purpose."), htmlSignature())
 	return htmlPage(parts...)
 }
 
