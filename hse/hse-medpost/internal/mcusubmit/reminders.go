@@ -215,6 +215,7 @@ func reminderHTML(portalURL string, lines []Expiring) string {
 		htmlLink("Submit the renewed checkup here:", portalURL+basePath+"/batch"),
 		htmlLink("To stop these mails, switch them off in Settings:", portalURL+basePath+"/settings"),
 		htmlPara("This mail holds no ID numbers or birth dates on purpose."),
+		htmlSignature(),
 	)
 }
 
@@ -227,5 +228,6 @@ func reminderBody(portalURL string, lines []Expiring) string {
 	fmt.Fprintf(&b, "\nSubmit the renewed checkup here: %s/batch\n", portalURL+basePath)
 	fmt.Fprintf(&b, "To stop these mails, switch them off in Settings: %s/settings\n", portalURL+basePath)
 	b.WriteString("\nThis mail holds no ID numbers or birth dates on purpose.\n")
+	b.WriteString(noticeSignature)
 	return b.String()
 }

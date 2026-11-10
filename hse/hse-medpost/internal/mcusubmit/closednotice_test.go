@@ -146,7 +146,7 @@ func TestRejectedDocumentsAreInTheDailyMailOnceAndWithoutTheReason(t *testing.T)
 		t.Fatalf("mails %d docs %d err %v", mails, docs, err)
 	}
 	got := m.sent[0]
-	if !strings.Contains(got.Subject, "1 completed, 1 need a new upload") {
+	if !strings.Contains(got.Subject, "1 reviewed, 1 need a new upload") {
 		t.Errorf("subject %q", got.Subject)
 	}
 	for _, want := range []string{"Done Worker", "Fresh Rejected", "corrected document"} {
@@ -214,5 +214,111 @@ func TestNoticesAreCopiedToTheActiveReviewers(t *testing.T) {
 	// A second run finds nothing to say, so nothing is copied either.
 	if mails, _, _ := s.RunClosedNotices(ctx, m, "https://p"); mails != 0 || len(m.sent) != 3 {
 		t.Fatalf("second run: %d mails, %d total sent", mails, len(m.sent))
+	}
+}
+
+func noticeLines() []closedLine {
+	c := "PT X"
+	return []closedLine{
+		{id: 1, worker: "Siti Rahmawati", position: "Nurse", company: c, result: "Fit"},
+		{id: 2, worker: "Andi Wijaya", position: "Welder", company: c, result: "FitWithNote", notes: "bring medication"},
+		{id: 3, worker: "Thian Michael Phen", position: "Translator", company: c, result: "IncompleteResult", recommendation: "Add the chest X-ray\nand the ECG result"},
+		{id: 4, worker: "Lama Fit", position: "Rigger", company: c, result: "TemporaryUnfit", notes: "Blood pressure too high, recheck in 2 weeks", recommendation: "ignored for unfit"},
+		{id: 5, worker: "Budi Santoso", position: "Helper", company: c, result: "NeedFollowUp", recommendation: "See an internist"},
+		{id: 6, worker: "Rina Unfit", position: "Driver", company: c, result: "Unfit", notes: "Not fit for night work"},
+		{id: 7, worker: "Dewi Rejected", position: "Cook", company: c, rejected: true},
+	}
+}
+
+// The mail is addressed to the submitter alone (reviewers are copied), so it says each result:
+// a count summary first, then the workers under Eligible, Incomplete and Follow-up needed with the
+// reviewer's words. The old "no results" promise is gone, the signature closes the mail.
+func TestNoticeSummarisesEligibleIncompleteAndFollowUpWithTheRecommendation(t *testing.T) {
+	body := closedNoticeBody("https://p", noticeLines())
+	for _, want := range []string{
+		"6 of the medical checkups you submitted have been reviewed:",
+		"- 2 are eligible",
+		"- 1 is incomplete and needs to be completed",
+		"- 3 need follow-up (temporarily unfit, unfit or need follow up)",
+		"Eligible:\n- Siti Rahmawati | Nurse | PT X\n- Andi Wijaya | Welder | PT X\n",
+		"Incomplete, please complete:\n- Thian Michael Phen | Translator | PT X\n  Recommendation: Add the chest X-ray and the ECG result\n",
+		"Follow-up needed:",
+		"- Lama Fit | Rigger | PT X\n  Result: Temporarily Unfit\n  Recommendation: Blood pressure too high, recheck in 2 weeks\n",
+		"- Budi Santoso | Helper | PT X\n  Result: Need follow up\n  Recommendation: See an internist\n",
+		"- Rina Unfit | Driver | PT X\n  Result: Unfit\n  Recommendation: Not fit for night work\n",
+		"1 of your documents could not be used by the medical team",
+		"- Dewi Rejected | Cook | PT X\n",
+		"Sign in to see the details and download the health certificates that are available: https://p/mcu-submit/documents",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("the mail lacks %q\n%s", want, body)
+		}
+	}
+	for _, bad := range []string{"have been completed", "holds no results", "ignored for unfit", "bring medication"} {
+		if strings.Contains(body, bad) {
+			t.Errorf("the mail must not contain %q\n%s", bad, body)
+		}
+	}
+	if !strings.HasSuffix(body, "\nKind Regards,\nLNG Medical Team\n") {
+		t.Errorf("the mail must end with the signature:\n%s", body)
+	}
+	if got := noticeSubject(closedTarget{lines: noticeLines()}); got != "Medical checkups: 6 reviewed, 1 need a new upload" {
+		t.Errorf("subject %q", got)
+	}
+}
+
+func TestNoticeOnlyMentionsTheGroupsThatHaveDocuments(t *testing.T) {
+	body := closedNoticeBody("https://p", []closedLine{{id: 1, worker: "A Worker", position: "Welder", company: "PT X", result: "Fit"}})
+	for _, want := range []string{"1 of the medical checkups you submitted have been reviewed:", "- 1 is eligible", "Eligible:"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("lacks %q\n%s", want, body)
+		}
+	}
+	for _, bad := range []string{"incomplete", "Follow-up needed", "could not be used", "Recommendation:"} {
+		if strings.Contains(body, bad) {
+			t.Errorf("must not mention %q\n%s", bad, body)
+		}
+	}
+	// A recommendation the reviewer left empty falls back to a pointer to the portal.
+	empty := closedNoticeBody("https://p", []closedLine{{id: 1, worker: "B", position: "P", company: "C", result: "IncompleteResult"}})
+	if !strings.Contains(empty, "Recommendation: Please sign in to read the details.") {
+		t.Errorf("empty recommendation:\n%s", empty)
+	}
+	// A very long note is cut so the mail stays readable.
+	long := closedNoticeBody("https://p", []closedLine{{id: 1, worker: "B", position: "P", company: "C", result: "Unfit", notes: strings.Repeat("x", 900)}})
+	if strings.Count(long, "x") > noticeTextMax || !strings.Contains(long, "…") {
+		t.Errorf("a long note was not capped")
+	}
+}
+
+// What the mail says comes from the checkup the document is linked to.
+func TestNoticeCarriesTheLinkedCheckupsResultAndWords(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	a := activeSubmitter(t, s, co, "hr.words@example.com")
+	w := seedWorker(t, s, "Words Worker", "1990-04-12", co)
+	addRecord(t, s, w, "MedC-WORDS", "Fit", "2027-01-01", "Open", 0)
+	id := sentDoc(t, s, a, "Words Worker")
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w, id); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.LinkRecord(ctx, id, testStaffID, "MedC-WORDS"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = 'NeedFollowUp', Recommendation = 'See a cardiologist' WHERE CheckUpID = 'MedC-WORDS'`); err != nil {
+		t.Fatal(err)
+	}
+	m := &fakeMailer{}
+	if mails, _, err := s.RunClosedNotices(ctx, m, "https://p"); err != nil || mails != 1 {
+		t.Fatalf("run: %d mails, %v", mails, err)
+	}
+	var body string
+	for _, msg := range m.sent {
+		if msg.To == "hr.words@example.com" {
+			body = msg.Body
+		}
+	}
+	if !strings.Contains(body, "Result: Need follow up\n  Recommendation: See a cardiologist") {
+		t.Fatalf("the mail does not carry the linked checkup's result and recommendation:\n%s", body)
 	}
 }

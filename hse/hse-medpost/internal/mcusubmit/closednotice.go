@@ -45,6 +45,10 @@ type closedLine struct {
 	id                        int64
 	worker, position, company string
 	rejected                  bool // a rejected document, told as "needs a corrected upload"
+	// The linked checkup's result and the reviewer's words, for a reviewed document. They go in the
+	// mail because it is addressed to the submitter alone (owner, 2026-11-10), with the reviewers
+	// copied; empty for a rejected document.
+	result, recommendation, notes string
 }
 
 type closedTarget struct {
@@ -55,7 +59,7 @@ type closedTarget struct {
 	lines       []closedLine
 }
 
-// counts splits a target's lines into completed checkups and rejected documents.
+// counts splits a target's lines into reviewed checkups and rejected documents.
 func (t closedTarget) counts() (done, rejected int) {
 	for _, l := range t.lines {
 		if l.rejected {
@@ -94,9 +98,11 @@ func (s *Store) BackfillRejectNotices(ctx context.Context) error {
 // erased. The rest stay unmarked, so a re-enabled account is told later.
 func (s *Store) dueClosedNotices(ctx context.Context) ([]closedTarget, error) {
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT u.SubmitterID, COALESCE(u.FK_CompanyID, 0), u.Email, CASE WHEN u.EmailBouncedAt IS NULL THEN 0 ELSE 1 END, s.SubmissionID, s.PatName, s.PatPosition, s.PatCompanyText, CASE WHEN s.Status = ? THEN 1 ELSE 0 END
+		`SELECT u.SubmitterID, COALESCE(u.FK_CompanyID, 0), u.Email, CASE WHEN u.EmailBouncedAt IS NULL THEN 0 ELSE 1 END, s.SubmissionID, s.PatName, s.PatPosition, s.PatCompanyText, CASE WHEN s.Status = ? THEN 1 ELSE 0 END,
+		       COALESCE(rec.ResultCriteria, ''), COALESCE(rec.Recommendation, ''), COALESCE(rec.ResultNotes, '')
 		 FROM McuSubmission s
 		 JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID
+		 LEFT JOIN McuRecord rec ON rec.McuRecordID = s.FK_McuRecordID
 		 WHERE ((s.Status IN (?, ?) AND s.FK_McuRecordID IS NOT NULL) OR s.Status = ?) AND s.CertNotifiedAt IS NULL
 		   AND u.Status = ? AND u.IsBuiltIn = 0 AND u.ErasedAt IS NULL
 		 ORDER BY u.SubmitterID, s.SubmissionID`, SubRejected, SubReviewed, SubClosed, SubRejected, StatusActive)
@@ -110,7 +116,7 @@ func (s *Store) dueClosedNotices(ctx context.Context) ([]closedTarget, error) {
 		var email string
 		var l closedLine
 		var rejected, bounced int
-		if err := rows.Scan(&id, &companyID, &email, &bounced, &l.id, &l.worker, &l.position, &l.company, &rejected); err != nil {
+		if err := rows.Scan(&id, &companyID, &email, &bounced, &l.id, &l.worker, &l.position, &l.company, &rejected, &l.result, &l.recommendation, &l.notes); err != nil {
 			return nil, err
 		}
 		l.rejected = rejected == 1
@@ -231,46 +237,151 @@ func noticeSubject(t closedTarget) string {
 	done, rejected := t.counts()
 	switch {
 	case rejected == 0:
-		return fmt.Sprintf("Medical checkups completed: %d", done)
+		return fmt.Sprintf("Medical checkups reviewed: %d", done)
 	case done == 0:
 		return fmt.Sprintf("Medical checkup documents need a new upload: %d", rejected)
 	}
-	return fmt.Sprintf("Medical checkups: %d completed, %d need a new upload", done, rejected)
+	return fmt.Sprintf("Medical checkups: %d reviewed, %d need a new upload", done, rejected)
+}
+
+// noticeGroup says which part of the mail a reviewed document belongs to.
+type noticeGroup int
+
+const (
+	groupEligible   noticeGroup = iota // Fit, Fit with note
+	groupIncomplete                    // the checkup is not finished: the recommendation says what is missing
+	groupFollowUp                      // Temporarily Unfit, Unfit, Need follow up
+)
+
+func (l closedLine) group() noticeGroup {
+	switch l.result {
+	case "Fit", "FitWithNote":
+		return groupEligible
+	case "IncompleteResult":
+		return groupIncomplete
+	}
+	return groupFollowUp
+}
+
+// resultWords is the result as the mail says it.
+func resultWords(result string) string {
+	switch result {
+	case "TemporaryUnfit":
+		return "Temporarily Unfit"
+	case "Unfit":
+		return "Unfit"
+	case "NeedFollowUp":
+		return "Need follow up"
+	}
+	return result
+}
+
+// reviewerText is what the reviewer wrote for the submitter, the same text the portal shows under
+// the status (Submission.ResultMessage): the recommendation for Incomplete and Need follow up, the
+// notes for Unfit and Temporarily Unfit. It is collapsed to one line and capped so a long note
+// cannot make the mail unreadable; the portal has the full text.
+func (l closedLine) reviewerText() string {
+	text := l.recommendation
+	if l.result == "TemporaryUnfit" || l.result == "Unfit" {
+		text = l.notes
+	}
+	text = oneLine(text)
+	if r := []rune(text); len(r) > noticeTextMax {
+		text = string(r[:noticeTextMax]) + "…"
+	}
+	if text == "" {
+		return "Please sign in to read the details."
+	}
+	return text
+}
+
+const noticeTextMax = 500
+
+// verbS is the "s" a verb takes after a count of one ("1 needs", "2 need").
+func verbS(n int) string {
+	if n == 1 {
+		return "s"
+	}
+	return ""
+}
+
+// isAre picks "is" or "are" for a count in the summary lines.
+func isAre(n int) string {
+	if n == 1 {
+		return "is"
+	}
+	return "are"
 }
 
 func closedNoticeBody(portalURL string, lines []closedLine) string {
-	var done, rejected []closedLine
+	var eligible, incomplete, followUp, rejected []closedLine
 	for _, l := range lines {
-		if l.rejected {
+		switch {
+		case l.rejected:
 			rejected = append(rejected, l)
-		} else {
-			done = append(done, l)
+		case l.group() == groupEligible:
+			eligible = append(eligible, l)
+		case l.group() == groupIncomplete:
+			incomplete = append(incomplete, l)
+		default:
+			followUp = append(followUp, l)
 		}
 	}
+	reviewed := len(eligible) + len(incomplete) + len(followUp)
 	var b strings.Builder
-	if len(done) > 0 {
-		fmt.Fprintf(&b, "%d of the medical checkups you submitted have been completed by the medical team:\n\n", len(done))
-		writeNoticeList(&b, done)
+	if reviewed > 0 {
+		fmt.Fprintf(&b, "%d of the medical checkups you submitted have been reviewed:\n\n", reviewed)
+		if n := len(eligible); n > 0 {
+			fmt.Fprintf(&b, "- %d %s eligible\n", n, isAre(n))
+		}
+		if n := len(incomplete); n > 0 {
+			fmt.Fprintf(&b, "- %d %s incomplete and need%s to be completed\n", n, isAre(n), verbS(n))
+		}
+		if n := len(followUp); n > 0 {
+			fmt.Fprintf(&b, "- %d need%s follow-up (temporarily unfit, unfit or need follow up)\n", n, verbS(n))
+		}
+		if len(eligible) > 0 {
+			b.WriteString("\nEligible:\n")
+			writeNoticeList(&b, eligible, false)
+		}
+		if len(incomplete) > 0 {
+			b.WriteString("\nIncomplete, please complete:\n")
+			writeNoticeList(&b, incomplete, true)
+		}
+		if len(followUp) > 0 {
+			b.WriteString("\nFollow-up needed:\n")
+			writeNoticeList(&b, followUp, true)
+		}
 	}
 	if len(rejected) > 0 {
-		if len(done) > 0 {
+		if reviewed > 0 {
 			b.WriteString("\n")
 		}
 		fmt.Fprintf(&b, "%d of your documents could not be used by the medical team (for example, the file could not be read). Please upload a corrected document for:\n\n", len(rejected))
-		writeNoticeList(&b, rejected)
+		writeNoticeList(&b, rejected, false)
 	}
 	fmt.Fprintf(&b, "\nSign in to see the details and download the health certificates that are available: %s/documents\n", portalURL+basePath)
-	b.WriteString("\nThis mail holds no results, ID numbers or birth dates on purpose.\n")
+	b.WriteString("\nThis mail goes only to you and the medical team. Please do not forward it: it names the workers and their results.\n")
+	b.WriteString(noticeSignature)
 	return b.String()
 }
 
-func writeNoticeList(b *strings.Builder, lines []closedLine) {
+// noticeSignature closes the mail to a submitter (owner, 2026-11-10); the reviewers' copy carries it too.
+const noticeSignature = "\nKind Regards,\nLNG Medical Team\n"
+
+func writeNoticeList(b *strings.Builder, lines []closedLine, detail bool) {
 	shown := lines
 	if len(shown) > closedNoticeMaxLines {
 		shown = shown[:closedNoticeMaxLines]
 	}
 	for _, l := range shown {
 		fmt.Fprintf(b, "- %s | %s | %s\n", oneLine(l.worker), oneLine(l.position), oneLine(l.company))
+		if detail {
+			if l.group() == groupFollowUp {
+				fmt.Fprintf(b, "  Result: %s\n", resultWords(l.result))
+			}
+			fmt.Fprintf(b, "  Recommendation: %s\n", l.reviewerText())
+		}
 	}
 	if more := len(lines) - len(shown); more > 0 {
 		fmt.Fprintf(b, "and %d more.\n", more)

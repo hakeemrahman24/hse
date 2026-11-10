@@ -46,6 +46,11 @@ func htmlLink(label, url string) string {
 	return `<p style="margin:0 0 8px;">` + html.EscapeString(label) + ` <a href="` + u + `">` + u + `</a></p>`
 }
 
+// htmlSignature is the closing of a mail, the same words as noticeSignature (owner, 2026-11-10).
+func htmlSignature() string {
+	return `<p style="margin:16px 0 0;">Kind Regards,<br>LNG Medical Team</p>`
+}
+
 func htmlPage(parts ...string) string {
 	return `<!DOCTYPE html><html><body style="` + mailFont + `">` + strings.Join(parts, "") + `</body></html>`
 }
