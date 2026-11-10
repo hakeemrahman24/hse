@@ -211,43 +211,25 @@ func (s *Store) NormalizeReviewed(ctx context.Context) (int, error) {
 		return 0, err
 	}
 	n, _ := res.RowsAffected()
-	// Documents closed with an IncompleteResult go back to Reviewed: the checkup is still open, so
-	// the document must be too. They were (or are about to be) told, so that is kept as the notify
-	// request and CertNotifiedAt is left alone: nobody is mailed twice.
+	// Documents closed with any result but Fit or Fit with note go back to Reviewed: Closed is only for
+	// those two. Their CertNotifiedAt is left alone, so nobody is mailed twice, and one still empty
+	// is picked up by the next 12-hourly run.
 	res2, err := s.DB.ExecContext(ctx,
-		`UPDATE McuSubmission SET Status = ?, NotifyRequestedAt = COALESCE(NotifyRequestedAt, CertNotifiedAt, ?)
+		`UPDATE McuSubmission SET Status = ?
 		 WHERE Status = ? AND EXISTS (
-		   SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria = 'IncompleteResult'
-		     AND COALESCE(r.HcValidityStatus, '') NOT LIKE 'Renewed by %')`,
-		SubReviewed, s.stamp(), SubClosed)
+		   SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria NOT IN ('Fit', 'FitWithNote'))`,
+		SubReviewed, SubClosed)
 	if err != nil {
 		return int(n), err
 	}
 	n2, _ := res2.RowsAffected()
-	return int(n + n2), nil
-}
-
-// CloseSupersededDocuments closes every Reviewed document whose Incomplete checkup has been
-// followed up: saving the follow-up checkup (the consultation result) with the open record as its
-// parent makes the MCU table stamp the old record "Renewed by <new checkup ID>" and close it
-// (closeParentRecord in entrymcu), and the document follows it (owner, 2026-11-10). Only Incomplete
-// results: a Fit document renewed a year later is a different story and keeps its own notify step.
-// The submitter already read the Recommendation (or never will, the new document is the answer), so
-// CertNotifiedAt is filled and no second "done" mail goes out for the old document; the new
-// document's own close mails the final result. It is a plain idempotent UPDATE, run whenever the
-// staff list loads and at start, so it does not matter which screen saved the follow-up.
-func (s *Store) CloseSupersededDocuments(ctx context.Context) (int, error) {
-	res, err := s.DB.ExecContext(ctx,
-		`UPDATE McuSubmission SET Status = ?, CertNotifiedAt = COALESCE(CertNotifiedAt, ?), NotifyRequestedAt = NULL
-		 WHERE Status = ? AND EXISTS (
-		   SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria = 'IncompleteResult'
-		     AND COALESCE(r.HcValidityStatus, '') LIKE 'Renewed by %')`,
-		SubClosed, s.stamp(), SubReviewed)
-	if err != nil {
-		return 0, err
+	// A notice recorded by the old Notify button (NotifyRequestedAt) counts as told, so the automatic
+	// run does not mail that document again. The column is no longer written.
+	if _, err := s.DB.ExecContext(ctx,
+		`UPDATE McuSubmission SET CertNotifiedAt = NotifyRequestedAt WHERE NotifyRequestedAt IS NOT NULL AND CertNotifiedAt IS NULL`); err != nil {
+		return int(n + n2), err
 	}
-	n, _ := res.RowsAffected()
-	return int(n), nil
+	return int(n + n2), nil
 }
 
 // RemoveSubmission permanently removes a sent document (admin only, enforced where it is routed).
@@ -276,44 +258,6 @@ func (s *Store) RemoveSubmission(ctx context.Context, id, staffID int64) (fileRe
 	return ref.String, s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "Removed", Detail: "was " + status})
 }
 
-// CloseReviewed closes a Reviewed document at the moment the reviewer notifies the submitter (owner,
-// 2026-10-31: Closed means the submitter was told). The daily "your checkups are done" mail looks
-// for Closed documents. Only a Reviewed document with a
-// linked checkup can close, which is the same as "the worker has a checkup with a result".
-// The submitter can be told about ANY result (owner, 2026-11-09). An IncompleteResult is a
-// saved-but-undecided checkup (the checkup itself stays Open), so telling the submitter about it
-// only records the request (NotifyRequestedAt): the daily mail goes out, the submitter reads the
-// Recommendation, and the document stays Reviewed (open) until a final result is saved and the
-// reviewer notifies again, which closes it and mails the final result.
-func (s *Store) CloseReviewed(ctx context.Context, id, staffID int64) error {
-	const hasResult = ` AND FK_McuRecordID IS NOT NULL AND EXISTS (SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria IS NOT NULL`
-	res, err := s.DB.ExecContext(ctx,
-		`UPDATE McuSubmission SET NotifyRequestedAt = ? WHERE SubmissionID = ? AND Status = ? AND NotifyRequestedAt IS NULL`+hasResult+
-			` AND r.ResultCriteria = 'IncompleteResult')`,
-		s.stamp(), id, SubReviewed)
-	if err != nil {
-		return err
-	}
-	if n, _ := res.RowsAffected(); n == 1 {
-		return s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "NotifyRequested"})
-	}
-	// Closing also clears CertNotifiedAt and NotifyRequestedAt: a submitter already told about an
-	// incomplete result is mailed again for the final one.
-	res, err = s.DB.ExecContext(ctx,
-		`UPDATE McuSubmission SET Status = ?, CertNotifiedAt = NULL, NotifyRequestedAt = NULL WHERE SubmissionID = ? AND Status = ?`+hasResult+
-			` AND r.ResultCriteria <> 'IncompleteResult')`,
-		SubClosed, id, SubReviewed)
-	if err != nil {
-		return err
-	}
-	if n, _ := res.RowsAffected(); n != 1 {
-		return s.stateError(ctx, id)
-	}
-	return s.LogEvent(ctx, Event{ActorType: ActorStaff, ActorID: staffID, EntityType: EntitySubmission, EntityID: id, Action: "Closed"})
-}
-
-// sameWorker says whether the patient of a checkup record is the person a new-employee document is
-// about: the same date of birth, or the same ID number (NIK or passport, spaces and hyphens
 // ignored). Names are not compared, because staff correct the spelling the submitter typed.
 func sameWorker(dob, nik, passport, patientDOB, patientPersonalID string) bool {
 	if len(dob) >= 10 && len(patientDOB) >= 10 && dob[:10] == patientDOB[:10] {
@@ -418,10 +362,11 @@ type staffRow struct {
 	Result        string `json:"result"`    // the linked checkup's result, "" when none is linked
 	HasRecord     bool   `json:"hasRecord"` // a checkup is linked (Close needs one)
 	// RenewedBy is "Renewed by <checkup ID>" when a follow-up checkup replaced the linked one, the
-	// same words the MCU table shows.
+	// same words the MCU table shows. The document itself stays Reviewed: Closed is only for Fit.
 	RenewedBy string `json:"renewedBy"`
-	// NotifyRequested: the submitter was told about an Incomplete result while the document stays Reviewed.
-	NotifyRequested bool `json:"notifyRequested"`
+	// Notified: the submitter was mailed about this document (CertNotifiedAt is set). The mail goes
+	// out by itself every 12 hours, so a Reviewed document shows "will be notified" until then.
+	Notified bool `json:"notified"`
 }
 
 // staffDetail is what the checkup form pre-fills from: the row plus the identity the submitter
@@ -441,7 +386,7 @@ func rowOf(d Submission) staffRow {
 		ID: d.ID, Worker: d.PatName, DateOfBirth: d.PatDateOfBirth, Position: d.PatPosition, Company: d.PatCompanyText,
 		Nationality: d.PatNationality, Submitter: d.SubmitterName, Status: d.Status, RejectReason: d.RejectReason,
 		SentAt: d.SentAt, HasFile: d.HasFile, IsNewEmployee: d.IsNewEmployee, ReviewedAt: d.ReviewedAt, ReviewedBy: d.ReviewedBy,
-		Result: d.Result, HasRecord: d.RecordID != 0, NotifyRequested: d.NotifyRequested, RenewedBy: d.RenewedBy,
+		Result: d.Result, HasRecord: d.RecordID != 0, Notified: d.Notified, RenewedBy: d.RenewedBy,
 	}
 }
 
@@ -465,9 +410,6 @@ func (a *StaffAPI) List(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	page, _ := strconv.Atoi(q.Get("page"))
-	if _, err := a.Store.CloseSupersededDocuments(r.Context()); err != nil {
-		log.Printf("mcusubmit: close superseded documents: %v", err) // the list is still useful without it
-	}
 	result, err := a.Store.SearchDocs(r.Context(), DocFilter{
 		Status: q.Get("status"), Worker: q.Get("worker"), Company: q.Get("company"), Submitter: q.Get("submitter"),
 		From: q.Get("from"), To: q.Get("to"), Page: page,
@@ -663,12 +605,6 @@ func (a *StaffAPI) Remove(w http.ResponseWriter, r *http.Request) {
 // Unlink undoes a wrong link on a document that is not closed yet.
 func (a *StaffAPI) Unlink(w http.ResponseWriter, r *http.Request) {
 	a.act(w, r, func(ctx context.Context, id, staff int64) error { return a.Store.UnlinkRecord(ctx, id, staff) })
-}
-
-// Close closes a Reviewed document. The page calls it "Notify submitter": the reviewer closes the
-// document when they tell the submitter the checkup is done, and the daily mail picks it up.
-func (a *StaffAPI) Close(w http.ResponseWriter, r *http.Request) {
-	a.act(w, r, func(ctx context.Context, id, staff int64) error { return a.Store.CloseReviewed(ctx, id, staff) })
 }
 
 func (a *StaffAPI) act(w http.ResponseWriter, r *http.Request, do func(context.Context, int64, int64) error) {

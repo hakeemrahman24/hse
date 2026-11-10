@@ -29,6 +29,11 @@ const (
 
 	// Expiry reminders go out once a day at this hour in Jakarta (WIB), never in the small hours.
 	reminderHourWIB = 8
+
+	// noticeEvery is how often submitters are told about reviewed and rejected documents (owner,
+	// 2026-11-10). Each run only picks documents whose CertNotifiedAt is still empty, so a restart
+	// or an overlap never mails the same document twice.
+	noticeEvery = 12 * time.Hour
 )
 
 // startMcuPortal wires the medical checkup submission portal (/mcu-submit) into mux. Like /sofi, it
@@ -134,6 +139,7 @@ func startMcuPortal(database *sql.DB, sessionSecret string, mux *http.ServeMux, 
 	}()
 	go runRetention(ctx, store, files)
 	go runReminders(ctx, store, mailer, baseURL)
+	go runSubmitterNotices(ctx, store, mailer, baseURL)
 	go runReviewerDigest(ctx, store, mailer, os.Getenv("MCU_STAFF_BASE_URL"))
 	log.Print("MCU portal (/mcu-submit) is on.")
 }
@@ -218,7 +224,7 @@ func nextReminderRun(now time.Time) time.Time {
 	return next
 }
 
-// runReminders mails the expiring-checkup reminders, then the completed-checkup mails, once a day. RunReminders does nothing while
+// runReminders mails the expiring-checkup reminders once a day. RunReminders does nothing while
 // the admin's master switch is off, and skips anyone mailed within the repeat period, so running
 // it daily is safe.
 func runReminders(ctx context.Context, store *mcusubmit.Store, mailer mcusubmit.Mailer, baseURL string) {
@@ -231,14 +237,23 @@ func runReminders(ctx context.Context, store *mcusubmit.Store, mailer mcusubmit.
 		if subs > 0 {
 			log.Printf("MCU portal: sent expiry reminders to %d submitters about %d workers", subs, workers)
 		}
-		// One mail per submitter about everything that closed since their last one.
+	}
+}
+
+// runSubmitterNotices tells each submitter about the documents they have not been told about yet:
+// reviewed ones with a result (any result) and rejected ones, one mail per submitter. It runs at
+// start-up and then every 12 hours. A mail that fails leaves CertNotifiedAt empty, so the next run
+// tries again; nobody presses a button.
+func runSubmitterNotices(ctx context.Context, store *mcusubmit.Store, mailer mcusubmit.Mailer, baseURL string) {
+	for {
 		mails, docs, err := store.RunClosedNotices(ctx, mailer, baseURL)
 		if err != nil {
-			log.Printf("MCU portal: completed-checkup mails: %v", err)
+			log.Printf("MCU portal: submitter notices: %v", err)
 		}
 		if mails > 0 {
-			log.Printf("MCU portal: told %d submitters about %d completed checkups", mails, docs)
+			log.Printf("MCU portal: told %d submitters about %d documents", mails, docs)
 		}
+		time.Sleep(noticeEvery)
 	}
 }
 

@@ -150,21 +150,14 @@ func (s *Store) waitingForReview(ctx context.Context) ([]digestLine, error) {
 	return s.digestLines(ctx, SubPending)
 }
 
-// reviewedNotNotified returns the Reviewed documents: a checkup with a result is saved but the
-// reviewer has not pressed Notify submitter, so the submitter has not been told. Without this line
-// a Reviewed document could sit forever, because notifying is optional.
-func (s *Store) reviewedNotNotified(ctx context.Context) ([]digestLine, error) {
-	return s.digestLines(ctx, SubReviewed)
-}
-
 func (s *Store) digestLines(ctx context.Context, status string) ([]digestLine, error) {
 	rows, err := s.DB.QueryContext(ctx,
 		`SELECT s.PatName, s.PatPosition, s.PatCompanyText, u.Name, COALESCE(b.SentAt, '')
 		 FROM McuSubmission s
 		 JOIN McuBatch b ON b.BatchID = s.FK_BatchID
 		 JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID
-		 WHERE s.Status = ? AND s.NotifyRequestedAt IS NULL
-		 ORDER BY b.SentAt, s.SubmissionID`, status) // already told about an Incomplete result: nothing left to remind
+		 WHERE s.Status = ?
+		 ORDER BY b.SentAt, s.SubmissionID`, status)
 	if err != nil {
 		return nil, err
 	}
@@ -226,17 +219,19 @@ func (s *Store) RunDigest(ctx context.Context, m Mailer, staffURL string) (int, 
 	if err != nil {
 		return 0, err
 	}
-	reviewed, err := s.reviewedNotNotified(ctx)
-	if err != nil || len(lines)+len(reviewed) == 0 {
-		return 0, err
+	// Only what still waits for review. A reviewed document needs nothing from a reviewer any more:
+	// the submitter is told automatically every 12 hours (RunClosedNotices), so there is no
+	// "reviewed, not notified" list (owner, 2026-11-10).
+	if len(lines) == 0 {
+		return 0, nil
 	}
 	to, err := s.activeReviewerEmails(ctx)
 	if err != nil || len(to) == 0 {
 		return 0, err
 	}
-	subject := fmt.Sprintf("Medical checkups: %d waiting for review, %d reviewed and not notified", len(lines), len(reviewed))
-	body := digestBody(lines, reviewed, staffURL)
-	page := digestHTML(lines, reviewed, staffURL)
+	subject := fmt.Sprintf("Medical checkups: %d waiting for review", len(lines))
+	body := digestBody(lines, staffURL)
+	page := digestHTML(lines, staffURL)
 	sent := 0
 	for _, addr := range to {
 		if err := sendRich(ctx, m, addr, subject, body, page); err != nil {
@@ -252,23 +247,14 @@ func (s *Store) RunDigest(ctx context.Context, m Mailer, staffURL string) (int, 
 		return sent, err
 	}
 	_ = s.LogEvent(ctx, Event{ActorType: ActorSystem, EntityType: EntitySystem, Action: "DigestSent",
-		Detail: fmt.Sprintf("%d waiting, %d reviewed not notified, %d mails", len(lines), len(reviewed), sent)})
+		Detail: fmt.Sprintf("%d waiting, %d mails", len(lines), sent)})
 	return sent, nil
 }
 
-func digestBody(waiting, reviewed []digestLine, staffURL string) string {
+func digestBody(waiting []digestLine, staffURL string) string {
 	var b strings.Builder
-	if len(waiting) > 0 {
-		fmt.Fprintf(&b, "%d medical checkup documents are waiting for review.\n\n", len(waiting))
-		writeDigestList(&b, waiting)
-	}
-	if len(reviewed) > 0 {
-		if len(waiting) > 0 {
-			b.WriteString("\n")
-		}
-		fmt.Fprintf(&b, "%d reviewed documents have not been notified to their submitter (press Notify submitter on the Submitted tab).\n\n", len(reviewed))
-		writeDigestList(&b, reviewed)
-	}
+	fmt.Fprintf(&b, "%d medical checkup documents are waiting for review.\n\n", len(waiting))
+	writeDigestList(&b, waiting)
 	if staffURL != "" {
 		fmt.Fprintf(&b, "\nOpen them here (sign in required): %s\n", staffURL)
 	}
@@ -276,29 +262,23 @@ func digestBody(waiting, reviewed []digestLine, staffURL string) string {
 	return b.String()
 }
 
-// digestHTML is digestBody as tables: one for the waiting documents, one for the reviewed ones.
-func digestHTML(waiting, reviewed []digestLine, staffURL string) string {
+// digestHTML is digestBody as a table.
+func digestHTML(waiting []digestLine, staffURL string) string {
 	headers := []string{"Employee", "Position", "Company", "Sent by", "Sent (UTC)"}
-	var parts []string
-	section := func(intro string, lines []digestLine) {
-		shown := lines
-		if len(shown) > digestMaxLines {
-			shown = shown[:digestMaxLines]
-		}
-		rows := make([][]string, 0, len(shown))
-		for _, l := range shown {
-			rows = append(rows, []string{l.worker, l.position, l.company, l.submitter, l.sentAt})
-		}
-		parts = append(parts, htmlPara(intro), htmlTable(headers, rows))
-		if more := len(lines) - len(shown); more > 0 {
-			parts = append(parts, htmlPara("and "+strconv.Itoa(more)+" more."))
-		}
+	shown := waiting
+	if len(shown) > digestMaxLines {
+		shown = shown[:digestMaxLines]
 	}
-	if len(waiting) > 0 {
-		section(strconv.Itoa(len(waiting))+" medical checkup documents are waiting for review.", waiting)
+	rows := make([][]string, 0, len(shown))
+	for _, l := range shown {
+		rows = append(rows, []string{l.worker, l.position, l.company, l.submitter, l.sentAt})
 	}
-	if len(reviewed) > 0 {
-		section(strconv.Itoa(len(reviewed))+" reviewed documents have not been notified to their submitter (press Notify submitter on the Submitted tab).", reviewed)
+	parts := []string{
+		htmlPara(strconv.Itoa(len(waiting)) + " medical checkup documents are waiting for review."),
+		htmlTable(headers, rows),
+	}
+	if more := len(waiting) - len(shown); more > 0 {
+		parts = append(parts, htmlPara("and "+strconv.Itoa(more)+" more."))
 	}
 	if staffURL != "" {
 		parts = append(parts, htmlLink("Open them here (sign in required):", staffURL))

@@ -74,17 +74,6 @@
   // The checkup result has its own column: it is a medical outcome, not a step in the document's life.
   var RESULTS = { Fit: 'Fit', FitWithNote: 'Fit with note', Unfit: 'Unfit', TemporaryUnfit: 'Temporarily unfit', NeedFollowUp: 'Needs follow-up', IncompleteResult: 'Incomplete' };
 
-  // Optional: a Reviewed document is complete without it. Pressing it closes the document and puts the
-  // worker in the submitter's next daily mail (08:00 Jakarta, one mail per submitter).
-  function notify(d) {
-    var incomplete = d.result === 'IncompleteResult';
-    var text = incomplete
-      ? 'Notify the submitter that ' + d.worker + "'s result is incomplete? They are told in the daily mail and see the recommendation. The document stays open until a final result is saved."
-      : 'Notify the submitter that ' + d.worker + "'s checkup is done? They are told in the daily mail, and this document is closed.";
-    if (!window.confirm(text)) return;
-    call('/api/mcu-submissions/' + d.id + '/close', 'POST').then(load).catch(function (e) { say(e.message, true); });
-  }
-
   // The page is told by the server whether the signed-in staff member is an admin (data-admin);
   // the server checks the role again on every removal, so this only decides what is shown.
   var isAdmin = document.getElementById('tab-submitted').getAttribute('data-admin') === '1';
@@ -151,7 +140,7 @@
     }).catch(function (e) { row.textContent = e.message; row.className = 'sub-row sub-none'; });
   }
 
-  // The row's own cell holds only the next step (Review, Open checkup or Notify submitter) and a
+  // The row's own cell holds only the next step (Review or Open checkup; a reviewed document only shows who was told) and a
   // More toggle. The two rare actions open in a full-width detail row under the document, so the row
   // stays one line tall and the other columns keep their width. Returns that detail row, or null.
   function actions(d, box, colspan) {
@@ -161,20 +150,15 @@
       box.appendChild(button('Remove', 'btn-ghost sub-reject', function () { remove(d); }, 'Remove the document of ' + d.worker));
       return null;
     }
-    // Once a checkup with a result is linked the document is Reviewed and the next step is telling
-    // the submitter; before that the next step is the checkup form.
-    // The submitter can be told about any result. For an Incomplete one the document stays Reviewed
-    // (open) after the notice, so the button gives way to a "Notified" mark until a final result is saved.
-    var incomplete = d.result === 'IncompleteResult';
-    // There is no "Open checkup" for it: the submitter sends a new document, and reviewing that one
-    // creates a new checkup (consultation result) linked to this one.
-    if (d.status === 'Reviewed' && d.hasRecord && incomplete && d.notifyRequested) {
+    // Nobody presses a button to tell the submitter: the system mails them every 12 hours about every
+    // reviewed document it has not told them about yet. Only Fit and Fit with note then close the
+    // document; any other result stays Reviewed. A reviewed document therefore shows only a note, and
+    // there is no "Open checkup": a follow-up is a new submission, reviewed as a new checkup.
+    if (d.status === 'Reviewed' && d.hasRecord) {
       var told = document.createElement('span');
       told.className = 'sub-note';
-      told.textContent = 'Submitter notified, waiting for a new submission';
+      told.textContent = d.notified ? 'Submitter notified' : 'Submitter will be notified automatically';
       box.appendChild(told);
-    } else if (d.status === 'Reviewed' && d.hasRecord) {
-      box.appendChild(button('Notify submitter', 'btn-primary', function () { notify(d); }, 'Notify the submitter about ' + d.worker));
     } else if (d.hasRecord) {
       // Linked but without a result yet: finish that checkup, do not start another.
       box.appendChild(button('Open checkup', 'btn-primary', function () { startReview(d); }, 'Open the linked checkup of ' + d.worker));

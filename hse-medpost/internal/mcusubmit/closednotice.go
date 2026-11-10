@@ -9,11 +9,13 @@ import (
 	"strings"
 )
 
-// The "your checkups are done" mail. Staff close documents one at a time all day, so a mail per
-// document would bury a busy submitter. Instead the daily job (08:00 Jakarta, with the expiry
-// reminders) sends each submitter ONE mail listing everything that closed since their last one
-// (owner, 2026-10-29: "inside one day"). It names the worker but never the result, an ID number or
-// a birth date: the mail travels over the open internet, the portal is behind a login.
+// The "your checkups are done" mail. Staff review documents one at a time all day, so a mail per
+// document would bury a busy submitter. Instead a job that runs every 12 hours (owner, 2026-11-10;
+// it was once a day at 08:00 Jakarta) sends each submitter ONE mail listing every reviewed or
+// rejected document they have not been told about yet, found by an empty CertNotifiedAt. Nobody
+// presses a button: a result the reviewer saves is picked up by the next run. It names the worker
+// but never the result, an ID number or a birth date: the mail travels over the open internet, the
+// portal is behind a login.
 
 // closedNoticeMaxLines keeps one mail readable; the rest is summarised as "and N more".
 const closedNoticeMaxLines = 100
@@ -84,18 +86,20 @@ func (s *Store) BackfillRejectNotices(ctx context.Context) error {
 	return s.LogEvent(ctx, Event{ActorType: ActorSystem, EntityType: EntitySystem, Action: "RejectNoticeBackfill"})
 }
 
-// dueClosedNotices groups the documents closed and not yet announced by submitter. Only accounts
-// that can still receive mail are included: Active, not the built-in admin, address not bounced,
-// not erased. The rest stay unmarked, so a re-enabled account is told later.
+// dueClosedNotices groups the documents the submitter has not been told about yet, by submitter:
+// every reviewed document with a result, whatever the result, and every rejected one, while
+// CertNotifiedAt is empty. Nobody presses a button (owner, 2026-11-10): a result saved by the
+// reviewer is picked up by the next run, which goes out every 12 hours. Only accounts that can
+// still receive mail are included: Active, not the built-in admin, address not bounced, not
+// erased. The rest stay unmarked, so a re-enabled account is told later.
 func (s *Store) dueClosedNotices(ctx context.Context) ([]closedTarget, error) {
 	rows, err := s.DB.QueryContext(ctx,
 		`SELECT u.SubmitterID, COALESCE(u.FK_CompanyID, 0), u.Email, CASE WHEN u.EmailBouncedAt IS NULL THEN 0 ELSE 1 END, s.SubmissionID, s.PatName, s.PatPosition, s.PatCompanyText, CASE WHEN s.Status = ? THEN 1 ELSE 0 END
 		 FROM McuSubmission s
 		 JOIN Submitter u ON u.SubmitterID = s.FK_SubmitterID
-		 WHERE ((s.Status = ? AND s.FK_McuRecordID IS NOT NULL) OR s.Status = ?
-		        OR (s.Status = ? AND s.NotifyRequestedAt IS NOT NULL)) AND s.CertNotifiedAt IS NULL
+		 WHERE ((s.Status IN (?, ?) AND s.FK_McuRecordID IS NOT NULL) OR s.Status = ?) AND s.CertNotifiedAt IS NULL
 		   AND u.Status = ? AND u.IsBuiltIn = 0 AND u.ErasedAt IS NULL
-		 ORDER BY u.SubmitterID, s.SubmissionID`, SubRejected, SubClosed, SubRejected, SubReviewed, StatusActive)
+		 ORDER BY u.SubmitterID, s.SubmissionID`, SubRejected, SubReviewed, SubClosed, SubRejected, StatusActive)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +163,7 @@ func (s *Store) RunClosedNotices(ctx context.Context, m Mailer, portalURL string
 			continue // nobody could be reached: the documents stay due and the next daily run tries again
 		}
 		for _, l := range t.lines {
-			if _, err := s.DB.ExecContext(ctx, `UPDATE McuSubmission SET CertNotifiedAt = ? WHERE SubmissionID = ? AND CertNotifiedAt IS NULL`, s.stamp(), l.id); err != nil {
+			if err := s.markNotified(ctx, l.id); err != nil {
 				failures = append(failures, err)
 			}
 		}
@@ -170,6 +174,23 @@ func (s *Store) RunClosedNotices(ctx context.Context, m Mailer, portalURL string
 		documents += len(t.lines)
 	}
 	return mails, documents, errors.Join(failures...)
+}
+
+// markNotified records that the submitter was mailed about one document. A Reviewed document with a
+// Fit or Fit with note result becomes Closed in the same statement: Closed is only for those two
+// results (owner, 2026-11-10), and it is what opens the health certificate download. Every other
+// result stays Reviewed, with CertNotifiedAt set, so it is never mailed twice. A document that
+// is already marked is left alone, so two overlapping runs cannot undo each other.
+func (s *Store) markNotified(ctx context.Context, id int64) error {
+	_, err := s.DB.ExecContext(ctx,
+		`UPDATE McuSubmission SET
+		   Status = CASE WHEN Status = ? AND EXISTS (
+		     SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria IN ('Fit', 'FitWithNote')
+		   ) THEN ? ELSE Status END,
+		   CertNotifiedAt = ?
+		 WHERE SubmissionID = ? AND CertNotifiedAt IS NULL`,
+		SubReviewed, SubClosed, s.stamp(), id)
+	return err
 }
 
 func noticeSubject(t closedTarget) string {

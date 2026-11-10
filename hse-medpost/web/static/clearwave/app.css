@@ -6288,3 +6288,35 @@ a.app-tab {
 .sofiq-dimitems { font-weight: 400; color: var(--text-3); }
 .sofiq-dimedit { margin-top: 10px; }
 .sofiq-dimhead .btn-ghost { height: 28px; padding-top: 0; padding-bottom: 0; font-size: 0.8125rem; }
+
+/* Submitted tab, narrow screens (checked at 390, 768 and 1000px wide against seeded rows of every status).
+   1. Status and Reviewed cells: the value and the notes under it (reject reason, result, "Renewed by", reviewer time) share a
+      flex row in the card layout, so "Rejected" was squeezed to "Rejecte / d" and a lone time dropped under its label. A two-column
+      grid keeps label and value on the first line and puts every note on its own full-width line below. */
+@media (max-width: 1100px) {
+  #tab-submitted .data-table td[data-label="Status"],
+  #tab-submitted .data-table td[data-label="Reviewed (UTC)"] {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: baseline; text-align: right;
+  }
+  #tab-submitted .data-table td[data-label="Status"] .sub-note,
+  #tab-submitted .data-table td[data-label="Reviewed (UTC)"] .sub-note { grid-column: 1 / -1; flex-basis: auto; text-align: right; }
+  #tab-submitted .data-table td[data-label="Reviewed (UTC)"]:empty { display: none; } /* the grid rule above would otherwise show an empty label */
+  /* a time with no reviewer name in front of it sits beside the label, not under it */
+  #tab-submitted .data-table td[data-label="Reviewed (UTC)"] .sub-note:only-child { grid-column: 2; margin-top: 0; }
+}
+
+/* 2. Phone: the cards are plain blocks there, so the Name line's `order: -1` did nothing and the sent time came above the name
+      (tablet cards put the name first). A column flex card restores the order. */
+@media (max-width: 640px) {
+  #tab-submitted .data-table tr { display: flex; flex-direction: column; }
+
+  /* 3. The filter took 270px of an 844px screen, so only two cards showed. Status chips become one swipeable row, and the worker
+        search shares a line with Filter and Reset. The extra filters stay behind "More filters". */
+  #tab-submitted .sub-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  #tab-submitted .sub-chips::-webkit-scrollbar { display: none; }
+  #tab-submitted .sub-chip { flex: 0 0 auto; height: 30px; padding: 0 12px; }
+  #tab-submitted .mcu-data-filter-row > label.sub-worker { flex: 1 1 8rem; order: 1; }
+  #tab-submitted #sub-apply { order: 2; flex: 0 0 auto; padding: 0 16px !important; align-self: flex-end; }
+  #tab-submitted #sub-clear { order: 3; flex: 0 0 auto; padding: 0 12px !important; align-self: flex-end; }
+  #tab-submitted .sub-more { order: 4; }
+}
