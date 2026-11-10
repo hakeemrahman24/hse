@@ -5940,6 +5940,11 @@ a.app-tab {
 @media (min-width: 1101px) {
   #tab-submitted .data-table td[data-label="Name"] { max-width: 22rem; white-space: normal; overflow-wrap: break-word; min-width: 12rem; }
   #tab-submitted .data-table td { vertical-align: top; padding-top: 6px; padding-bottom: 6px; }
+  /* Action holds Open PDF and Review side by side: it keeps one width on every row (so rows with and without Review
+     line up) and the More link gets its own room, instead of being squeezed against the buttons. */
+  #tab-submitted .data-table td[data-label="Action"] { min-width: 10.5rem; padding-right: 16px; }
+  #tab-submitted .data-table td[data-label="Action"] .sub-act { flex-wrap: nowrap; gap: 10px; }
+  #tab-submitted .data-table td[data-label="More"] { padding-left: 10px; }
   #tab-submitted .data-table td[data-label="Status"],
   #tab-submitted .data-table td[data-label="Company"] { white-space: normal; }
 }
