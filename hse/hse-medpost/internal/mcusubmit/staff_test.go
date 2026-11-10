@@ -116,7 +116,6 @@ func newStaffEnv(t *testing.T) *staffEnv {
 	mux.HandleFunc("POST /api/mcu-submissions/{id}/reject", api.Reject)
 	mux.HandleFunc("POST /api/mcu-submissions/{id}/link", api.Link)
 	mux.HandleFunc("POST /api/mcu-submissions/{id}/unlink", api.Unlink)
-	mux.HandleFunc("POST /api/mcu-submissions/{id}/close", api.Close)
 	// The real route wraps these in RequireAuth, which puts the session in the context.
 	withSession := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Test-Anonymous") == "" {
@@ -287,9 +286,6 @@ func TestCloseWithRecordLinksTheRecordAndClosesFromPendingOrReviewed(t *testing.
 	if status != SubClosed || rec == 0 {
 		t.Fatalf("status %s, record %d", status, rec)
 	}
-	if !hasEvent(t, s, EntitySubmission, a, "Closed") {
-		t.Error("no Closed event")
-	}
 	docs, _ := s.ListOwn(ctx, sub)
 	for _, d := range docs {
 		if d.Status != SubClosed {
@@ -377,12 +373,9 @@ func TestLinkRouteMapsEachRefusalToAClearStatus(t *testing.T) {
 	if rec := e.do("POST", path, `{"checkUpId":"MedC-1"}`, false); rec.Code != http.StatusNoContent {
 		t.Errorf("linking the same record again = %d, want 204 (saving an edited checkup does this)", rec.Code)
 	}
-	closePath := fmt.Sprintf("/api/mcu-submissions/%d/close", id)
-	if rec := e.do("POST", closePath, ``, false); rec.Code != http.StatusNoContent {
-		t.Errorf("notify = %d: %s", rec.Code, rec.Body.String())
-	}
-	if rec := e.do("POST", closePath, ``, false); rec.Code != http.StatusConflict {
-		t.Errorf("notifying twice = %d, want 409", rec.Code)
+	// There is no close route any more: the notice run tells the submitter and closes a Fit document.
+	if rec := e.do("POST", fmt.Sprintf("/api/mcu-submissions/%d/close", id), ``, false); rec.Code != http.StatusNotFound && rec.Code != http.StatusMethodNotAllowed {
+		t.Errorf("the removed close route answered %d, want 404 or 405", rec.Code)
 	}
 }
 
@@ -627,12 +620,19 @@ func TestRecordsRouteReturnsTheListAsJSON(t *testing.T) {
 	}
 }
 
-// closeWithRecord is the whole staff path in one call: link the checkup, then notify (close).
+// closeWithRecord links the checkup and then puts the document in the Closed state a finished Fit
+// document ends in. In production the 12-hourly notice run does the closing (markNotified); tests
+// that only need "a closed document" use this shortcut and leave CertNotifiedAt empty, as the run
+// would find it.
 func closeWithRecord(s *Store, ctx context.Context, id, staff int64, checkUpID string) error {
 	if err := s.LinkRecord(ctx, id, staff, checkUpID); err != nil {
 		return err
 	}
-	return s.CloseReviewed(ctx, id, staff)
+	_, err := s.DB.ExecContext(ctx,
+		`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ? AND Status = ? AND EXISTS (
+		   SELECT 1 FROM McuRecord r WHERE r.McuRecordID = McuSubmission.FK_McuRecordID AND r.ResultCriteria IN ('Fit', 'FitWithNote'))`,
+		SubClosed, id, SubReviewed)
+	return err
 }
 
 func TestLinkRecordReviewsOnlyWhenTheCheckupHasAResultAndCloseNeedsReviewed(t *testing.T) {
@@ -652,9 +652,6 @@ func TestLinkRecordReviewsOnlyWhenTheCheckupHasAResultAndCloseNeedsReviewed(t *t
 			t.Fatal(err)
 		}
 	}
-	if err := s.CloseReviewed(ctx, a, testStaffID); !errors.Is(err, ErrBadState) {
-		t.Fatalf("closing an unlinked Pending document: %v, want ErrBadState", err)
-	}
 	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-R1"); err != nil {
 		t.Fatal(err)
 	}
@@ -669,31 +666,38 @@ func TestLinkRecordReviewsOnlyWhenTheCheckupHasAResultAndCloseNeedsReviewed(t *t
 	if status(a) != SubReviewed || status(b) != SubPending {
 		t.Fatalf("after linking: %s and %s, want Reviewed and Pending", status(a), status(b))
 	}
-	if err := s.CloseReviewed(ctx, b, testStaffID); !errors.Is(err, ErrBadState) {
-		t.Fatalf("closing a checkup with no result: %v, want ErrBadState", err)
+	// The notice run tells the submitter about the Reviewed document and closes it (Fit); the Pending
+	// one, whose checkup has no result yet, is not due.
+	m := &fakeMailer{}
+	if mails, docs, err := s.RunClosedNotices(ctx, m, "https://p"); err != nil || mails != 1 || docs != 1 {
+		t.Fatalf("notice run: %d mails, %d documents, %v; want 1 and 1", mails, docs, err)
 	}
-	if err := s.CloseReviewed(ctx, a, testStaffID); err != nil {
-		t.Fatal(err)
-	}
-	if status(a) != SubClosed {
-		t.Fatalf("status %s, want Closed", status(a))
+	if status(a) != SubClosed || status(b) != SubPending {
+		t.Fatalf("after the notice run: %s and %s, want Closed and Pending", status(a), status(b))
 	}
 }
 
-func TestResultMessageShownToTheSubmitterOnlyOnceClosed(t *testing.T) {
+// The submitter reads the recommendation or notes once told: a Closed document, or (Closed is only
+// for Fit results) a Reviewed one the notice mail already covered.
+func TestResultMessageShownToTheSubmitterOnlyOnceTold(t *testing.T) {
 	cases := []struct {
-		status, result, want string
+		status, result string
+		notified       bool
+		want           string
 	}{
-		{SubClosed, "NeedFollowUp", "REC"},
-		{SubClosed, "TemporaryUnfit", "NOTES"},
-		{SubClosed, "Unfit", "NOTES"},
-		{SubClosed, "Fit", ""},
-		{SubReviewed, "Unfit", ""}, // not told yet
+		{SubClosed, "NeedFollowUp", false, "REC"},
+		{SubClosed, "Fit", false, ""},
+		{SubReviewed, "Unfit", false, ""}, // not told yet
+		{SubReviewed, "Unfit", true, "NOTES"},
+		{SubReviewed, "TemporaryUnfit", true, "NOTES"},
+		{SubReviewed, "NeedFollowUp", true, "REC"},
+		{SubReviewed, "IncompleteResult", true, "REC"},
+		{SubReviewed, "Fit", true, ""},
 	}
 	for _, c := range cases {
-		d := Submission{Status: c.status, Result: c.result, ResultNotes: "NOTES", Recommendation: "REC"}
+		d := Submission{Status: c.status, Result: c.result, Notified: c.notified, ResultNotes: "NOTES", Recommendation: "REC"}
 		if got := d.ResultMessage(); got != c.want {
-			t.Errorf("%s/%s = %q, want %q", c.status, c.result, got, c.want)
+			t.Errorf("%s/%s/told=%v = %q, want %q", c.status, c.result, c.notified, got, c.want)
 		}
 	}
 }
@@ -739,7 +743,7 @@ func TestLinkAgainSameRecordIsAllowedAndUnlinkUndoesAWrongLink(t *testing.T) {
 	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-U2"); err != nil || status() != SubReviewed {
 		t.Fatalf("relink: %v, %s", err, status())
 	}
-	if err := s.CloseReviewed(ctx, a, testStaffID); err != nil {
+	if _, _, err := s.RunClosedNotices(ctx, &fakeMailer{}, "https://p"); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.UnlinkRecord(ctx, a, testStaffID); !errors.Is(err, ErrBadState) {
@@ -747,125 +751,23 @@ func TestLinkAgainSameRecordIsAllowedAndUnlinkUndoesAWrongLink(t *testing.T) {
 	}
 }
 
-func TestCloseReviewedRefusesACheckupWhoseResultWasClearedAfterLinking(t *testing.T) {
+// Nobody presses Notify (owner, 2026-11-10). The 12-hourly run tells each submitter about every
+// reviewed document with a result, whatever the result, and marks it (CertNotifiedAt) so it is never
+// mailed twice. Only Fit and Fit with note become Closed; the rest stay Reviewed. A mail that fails
+// leaves the document unmarked for the next run.
+func TestEveryReviewedResultIsToldOnceAndOnlyFitCloses(t *testing.T) {
 	s, _, co := newTestStore(t)
 	ctx := context.Background()
-	sub := activeSubmitter(t, s, co, "hrclr@example.com")
-	w := seedWorker(t, s, "Clear Result", "1990-04-12", co)
-	addRecord(t, s, w, "MedC-CLR", "Fit", "2027-01-01", "Open", 1)
-	a, _ := sentDocIn(t, s, sub, "Clear Result", "Other Two")
-	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w, a); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-CLR"); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = NULL WHERE CheckUpID = 'MedC-CLR'`); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.CloseReviewed(ctx, a, testStaffID); !errors.Is(err, ErrBadState) {
-		t.Fatalf("closing with the result cleared: %v, want ErrBadState", err)
-	}
-}
-
-// The submitter can be told about any result (owner, 2026-11-09), but an IncompleteResult checkup
-// stays Open, so notifying then leaves the document Reviewed; the final result closes it and mails
-// again. A document closed earlier with an Incomplete result is put back to Reviewed at start.
-func TestIncompleteResultNotifiesButKeepsTheDocumentReviewed(t *testing.T) {
-	s, _, co := newTestStore(t)
-	ctx := context.Background()
-	sub := activeSubmitter(t, s, co, "hrinc@example.com")
-	w := seedWorker(t, s, "Inc Omplete", "1990-04-12", co)
-	addRecord(t, s, w, "MedC-INC", "Fit", "2027-01-01", "Open", 1)
-	// The local SQLite schema still has the old CHECK list (no IncompleteResult, which the settings
-	// list adds), so write the value on one connection with that check switched off.
+	sub := activeSubmitter(t, s, co, "hrfit@example.com")
 	conn, err := s.DB.Conn(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer conn.Close()
-	for _, q := range []string{`PRAGMA ignore_check_constraints = ON`,
-		`UPDATE McuRecord SET ResultCriteria = 'IncompleteResult' WHERE CheckUpID = 'MedC-INC'`,
-		`PRAGMA ignore_check_constraints = OFF`} {
-		if _, err := conn.ExecContext(ctx, q); err != nil {
-			t.Fatal(err)
-		}
-	}
-	a, _ := sentDocIn(t, s, sub, "Inc Omplete", "Other Three")
-	if _, err := s.DB.Exec(`UPDATE McuSubmission SET FK_PatientID = ? WHERE SubmissionID = ?`, w, a); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.LinkRecord(ctx, a, testStaffID, "MedC-INC"); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.CloseReviewed(ctx, a, testStaffID); err != nil {
-		t.Fatalf("notifying about an incomplete result: %v", err)
-	}
-	var status string
-	var requested, told sql.NullString
-	read := func() {
-		t.Helper()
-		if err := s.DB.QueryRow(`SELECT Status, NotifyRequestedAt, CertNotifiedAt FROM McuSubmission WHERE SubmissionID = ?`, a).Scan(&status, &requested, &told); err != nil {
-			t.Fatal(err)
-		}
-	}
-	read()
-	if status != SubReviewed || !requested.Valid {
-		t.Fatalf("after notify: status %q requested %v, want Reviewed and requested", status, requested)
-	}
-	if err := s.CloseReviewed(ctx, a, testStaffID); !errors.Is(err, ErrBadState) {
-		t.Fatalf("notifying twice: %v, want ErrBadState", err)
-	}
-	// The daily mail picks it up while it is still Reviewed.
-	due, err := s.dueClosedNotices(ctx)
-	if err != nil || len(due) != 1 || len(due[0].lines) != 1 {
-		t.Fatalf("due notices %v (%v), want the one Reviewed document", due, err)
-	}
-	// The final result: notifying again closes it and makes it due for the mail once more.
-	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = 'Fit' WHERE CheckUpID = 'MedC-INC'`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.DB.Exec(`UPDATE McuSubmission SET CertNotifiedAt = '2026-11-09T01:00:00' WHERE SubmissionID = ?`, a); err != nil {
-		t.Fatal(err)
-	}
-	if err := s.CloseReviewed(ctx, a, testStaffID); err != nil {
-		t.Fatalf("closing with the final result: %v", err)
-	}
-	read()
-	if status != SubClosed || told.Valid || requested.Valid {
-		t.Fatalf("after close: status %q told %v requested %v, want Closed, mail due again", status, told, requested)
-	}
-	// Closed earlier with an Incomplete result: back to Reviewed, and not mailed twice.
-	if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = 'Fit' WHERE CheckUpID = 'MedC-INC'`); err != nil {
-		t.Fatal(err)
-	}
-	for _, q := range []string{`PRAGMA ignore_check_constraints = ON`,
-		`UPDATE McuRecord SET ResultCriteria = 'IncompleteResult' WHERE CheckUpID = 'MedC-INC'`,
-		`PRAGMA ignore_check_constraints = OFF`} {
-		if _, err := conn.ExecContext(ctx, q); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if _, err := s.DB.Exec(`UPDATE McuSubmission SET CertNotifiedAt = '2026-11-09T02:00:00' WHERE SubmissionID = ?`, a); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := s.NormalizeReviewed(ctx); err != nil {
-		t.Fatal(err)
-	}
-	read()
-	if status != SubReviewed || !requested.Valid || !told.Valid {
-		t.Fatalf("after normalize: status %q requested %v told %v, want Reviewed, requested, still marked told", status, requested, told)
-	}
-}
-
-// Saving the follow-up checkup (the MCU table stamps the open record "Renewed by <ID>") closes the
-// old document with an Incomplete result, as the table closes the record, without a second mail.
-// A Fit document renewed the same way is left alone: it keeps its own notify step.
-func TestCloseSupersededDocumentsFollowsTheMcuTableRenewal(t *testing.T) {
-	s, _, co := newTestStore(t)
-	ctx := context.Background()
-	sub := activeSubmitter(t, s, co, "hrsup@example.com")
-	linked := func(name, checkUpID string) int64 {
+	results := []string{"Fit", "FitWithNote", "Unfit", "TemporaryUnfit", "NeedFollowUp", "IncompleteResult"}
+	ids := map[string]int64{}
+	for _, result := range results {
+		name, checkUpID := "Auto Told "+result, "MedC-AT"+result
 		w := seedWorker(t, s, name, "1990-04-12", co)
 		addRecord(t, s, w, checkUpID, "Fit", "2027-01-01", "Open", 0)
 		id, _ := sentDocIn(t, s, sub, name, "Other "+name)
@@ -875,53 +777,78 @@ func TestCloseSupersededDocumentsFollowsTheMcuTableRenewal(t *testing.T) {
 		if err := s.LinkRecord(ctx, id, testStaffID, checkUpID); err != nil {
 			t.Fatal(err)
 		}
-		return id
-	}
-	inc, fit := linked("Sup Incomplete", "MedC-SUP1"), linked("Sup Fit", "MedC-SUP2")
-	conn, err := s.DB.Conn(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
-	for _, q := range []string{`PRAGMA ignore_check_constraints = ON`,
-		`UPDATE McuRecord SET ResultCriteria = 'IncompleteResult' WHERE CheckUpID = 'MedC-SUP1'`,
-		`PRAGMA ignore_check_constraints = OFF`} {
-		if _, err := conn.ExecContext(ctx, q); err != nil {
-			t.Fatal(err)
+		// The local SQLite schema may reject some codes, so write the result with the CHECK switched off.
+		for _, q := range []string{`PRAGMA ignore_check_constraints = ON`,
+			`UPDATE McuRecord SET ResultCriteria = '` + result + `' WHERE CheckUpID = '` + checkUpID + `'`,
+			`PRAGMA ignore_check_constraints = OFF`} {
+			if _, err := conn.ExecContext(ctx, q); err != nil {
+				t.Fatalf("%s: %v", result, err)
+			}
 		}
+		ids[result] = id
 	}
-	status := func(id int64) (st string, told sql.NullString) {
+	state := func(id int64) (status string, told sql.NullString) {
 		t.Helper()
-		if err := s.DB.QueryRow(`SELECT Status, CertNotifiedAt FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&st, &told); err != nil {
+		if err := s.DB.QueryRow(`SELECT Status, CertNotifiedAt FROM McuSubmission WHERE SubmissionID = ?`, id).Scan(&status, &told); err != nil {
 			t.Fatal(err)
 		}
 		return
 	}
-	if n, err := s.CloseSupersededDocuments(ctx); err != nil || n != 0 {
-		t.Fatalf("nothing renewed yet: closed %d (%v), want 0", n, err)
+	// A failing mailer marks nothing: the next run tries again.
+	if mails, _, err := s.RunClosedNotices(ctx, &fakeMailer{fail: errors.New("smtp down")}, "https://p"); mails != 0 || err == nil {
+		t.Fatalf("failing mailer: %d mails, %v; want 0 and an error", mails, err)
 	}
-	// What closeParentRecord writes when the follow-up is saved.
-	if _, err := s.DB.Exec(`UPDATE McuRecord SET HcValidityStatus = 'Renewed by MedC-NEW' WHERE CheckUpID IN ('MedC-SUP1', 'MedC-SUP2')`); err != nil {
+	for result, id := range ids {
+		if st, told := state(id); st != SubReviewed || told.Valid {
+			t.Fatalf("%s after a failed send: %q told %v, want Reviewed and unmarked", result, st, told)
+		}
+	}
+	m := &fakeMailer{}
+	if mails, docs, err := s.RunClosedNotices(ctx, m, "https://p"); err != nil || mails != 1 || docs != len(results) {
+		t.Fatalf("run: %d mails, %d documents, %v; want 1 mail about %d documents", mails, docs, err, len(results))
+	}
+	for result, id := range ids {
+		want := SubReviewed
+		if result == "Fit" || result == "FitWithNote" {
+			want = SubClosed
+		}
+		if st, told := state(id); st != want || !told.Valid {
+			t.Errorf("%s after the run: %q told %v, want %q and marked", result, st, told, want)
+		}
+	}
+	if mails, _, _ := s.RunClosedNotices(ctx, m, "https://p"); mails != 0 {
+		t.Fatalf("a second run mailed %d submitters about documents already told", mails)
+	}
+	// Closed before this rule with an open result: back to Reviewed at start, still marked told.
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ?`, SubClosed, ids["Unfit"]); err != nil {
 		t.Fatal(err)
 	}
-	if n, err := s.CloseSupersededDocuments(ctx); err != nil || n != 1 {
-		t.Fatalf("closed %d (%v), want only the Incomplete one", n, err)
-	}
-	if st, told := status(inc); st != SubClosed || !told.Valid {
-		t.Fatalf("incomplete document: %q told %v, want Closed and marked told (no second mail)", st, told)
-	}
-	if st, _ := status(fit); st != SubReviewed {
-		t.Fatalf("fit document: %q, want it left Reviewed", st)
+	// A notice recorded by the old Notify button counts as told.
+	if _, err := s.DB.Exec(`UPDATE McuSubmission SET CertNotifiedAt = NULL, NotifyRequestedAt = '2026-11-09T08:00:00' WHERE SubmissionID = ?`, ids["NeedFollowUp"]); err != nil {
+		t.Fatal(err)
 	}
 	if _, err := s.NormalizeReviewed(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if st, _ := status(inc); st != SubClosed {
-		t.Fatalf("after normalize: %q, a superseded document must stay Closed", st)
+	if st, told := state(ids["Unfit"]); st != SubReviewed || !told.Valid {
+		t.Fatalf("reopened Unfit: %q told %v, want Reviewed and still marked", st, told)
 	}
-	docs, err := s.querySubmissions(ctx, `WHERE s.SubmissionID = ?`, inc)
-	if err != nil || len(docs) != 1 || docs[0].RenewedBy != "Renewed by MedC-NEW" {
-		t.Fatalf("detail %v (%v), want \"Renewed by MedC-NEW\"", docs, err)
+	if _, told := state(ids["NeedFollowUp"]); !told.Valid {
+		t.Fatal("a notice from the old Notify button must count as told")
+	}
+	if mails, _, _ := s.RunClosedNotices(ctx, m, "https://p"); mails != 0 {
+		t.Fatalf("after normalize the run mailed %d submitters again", mails)
+	}
+	// A renewed Incomplete record: the document stays Reviewed and the row shows the renewal.
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET HcValidityStatus = 'Renewed by MedC-NEW' WHERE CheckUpID = 'MedC-ATIncompleteResult'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.NormalizeReviewed(ctx); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := s.querySubmissions(ctx, `WHERE s.SubmissionID = ?`, ids["IncompleteResult"])
+	if err != nil || len(rows) != 1 || rows[0].Status != SubReviewed || rows[0].RenewedBy != "Renewed by MedC-NEW" {
+		t.Fatalf("renewed incomplete document: %+v (%v), want Reviewed with \"Renewed by MedC-NEW\"", rows, err)
 	}
 }
 

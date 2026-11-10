@@ -43,8 +43,12 @@ var ownStatuses = map[string]bool{"": true, SubDraft: true, SubReview: true, Sub
 var followUpResults = []string{"NeedFollowUp", "IncompleteResult", "TemporaryUnfit", "Unfit"}
 
 // needsActionSQL is "Needs action" (owner, 2026-11-05): a rejected document (upload a corrected one)
-// or a Closed one with a follow-up result. Fixed text; its values are bound parameters.
-const needsActionSQL = ` AND (s.Status = ? OR (s.Status = ? AND rec.ResultCriteria IN (?, ?, ?, ?)))`
+// or a Reviewed one the reviewer already told them about (CertNotifiedAt) whose result is a
+// follow-up one: only Fit and Fit with note close a document, so the others stay Reviewed. It stops
+// needing action once a follow-up checkup replaced the record ("Renewed by"). Fixed text; its values
+// are bound parameters.
+const needsActionSQL = ` AND (s.Status = ? OR (s.Status = ? AND s.CertNotifiedAt IS NOT NULL AND rec.ResultCriteria IN (?, ?, ?, ?)
+	AND COALESCE(rec.HcValidityStatus, '') NOT LIKE 'Renewed by %'))`
 
 const dateOnlyLayout = "2006-01-02"
 
@@ -92,7 +96,7 @@ func (s *Store) SearchDocs(ctx context.Context, f DocFilter) (DocPage, error) {
 	}
 	if f.Needs && f.OwnerID != 0 {
 		where += needsActionSQL
-		args = append(args, SubRejected, SubClosed)
+		args = append(args, SubRejected, SubReviewed)
 		for _, r := range followUpResults {
 			args = append(args, r)
 		}

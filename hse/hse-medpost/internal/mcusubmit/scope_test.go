@@ -208,17 +208,37 @@ func TestAColleagueMayWithdrawAPendingDocumentAndAParentMayNot(t *testing.T) {
 	}
 }
 
+// "Needs action" (owner, 2026-11-05): a rejected document, or one with a follow-up result the
+// submitter was already mailed about (CertNotifiedAt). Only Fit and Fit with note close a document (owner,
+// 2026-11-10), so those follow-up documents are Reviewed with a notice, not Closed. A Fit one, one
+// not yet told, and one a follow-up checkup already renewed need nothing.
 func TestNeedsActionListsRejectedAndFollowUpResultsOnly(t *testing.T) {
 	s, _, co := newTestStore(t)
 	ctx := context.Background()
 	sub := activeSubmitter(t, s, co, "hr.needs@example.com")
-	closeFor(t, s, co, sub, "Unfit Worker") // closeFor links an Unfit record
-	pending := sentDoc(t, s, sub, "Pending Worker")
+	followUp := func(name, result string, notified bool, renewed string) {
+		t.Helper()
+		id := closeFor(t, s, co, sub, name) // links a Fit record and closes it
+		if _, err := s.DB.Exec(`UPDATE McuRecord SET ResultCriteria = ?, HcValidityStatus = NULLIF(?, '') WHERE CheckUpID = ?`, result, renewed, "MedC-"+itoa(id)); err != nil {
+			t.Fatal(err)
+		}
+		notice := any(nil)
+		if notified {
+			notice = "2026-11-09T08:00:00"
+		}
+		if _, err := s.DB.Exec(`UPDATE McuSubmission SET Status = ?, CertNotifiedAt = ? WHERE SubmissionID = ?`, SubReviewed, notice, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	followUp("Unfit Told", "Unfit", true, "")
+	followUp("Unfit Not Told", "Unfit", false, "")
+	followUp("Unfit Renewed", "Unfit", true, "Renewed by MedC-NEW")
+	closeFor(t, s, co, sub, "Fit Worker") // Closed with a Fit result
+	sentDoc(t, s, sub, "Pending Worker")
 	rejected := sentDoc(t, s, sub, "Rejected Worker")
 	if _, err := s.DB.Exec(`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ?`, SubRejected, rejected); err != nil {
 		t.Fatal(err)
 	}
-	_ = pending
 	me, _ := s.ByID(ctx, sub)
 	sc, _ := s.ScopeFor(ctx, &me)
 	page, err := s.SearchDocs(ctx, DocFilter{OwnerID: sub, Scope: &sc, Needs: true})
@@ -229,7 +249,7 @@ func TestNeedsActionListsRejectedAndFollowUpResultsOnly(t *testing.T) {
 	for _, d := range page.Rows {
 		got[d.PatName] = true
 	}
-	if len(got) != 2 || !got["Unfit Worker"] || !got["Rejected Worker"] {
-		t.Errorf("needs action = %v, want the Unfit one and the rejected one", got)
+	if len(got) != 2 || !got["Unfit Told"] || !got["Rejected Worker"] {
+		t.Errorf("needs action = %v, want the told Unfit one and the rejected one", got)
 	}
 }

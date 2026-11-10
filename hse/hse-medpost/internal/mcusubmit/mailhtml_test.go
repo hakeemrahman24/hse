@@ -8,7 +8,7 @@ import (
 
 func TestDigestHTMLIsATableAndEscapesWhatSubmittersType(t *testing.T) {
 	waiting := []digestLine{{worker: `<script>alert(1)</script> & Co`, position: "Welder", company: `PT "Quote"`, submitter: "Budi", sentAt: "2026-11-09 08:00"}}
-	got := digestHTML(waiting, nil, "https://example.com/mcu?view=submitted")
+	got := digestHTML(waiting, "https://example.com/mcu?view=submitted")
 	for _, want := range []string{"<table", "<th", "Employee", "Sent by", "&lt;script&gt;alert(1)&lt;/script&gt; &amp; Co", "&#34;Quote&#34;", `href="https://example.com/mcu?view=submitted"`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("digest HTML lacks %q:\n%s", want, got)
@@ -24,7 +24,7 @@ func TestDigestHTMLCapsTheRowsLikeTheText(t *testing.T) {
 	for i := 0; i < digestMaxLines+3; i++ {
 		lines = append(lines, digestLine{worker: "W", position: "P", company: "C", submitter: "S", sentAt: "t"})
 	}
-	got := digestHTML(lines, nil, "")
+	got := digestHTML(lines, "")
 	if rows := strings.Count(got, "<tr>") - 1; rows != digestMaxLines { // minus the header row
 		t.Errorf("%d body rows, want %d", rows, digestMaxLines)
 	}

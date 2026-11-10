@@ -67,6 +67,15 @@ func TestWorkerBlockDoesNotWaitForAReviewedDocumentWithAnIncompleteResult(t *tes
 	if b, err := s.WorkerBlock(ctx, sub, w); err != nil || b.Kind != "" {
 		t.Fatalf("a Reviewed document with an Incomplete result: %+v, %v; want a new document accepted", b, err)
 	}
+	// Every result but Fit and Fit with note leaves the document Reviewed, so none of them may block.
+	for _, result := range []string{"Unfit", "TemporaryUnfit", "NeedFollowUp"} {
+		if _, err := conn.ExecContext(ctx, `UPDATE McuRecord SET ResultCriteria = '`+result+`' WHERE CheckUpID = 'MedC-OPEN'`); err != nil {
+			t.Fatal(err)
+		}
+		if b, err := s.WorkerBlock(ctx, sub, w); err != nil || b.Kind != "" {
+			t.Fatalf("a Reviewed document with %s: %+v, %v; want a new document accepted", result, b, err)
+		}
+	}
 }
 
 func TestWorkerBlockTreatsOnlyTheOwnDraftAsWaiting(t *testing.T) {

@@ -28,5 +28,4 @@ func registerMcuStaff(mux *http.ServeMux, guard func(http.Handler) http.Handler,
 	mux.Handle("POST /api/mcu-submissions/{id}/unlink", guard(http.HandlerFunc(api.Unlink)))
 	// Removing a record is the admin role only (owner, 2026-11-02); the guard above still applies.
 	mux.Handle("DELETE /api/mcu-submissions/{id}", guard(middleware.RequireAdmin(http.HandlerFunc(api.Remove))))
-	mux.Handle("POST /api/mcu-submissions/{id}/close", guard(http.HandlerFunc(api.Close)))
 }

@@ -3253,7 +3253,7 @@ async function closeLinkedSubmission(checkUpId, savedPatientId, hasResult) {
     // Reviewed needs a result: without one the document stays Pending and the checkup must be finished.
     submissionBanner(
       hasResult
-        ? `Saved. ${sub.worker}'s submitted document is Reviewed and linked to ${checkUpId}. Press Notify submitter on the Submitted tab when the submitter should be told.`
+        ? `Saved. ${sub.worker}'s submitted document is Reviewed and linked to ${checkUpId}. The submitter is told automatically in the next 12-hourly mail.`
         : `Saved and linked to ${checkUpId}, but the checkup has no result yet, so the document stays Pending. Open it again from the Submitted tab to add the result.`,
       "ok",
       false,
