@@ -251,12 +251,18 @@ func (s *Store) RunDigest(ctx context.Context, m Mailer) (int, error) {
 	return sent, nil
 }
 
+// DigestStaffLink is the Submitted tab of the staff app (owner, 2026-11-10). It is fixed on purpose:
+// the staff app's address is not the portal's MCU_PORTAL_BASE_URL, and the page needs a sign-in, so
+// the link carries nothing sensitive.
+const DigestStaffLink = "https://medical-activities.ayahaif.my.id/mcu-submissions"
+
+const digestOpenLine = "Open them in medisite medical checkup section (sign in required):"
+
 func digestBody(waiting []digestLine) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d medical checkup documents are waiting for review.\n\n", len(waiting))
 	writeDigestList(&b, waiting)
-	// No link: reviewers open the Medical Checkup section of the staff app (owner, 2026-11-10).
-	b.WriteString("\nOpen them in medisite medical checkup section\n")
+	b.WriteString("\n" + digestOpenLine + " " + DigestStaffLink + "\n")
 	b.WriteString("\nThis list holds no ID numbers, birth dates or results on purpose.\n")
 	b.WriteString(noticeSignature)
 	return b.String()
@@ -280,7 +286,7 @@ func digestHTML(waiting []digestLine) string {
 	if more := len(waiting) - len(shown); more > 0 {
 		parts = append(parts, htmlPara("and "+strconv.Itoa(more)+" more."))
 	}
-	parts = append(parts, htmlPara("Open them in medisite medical checkup section"))
+	parts = append(parts, htmlLink(digestOpenLine, DigestStaffLink))
 	parts = append(parts, htmlPara("This list holds no ID numbers, birth dates or results on purpose."), htmlSignature())
 	return htmlPage(parts...)
 }

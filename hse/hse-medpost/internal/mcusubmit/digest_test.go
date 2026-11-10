@@ -54,13 +54,13 @@ func TestDigestListsOnlyWhatWaitsForReviewAndNoSensitiveData(t *testing.T) {
 		t.Fatalf("sent %d, %v, mails %d", n, err, len(m.sent))
 	}
 	body := m.sent[0].Body
-	for _, want := range []string{"Worker Pending", "Welder", "PT Example", "Budi Santoso", "Open them in medisite medical checkup section"} {
+	for _, want := range []string{"Worker Pending", "Welder", "PT Example", "Budi Santoso", "Open them in medisite medical checkup section", DigestStaffLink} {
 		if !strings.Contains(body, want) {
 			t.Errorf("digest lacks %q\n%s", want, body)
 		}
 	}
 	// A reviewed document needs nothing from a reviewer: the submitter is told automatically.
-	for _, bad := range []string{"Worker Draft", "Worker Reviewed", "have not been notified", "sign in required", "http", "3201011204900001", "1990-04-12"} {
+	for _, bad := range []string{"Worker Draft", "Worker Reviewed", "have not been notified", "3201011204900001", "1990-04-12"} {
 		if strings.Contains(body, bad) {
 			t.Errorf("digest must not contain %q", bad)
 		}
