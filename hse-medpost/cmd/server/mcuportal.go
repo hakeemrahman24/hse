@@ -30,10 +30,11 @@ const (
 	// Expiry reminders go out once a day at this hour in Jakarta (WIB), never in the small hours.
 	reminderHourWIB = 8
 
-	// noticeEvery is how often submitters are told about reviewed and rejected documents (owner,
-	// 2026-11-10). Each run only picks documents whose CertNotifiedAt is still empty, so a restart
-	// or an overlap never mails the same document twice.
-	noticeEvery = 12 * time.Hour
+	// noticeCheckIn is how often the server asks whether the submitter notices are due; the admin's
+	// interval (Reviewer mail page, 6 to 48 hours) decides whether a run happens. Each run only picks
+	// documents whose CertNotifiedAt is still empty, so a restart or an overlap never mails the same
+	// document twice.
+	noticeCheckIn = time.Hour
 )
 
 // startMcuPortal wires the medical checkup submission portal (/mcu-submit) into mux. Like /sofi, it
@@ -241,19 +242,19 @@ func runReminders(ctx context.Context, store *mcusubmit.Store, mailer mcusubmit.
 }
 
 // runSubmitterNotices tells each submitter about the documents they have not been told about yet:
-// reviewed ones with a result (any result) and rejected ones, one mail per submitter. It runs at
-// start-up and then every 12 hours. A mail that fails leaves CertNotifiedAt empty, so the next run
-// tries again; nobody presses a button.
+// reviewed ones with a result (any result) and rejected ones, one mail per submitter. It checks at
+// start-up and then every hour whether the admin's interval has passed. A mail that fails leaves
+// CertNotifiedAt empty, so the next hourly check tries again; nobody presses a button.
 func runSubmitterNotices(ctx context.Context, store *mcusubmit.Store, mailer mcusubmit.Mailer, baseURL string) {
 	for {
-		mails, docs, err := store.RunClosedNotices(ctx, mailer, baseURL)
+		mails, docs, _, err := store.RunNoticesIfDue(ctx, mailer, baseURL)
 		if err != nil {
 			log.Printf("MCU portal: submitter notices: %v", err)
 		}
 		if mails > 0 {
 			log.Printf("MCU portal: told %d submitters about %d documents", mails, docs)
 		}
-		time.Sleep(noticeEvery)
+		time.Sleep(noticeCheckIn)
 	}
 }
 

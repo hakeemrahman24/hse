@@ -182,6 +182,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("POST "+basePath+"/admin/mail/test", a.MailTest)
 	in.HandleFunc("GET "+basePath+"/admin/digest", a.DigestPage)
 	in.HandleFunc("POST "+basePath+"/admin/digest", a.DigestSave)
+	in.HandleFunc("POST "+basePath+"/admin/notices", a.NoticeSave)
 	in.HandleFunc("POST "+basePath+"/admin/reviewers/add", a.ReviewerAdd)
 	in.HandleFunc("POST "+basePath+"/admin/reviewers/toggle", a.ReviewerToggle)
 	in.HandleFunc("POST "+basePath+"/admin/reviewers/delete", a.ReviewerDelete)
@@ -261,9 +262,14 @@ type page struct {
 	NextURL       string
 
 	// Reviewer digest settings page.
-	Digest    DigestConfig
-	Reviewers []Reviewer
-	Intervals []int
+	Digest          DigestConfig
+	Reviewers       []Reviewer
+	Intervals       []int
+	NoticeCfg       NoticeConfig // when submitters are told, and whether reviewers are copied
+	NoticeIntervals []int
+	NoticeZones     []NoticeZone
+	NoticeHours     []int
+	NoticeNext      string // the next scheduled run, in the chosen zone
 
 	// Reminders: the admin's settings page and the submitter's Expiring soon list.
 	Reminder ReminderConfig
