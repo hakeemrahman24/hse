@@ -49,18 +49,18 @@ func TestDigestListsOnlyWhatWaitsForReviewAndNoSensitiveData(t *testing.T) {
 	addClean(t, s, sub, "Worker Draft") // unsent
 
 	m := &fakeMailer{}
-	n, err := s.RunDigest(ctx, m, "https://staff.example/mcu-submissions")
+	n, err := s.RunDigest(ctx, m)
 	if err != nil || n != 1 || len(m.sent) != 1 {
 		t.Fatalf("sent %d, %v, mails %d", n, err, len(m.sent))
 	}
 	body := m.sent[0].Body
-	for _, want := range []string{"Worker Pending", "Welder", "PT Example", "Budi Santoso", "https://staff.example/mcu-submissions"} {
+	for _, want := range []string{"Worker Pending", "Welder", "PT Example", "Budi Santoso", "Open them in medisite medical checkup section"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("digest lacks %q\n%s", want, body)
 		}
 	}
 	// A reviewed document needs nothing from a reviewer: the submitter is told automatically.
-	for _, bad := range []string{"Worker Draft", "Worker Reviewed", "have not been notified", "3201011204900001", "1990-04-12"} {
+	for _, bad := range []string{"Worker Draft", "Worker Reviewed", "have not been notified", "sign in required", "http", "3201011204900001", "1990-04-12"} {
 		if strings.Contains(body, bad) {
 			t.Errorf("digest must not contain %q", bad)
 		}
@@ -82,15 +82,15 @@ func TestDigestRespectsTheIntervalAndOnlyMarksWhenSent(t *testing.T) {
 		t.Fatal(err)
 	}
 	m := &fakeMailer{}
-	if n, _ := s.RunDigest(ctx, m, ""); n != 1 {
+	if n, _ := s.RunDigest(ctx, m); n != 1 {
 		t.Fatalf("the first digest should go at once, sent %d", n)
 	}
 	clock.advance(35 * time.Hour)
-	if n, _ := s.RunDigest(ctx, m, ""); n != 0 {
+	if n, _ := s.RunDigest(ctx, m); n != 0 {
 		t.Fatalf("a digest went after 35 h with a 36 h interval")
 	}
 	clock.advance(time.Hour)
-	if n, _ := s.RunDigest(ctx, m, ""); n != 1 {
+	if n, _ := s.RunDigest(ctx, m); n != 1 {
 		t.Fatalf("the digest should be due after 36 h, sent %d", n)
 	}
 	if len(m.sent) != 2 {
@@ -103,7 +103,7 @@ func TestDigestSendsNothingAndKeepsTheClockWhenNothingIsWaiting(t *testing.T) {
 	ctx := context.Background()
 	mustReviewer(t, s, "doc@example.com")
 	m := &fakeMailer{}
-	if n, err := s.RunDigest(ctx, m, ""); n != 0 || err != nil || len(m.sent) != 0 {
+	if n, err := s.RunDigest(ctx, m); n != 0 || err != nil || len(m.sent) != 0 {
 		t.Fatalf("n %d err %v mails %d, want nothing", n, err, len(m.sent))
 	}
 	cfg, _ := s.DigestSettings(ctx)
@@ -125,14 +125,14 @@ func TestDigestSkipsInactiveAndBouncedReviewersAndRetriesWhenNobodyGotIt(t *test
 	sentDoc(t, s, sub, "Worker One")
 
 	m := &partialMailer{bad: map[string]bool{"active@example.com": true}}
-	if n, err := s.RunDigest(ctx, m, ""); n != 0 || err == nil {
+	if n, err := s.RunDigest(ctx, m); n != 0 || err == nil {
 		t.Fatalf("n %d err %v; a digest nobody received must report an error", n, err)
 	}
 	if cfg, _ := s.DigestSettings(ctx); cfg.LastSentAt != "" {
 		t.Fatal("a failed digest was marked as sent, so it would never be retried")
 	}
 	m.bad = nil
-	if n, err := s.RunDigest(ctx, m, ""); n != 1 || err != nil {
+	if n, err := s.RunDigest(ctx, m); n != 1 || err != nil {
 		t.Fatalf("retry: %d, %v", n, err)
 	}
 	if len(m.sent) != 1 || m.sent[0].To != "active@example.com" {
@@ -144,7 +144,7 @@ func TestDigestWithoutAnyReviewerSendsNothing(t *testing.T) {
 	s, _, sub := digestStore(t)
 	sentDoc(t, s, sub, "Worker One")
 	m := &fakeMailer{}
-	if n, _ := s.RunDigest(context.Background(), m, ""); n != 0 || len(m.sent) != 0 {
+	if n, _ := s.RunDigest(context.Background(), m); n != 0 || len(m.sent) != 0 {
 		t.Fatal("a digest went out with no reviewers")
 	}
 }
@@ -165,7 +165,7 @@ func TestDigestCapsTheListAndSaysHowManyMore(t *testing.T) {
 		}
 	}
 	m := &fakeMailer{}
-	if _, err := s.RunDigest(ctx, m, ""); err != nil {
+	if _, err := s.RunDigest(ctx, m); err != nil {
 		t.Fatal(err)
 	}
 	body := m.sent[0].Body
@@ -230,7 +230,7 @@ func TestDigestIsNotSentWhenOnlyReviewedDocumentsExist(t *testing.T) {
 	id := sentDoc(t, s, sub, "Only Reviewed")
 	_ = s.MarkReviewed(ctx, id, 1)
 	m := &fakeMailer{}
-	if n, err := s.RunDigest(ctx, m, ""); err != nil || n != 0 || len(m.sent) != 0 {
+	if n, err := s.RunDigest(ctx, m); err != nil || n != 0 || len(m.sent) != 0 {
 		t.Fatalf("sent %d, %v, mails %d; want none", n, err, len(m.sent))
 	}
 }

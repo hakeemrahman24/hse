@@ -207,7 +207,7 @@ func (s *Store) digestDue(c DigestConfig) bool {
 // reviewers got it. The clock (LastSentAt) moves only when at least one mail went out, so a mail
 // outage is retried on the next hourly run instead of waiting another 24 to 48 hours; an empty
 // list never starts the clock, so the first document sent after a quiet spell is mailed promptly.
-func (s *Store) RunDigest(ctx context.Context, m Mailer, staffURL string) (int, error) {
+func (s *Store) RunDigest(ctx context.Context, m Mailer) (int, error) {
 	cfg, err := s.DigestSettings(ctx)
 	if err != nil {
 		return 0, err
@@ -230,8 +230,8 @@ func (s *Store) RunDigest(ctx context.Context, m Mailer, staffURL string) (int, 
 		return 0, err
 	}
 	subject := fmt.Sprintf("Medical checkups: %d waiting for review", len(lines))
-	body := digestBody(lines, staffURL)
-	page := digestHTML(lines, staffURL)
+	body := digestBody(lines)
+	page := digestHTML(lines)
 	sent := 0
 	for _, addr := range to {
 		if err := sendRich(ctx, m, addr, subject, body, page); err != nil {
@@ -251,20 +251,19 @@ func (s *Store) RunDigest(ctx context.Context, m Mailer, staffURL string) (int, 
 	return sent, nil
 }
 
-func digestBody(waiting []digestLine, staffURL string) string {
+func digestBody(waiting []digestLine) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "%d medical checkup documents are waiting for review.\n\n", len(waiting))
 	writeDigestList(&b, waiting)
-	if staffURL != "" {
-		fmt.Fprintf(&b, "\nOpen them here (sign in required): %s\n", staffURL)
-	}
+	// No link: reviewers open the Medical Checkup section of the staff app (owner, 2026-11-10).
+	b.WriteString("\nOpen them in medisite medical checkup section\n")
 	b.WriteString("\nThis list holds no ID numbers, birth dates or results on purpose.\n")
 	b.WriteString(noticeSignature)
 	return b.String()
 }
 
 // digestHTML is digestBody as a table.
-func digestHTML(waiting []digestLine, staffURL string) string {
+func digestHTML(waiting []digestLine) string {
 	headers := []string{"Employee", "Position", "Company", "Sent by", "Sent (UTC)"}
 	shown := waiting
 	if len(shown) > digestMaxLines {
@@ -281,9 +280,7 @@ func digestHTML(waiting []digestLine, staffURL string) string {
 	if more := len(waiting) - len(shown); more > 0 {
 		parts = append(parts, htmlPara("and "+strconv.Itoa(more)+" more."))
 	}
-	if staffURL != "" {
-		parts = append(parts, htmlLink("Open them here (sign in required):", staffURL))
-	}
+	parts = append(parts, htmlPara("Open them in medisite medical checkup section"))
 	parts = append(parts, htmlPara("This list holds no ID numbers, birth dates or results on purpose."), htmlSignature())
 	return htmlPage(parts...)
 }
