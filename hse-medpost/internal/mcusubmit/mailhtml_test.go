@@ -17,8 +17,8 @@ func TestDigestHTMLIsATableAndEscapesWhatSubmittersType(t *testing.T) {
 	if strings.Contains(got, "<script>") {
 		t.Errorf("a submitter-typed value reached the HTML unescaped:\n%s", got)
 	}
-	if strings.Contains(got, "href=") {
-		t.Errorf("the digest must carry no link, it points to the medisite section in words:\n%s", got)
+	if !strings.Contains(got, `href="`+DigestStaffLink+`"`) {
+		t.Errorf("the digest must link to the staff Submitted page:\n%s", got)
 	}
 }
 
