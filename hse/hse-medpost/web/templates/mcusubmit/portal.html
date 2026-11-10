@@ -670,7 +670,7 @@
 {{define "digest.html"}}{{template "head" .}}
     <section class="mp-section">
       <h1>Reviewer <span>mail</span></h1>
-      <p class="mp-hint">Reviewers get one mail listing every medical checkup document that has been sent and not yet reviewed, and every reviewed document whose submitter has not been notified yet. It holds no ID numbers, birth dates or results, and no mail goes out while nothing is waiting.</p>
+      <p class="mp-hint">Reviewers get one mail listing every medical checkup document that has been sent and not yet reviewed; no mail goes out while nothing is waiting. They are also copied on every mail the system sends to a submitter about reviewed or rejected documents (every 12 hours), as a separate mail marked "Copy". None of these mails holds ID numbers, birth dates or results.</p>
       {{template "error" .}}
 
       <div class="mp-row">

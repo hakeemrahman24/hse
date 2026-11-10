@@ -163,3 +163,56 @@ func TestRejectedDocumentsAreInTheDailyMailOnceAndWithoutTheReason(t *testing.T)
 		t.Errorf("second run sent %d more mails", mails)
 	}
 }
+
+// The reviewers set in the portal admin's settings get a copy of every notice (owner, 2026-11-10):
+// a separate mail each, never a Cc header, only when the submitter side was accepted, and never to
+// a reviewer who is switched off or who already received the mail as an addressee.
+func TestNoticesAreCopiedToTheActiveReviewers(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	a := activeSubmitter(t, s, co, "hr.copy@example.com")
+	mustReviewer(t, s, "doc1@example.com")
+	mustReviewer(t, s, "doc2@example.com")
+	off := mustReviewer(t, s, "off@example.com")
+	if _, err := s.DB.Exec(`UPDATE McuReviewerEmail SET Active = 0 WHERE ReviewerEmailID = ?`, off); err != nil {
+		t.Fatal(err)
+	}
+	mustReviewer(t, s, "hr.copy@example.com") // also the addressee: must not get two mails
+	closeFor(t, s, co, a, "Copied Worker")
+
+	// A failing mailer: nobody was told, so no copies either.
+	down := &fakeMailer{fail: errors.New("smtp down")}
+	if _, _, err := s.RunClosedNotices(ctx, down, "https://p"); err == nil || len(down.sent) != 0 {
+		t.Fatalf("failing mailer: %v, %d sent", err, len(down.sent))
+	}
+	m := &fakeMailer{}
+	if mails, docs, err := s.RunClosedNotices(ctx, m, "https://p"); err != nil || mails != 1 || docs != 1 {
+		t.Fatalf("run: %d mails, %d documents, %v", mails, docs, err)
+	}
+	got := map[string]string{}
+	for _, msg := range m.sent {
+		got[msg.To] = msg.Subject
+	}
+	if len(m.sent) != 3 || got["hr.copy@example.com"] == "" || got["doc1@example.com"] == "" || got["doc2@example.com"] == "" {
+		t.Fatalf("mails went to %v, want the submitter once and the two active reviewers", got)
+	}
+	if got["off@example.com"] != "" {
+		t.Error("a switched-off reviewer got a copy")
+	}
+	for _, msg := range m.sent {
+		isCopy := strings.HasPrefix(msg.Subject, "Copy: ")
+		if (msg.To == "hr.copy@example.com") == isCopy {
+			t.Errorf("%s: subject %q, only the reviewers' mails are marked as copies", msg.To, msg.Subject)
+		}
+		if isCopy && !strings.Contains(msg.Body, "hr.copy@example.com") {
+			t.Errorf("the copy to %s does not say who it went to:\n%s", msg.To, msg.Body)
+		}
+		if strings.Contains(strings.ToLower(msg.Body), "cc:") {
+			t.Errorf("a Cc line would expose the reviewers' addresses:\n%s", msg.Body)
+		}
+	}
+	// A second run finds nothing to say, so nothing is copied either.
+	if mails, _, _ := s.RunClosedNotices(ctx, m, "https://p"); mails != 0 || len(m.sent) != 3 {
+		t.Fatalf("second run: %d mails, %d total sent", mails, len(m.sent))
+	}
+}
