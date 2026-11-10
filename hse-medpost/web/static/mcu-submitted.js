@@ -140,7 +140,7 @@
     }).catch(function (e) { row.textContent = e.message; row.className = 'sub-row sub-none'; });
   }
 
-  // The row itself is one compact line: Sent, Name, Company, Status, Result, Open PDF and a More toggle.
+  // The row itself is one compact line: Sent, Name, Company, Submitter, Status, Result, Open PDF and a More toggle.
   // Everything else (submitter, position, who reviewed, the next step, Remove, Reject, Link) lives in
   // the detail row under the document, so the list stays short until someone asks for more.
   // Returns the detail row; the caller wires the toggle to it.
@@ -161,7 +161,6 @@
       var dd = document.createElement('dd'); dd.textContent = value;
       facts.appendChild(dt); facts.appendChild(dd);
     }
-    fact('Submitter', d.submitter);
     fact('Position', d.position);
     fact('New employee', d.isNewEmployee ? 'Yes' : '');
     fact('Reviewed by', d.reviewedBy);
@@ -248,7 +247,7 @@
     return button('Review', 'btn-primary', function () { startReview(d); }, 'Review the checkup of ' + d.worker);
   }
 
-  // Seven columns, one line per document: who sent it and when, who it is about, where it stands and
+  // Eight columns, one line per document: who sent it and when, who it is about, where it stands and
   // the checkup result. The row's actions are Open PDF and Review (or Open checkup); More opens the rest.
   function render(list) {
     body.textContent = '';
@@ -259,6 +258,7 @@
       cell(tr, when(d.sentAt));
       cell(tr, d.worker);
       cell(tr, d.company);
+      cell(tr, d.submitter);
       cell(tr, d.status);
       cell(tr, d.result ? (RESULTS[d.result] || d.result) : '');
       var act = document.createElement('div');
