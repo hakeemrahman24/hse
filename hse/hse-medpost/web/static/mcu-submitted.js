@@ -189,12 +189,8 @@
       told.className = 'sub-note';
       told.textContent = d.notified ? 'Submitter notified' : 'Submitter will be notified automatically';
       box.appendChild(told);
-    } else if (d.hasRecord) {
-      // Linked but without a result yet: finish that checkup, do not start another.
-      box.appendChild(button('Open checkup', 'btn-primary', function () { startReview(d); }, 'Open the linked checkup of ' + d.worker));
-    } else {
-      box.appendChild(button('Review', 'btn-primary', function () { startReview(d); }, 'Review the checkup of ' + d.worker));
     }
+    // The Review / Open checkup button is in the row itself (see nextStep), not here.
     if (isAdmin) box.appendChild(button('Remove', 'btn-ghost sub-reject', function () { remove(d); }, 'Remove the document of ' + d.worker));
     panel.appendChild(box);
 
@@ -241,8 +237,19 @@
     } };
   }
 
+  // The one action a reviewer takes most often sits in the row, beside Open PDF, so it is one click.
+  // A reviewed document has none: the system tells the submitter, and a follow-up is a new submission.
+  function nextStep(d) {
+    if (d.status !== 'Pending' && !(d.status === 'Reviewed' && !d.hasRecord)) return null;
+    if (d.hasRecord) {
+      // Linked but without a result yet: finish that checkup, do not start another.
+      return button('Open checkup', 'btn-primary', function () { startReview(d); }, 'Open the linked checkup of ' + d.worker);
+    }
+    return button('Review', 'btn-primary', function () { startReview(d); }, 'Review the checkup of ' + d.worker);
+  }
+
   // Seven columns, one line per document: who sent it and when, who it is about, where it stands and
-  // the checkup result. The PDF link is the only action in the row; More opens the rest.
+  // the checkup result. The row's actions are Open PDF and Review (or Open checkup); More opens the rest.
   function render(list) {
     body.textContent = '';
     list.forEach(function (d) {
@@ -254,7 +261,9 @@
       cell(tr, d.company);
       cell(tr, d.status);
       cell(tr, d.result ? (RESULTS[d.result] || d.result) : '');
-      var act = cell(tr, '');
+      var act = document.createElement('div');
+      act.className = 'sub-act'; // same compact button height as the panel
+      cell(tr, '').appendChild(act);
       if (d.hasFile) {
         var a = document.createElement('a');
         a.href = '/api/mcu-submissions/' + d.id + '/file';
@@ -262,6 +271,8 @@
         a.setAttribute('aria-label', 'Open the PDF of ' + d.worker);
         act.appendChild(a);
       }
+      var step = nextStep(d);
+      if (step) act.appendChild(step);
       var moreCell = cell(tr, '');
       var toggle = button('More', 'btn-ghost sub-toggle', null, 'More about the document of ' + d.worker);
       toggle.setAttribute('aria-expanded', 'false');
