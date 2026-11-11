@@ -136,7 +136,7 @@ func (a *API) Documents(w http.ResponseWriter, r *http.Request) {
 	}
 	if a.certs != nil {
 		for _, d := range result.Rows {
-			if d.Status == SubClosed && d.RecordID != 0 {
+			if d.CertificateReady() {
 				p.ZipURL = zipQuery(p.Form)
 				break
 			}

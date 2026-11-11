@@ -99,7 +99,12 @@ func (a *API) DocumentCertificate(w http.ResponseWriter, r *http.Request) {
 	}
 	h := w.Header()
 	h.Set("Content-Type", "application/pdf")
-	h.Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": cert.Filename}))
+	// ?view=1 opens the PDF in a browser tab; without it the browser saves the file.
+	disposition := "attachment"
+	if r.URL.Query().Get("view") == "1" {
+		disposition = "inline"
+	}
+	h.Set("Content-Disposition", mime.FormatMediaType(disposition, map[string]string{"filename": cert.Filename}))
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Cache-Control", "no-store")
 	_, _ = io.Copy(w, f)
