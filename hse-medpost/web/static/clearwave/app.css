@@ -5934,6 +5934,16 @@ a.app-tab {
   #tab-submitted .data-table tr.sub-detail.open { display: block; grid-column: 1 / -1; }
   #tab-submitted .data-table.compact tr.sub-detail > td { display: block; text-align: left; }
   #tab-submitted .data-table tr.sub-detail > td::before { content: none; }
+  /* WHY: the card cells use overflow-wrap:anywhere, which made the text beside a button in a .sub-row shrink to a sliver and
+     break one letter per line (vertical writing). In the expanded panel words break normally, and each row stacks: its text
+     or field on its own full-width line, the buttons below it, left-aligned. */
+  #tab-submitted .data-table.compact tr.sub-detail > td { overflow-wrap: break-word; padding: 10px 12px 12px; }
+  #tab-submitted .sub-detail .sub-row { flex-direction: column; align-items: stretch; gap: 6px; }
+  #tab-submitted .sub-detail .sub-row input,
+  #tab-submitted .sub-detail .sub-row select { width: 100%; flex: none; }
+  #tab-submitted .sub-detail .sub-row .btn-ghost { align-self: flex-start; }
+  #tab-submitted .sub-detail .sub-facts { grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr); }
+  #tab-submitted .sub-detail .sub-panel-act { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 }
 
 /* In the wide table a very long worker name wraps instead of pushing the Action column off the screen. */
