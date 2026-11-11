@@ -167,6 +167,10 @@
     fact('Reviewed (UTC)', when(d.reviewedAt));
     fact('Renewed by', d.renewedBy); // same words as the MCU table: Renewed by <checkup ID>
     fact('Reject reason', d.rejectReason);
+    if (d.latest) {
+      // Which checkup the Latest result column comes from, so a reviewer can tell it apart from this document.
+      fact('Latest checkup', [d.latest.checkUpId, d.latest.dateCheckUp, d.latest.validUntil ? 'valid until ' + d.latest.validUntil : ''].filter(Boolean).join(' \u00b7 '));
+    }
     panel.appendChild(facts);
 
     var canAct = d.status === 'Pending' || d.status === 'Reviewed';
@@ -260,7 +264,10 @@
       cell(tr, d.company);
       cell(tr, d.submitter);
       cell(tr, d.status);
-      cell(tr, d.result ? (RESULTS[d.result] || d.result) : '');
+      // The worker's LATEST result on record (owner, 2026-11-12), not only the linked checkup's: HR does not always
+      // send an update through the portal. The linked checkup's result is the fallback.
+      var shown = (d.latest && d.latest.result) || d.result;
+      cell(tr, shown ? (RESULTS[shown] || shown) : '');
       var act = document.createElement('div');
       act.className = 'sub-act'; // same compact button height as the panel
       cell(tr, '').appendChild(act);
