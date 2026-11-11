@@ -367,6 +367,9 @@ type staffRow struct {
 	// Notified: the submitter was mailed about this document (CertNotifiedAt is set). The mail goes
 	// out by itself every 12 hours, so a Reviewed document shows "will be notified" until then.
 	Notified bool `json:"notified"`
+	// Latest is the newest checkup on record for this worker (see LatestRecord), null when there is none.
+	// HR does not always submit an update, so the list shows where the worker stands anyway.
+	Latest *LatestRecord `json:"latest"`
 }
 
 // staffDetail is what the checkup form pre-fills from: the row plus the identity the submitter
@@ -426,7 +429,15 @@ func (a *StaffAPI) List(w http.ResponseWriter, r *http.Request) {
 	docs := result.Rows
 	rows := make([]staffRow, 0, len(docs))
 	for _, d := range docs {
-		rows = append(rows, rowOf(d))
+		row := rowOf(d)
+		// One small lookup per row (a page holds docPageSize rows). A failure only leaves this
+		// worker's latest checkup blank; it must not hide the whole list.
+		if latest, err := a.Store.LatestRecord(r.Context(), d.ID); err != nil {
+			log.Printf("mcusubmit: latest checkup of document %d: %v", d.ID, err)
+		} else {
+			row.Latest = latest
+		}
+		rows = append(rows, row)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
