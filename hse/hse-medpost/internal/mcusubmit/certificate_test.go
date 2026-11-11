@@ -163,3 +163,44 @@ func TestCertificatesZipHoldsEveryClosedCertificateInTheScopeAndNothingElse(t *t
 		t.Error("the zip was served without signing in")
 	}
 }
+
+// reviewedDoc makes a document of the signed-in submitter that staff reviewed against a real record
+// with this result, but that is not Closed yet: the submitter has not had the 12-hourly notice.
+func (u *uploadEnv) reviewedDoc(name, result string) int64 {
+	u.t.Helper()
+	id := sentDoc(u.t, u.store, u.userID, name)
+	addRecord(u.t, u.store, seedWorker(u.t, u.store, name, "1990-04-12", u.companyID), "MedC-"+itoa(id), result, "2027-01-01", "Open", 1)
+	if err := u.store.LinkRecord(context.Background(), id, testStaffID, "MedC-"+itoa(id)); err != nil {
+		u.t.Fatal(err)
+	}
+	return id
+}
+
+// Owner, 2026-11-12: a worker who is eligible (Fit or Fit with note) gets the certificate on the
+// submitter's page as soon as the result is saved, without waiting for the notice mail to close it.
+func TestCertificateIsOfferedAsSoonAsTheResultIsEligibleEvenBeforeTheDocumentCloses(t *testing.T) {
+	u := newUploadEnv(t)
+	u.api.SetCertificates(&fakeCerts{dir: t.TempDir()})
+	fit := u.reviewedDoc("Siti Aminah", "Fit")
+	note := u.reviewedDoc("Budi Hartono", "FitWithNote")
+	unfit := u.reviewedDoc("Joko Susilo", "Unfit")
+	followUp := u.reviewedDoc("Agus Salim", "NeedFollowUp")
+
+	list := u.get("/mcu-submit/documents", u.cookie).Body.String()
+	for name, c := range map[string]struct {
+		id   int64
+		want bool
+	}{"Fit": {fit, true}, "Fit with note": {note, true}, "Unfit": {unfit, false}, "Needs follow-up": {followUp, false}} {
+		path := fmt.Sprintf("/mcu-submit/documents/%d/certificate", c.id)
+		if got := strings.Contains(list, path); got != c.want {
+			t.Errorf("%s: list offers the certificate = %v, want %v", name, got, c.want)
+		}
+		wantCode := http.StatusNotFound
+		if c.want {
+			wantCode = http.StatusOK
+		}
+		if rec := u.get(path, u.cookie); rec.Code != wantCode {
+			t.Errorf("%s: download = %d, want %d", name, rec.Code, wantCode)
+		}
+	}
+}

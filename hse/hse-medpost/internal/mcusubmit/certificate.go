@@ -34,23 +34,27 @@ type CertificateSource interface {
 // answers 404, so a build without the clinical side simply has no such button.
 func (a *API) SetCertificates(src CertificateSource) { a.certs = src }
 
-// OwnClosedRecord returns the checkup record a Closed document in the submitter's scope (their own,
-// their company's, a subcontractor's) was linked to. A document outside it, one that is not Closed, or one with no record is ErrNotFound, so the
-// route cannot be used to probe other people's documents.
-func (s *Store) OwnClosedRecord(ctx context.Context, sc Scope, id int64) (int64, error) {
+// OwnCertificateRecord returns the checkup record a document in the submitter's scope (their own,
+// their company's, a subcontractor's) was linked to, when the certificate may be offered: the
+// document is Closed, or Reviewed with an eligible result (see Submission.CertificateReady). A document
+// outside the scope, one with no record, or one that is not eligible is ErrNotFound, so the route
+// cannot be used to probe other people's documents or other results.
+func (s *Store) OwnCertificateRecord(ctx context.Context, sc Scope, id int64) (int64, error) {
 	var record int64
 	clause, args := sc.clause()
 	err := s.DB.QueryRowContext(ctx,
 		`SELECT s.FK_McuRecordID FROM McuSubmission s
-		 WHERE s.SubmissionID = ? AND `+clause+` AND s.Status = ? AND s.FK_McuRecordID IS NOT NULL`,
-		append(append([]any{id}, args...), SubClosed)...).Scan(&record)
+		 LEFT JOIN McuRecord rec ON rec.McuRecordID = s.FK_McuRecordID
+		 WHERE s.SubmissionID = ? AND `+clause+` AND s.FK_McuRecordID IS NOT NULL
+		   AND (s.Status = ? OR (s.Status = ? AND rec.ResultCriteria IN ('Fit', 'FitWithNote')))`,
+		append(append([]any{id}, args...), SubClosed, SubReviewed)...).Scan(&record)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, ErrNotFound
 	}
 	return record, err
 }
 
-// DocumentCertificate lets a submitter download the health certificate of their own Closed document.
+// DocumentCertificate lets a submitter download the health certificate of their own document once it is eligible.
 func (a *API) DocumentCertificate(w http.ResponseWriter, r *http.Request) {
 	u := a.requireUser(w, r)
 	if u == nil {
@@ -66,10 +70,10 @@ func (a *API) DocumentCertificate(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, "scope", err)
 		return
 	}
-	record, err := a.Store.OwnClosedRecord(r.Context(), sc, id)
+	record, err := a.Store.OwnCertificateRecord(r.Context(), sc, id)
 	if err != nil {
 		if !errors.Is(err, ErrNotFound) {
-			log.Printf("mcusubmit: own closed record: %v", err)
+			log.Printf("mcusubmit: own certificate record: %v", err)
 		}
 		a.notFound(w, u)
 		return

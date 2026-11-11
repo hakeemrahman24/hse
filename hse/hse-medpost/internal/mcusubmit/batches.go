@@ -121,6 +121,17 @@ func (d Submission) ResultMessage() string {
 	return ""
 }
 
+// CertificateReady says whether the submitter's page offers this document's health certificate: it
+// needs a linked checkup, and either the document is Closed or it is Reviewed with an eligible result
+// (Fit or Fit with note). Owner, 2026-11-12: an eligible worker does not wait for the notice mail.
+// OwnCertificateRecord applies the same rule to the download, so the link and the route agree.
+func (d Submission) CertificateReady() bool {
+	if d.RecordID == 0 {
+		return false
+	}
+	return d.Status == SubClosed || (d.Status == SubReviewed && (d.Result == "Fit" || d.Result == "FitWithNote"))
+}
+
 func nullInt(v int64) sql.NullInt64 { return sql.NullInt64{Int64: v, Valid: v != 0} }
 
 func (s *Store) querySubmissions(ctx context.Context, where string, args ...any) ([]Submission, error) {
