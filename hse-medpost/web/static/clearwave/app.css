@@ -5942,7 +5942,11 @@ a.app-tab {
   #tab-submitted .sub-detail .sub-row input,
   #tab-submitted .sub-detail .sub-row select { width: 100%; flex: none; }
   #tab-submitted .sub-detail .sub-row .btn-ghost { align-self: flex-start; }
-  #tab-submitted .sub-detail .sub-facts { grid-template-columns: minmax(6rem, max-content) minmax(0, 1fr); }
+  /* Facts: label above its value, so the value always has the full panel width (a two-column grid squeezed it to one letter wide). */
+  #tab-submitted .sub-detail .sub-facts { display: block; }
+  #tab-submitted .sub-detail .sub-facts dt { margin-top: 6px; }
+  #tab-submitted .sub-detail .sub-facts dt:first-child { margin-top: 0; }
+  #tab-submitted .sub-detail .sub-facts dd { overflow-wrap: break-word; word-break: normal; }
   #tab-submitted .sub-detail .sub-panel-act { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 }
 
