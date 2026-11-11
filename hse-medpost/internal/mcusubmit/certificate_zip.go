@@ -23,9 +23,11 @@ import (
 // list is fetched in more than one go (narrow the dates) instead of tying the server up.
 const maxZipCertificates = 100
 
-// zipQuery is the address of the zip for the filter on screen: the same values, Closed only.
+// zipQuery is the address of the zip for the filter on screen: the same worker, company, account and
+// dates. There is no status: the zip holds every document whose certificate may be offered (Closed,
+// or Reviewed with an eligible result), whatever status chip is on.
 func zipQuery(form map[string]string) string {
-	q := url.Values{"status": {SubClosed}}
+	q := url.Values{}
 	for _, k := range []string{"worker", "company", "account", "from", "to"} {
 		if v := form[k]; v != "" {
 			q.Set(k, v)
@@ -51,7 +53,7 @@ func (a *API) CertificatesZip(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	account, _ := parseID(q.Get("account"))
-	filter := DocFilter{OwnerID: u.ID, Scope: &sc, Account: account, Status: SubClosed,
+	filter := DocFilter{OwnerID: u.ID, Scope: &sc, Account: account,
 		Worker: q.Get("worker"), Company: q.Get("company"), From: q.Get("from"), To: q.Get("to")}
 
 	var docs []Submission
@@ -67,7 +69,7 @@ func (a *API) CertificatesZip(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		for _, d := range res.Rows {
-			if d.RecordID != 0 && len(docs) < maxZipCertificates {
+			if d.CertificateReady() && len(docs) < maxZipCertificates {
 				docs = append(docs, d)
 			}
 		}

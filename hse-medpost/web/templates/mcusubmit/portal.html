@@ -395,7 +395,7 @@
             {{if eq .SubmitterID $.User.ID}}{{if eq .Status "Review"}}<a class="btn-primary" href="/mcu-submit/documents/{{.ID}}/review">Review</a>{{end}}
             {{if or (eq .Status "Draft") (eq .Status "Review")}}<form method="post" action="/mcu-submit/documents/{{.ID}}/remove" class="mp-inline"><button type="submit" class="btn-ghost">{{if eq .Status "Draft"}}Remove{{else}}Discard{{end}}</button></form>{{end}}
             {{end}}
-            {{if .CertificateReady}}<a class="btn-ghost" href="/mcu-submit/documents/{{.ID}}/certificate">Download certificate</a>{{end}}
+            {{if .CertificateReady}}<a class="btn-ghost" href="/mcu-submit/documents/{{.ID}}/certificate?view=1" target="_blank" rel="noopener">View certificate</a> <a class="btn-ghost" href="/mcu-submit/documents/{{.ID}}/certificate">Download</a>{{end}}
             {{if and (eq .Status "Pending") (or (eq .SubmitterID $.User.ID) (and $.User.CompanyID (eq .SubmitterCompanyID $.User.CompanyID)))}}<form method="post" action="/mcu-submit/documents/{{.ID}}/withdraw" class="mp-inline" data-confirm="Withdraw this document? The medical team will no longer see it and the file is deleted. You can upload a corrected one in a new batch."><button type="submit" class="btn-ghost">Withdraw</button></form>{{end}}
           </td></tr>{{end}}
         </tbody></table></div>

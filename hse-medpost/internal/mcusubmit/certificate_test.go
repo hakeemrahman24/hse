@@ -204,3 +204,52 @@ func TestCertificateIsOfferedAsSoonAsTheResultIsEligibleEvenBeforeTheDocumentClo
 		}
 	}
 }
+
+// Owner, 2026-11-12: "Download all certificates" holds the eligible ones too, not only Closed documents.
+func TestCertificatesZipAlsoHoldsEligibleDocumentsThatAreNotClosedYet(t *testing.T) {
+	u := newUploadEnv(t)
+	u.api.SetCertificates(&fakeCerts{dir: t.TempDir()})
+	closed := u.closedDoc("Siti Aminah")
+	fit := u.reviewedDoc("Budi Hartono", "Fit")
+	u.reviewedDoc("Joko Susilo", "Unfit")
+
+	// The link is offered on a list that has only an eligible, not yet closed row.
+	if body := u.get("/mcu-submit/documents?status=Reviewed", u.cookie).Body.String(); !strings.Contains(body, "certificates.zip") {
+		t.Error("no Download all certificates link when the list holds an eligible Reviewed document")
+	}
+	rec := u.get("/mcu-submit/documents/certificates.zip", u.cookie)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("= %d\n%s", rec.Code, rec.Body)
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, f := range zr.File {
+		names = append(names, f.Name)
+	}
+	got := strings.Join(names, " ")
+	if len(zr.File) != 2 || !strings.Contains(got, itoa(closed)+"-") || !strings.Contains(got, itoa(fit)+"-") {
+		t.Errorf("zip holds %v, want the Closed and the eligible Reviewed document only (not the Unfit one)", names)
+	}
+}
+
+// The certificate can be opened in a browser tab (view=1) as well as saved.
+func TestCertificateOpensInTheBrowserWithViewAndIsSavedWithout(t *testing.T) {
+	u := newUploadEnv(t)
+	u.api.SetCertificates(&fakeCerts{dir: t.TempDir()})
+	id := u.closedDoc("Siti Aminah")
+	path := fmt.Sprintf("/mcu-submit/documents/%d/certificate", id)
+
+	view := u.get(path+"?view=1", u.cookie)
+	if d := view.Header().Get("Content-Disposition"); view.Code != http.StatusOK || !strings.HasPrefix(d, "inline") || !strings.Contains(d, "SitiAminah") {
+		t.Errorf("view = %d %q, want 200 inline with the file name", view.Code, d)
+	}
+	if d := u.get(path, u.cookie).Header().Get("Content-Disposition"); !strings.HasPrefix(d, "attachment") {
+		t.Errorf("download = %q, want attachment", d)
+	}
+	if body := u.get("/mcu-submit/documents", u.cookie).Body.String(); !strings.Contains(body, path+"?view=1") {
+		t.Error("the list has no View certificate link")
+	}
+}
