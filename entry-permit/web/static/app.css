@@ -382,3 +382,15 @@ main h2 { margin: var(--s3) 0 var(--s1); }
 .sortable th:hover { background: #eef2f8; }
 .sortable th[aria-sort="ascending"]::after { content: " \25B2"; font-size: 0.7em; }
 .sortable th[aria-sort="descending"]::after { content: " \25BC"; font-size: 0.7em; }
+
+/* The Active, Registered and Scheduled list: fixed column shares so every column, Weeks included, fits the page. */
+.fixed8 { table-layout: fixed; }
+.fixed8 th:nth-child(1) { width: 15%; }
+.fixed8 th:nth-child(2) { width: 19%; }
+.fixed8 th:nth-child(3) { width: 16%; }
+.fixed8 th:nth-child(4) { width: 9%; }
+.fixed8 th:nth-child(5) { width: 11%; }
+.fixed8 th:nth-child(6) { width: 16%; }
+.fixed8 th:nth-child(7) { width: 5%; }
+.fixed8 th:nth-child(8) { width: 9%; }
+.fixed8 td { max-width: none; }
