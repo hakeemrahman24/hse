@@ -346,27 +346,17 @@ func (s *Store) Delete(id int64) ([]string, error) {
 		} else if err != nil {
 			return fmt.Errorf("find corrective action %d: %w", id, err)
 		}
-		rows, err := tx.Query(`SELECT FileLink FROM CorrectiveActionPhotoTable WHERE FK_ActionID = ?`, id)
-		if err != nil {
-			return fmt.Errorf("list photos to delete: %w", err)
-		}
-		for rows.Next() {
-			var p string
-			if err := rows.Scan(&p); err != nil {
-				rows.Close()
-				return fmt.Errorf("scan photo path: %w", err)
+		for _, table := range []string{"CorrectiveActionPhotoTable", "CorrectiveActionDocumentTable"} {
+			found, err := fileLinks(tx, table, id)
+			if err != nil {
+				return err
 			}
-			paths = append(paths, p)
+			paths = append(paths, found...)
 		}
-		if err := rows.Err(); err != nil {
-			rows.Close()
-			return err
-		}
-		rows.Close()
 		// Children are deleted explicitly, in this order, rather than relying on ON DELETE CASCADE: SQLite
 		// only enforces foreign keys when the connection has that pragma on, and a delete must not leave
 		// orphans on either engine.
-		for _, table := range []string{"CorrectiveActionHistoryTable", "CorrectiveActionFollowUpTable", "CorrectiveActionPhotoTable"} {
+		for _, table := range []string{"CorrectiveActionHistoryTable", "CorrectiveActionFollowUpTable", "CorrectiveActionPhotoTable", "CorrectiveActionDocumentTable"} {
 			if _, err := tx.Exec(`DELETE FROM `+table+` WHERE FK_ActionID = ?`, id); err != nil {
 				return fmt.Errorf("delete from %s: %w", table, err)
 			}
@@ -458,4 +448,23 @@ func (s *Store) DeletePhoto(photoID, staffID int64) (string, error) {
 		return "", err
 	}
 	return link, nil
+}
+
+// fileLinks lists the stored file paths a finding has in one child table (photos or documents), so a
+// delete can remove the files once the rows are gone. table is always one of our own constants.
+func fileLinks(tx *sql.Tx, table string, actionID int64) ([]string, error) {
+	rows, err := tx.Query(`SELECT FileLink FROM `+table+` WHERE FK_ActionID = ?`, actionID)
+	if err != nil {
+		return nil, fmt.Errorf("list files in %s: %w", table, err)
+	}
+	defer rows.Close()
+	var links []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, fmt.Errorf("scan file path from %s: %w", table, err)
+		}
+		links = append(links, p)
+	}
+	return links, rows.Err()
 }

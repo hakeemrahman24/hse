@@ -46,7 +46,7 @@ func scanAction(row interface{ Scan(...any) error }) (Action, error) {
 	a.ProgramKey = a.ProgramName
 	a.ProgramName = display.ProgramTitle(a.ProgramKey)
 	// Empty slices, not nil, so the JSON is [] and the page never has to null-check.
-	a.BeforePhotos, a.AfterPhotos, a.FollowUps = []Photo{}, []Photo{}, []FollowUp{}
+	a.BeforePhotos, a.AfterPhotos, a.FollowUps, a.Documents = []Photo{}, []Photo{}, []FollowUp{}, []Document{}
 	return a, err
 }
 
@@ -171,6 +171,9 @@ func complete(q querier, actions []Action) error {
 		return err
 	}
 	if err := attachFollowUps(q, actions); err != nil {
+		return err
+	}
+	if err := attachDocuments(q, actions); err != nil {
 		return err
 	}
 	today := dates.Today()

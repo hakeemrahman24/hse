@@ -107,6 +107,7 @@ type Action struct {
 	IsOverdue    bool       `json:"isOverdue"`
 	BeforePhotos []Photo    `json:"beforePhotos"`
 	AfterPhotos  []Photo    `json:"afterPhotos"`
+	Documents    []Document `json:"documents"`
 	FollowUps    []FollowUp `json:"followUps"`
 	// FollowUpsDone / FollowUpsTotal drive the "2 of 3 follow-ups done" label in lists and Excel.
 	FollowUpsDone  int `json:"followUpsDone"`
@@ -211,4 +212,21 @@ func clean(in Input) (Input, error) {
 		return in, ValidationError("status can be Open or In Progress; use Close to close a finding")
 	}
 	return in, nil
+}
+
+// MaxDocumentsPerAction and MaxDocumentBytes bound the PDF documents a finding can carry. A document is a
+// signed report or a receipt, not a scan archive, so a handful of 10 MB files is plenty for the Pi's disk.
+const (
+	MaxDocumentsPerAction = 5
+	MaxDocumentBytes      = 10 << 20
+)
+
+// Document is one attached PDF. FileLink is the path on disk and is never sent to the browser; FileName is
+// what the person uploaded, shown in the list and used to name the download.
+type Document struct {
+	ID         int64  `json:"id"`
+	FileName   string `json:"fileName"`
+	FileLink   string `json:"-"`
+	UploadedAt string `json:"uploadedAt"`
+	URL        string `json:"url,omitempty"`
 }

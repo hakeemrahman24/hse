@@ -20,7 +20,7 @@
     created: "Finding recorded", program: "Program", inspection_date: "Inspection date", location: "Location",
     finding: "Finding", recommendation: "Recommendation", pic: "PIC", due_date: "Due date", severity: "Severity",
     status: "Status", source_activity: "Source activity", closed: "Closed", reopened: "Reopened",
-    photo_added: "Photo added", photo_removed: "Photo removed", follow_up_added: "Follow-up added",
+    photo_added: "Photo added", photo_removed: "Photo removed", document_added: "Document added", document_removed: "Document removed", follow_up_added: "Follow-up added",
     follow_up_done: "Follow-up done", follow_up_reopened: "Follow-up reopened", follow_up_removed: "Follow-up removed",
     follow_up_description: "Follow-up text", follow_up_pic: "Follow-up PIC", follow_up_due_date: "Follow-up due date",
   };
@@ -84,7 +84,7 @@
 
   function render(a) {
     body.textContent = "";
-    body.append(headerPart(a), factsPart(a), textsPart(a), photosPart(a, "Before"), photosPart(a, "After"), followUpsPart(a), closePart(a), historyPart(a));
+    body.append(headerPart(a), factsPart(a), textsPart(a), photosPart(a, "Before"), photosPart(a, "After"), documentsPart(a), followUpsPart(a), closePart(a), historyPart(a));
   }
 
   function headerPart(a) {
@@ -172,7 +172,7 @@
       const status = el("span", "ca-note");
       status.setAttribute("role", "status");
       const picker = input("file");
-      picker.accept = "image/jpeg,image/png";
+      picker.accept = "image/jpeg,image/png,application/pdf";
       picker.multiple = room > 1;
       picker.addEventListener("change", async () => {
         const files = Array.from(picker.files || []);
@@ -192,7 +192,58 @@
         }
         await changed();
       });
-      section.append(field("Add " + phase + " photo", picker), status);
+      section.append(field("Add " + phase + " photo (a PDF is saved as a picture of its first page)", picker), status);
+    }
+    return section;
+  }
+
+  // ---- documents --------------------------------------------------------------------------------
+
+  // PDFs kept as they are (a signed report, a receipt). Unlike a photo they are optional for closing.
+  function documentsPart(a) {
+    const section = el("section", "ca-section");
+    section.append(el("h3", "", "Documents (" + a.documents.length + "/" + CA_MAX_DOCUMENTS + ")"));
+    const list = el("ul", "ca-doc-list");
+    a.documents.forEach((doc) => {
+      const item = el("li");
+      const link = el("a", "", doc.fileName);
+      link.href = doc.url;
+      link.target = "_blank";
+      link.rel = "noopener";
+      const remove = button("Remove", "ca-btn-small");
+      CA.confirmButton(remove, "Really remove?", () => act("DELETE", doc.url, undefined, "Could not remove the document."));
+      item.append(link, " ", remove);
+      list.append(item);
+    });
+    section.append(list);
+    if (!a.documents.length) section.append(el("p", "ca-none", "No documents. Attach a PDF as proof, for example a signed report or a receipt."));
+
+    const room = CA_MAX_DOCUMENTS - a.documents.length;
+    if (room > 0) {
+      const status = el("span", "ca-note");
+      status.setAttribute("role", "status");
+      const picker = input("file");
+      picker.accept = "application/pdf";
+      picker.multiple = room > 1;
+      picker.addEventListener("change", async () => {
+        const files = Array.from(picker.files || []);
+        if (!files.length) return;
+        const problem = caDocumentProblem(files, room);
+        if (problem) {
+          status.textContent = problem;
+          picker.value = "";
+          return;
+        }
+        status.textContent = "Uploading…";
+        const res = await CA.uploadDocuments(a.id, files);
+        if (!res.ok) {
+          status.textContent = CA.errorText(res, "Upload failed.");
+          picker.value = "";
+          return;
+        }
+        await changed();
+      });
+      section.append(field("Attach PDF", picker), status);
     }
     return section;
   }

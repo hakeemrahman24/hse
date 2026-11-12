@@ -58,6 +58,12 @@
     return CA.request("POST", "/api/corrective-actions/" + actionId + "/photos", form);
   };
 
+  CA.uploadDocuments = function (actionId, files) {
+    const form = new FormData();
+    files.forEach((file) => form.append("documents", file, file.name));
+    return CA.request("POST", "/api/corrective-actions/" + actionId + "/documents", form);
+  };
+
   // A two-step button: the first click asks "are you sure" in place, the second does it. No browser
   // confirm() box, which the other pages in this app avoid too.
   CA.confirmButton = function (button, askLabel, onConfirm) {

@@ -115,6 +115,17 @@ function caIsAcceptedPhotoType(type) {
   return type === "image/jpeg" || type === "image/png";
 }
 
+// A PDF picked in a photo box: its first page becomes the picture. Some browsers leave the type blank, so
+// the file name decides then.
+function caIsPdfFile(file) {
+  return file.type === "application/pdf" || (!file.type && /\.pdf$/i.test(file.name || ""));
+}
+
+// Documents attached to a finding are PDFs only, at most 10 MB each and 5 per finding; the server checks
+// the same numbers.
+var CA_MAX_DOCUMENT_BYTES = 10 * 1024 * 1024;
+var CA_MAX_DOCUMENTS = 5;
+
 // How many more photos of one phase a finding can take, from the server's photo arrays.
 function caPhotoRoom(action, phase) {
   var list = phase === "After" ? action.afterPhotos : action.beforePhotos;
@@ -152,4 +163,14 @@ function caEmployeeDetail(employee) {
       return part && String(part).trim() !== "";
     })
     .join(" · ");
+}
+
+// Why a batch of picked documents cannot be uploaded, or "" when it can. Same rules as the server.
+function caDocumentProblem(files, room) {
+  if (files.length > room) return "You can attach " + room + " more document" + (room === 1 ? "" : "s") + ".";
+  for (var i = 0; i < files.length; i++) {
+    if (!caIsPdfFile(files[i])) return "“" + files[i].name + "” is not a PDF.";
+    if (files[i].size > CA_MAX_DOCUMENT_BYTES) return "“" + files[i].name + "” is over 10 MB.";
+  }
+  return "";
 }

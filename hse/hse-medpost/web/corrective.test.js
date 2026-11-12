@@ -94,6 +94,9 @@ test("only a JPEG already under 600 KB is uploaded untouched", () => {
   assert.equal(ca.caIsAcceptedPhotoType("image/png"), true);
   assert.equal(ca.caIsAcceptedPhotoType("image/gif"), false);
   assert.equal(ca.caIsAcceptedPhotoType("application/pdf"), false);
+  assert.equal(ca.caIsPdfFile({ type: "application/pdf", name: "a" }), true);
+  assert.equal(ca.caIsPdfFile({ type: "", name: "Report.PDF" }), true);
+  assert.equal(ca.caIsPdfFile({ type: "image/png", name: "a.pdf" }), false);
 });
 
 test("photo room is three minus what the finding already has", () => {
@@ -139,4 +142,12 @@ test("the employee detail line skips blank parts", () => {
   assert.equal(ca.caEmployeeDetail({ employeeId: "E-001", company: "PT Contoh", position: "Cook" }), "E-001 · PT Contoh · Cook");
   assert.equal(ca.caEmployeeDetail({ employeeId: "", company: "PT Contoh", position: " " }), "PT Contoh");
   assert.equal(ca.caEmployeeDetail({}), "");
+});
+
+test("documents must be PDFs under 10 MB and fit the room left", () => {
+  const pdf = (size) => ({ type: "application/pdf", name: "a.pdf", size });
+  assert.equal(ca.caDocumentProblem([pdf(100)], 5), "");
+  assert.match(ca.caDocumentProblem([pdf(1), pdf(1)], 1), /1 more document\./);
+  assert.match(ca.caDocumentProblem([{ type: "image/png", name: "x.png", size: 1 }], 5), /not a PDF/);
+  assert.match(ca.caDocumentProblem([pdf(10 * 1024 * 1024 + 1)], 5), /over 10 MB/);
 });

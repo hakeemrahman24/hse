@@ -309,6 +309,12 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 ## Progress Log
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
+### 2026-11-13 — Corrective actions: PDF as a picture, and PDF documents on a finding
+
+- **What changed:** (1) Picking a PDF in a Before/After photo box now draws its first page with pdf.js (already vendored for the MCU portal) and stores it as a JPEG through the same under-600 KB ladder, so a PDF can stand in as the After picture that closing needs. (2) New **Documents** section on a finding: up to 5 PDFs, 10 MB each, stored untouched (new table `CorrectiveActionDocumentTable`, sqlite 030 / mysql 045; routes under `/api/corrective-actions/{id}/documents` and `/api/corrective-action-documents/{id}`; served inline with `Content-Security-Policy: sandbox`). Documents are optional for closing. (3) Photos were already compressed in the browser and re-checked on the server (600 KB); nothing to change there.
+- **Why:** shrinking a PDF would turn its text into pictures, so documents are kept as uploaded and only the picture copy is derived.
+- **Open:** MariaDB migration 045 must be run by hand on the Pi. Not yet committed or deployed. The Excel export does not list documents.
+
 ### 2026-11-12 — Certificates for Temporarily Unfit / Unfit, and any certificate already on the MCU tab
 
 - **What changed:**

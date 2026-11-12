@@ -18,7 +18,7 @@ func openTestDB(t *testing.T) *sql.DB {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { database.Close() })
-	for _, name := range []string{"001_sqlite.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "028_corrective_action.sql"} {
+	for _, name := range []string{"001_sqlite.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "028_corrective_action.sql", "030_corrective_action_document.sql"} {
 		sqlText, err := db.LoadMigrationFile(filepath.Join("..", "..", "migrations", "sqlite", name))
 		if err != nil {
 			t.Fatal(err)

@@ -54,6 +54,9 @@ func (a *API) Register(mux *http.ServeMux, auth, admin func(http.Handler) http.H
 	route("GET /api/corrective-actions/{id}/history", auth, a.History)
 	route("POST /api/corrective-actions/{id}/photos", auth, a.UploadPhotos)
 	route("POST /api/corrective-actions/{id}/follow-ups", auth, a.AddFollowUp)
+	route("POST /api/corrective-actions/{id}/documents", auth, a.UploadDocuments)
+	route("GET /api/corrective-action-documents/{id}", auth, a.ServeDocument)
+	route("DELETE /api/corrective-action-documents/{id}", auth, a.DeleteDocument)
 	route("GET /api/corrective-action-photos/{id}", auth, a.ServePhoto)
 	route("DELETE /api/corrective-action-photos/{id}", auth, a.DeletePhoto)
 	route("PUT /api/corrective-action-follow-ups/{id}", auth, a.UpdateFollowUp)
@@ -122,6 +125,9 @@ func withURLs(a *Action) {
 		for i := range list {
 			list[i].URL = "/api/corrective-action-photos/" + strconv.FormatInt(list[i].ID, 10)
 		}
+	}
+	for i := range a.Documents {
+		a.Documents[i].URL = "/api/corrective-action-documents/" + strconv.FormatInt(a.Documents[i].ID, 10)
 	}
 }
 
