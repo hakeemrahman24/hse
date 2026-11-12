@@ -72,7 +72,8 @@ type DashData struct {
 	SoonLabel     string // the pill's text for this tab; empty when the tab has no such pill
 	Soon          bool
 	ShowCheckedIn bool
-	ShowKind      bool // the work / visitor pick-list (not on Rest, which is work tickets only)
+	RestKind      string // Rest tab: the verdict picked ("short", "consecutive", "ok") or ""
+	ShowKind      bool   // the work / visitor pick-list (not on Rest, which is work tickets only)
 	CheckedIn     bool
 	Level2        bool
 	Filtered      bool // any filter is on, so "Clear" is offered
@@ -119,7 +120,7 @@ func (a *App) dashboardPage(w http.ResponseWriter, r *http.Request, u *staff.Use
 }
 
 // soonLabels are the pill texts, one per tab that has such a pill.
-var soonLabels = map[string]string{"registered": "Expiring in 1 month", "active": "Ticket ending in 7 days", "scheduled": "Starting in 7 days", "rest": "Short breaks only"}
+var soonLabels = map[string]string{"registered": "Expiring in 1 month", "active": "Ticket ending in 7 days", "scheduled": "Starting in 7 days"}
 
 // dashData builds what one tab shows from the query string (tab, q, kind, company, soon,
 // checked_in, group, date). The page and the PDF both use it, so the file can never hold more, or
@@ -157,8 +158,14 @@ func (a *App) dashData(ctx context.Context, v url.Values) (DashData, error) {
 		opts.Kind = dashboard.KindVisitor
 	}
 	opts.Companies = v["company"]
+	if tab == "rest" {
+		switch k := v.Get("rest"); k {
+		case "short", "consecutive", "ok":
+			opts.RestKind = k
+		}
+	}
 	d := DashData{Tab: tab, Q: opts.Q, Sync: a.syncNote(ctx), Kind: string(opts.Kind), Soon: opts.Soon, SoonLabel: soonLabels[tab],
-		ShowCheckedIn: tab == "active", ShowKind: tab != "rest", CheckedIn: opts.CheckedIn, Level2: opts.Level2, Total: len(lists[tab])}
+		ShowCheckedIn: tab == "active", ShowKind: tab != "rest", RestKind: opts.RestKind, CheckedIn: opts.CheckedIn, Level2: opts.Level2, Total: len(lists[tab])}
 	for _, t := range []struct{ slug, label string }{{"pending", "Pending"}, {"registered", "Registered"}, {"active", "Active"}, {"scheduled", "Scheduled"}, {"rest", "Rest"}, {"gate", "Gate"}} {
 		d.Tabs = append(d.Tabs, DashTab{Slug: t.slug, Label: t.label, Count: len(lists[t.slug]), Current: t.slug == tab})
 	}
@@ -200,7 +207,7 @@ func (a *App) dashData(ctx context.Context, v url.Values) (DashData, error) {
 		d.CompanyLabel = companyLabel(opts.Companies)
 		d.Rows = dashboard.Apply(lists[tab], opts, tab, today)
 		d.Charted, d.Slices = true, dashboard.Distribution(d.Rows, opts.Level2)
-		d.Filtered = opts.Q != "" || opts.Kind != "" || len(opts.Companies) > 0 || opts.Soon || opts.CheckedIn
+		d.Filtered = opts.Q != "" || opts.Kind != "" || len(opts.Companies) > 0 || opts.Soon || opts.CheckedIn || opts.RestKind != ""
 	}
 	d.PDFHref = pdfHref(d, v)
 	return d, nil
@@ -288,7 +295,7 @@ func (a *App) dashboardPDF(w http.ResponseWriter, r *http.Request) {
 // names are carried over, so nothing else typed in the address bar reaches the link.
 func pdfHref(d DashData, v url.Values) string {
 	out := url.Values{"tab": {d.Tab}}
-	for _, k := range []string{"q", "kind", "soon", "checked_in", "group", "date"} {
+	for _, k := range []string{"q", "kind", "soon", "checked_in", "group", "date", "rest"} {
 		if x := v.Get(k); x != "" {
 			out.Set(k, x)
 		}

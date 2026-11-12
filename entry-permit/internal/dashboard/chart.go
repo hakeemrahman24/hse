@@ -25,7 +25,8 @@ type Options struct {
 	Companies []string // exact company names; empty means all
 	Soon      bool
 	CheckedIn bool
-	Level2    bool // chart: roll companies deeper than level 2 up to their level 2 parent
+	RestKind  string // Rest tab: "short", "consecutive" or "ok" (a full rest); "" for all
+	Level2    bool   // chart: roll companies deeper than level 2 up to their level 2 parent
 }
 
 // Soon windows, in days (Registered counts a month).
@@ -47,6 +48,7 @@ func Apply(rows []Row, o Options, tab, today string) []Row {
 		case o.Kind != "" && r.Kind != o.Kind:
 		case len(want) > 0 && !want[r.Company]:
 		case o.Soon && !soonMatches(r, tab, today):
+		case o.RestKind != "" && r.RestKind != o.RestKind:
 		case o.CheckedIn && r.Status != "Inside":
 		default:
 			out = append(out, r)
@@ -61,8 +63,6 @@ func soonMatches(r Row, tab, today string) bool {
 		return r.ValidUntil != "" && r.ValidUntil >= today && r.ValidUntil <= string(dates.Day(today).AddDays(soonRegisteredDays))
 	case "active":
 		return r.Departure != "" && r.Departure >= today && r.Departure <= string(dates.Day(today).AddDays(soonTicketDays))
-	case "rest":
-		return r.RestKind == "short" || r.RestKind == "overlap"
 	case "scheduled":
 		return r.Arrival != "" && r.Arrival >= today && r.Arrival <= string(dates.Day(today).AddDays(soonTicketDays))
 	}

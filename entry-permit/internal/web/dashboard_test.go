@@ -362,13 +362,18 @@ func TestDashboardRestTabListsTheGapsBetweenTickets(t *testing.T) {
 	if d.Rows[0].RestKind != "consecutive" || d.Rows[1].RestKind != "short" || d.Rows[1].RestDays != 10 || d.Rows[2].RestKind != "ok" || d.Rows[1].PrevEnd != "2026-02-10" {
 		t.Errorf("rows %+v", d.Rows)
 	}
-	short, _ := e.app.dashData(ctx, url.Values{"tab": {"rest"}, "soon": {"1"}})
-	if len(short.Rows) != 1 || short.Rows[0].RestKind != "short" || short.SoonLabel != "Short breaks only" {
-		t.Errorf("short breaks only: %+v", short.Rows)
+	for kind, days := range map[string]int{"short": 10, "consecutive": 1, "ok": 52} {
+		got, _ := e.app.dashData(ctx, url.Values{"tab": {"rest"}, "rest": {kind}})
+		if len(got.Rows) != 1 || got.Rows[0].RestKind != kind || got.RestKind != kind || !got.Filtered || got.Rows[0].RestDays != days {
+			t.Errorf("rest=%s: %+v", kind, got.Rows)
+		}
+	}
+	if bad, _ := e.app.dashData(ctx, url.Values{"tab": {"rest"}, "rest": {"nonsense"}}); len(bad.Rows) != 3 || bad.RestKind != "" {
+		t.Errorf("an unknown kind must show everything: %d rows", len(bad.Rows))
 	}
 	c := e.reviewer(t, "viewer", staff.Dashboard)
 	_, body := e.get(t, "/staff/dashboard?tab=rest", c)
-	if !strings.Contains(body, "Rest before it") || !strings.Contains(body, "10 days: short break") || !strings.Contains(body, "Rest (3)") {
+	if !strings.Contains(body, "Rest before it") || !strings.Contains(body, "10 days: short break") || !strings.Contains(body, "Rest (3)") || !strings.Contains(body, `name="rest"`) || !strings.Contains(body, "Normal (full rest)") {
 		t.Errorf("rest page lacks the gaps:\n%s", body)
 	}
 }

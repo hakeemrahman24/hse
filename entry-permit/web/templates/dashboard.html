@@ -74,6 +74,12 @@
   <details class="ms"><summary>{{.Dash.CompanyLabel}}</summary>
     <div class="ms-panel">{{range .Dash.CompanyOpts}}<label class="check"><input type="checkbox" name="company" value="{{.Name}}"{{if .On}} checked{{end}}> {{.Name}}</label>{{else}}<p class="note">No companies on this list.</p>{{end}}</div>
   </details>
+  {{if eq .Dash.Tab "rest"}}<select name="rest" aria-label="Kind of rest">
+    <option value="">All rests</option>
+    <option value="short"{{if eq .Dash.RestKind "short"}} selected{{end}}>Short break</option>
+    <option value="consecutive"{{if eq .Dash.RestKind "consecutive"}} selected{{end}}>Consecutive</option>
+    <option value="ok"{{if eq .Dash.RestKind "ok"}} selected{{end}}>Normal (full rest)</option>
+  </select>{{end}}
   {{if .Dash.SoonLabel}}<label class="pill"><input type="checkbox" name="soon" value="1"{{if .Dash.Soon}} checked{{end}}> {{.Dash.SoonLabel}}</label>{{end}}
   {{if .Dash.ShowCheckedIn}}<label class="pill"><input type="checkbox" name="checked_in" value="1"{{if .Dash.CheckedIn}} checked{{end}}> Checked in</label>{{end}}
   <select name="group" aria-label="Group the pie by">
