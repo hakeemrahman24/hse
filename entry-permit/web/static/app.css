@@ -376,3 +376,9 @@ main h2 { margin: var(--s3) 0 var(--s1); }
 .home-tiles .tile::after { color: var(--tile); }
 .home-tiles .tile:hover, .home-tiles .tile:focus-visible { background: var(--tile-tint); border-color: var(--tile); }
 .home-tiles .tile:hover strong, .home-tiles .tile:focus-visible strong { color: var(--tile); }
+
+/* Sortable table headers: click to order, arrow shows the direction. */
+.sortable th { cursor: pointer; user-select: none; }
+.sortable th:hover { background: #eef2f8; }
+.sortable th[aria-sort="ascending"]::after { content: " \25B2"; font-size: 0.7em; }
+.sortable th[aria-sort="descending"]::after { content: " \25BC"; font-size: 0.7em; }

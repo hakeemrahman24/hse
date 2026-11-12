@@ -258,7 +258,39 @@
     });
   }
 
+  // setupSort lets a click on any header of a table.sortable order its rows, ascending first and
+  // descending on the next click. Numbers sort as numbers, dates and text as text.
+  function setupSort(table) {
+    var body = table.tBodies[0];
+    if (!body) return;
+    var heads = table.tHead ? table.tHead.rows[0].cells : [];
+    Array.prototype.forEach.call(heads, function (th, col) {
+      th.setAttribute('tabindex', '0');
+      th.setAttribute('aria-sort', 'none');
+      function sort() {
+        var dir = th.getAttribute('aria-sort') === 'ascending' ? -1 : 1;
+        Array.prototype.forEach.call(heads, function (h) { h.setAttribute('aria-sort', 'none'); });
+        th.setAttribute('aria-sort', dir === 1 ? 'ascending' : 'descending');
+        var rows = Array.prototype.slice.call(body.rows);
+        var cell = function (r) { return (r.cells[col] ? r.cells[col].textContent : '').trim(); };
+        rows.sort(function (a, b) {
+          var x = cell(a), y = cell(b);
+          if (x === '' || y === '') return x === y ? 0 : (x === '' ? 1 : -1); // blanks last
+          var nx = parseFloat(x), ny = parseFloat(y);
+          if (/^-?[\d.]+$/.test(x) && /^-?[\d.]+$/.test(y)) return (nx - ny) * dir;
+          return x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' }) * dir;
+        });
+        rows.forEach(function (r) { body.appendChild(r); });
+      }
+      th.addEventListener('click', sort);
+      th.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sort(); }
+      });
+    });
+  }
+
   api.enhance = function (doc) {
+    each(doc, 'table.sortable', setupSort);
     each(doc, 'form[data-autoform]', setupAutoForm);
     each(doc, 'input[data-autosubmit]', setupAutoSubmit);
     each(doc, 'input[data-id-by]', setupId);

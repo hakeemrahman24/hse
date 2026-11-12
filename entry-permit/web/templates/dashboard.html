@@ -5,7 +5,7 @@
 {{end}}
 
 {{define "dash_rows"}}
-<div class="tablewrap dense"><table>
+<div class="tablewrap dense"><table class="sortable">
   <thead><tr><th>Name</th><th>Company</th><th>Position</th><th>Number</th><th>Status</th><th>Window</th><th>Weeks</th><th>Valid until</th></tr></thead>
   <tbody>
   {{range .}}<tr>
@@ -21,7 +21,7 @@
 {{end}}
 
 {{define "dash_rest"}}
-<div class="tablewrap dense"><table>
+<div class="tablewrap dense"><table class="sortable">
   <thead><tr><th>Name</th><th>Company</th><th>Number</th><th>Previous ended</th><th>Next ticket</th><th>Rest before it</th></tr></thead>
   <tbody>
   {{range .}}<tr>
@@ -33,7 +33,7 @@
 {{end}}
 
 {{define "dash_inside"}}
-<div class="tablewrap dense"><table>
+<div class="tablewrap dense"><table class="sortable">
   <thead><tr><th>Name</th><th>Company</th><th>Number</th><th>Gate</th><th>Since</th><th>Officer</th></tr></thead>
   <tbody>
   {{range .}}<tr><td>{{.Name}}</td><td>{{.Company}}</td><td>{{.ID}}</td><td>{{.Gate}}</td><td>{{.At}}</td><td>{{.Officer}}</td></tr>{{end}}
@@ -42,7 +42,7 @@
 {{end}}
 
 {{define "dash_activity"}}
-<div class="tablewrap dense"><table>
+<div class="tablewrap dense"><table class="sortable">
   <thead><tr><th>Time</th><th>Name</th><th>Number</th><th>Action</th><th>Reason</th><th>Gate</th><th>Officer</th></tr></thead>
   <tbody>
   {{range .}}<tr><td>{{.At}}</td><td>{{.Name}}</td><td>{{.ID}}</td><td>{{.Action}}</td><td>{{.Reason}}</td><td>{{.Gate}}</td><td>{{.Officer}}</td></tr>{{end}}
