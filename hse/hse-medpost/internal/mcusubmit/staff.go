@@ -650,13 +650,21 @@ func (a *StaffAPI) act(w http.ResponseWriter, r *http.Request, do func(context.C
 }
 
 // servePDF writes a stored file with the headers every health-record PDF here carries: the type is
-// fixed and must not be sniffed, nothing may be cached, and `sandbox` stops anything in the file
-// from running as part of our origin.
+// fixed and must not be sniffed, and nothing may be cached.
+//
+// WHY there is no `Content-Security-Policy: sandbox` here: Edge and Chrome refuse to load their
+// built-in PDF viewer inside a sandboxed response and show "This page has been blocked by Microsoft
+// Edge" instead. A response that is fixed to application/pdf and carries nosniff cannot run as a
+// page, so the header protected nothing and only broke the Open PDF button.
+//
+// The submitter portal also wraps every response in a page CSP (see secure in web.go) whose
+// frame-src allows only Cloudflare; the browser's PDF viewer loads the file through a frame, so that
+// policy can block it the same way. It is dropped here, on the PDF response only.
 func servePDF(w http.ResponseWriter, rc io.Reader) {
 	h := w.Header()
+	h.Del("Content-Security-Policy")
 	h.Set("Content-Type", "application/pdf")
 	h.Set("Content-Disposition", "inline")
-	h.Set("Content-Security-Policy", "sandbox")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Cache-Control", "no-store")
 	_, _ = io.Copy(w, rc)

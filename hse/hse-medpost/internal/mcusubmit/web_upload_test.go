@@ -377,7 +377,12 @@ func TestOwnFileIsServedAsASandboxedPDFAndTheViewIsLogged(t *testing.T) {
 	}
 	want := map[string]string{
 		"Content-Type": "application/pdf", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store",
-		"Content-Security-Policy": "sandbox", "Content-Disposition": "inline",
+		"Content-Disposition": "inline",
+	}
+	// A CSP "sandbox" header makes Edge and Chrome refuse their built-in PDF viewer
+	// ("This page has been blocked by Microsoft Edge"), so a PDF must not carry it.
+	if csp := rec.Header().Get("Content-Security-Policy"); csp != "" {
+		t.Errorf("Content-Security-Policy = %q, want none on a PDF", csp)
 	}
 	for k, v := range want {
 		if !strings.HasPrefix(rec.Header().Get(k), v) {

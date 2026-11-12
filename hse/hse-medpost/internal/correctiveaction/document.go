@@ -215,8 +215,10 @@ func (a *API) storeDocument(header *multipart.FileHeader, dir string, actionID, 
 	return nil
 }
 
-// ServeDocument streams one stored PDF inline. "sandbox" stops a PDF viewer plug-in or a crafted file from
-// running anything in this site's origin, the same header the other staff-facing PDF downloads use.
+// ServeDocument streams one stored PDF inline. WHY there is no "Content-Security-Policy: sandbox": Edge
+// and Chrome will not start their built-in PDF viewer inside a sandboxed response ("This page has been
+// blocked by Microsoft Edge"). The fixed application/pdf type plus nosniff already stop the file from
+// being treated as a page.
 func (a *API) ServeDocument(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathID(w, r)
 	if !ok {
@@ -235,7 +237,6 @@ func (a *API) ServeDocument(w http.ResponseWriter, r *http.Request) {
 	h := w.Header()
 	h.Set("Content-Type", "application/pdf")
 	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Content-Security-Policy", "sandbox")
 	h.Set("Content-Disposition", `inline; filename="`+strings.ReplaceAll(name, `"`, "")+`"`)
 	h.Set("Cache-Control", "private, max-age="+strconv.Itoa(photoCacheSeconds))
 	http.ServeFile(w, r, path)

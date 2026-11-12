@@ -48,7 +48,7 @@ func TestAPIDocumentUploadServeAndDelete(t *testing.T) {
 
 	served := f.do(t, "GET", got.Documents[0].URL, nil)
 	if served.Code != 200 || served.Header().Get("Content-Type") != "application/pdf" ||
-		served.Header().Get("Content-Security-Policy") != "sandbox" || !bytes.HasPrefix(served.Body.Bytes(), []byte("%PDF-")) {
+		served.Header().Get("Content-Security-Policy") != "" || !bytes.HasPrefix(served.Body.Bytes(), []byte("%PDF-")) {
 		t.Fatalf("serve = %d %v", served.Code, served.Header())
 	}
 

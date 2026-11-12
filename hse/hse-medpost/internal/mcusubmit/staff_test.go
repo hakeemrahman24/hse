@@ -201,7 +201,7 @@ func TestStaffFileIsServedForSentDocumentsAndTheViewIsLoggedWithTheStaffId(t *te
 	rec := e.do("GET", fmt.Sprintf("/api/mcu-submissions/%d/file", id), "", false)
 	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/pdf" ||
 		rec.Header().Get("X-Content-Type-Options") != "nosniff" || rec.Header().Get("Cache-Control") != "no-store" ||
-		rec.Header().Get("Content-Security-Policy") != "sandbox" || !bytes.HasPrefix(rec.Body.Bytes(), []byte("%PDF-")) {
+		rec.Header().Get("Content-Security-Policy") != "" || !bytes.HasPrefix(rec.Body.Bytes(), []byte("%PDF-")) {
 		t.Fatalf("= %d, headers %v", rec.Code, rec.Header())
 	}
 	var actor string

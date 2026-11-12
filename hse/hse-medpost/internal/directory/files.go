@@ -235,7 +235,12 @@ func serveStored(w http.ResponseWriter, r *http.Request, path string) {
 	h := w.Header()
 	h.Set("Cache-Control", "no-store")
 	h.Set("X-Content-Type-Options", "nosniff")
-	h.Set("Content-Security-Policy", "sandbox")
+	// WHY a PDF is left out: Edge and Chrome refuse their built-in PDF viewer inside a sandboxed
+	// response ("This page has been blocked by Microsoft Edge"). A .pdf is still sent with nosniff and
+	// its own type, so it cannot run as a page; every other type keeps the sandbox.
+	if strings.ToLower(filepath.Ext(name)) != ".pdf" {
+		h.Set("Content-Security-Policy", "sandbox")
+	}
 	h.Set("Content-Disposition", fmt.Sprintf("%s; filename=%q", disposition, name))
 	http.ServeFile(w, r, path)
 }

@@ -194,3 +194,33 @@ func TestSubHeadersAndTheirEntries(t *testing.T) {
 		t.Errorf("sub-header entries = %v, want only the active sub-header's entry", got)
 	}
 }
+
+// A PDF must not carry "Content-Security-Policy: sandbox": Edge and Chrome refuse their built-in
+// PDF viewer inside a sandboxed response. Every other type keeps the sandbox.
+func TestServeStoredLeavesSandboxOffPDFOnly(t *testing.T) {
+	dir := t.TempDir()
+	cases := []struct {
+		file        string
+		wantSandbox bool
+	}{
+		{"proof.pdf", false},
+		{"PROOF.PDF", false},
+		{"photo.jpg", true},
+		{"note.txt", true},
+	}
+	for _, tc := range cases {
+		path := filepath.Join(dir, tc.file)
+		if err := os.WriteFile(path, []byte("%PDF-1"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		rec := httptest.NewRecorder()
+		serveStored(rec, httptest.NewRequest(http.MethodGet, "/f", nil), path)
+		gotSandbox := rec.Header().Get("Content-Security-Policy") == "sandbox"
+		if gotSandbox != tc.wantSandbox {
+			t.Errorf("%s: sandbox = %v, want %v", tc.file, gotSandbox, tc.wantSandbox)
+		}
+		if rec.Header().Get("X-Content-Type-Options") != "nosniff" {
+			t.Errorf("%s: nosniff missing", tc.file)
+		}
+	}
+}
