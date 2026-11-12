@@ -586,7 +586,7 @@ function renderHomeFeed(data) {
   titleEl.textContent = "Activities";
   subEl.textContent = "Every activity across all health programs, most recent first.";
   filterEl.hidden = false;
-  toggleAdd.hidden = true;
+  toggleAdd.hidden = false;
   if (downloadAll) downloadAll.hidden = true;
   if (downloadAllUploads) downloadAllUploads.hidden = false;
   if (downloadAllEntries) downloadAllEntries.hidden = false;
@@ -1293,9 +1293,25 @@ document.getElementById("reset-filter")?.addEventListener("click", () => {
   loadActivities();
 });
 
+// WHY: on the Activities home there is no current program, so the form
+// shows a Program picker; inside a program the picker stays hidden.
+function syncAddProgramPicker() {
+  const wrap = document.getElementById("add-program-wrap");
+  const sel = document.getElementById("add-program");
+  if (!wrap || !sel) return;
+  const isHome = selectedId === "home";
+  wrap.hidden = !isHome;
+  if (isHome) {
+    sel.innerHTML = programs
+      .map((p) => `<option value="${escapeHtml(String(p.procId))}">${escapeHtml(p.title || p.healthProcedure)}</option>`)
+      .join("");
+  }
+}
+
 toggleAdd?.addEventListener("click", () => {
   if (!selectedId) return;
   addForm.hidden = !addForm.hidden;
+  if (!addForm.hidden) syncAddProgramPicker();
   if (!addForm.hidden) {
     const dateInput = addForm.querySelector('[name="activityDate"]');
     if (dateInput && !dateInput.value) {
@@ -1467,13 +1483,17 @@ cancelAdd?.addEventListener("click", () => {
 
 addForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!selectedId || selectedId === "home") return;
+  if (!selectedId) return;
+  const targetId = selectedId === "home"
+    ? document.getElementById("add-program")?.value
+    : selectedId;
+  if (!targetId) return;
   const editor = addForm.querySelector(".summary-doc-body");
   const summary = addForm.querySelector('[name="activitySummary"]');
   if (editor && summary) summary.value = serializeSummary(editor);
   addMsg.textContent = "Saving…";
   const fd = new FormData(addForm);
-  const res = await fetch(`/api/programs/${selectedId}/activities`, {
+  const res = await fetch(`/api/programs/${targetId}/activities`, {
     method: "POST",
     credentials: "same-origin",
     body: fd,
