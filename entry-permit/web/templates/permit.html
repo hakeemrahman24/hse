@@ -1,0 +1,185 @@
+{{define "permit"}}{{template "head" .}}
+<h1>Work Entry Permit</h1>
+{{if .Permit.Result}}{{template "permit_check" .}}{{else}}
+<p class="sub">Step 1 of the request: who is the permit for? Pick the worker and type their date of birth. Their company, position and MCU come from the clinic record and cannot be changed here.</p>
+<div class="card narrow">
+  {{if .Permit.Err}}<p class="error" role="alert">{{.Permit.Err}}</p>{{end}}
+  {{if .Permit.Available}}
+  <form method="post" action="/permit" autocomplete="off">
+    <label class="field" for="p-rname">
+      <span>Your name (the person making this request)</span>
+      <input id="p-rname" name="requester_name" type="text" value="{{.Permit.RequesterName}}" maxlength="120" required autocomplete="name">
+    </label>
+    <label class="field" for="p-rmail">
+      <span>Your email (the decision is sent here)</span>
+      <input id="p-rmail" name="requester_email" type="email" value="{{.Permit.RequesterMail}}" maxlength="160" required autocomplete="email">
+    </label>
+    <label class="field" for="p-smail">
+      <span>Spare email (optional, a second address that gets the decision too)</span>
+      <input id="p-smail" name="spare_email" type="email" value="{{.Permit.SpareMail}}" maxlength="160" autocomplete="off">
+    </label>
+    <p class="note">Check the addresses: the decision is sent only to them. If nothing arrives, look in Spam or Junk. We are not responsible for mail lost because an address is wrong or an inbox is full.</p>
+    <label class="field" for="p-loc">
+      <span>Work location</span>
+      <select id="p-loc" name="work_location" required>
+        <option value="">Choose…</option>
+        {{range .Permit.Locations}}<option value="{{.}}"{{if eq . $.Permit.WorkLocation}} selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </label>
+    <label class="field" for="p-name">
+      <span>Worker's name (type at least 4 letters, then pick)</span>
+      <input id="p-name" name="name" type="text" value="{{.Permit.Name}}" minlength="4" maxlength="120" required
+             data-namesearch="/api/worker-names" data-min="4" autocomplete="off" spellcheck="false">
+    </label>
+    <label class="field" for="p-dob">
+      <span>Worker's date of birth (dd/mm/yyyy)</span>
+      <input data-date="dob" id="p-dob" name="dob" type="text" value="{{.Permit.DOB}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required autocomplete="off">
+    </label>
+    <div class="field">{{template "turnstile" .}}</div>
+    <button type="submit" class="btn">Check the worker</button>
+  </form>
+  <script src="/static/namesearch.js"></script>
+  {{else}}<p class="note">This form is not available right now. Please try again later.</p>{{end}}
+</div>
+<p><a href="/">Back to home</a></p>
+{{end}}
+{{template "foot" .}}{{end}}
+
+{{define "permit_check"}}{{with .Permit.Result}}
+<section class="card">
+  {{if $.Permit.Err}}<p class="error" role="alert">{{$.Permit.Err}}</p>{{end}}
+  <h2>{{.Worker.Name}}</h2>
+  <dl class="facts">
+    <dt>Company</dt><dd>{{if .Worker.Company}}{{.Worker.Company}}{{else}}Not recorded{{end}}{{if .Worker.Entity}} ({{.Worker.Entity}}){{end}}</dd>
+    <dt>Position</dt><dd>{{if .Worker.Position}}{{.Worker.Position}}{{else}}Not recorded{{end}}</dd>
+    <dt>Nationality</dt><dd>{{if .Worker.Nationality}}{{.Worker.Nationality}}{{else}}Not recorded{{end}}</dd>
+    <dt>MCU</dt><dd>{{.Worker.McuResult}}, valid until {{.Worker.McuValidUntil}}</dd>
+    <dt>Work location</dt><dd>{{.WorkLocation}}</dd>
+    {{if not .Blocked}}<dt>Permit could be valid until</dt><dd>{{.ValidUntil}} ({{.Reason}})</dd>{{end}}
+  </dl>
+  {{if .Blocked}}
+    {{if not $.Permit.Err}}<p class="error" role="alert">{{.BlockedText}}</p>{{end}}
+  {{else}}
+    {{if .Foreign}}<p class="note">This worker is a foreign national. The date can be earlier once the visa and passport dates are entered in the next step.</p>{{end}}
+    {{if .Reuse}}<p class="note">This worker had a permit before. {{if .McuRenewal}}Their MCU has been renewed, so a new request is allowed. {{end}}Their earlier phone, address and emergency contact will be offered again.</p>{{end}}
+    {{template "permit_part2" .}}
+  {{end}}
+  <p><a class="btn-small-quiet" href="/permit">Check another worker</a> <a class="btn-small-quiet" href="/">Back to home</a></p>
+</section>
+{{end}}{{end}}
+
+{{define "permit_part2"}}
+<h3>Step 2: details and documents</h3>
+<form method="post" action="/permit/submit" enctype="multipart/form-data" autocomplete="off" class="form-grid">
+  <input type="hidden" name="token" value="{{.Token}}">
+  <label class="field" for="p-phone"><span>Worker's phone number</span>
+    <input id="p-phone" name="phone" type="tel" value="{{index .Vals "phone"}}" maxlength="20" required placeholder="081234567890"></label>
+  <label class="field" for="p-ename"><span>Emergency contact name</span>
+    <input id="p-ename" name="emergency_name" type="text" value="{{index .Vals "emergency_name"}}" maxlength="120" required></label>
+  <label class="field" for="p-ephone"><span>Emergency contact phone number (not the worker's own)</span>
+    <input id="p-ephone" name="emergency_phone" type="tel" value="{{index .Vals "emergency_phone"}}" maxlength="20" required></label>
+  <label class="field" for="p-regency"><span>Home regency or city</span>
+    <select id="p-regency" name="regency" required>
+      <option value="">Choose…</option>
+      {{$sel := index .Vals "regency"}}{{range .Regencies}}<option value="{{.Code}}"{{if eq .Code $sel}} selected{{end}}>{{.Name}} — {{.Province}}</option>{{end}}
+    </select></label>
+  <label class="field" for="p-district"><span>District (kecamatan)</span>
+    <input id="p-district" name="district" type="text" value="{{index .Vals "district"}}" maxlength="120"></label>
+  <label class="field" for="p-village"><span>Village (desa or kelurahan)</span>
+    <input id="p-village" name="village" type="text" value="{{index .Vals "village"}}" maxlength="120"></label>
+  <label class="field field-wide" for="p-street"><span>Street address</span>
+    <input id="p-street" name="street" type="text" value="{{index .Vals "street"}}" maxlength="240" required></label>
+
+  {{if or .Sec.ContractShown .Sec.BpjsKesShown .Sec.BpjsTkShown}}<h4>Contract and insurance</h4>{{end}}
+  {{if .Sec.ContractShown}}
+  <label class="field" for="p-cdoc"><span>Contract document{{if not .Sec.ContractRequired}} (optional){{end}}</span>
+    <input id="p-cdoc" name="contract_doc" type="file" accept="application/pdf,image/jpeg,image/png"{{if .Sec.ContractRequired}} required{{end}}></label>
+  <label class="field" for="p-cuntil"><span>Contract valid until, dd/mm/yyyy{{if not .Sec.ContractRequired}} (optional){{end}}</span>
+    <input data-date id="p-cuntil" name="contract_until" type="text" value="{{index .Vals "contract_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10"{{if .Sec.ContractRequired}} required{{end}}></label>
+  {{end}}
+  {{if .Sec.BpjsKesShown}}
+  <label class="field" for="p-bkes"><span>BPJS Kesehatan number{{if not .Sec.BpjsKesRequired}} (optional){{end}}</span>
+    <input data-digits id="p-bkes" name="bpjs_kes" type="text" value="{{index .Vals "bpjs_kes"}}" inputmode="numeric" maxlength="30"{{if .Sec.BpjsKesRequired}} required{{end}}></label>
+  <label class="field" for="p-bkesdoc"><span>BPJS Kesehatan card (optional)</span>
+    <input id="p-bkesdoc" name="bpjs_kes_doc" type="file" accept="application/pdf,image/jpeg,image/png"></label>
+  {{end}}
+  {{if .Sec.BpjsTkShown}}
+  <label class="field" for="p-btk"><span>BPJS Ketenagakerjaan number{{if not .Sec.BpjsTkRequired}} (optional){{end}}</span>
+    <input data-digits id="p-btk" name="bpjs_tk" type="text" value="{{index .Vals "bpjs_tk"}}" inputmode="numeric" maxlength="30"{{if .Sec.BpjsTkRequired}} required{{end}}></label>
+  <label class="field" for="p-btkdoc"><span>BPJS Ketenagakerjaan card (optional)</span>
+    <input id="p-btkdoc" name="bpjs_tk_doc" type="file" accept="application/pdf,image/jpeg,image/png"></label>
+  {{end}}
+  {{if .Sec.CertNeeded}}
+  <h4>Certificate of competence</h4>
+  <p class="note">{{.Sec.Position.Canonical}} needs a certificate{{if .Sec.CertName}}: {{.Sec.CertName}}{{end}}.</p>
+  <label class="field" for="p-certdoc"><span>Certificate of competence</span>
+    <input id="p-certdoc" name="cert_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
+  {{if .Sec.CertFixedUntil}}<p class="note">This certificate does not expire, so no date is needed.</p>{{else}}
+  <label class="field" for="p-certuntil"><span>Certificate valid until, dd/mm/yyyy</span>
+    <input data-date id="p-certuntil" name="cert_until" type="text" value="{{index .Vals "cert_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>{{end}}
+  {{end}}
+
+  <h4>Documents (PDF, JPG or PNG)</h4>
+  <label class="field" for="p-iddoc"><span>{{if .Foreign}}Passport copy{{else}}ID card (KTP){{end}}</span>
+    <input id="p-iddoc" name="id_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
+  <label class="field" for="p-idphoto"><span>ID photo</span>
+    <input id="p-idphoto" name="id_photo" type="file" accept="image/jpeg,image/png" required></label>
+
+  {{if .Foreign}}
+  <h4>Foreign worker documents</h4>
+  <label class="field" for="p-vtype"><span>Work visa type</span>
+    <select id="p-vtype" name="visa_type" required>
+      {{$vt := index .Vals "visa_type"}}<option value="">Choose…</option>
+      <option value="Visa"{{if eq $vt "Visa"}} selected{{end}}>Visa</option>
+      <option value="ITAS"{{if eq $vt "ITAS"}} selected{{end}}>ITAS</option>
+      <option value="ITAP"{{if eq $vt "ITAP"}} selected{{end}}>ITAP</option>
+    </select></label>
+  <label class="field" for="p-vcode"><span>ITAS or ITAP code (not needed for a Visa)</span>
+    <input id="p-vcode" name="visa_code" type="text" value="{{index .Vals "visa_code"}}" maxlength="60"></label>
+  <label class="field" for="p-vissued"><span>Visa issue date, dd/mm/yyyy (Visa only)</span>
+    <input data-date id="p-vissued" name="visa_issued" type="text" value="{{index .Vals "visa_issued"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10"></label>
+  <label class="field" for="p-vby"><span>Office that issued the ITAP (ITAP only)</span>
+    <input id="p-vby" name="visa_issued_by" type="text" value="{{index .Vals "visa_issued_by"}}" maxlength="120"></label>
+  <label class="field" for="p-vexp"><span>Work visa expiry date, dd/mm/yyyy</span>
+    <input data-date id="p-vexp" name="visa_expiry" type="text" value="{{index .Vals "visa_expiry"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+  <label class="field" for="p-vdoc"><span>Work visa document</span>
+    <input id="p-vdoc" name="visa_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
+  <label class="field" for="p-rissued"><span>RPTKA issue date, dd/mm/yyyy</span>
+    <input data-date id="p-rissued" name="rptka_issued" type="text" value="{{index .Vals "rptka_issued"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+  <label class="field" for="p-rdays"><span>RPTKA duration (days)</span>
+    <input id="p-rdays" name="rptka_days" type="number" min="1" max="3650" value="{{index .Vals "rptka_days"}}" required></label>
+  <label class="field" for="p-rexp"><span>RPTKA expiry date, dd/mm/yyyy</span>
+    <input data-date id="p-rexp" name="rptka_expiry" type="text" value="{{index .Vals "rptka_expiry"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+  <label class="field" for="p-rdoc"><span>RPTKA document</span>
+    <input id="p-rdoc" name="rptka_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
+  <label class="field" for="p-iuntil"><span>Immigration reporting letter valid until, dd/mm/yyyy</span>
+    <input data-date id="p-iuntil" name="immigration_until" type="text" value="{{index .Vals "immigration_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+  <label class="field" for="p-idoc"><span>Immigration reporting letter</span>
+    <input id="p-idoc" name="immigration_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
+  <label class="field" for="p-puntil"><span>Police letter valid until, dd/mm/yyyy</span>
+    <input data-date id="p-puntil" name="police_until" type="text" value="{{index .Vals "police_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+  <label class="field" for="p-pdoc"><span>Police letter</span>
+    <input id="p-pdoc" name="police_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
+  <label class="field" for="p-ppuntil"><span>Passport valid until, dd/mm/yyyy</span>
+    <input data-date id="p-ppuntil" name="passport_until" type="text" value="{{index .Vals "passport_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+  {{end}}
+
+  <label class="field field-wide"><span><input type="checkbox" name="declaration" required> I declare that the details and documents I am sending are true and belong to this worker.</span></label>
+  <button type="submit" class="btn">Send the request</button>
+</form>
+{{end}}
+
+{{define "permit_done"}}{{template "head" .}}
+{{with .Permit.Done}}
+<h1>Request sent</h1>
+<section class="card narrow">
+  <p>The request for <strong>{{.Worker}}</strong>{{if .Company}} ({{.Company}}){{end}} was saved and is waiting for the first review.</p>
+  <dl class="facts">
+    <dt>Request number</dt><dd><strong>{{.RequestID}}</strong></dd>
+    <dt>Permit could be valid until</dt><dd>{{.ValidUntil}} ({{.Reason}})</dd>
+  </dl>
+  <p class="note">Keep the request number. A confirmation email to {{.Email}} cannot be sent yet (the email service is built in a later step), so nothing has been mailed.</p>
+  <p><a class="btn-small-quiet" href="/permit">Make another request</a> <a class="btn-small-quiet" href="/">Back to home</a></p>
+</section>
+{{end}}
+{{template "foot" .}}{{end}}

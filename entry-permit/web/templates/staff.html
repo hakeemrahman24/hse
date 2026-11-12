@@ -1,0 +1,7 @@
+{{define "staff"}}{{template "head" .}}
+<h1>{{.Title}}</h1>
+{{if .User}}<p class="sub">Signed in as {{.User.DisplayName}}.</p>{{end}}
+<section class="card">
+  <p>{{.Message}}</p>
+</section>
+{{template "foot" .}}{{end}}

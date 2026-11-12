@@ -1,0 +1,479 @@
+{{define "admin_nav"}}
+<nav class="subnav" aria-label="Administration">
+  <a href="/staff/admin">Overview</a>
+  <a href="/staff/admin/gate-officers"{{if eq .Title "Gate officers"}} aria-current="page"{{end}}>Gate officers</a>
+  {{range .Admin.Defs}}<a href="{{.Path}}"{{if eq .Key $.Admin.Def.Key}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+  {{if .Admin.Super}}
+  <a href="/staff/admin/status"{{if eq .Title "System status"}} aria-current="page"{{end}}>Status</a>
+  <a href="/staff/admin/companies"{{if eq .Title "Companies"}} aria-current="page"{{end}}>Companies</a>
+  <a href="/staff/admin/users"{{if eq .Title "Users"}} aria-current="page"{{end}}>Users</a>
+  <a href="/staff/admin/settings"{{if eq .Title "Settings"}} aria-current="page"{{end}}>Settings</a>
+  <a href="/staff/admin/audit">Audit log</a>
+  {{end}}
+</nav>
+{{end}}
+
+{{define "admin_home"}}{{template "head" .}}
+<h1>{{if .Admin.Super}}Administration{{else}}Gate administration{{end}}</h1>
+<p class="sub">{{if .Admin.Super}}Edit the lists the forms use.{{else}}Manage the gate officers, gates and purpose areas.{{end}} Every change is written to the audit log.</p>
+<div class="tiles">
+  <a class="tile" href="/staff/admin/gate-officers">
+    <strong>Gate officers</strong>
+    <span>Who can scan at the gate, and their codes.</span>
+  </a>
+  {{range .Admin.Defs}}
+  <a class="tile" href="{{.Path}}">
+    <strong>{{.Label}}</strong>
+    <span>{{.Help}}</span>
+    {{if and (eq .Key "malaria") $.Admin.MalariaOrphans}}<span class="error">{{$.Admin.MalariaOrphans}} to review: no longer in the region list</span>{{end}}
+  </a>
+  {{end}}
+  {{if .Admin.Super}}
+  <a class="tile" href="/staff/admin/status">
+    <strong>System status</strong>
+    <span>Scheduled jobs, the e-mail queue and anything that needs attention.</span>
+    {{if .Admin.StatusWarnings}}<span class="error">{{.Admin.StatusWarnings}} to look at</span>{{end}}
+  </a>
+  <a class="tile" href="/staff/admin/companies">
+    <strong>Companies</strong>
+    <span>The company list copied from hse-medpost (read only).</span>
+  </a>
+  <a class="tile" href="/staff/admin/users">
+    <strong>Users</strong>
+    <span>Add staff, set roles, reset a PIN, switch accounts on or off.</span>
+  </a>
+  <a class="tile" href="/staff/admin/settings">
+    <strong>Settings</strong>
+    <span>Rotation weeks, rest days, grace periods, login limits.</span>
+  </a>
+  <a class="tile" href="/staff/admin/audit">
+    <strong>Audit log</strong>
+    <span>Who changed what, and when.</span>
+  </a>
+  {{end}}
+</div>
+{{template "foot" .}}{{end}}
+
+{{define "admin_list"}}{{template "head" .}}
+{{template "admin_nav" .}}
+<h1>{{.Admin.Def.Label}}</h1>
+<p class="sub">{{.Admin.Def.Help}}</p>
+{{if .Admin.Flash}}<p class="ok" role="status">{{.Admin.Flash}}</p>{{end}}
+{{if .Admin.Err}}<p class="error" role="alert">{{.Admin.Err}}</p>{{end}}
+
+<form class="addrow card" method="post" action="/staff/admin/lists/{{.Admin.Def.Key}}">
+  <input type="hidden" name="_csrf" value="{{.CSRF}}">
+  {{range $i, $c := .Admin.Def.Columns}}
+  <label class="field"><span>{{$c.Label}}</span>
+    {{if $c.Options}}<select name="v{{$i}}">{{if not $c.Required}}<option value=""></option>{{end}}{{range $c.Options}}<option>{{.}}</option>{{end}}</select>
+    {{else}}<input type="text" name="v{{$i}}" maxlength="160" autocomplete="off"{{if $c.Required}} required{{end}}>{{end}}
+  </label>
+  {{end}}
+  <button class="btn" type="submit">Add</button>
+</form>
+
+<form class="toolbar" method="get" action="/staff/admin/lists/{{.Admin.Def.Key}}">
+  <input type="text" name="q" value="{{.Admin.Q}}" placeholder="Search this list…" aria-label="Search this list">
+  <label class="check"><input type="checkbox" name="archived" value="1"{{if .Admin.ShowArchived}} checked{{end}}> Show archived</label>
+  <button class="btn-small-solid" type="submit">Search</button>
+</form>
+
+<div class="tablewrap">
+<table>
+  <thead><tr>{{range .Admin.Def.Columns}}<th scope="col">{{.Label}}</th>{{end}}<th scope="col">Status</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+  <tbody>
+  {{range $row := .Admin.Rows}}
+  <tr{{if $row.Archived}} class="archived"{{end}}>
+    {{range $i, $c := $.Admin.Def.Columns}}<td>
+      {{if $c.Options}}<select name="v{{$i}}" form="f{{$row.ID}}" aria-label="{{$c.Label}}">{{range $c.Options}}<option{{if eq . (index $row.Values $i)}} selected{{end}}>{{.}}</option>{{end}}</select>
+      {{else}}<input type="text" name="v{{$i}}" form="f{{$row.ID}}" value="{{index $row.Values $i}}" maxlength="160" aria-label="{{$c.Label}}">{{end}}
+    </td>{{end}}
+    <td>{{if $row.Archived}}Archived{{else}}Active{{end}}</td>
+    <td class="actions">
+      <form id="f{{$row.ID}}" class="inline" method="post" action="/staff/admin/lists/{{$.Admin.Def.Key}}/{{$row.ID}}">
+        <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+        <button class="btn-small-solid" type="submit" name="action" value="save">Save</button>
+        {{if $row.Archived}}<button class="btn-small-quiet" type="submit" name="action" value="restore">Restore</button>
+        {{else}}<button class="btn-small-quiet" type="submit" name="action" value="archive">Archive</button>{{end}}
+      </form>
+    </td>
+  </tr>
+  {{else}}
+  <tr><td colspan="{{$.Admin.Span}}" class="empty">No items yet.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{template "foot" .}}{{end}}
+
+{{define "admin_audit"}}{{template "head" .}}
+{{template "admin_nav" .}}
+<h1>Audit log</h1>
+<p class="sub">The latest changes, newest first.</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Item</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+  <tbody>
+  {{range .Admin.Audit}}
+  <tr><td>{{.At}}</td><td>{{.Actor}}</td><td>{{.Action}}</td><td>{{.Target}}</td><td>{{.Old}}</td><td>{{.New}}</td></tr>
+  {{else}}
+  <tr><td colspan="6" class="empty">Nothing recorded yet.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{template "foot" .}}{{end}}
+
+{{define "admin_malaria"}}{{template "head" .}}
+{{template "admin_nav" .}}
+<h1>{{.Admin.Def.Label}}</h1>
+<p class="sub">{{.Admin.Def.Help}} Pick a regency and set its endemicity. A regency set to "Not listed" is taken off the list.</p>
+{{if .Malaria.Flash}}<p class="ok" role="status">{{.Malaria.Flash}}</p>{{end}}
+{{if .Malaria.Err}}<p class="error" role="alert">{{.Malaria.Err}}</p>{{end}}
+{{if .Malaria.Unavail}}<p class="error" role="alert">{{.Malaria.Unavail}}</p>{{else}}
+<form class="toolbar" method="get" action="/staff/admin/malaria">
+  <select name="province" aria-label="Province">
+    <option value="">All provinces</option>
+    {{range .Malaria.Provinces}}<option{{if eq . $.Malaria.Province}} selected{{end}}>{{.}}</option>{{end}}
+  </select>
+  <input type="text" name="q" value="{{.Malaria.Q}}" placeholder="Search regency…" aria-label="Search regency">
+  <label class="check"><input type="checkbox" name="all" value="1"{{if .Malaria.All}} checked{{end}}> Show every regency (to add one)</label>
+  <button class="btn-small-solid" type="submit">Show</button>
+</form>
+<div class="tablewrap">
+<table>
+  <thead><tr><th scope="col">Regency / city</th><th scope="col">Province</th><th scope="col">Endemicity</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+  <tbody>
+  {{range $row := .Malaria.Rows}}
+  <tr>
+    <td>{{$row.Regency}}</td>
+    <td>{{$row.Province}}</td>
+    <td>
+      <select name="endemicity" form="m{{$row.Code}}" aria-label="Endemicity of {{$row.Regency}}">
+        <option value=""{{if eq $row.Endemicity ""}} selected{{end}}>Not listed</option>
+        {{range $.Malaria.Levels}}<option{{if eq . $row.Endemicity}} selected{{end}}>{{.}}</option>{{end}}
+      </select>
+    </td>
+    <td class="actions">
+      <form id="m{{$row.Code}}" class="inline" method="post" action="/staff/admin/malaria">
+        <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+        <input type="hidden" name="code" value="{{$row.Code}}">
+        <input type="hidden" name="f_province" value="{{$.Malaria.Province}}">
+        <input type="hidden" name="f_q" value="{{$.Malaria.Q}}">
+        {{if $.Malaria.All}}<input type="hidden" name="f_all" value="1">{{end}}
+        <button class="btn-small-solid" type="submit">Save</button>
+      </form>
+    </td>
+  </tr>
+  {{else}}
+  <tr><td colspan="4" class="empty">No regencies match. Tick "Show every regency" to add one.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{if .Malaria.Orphans}}
+<h2>No longer in the region list</h2>
+<p class="sub">These listed regencies match nothing in hse-medpost's region list, by code or by name. Link each to its current regency (the endemicity carries over) or archive it.</p>
+<div class="tablewrap">
+<table>
+  <thead><tr><th scope="col">Regency / city</th><th scope="col">Province</th><th scope="col">Endemicity</th><th scope="col">Link to</th></tr></thead>
+  <tbody>
+  {{range $o := .Malaria.Orphans}}
+  <tr>
+    <td>{{$o.Regency}}</td><td>{{$o.Province}}</td><td>{{$o.Endemicity}}</td>
+    <td class="actions">
+      <form class="inline" method="post" action="/staff/admin/malaria/orphan/{{$o.ItemID}}">
+        <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+        <select id="rl{{$o.ItemID}}" name="code" data-combobox data-placeholder="Pick the current regency…" aria-label="Current regency for {{$o.Regency}}">
+          <option value=""></option>
+          {{range $.Malaria.Regencies}}<option value="{{.Code}}">{{.Name}}, {{.Province}}</option>{{end}}
+        </select>
+        <button class="btn-small-solid" type="submit" name="action" value="relink">Link</button>
+        <button class="btn-small-quiet" type="submit" name="action" value="archive">Archive</button>
+      </form>
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+<script src="/static/combobox.js"></script>
+{{end}}
+{{end}}
+{{template "foot" .}}{{end}}
+
+{{define "admin_settings"}}{{template "head" .}}
+{{template "admin_nav" .}}
+<h1>Settings</h1>
+<p class="sub">Rule numbers the app uses. A change applies to the next request. Every change is written to the audit log.</p>
+{{if .Settings.Flash}}<p class="ok" role="status">{{.Settings.Flash}}</p>{{end}}
+{{if .Settings.Err}}<p class="error" role="alert">{{.Settings.Err}}</p>{{end}}
+{{range .Settings.Groups}}
+<section class="card">
+  <h2>{{.Name}}</h2>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th scope="col">Setting</th><th scope="col">Value</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+    <tbody>
+    {{range .Items}}
+    <tr>
+      <td><label for="s-{{.Key}}">{{.Label}}</label>{{if .Description}}<br><small>{{.Description}}</small>{{end}}</td>
+      <td>
+        {{if eq .Type "choice"}}<select id="s-{{.Key}}" name="value" form="f-{{.Key}}">{{$v := .Value}}{{range .Options}}<option{{if eq . $v}} selected{{end}}>{{.}}</option>{{end}}</select>
+        {{else if eq .Type "bool"}}<select id="s-{{.Key}}" name="value" form="f-{{.Key}}"><option value="on"{{if eq .Value "on"}} selected{{end}}>On</option><option value="off"{{if eq .Value "off"}} selected{{end}}>Off</option></select>
+        {{else if eq .Type "int"}}<input id="s-{{.Key}}" type="number" name="value" form="f-{{.Key}}" value="{{.Value}}" min="{{.Min}}" max="{{.Max}}" step="1" required>{{if .Unit}} {{.Unit}}{{end}}
+        {{else}}<input id="s-{{.Key}}" type="text" name="value" form="f-{{.Key}}" value="{{.Value}}" maxlength="250" required>{{end}}
+        {{if not .IsDefault}}<br><small>Default: {{.Default}}</small>{{end}}
+      </td>
+      <td class="actions">
+        <form id="f-{{.Key}}" class="inline" method="post" action="/staff/admin/settings">
+          <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+          <input type="hidden" name="key" value="{{.Key}}">
+          <button class="btn-small-solid" type="submit" name="action" value="save">Save</button>
+          {{if not .IsDefault}}<button class="btn-small-quiet" type="submit" name="action" value="reset" formnovalidate>Reset</button>{{end}}
+        </form>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  </div>
+</section>
+{{end}}
+{{template "foot" .}}{{end}}
+
+{{define "admin_users"}}{{template "head" .}}
+{{template "admin_nav" .}}
+<h1>Users</h1>
+<p class="sub">New accounts and PIN resets use the default PIN <strong>{{.Users.DefaultPIN}}</strong>. You cannot choose or see anyone's PIN; each person changes it under My account.</p>
+{{if .Users.Flash}}<p class="ok" role="status">{{.Users.Flash}}</p>{{end}}
+{{if .Users.Err}}<p class="error" role="alert">{{.Users.Err}}</p>{{end}}
+
+<form class="addrow card" method="post" action="/staff/admin/users">
+  <input type="hidden" name="_csrf" value="{{.CSRF}}">
+  <label class="field"><span>Username</span><input type="text" name="username" maxlength="40" autocomplete="off" required></label>
+  <label class="field"><span>Name</span><input type="text" name="display" maxlength="120" autocomplete="off" required></label>
+  <label class="field"><span>Email</span><input type="email" name="email" maxlength="160" autocomplete="off"></label>
+  <fieldset class="field"><legend>Roles</legend>
+    {{range .Users.Roles}}<label class="check"><input type="checkbox" name="role" value="{{.}}"> {{.Label}}</label> {{end}}
+  </fieldset>
+  <button class="btn" type="submit">Add</button>
+</form>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th scope="col">Username</th><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Roles</th><th scope="col">Status</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+  <tbody>
+  {{range $a := .Users.Accounts}}
+  <tr{{if not $a.Active}} class="archived"{{end}}>
+    <td>{{$a.Username}}</td>
+    <td><input type="text" name="display" form="u-{{$a.Username}}" value="{{$a.DisplayName}}" maxlength="120" aria-label="Name of {{$a.Username}}" required></td>
+    <td><input type="email" name="email" form="u-{{$a.Username}}" value="{{$a.Email}}" maxlength="160" aria-label="Email of {{$a.Username}}"></td>
+    <td>{{range $.Users.Roles}}<label class="check"><input type="checkbox" name="role" value="{{.}}" form="u-{{$a.Username}}"{{if $a.HasRole .}} checked{{end}}> {{.Label}}</label> {{end}}</td>
+    <td>{{if not $a.Active}}Off{{else if $a.Locked}}Locked{{else}}Active{{end}}</td>
+    <td class="actions">
+      <form id="u-{{$a.Username}}" class="inline" method="post" action="/staff/admin/users/{{$a.Username}}">
+        <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+        <button class="btn-small-solid" type="submit" name="action" value="save">Save</button>
+        <button class="btn-small-quiet" type="submit" name="action" value="reset_pin" formnovalidate>Reset PIN</button>
+        {{if $a.Locked}}<button class="btn-small-quiet" type="submit" name="action" value="unlock" formnovalidate>Unlock</button>{{end}}
+        {{if $a.Active}}<button class="btn-small-quiet" type="submit" name="action" value="off" formnovalidate>Switch off</button>
+        {{else}}<button class="btn-small-quiet" type="submit" name="action" value="on" formnovalidate>Switch on</button>{{end}}
+      </form>
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{template "foot" .}}{{end}}
+
+{{define "account"}}{{template "head" .}}
+<h1>My account</h1>
+{{if .Users.Flash}}<p class="ok" role="status">{{.Users.Flash}}</p>{{end}}
+{{if .Users.Err}}<p class="error" role="alert">{{.Users.Err}}</p>{{end}}
+<section class="card">
+  <h2>Name and username</h2>
+  <form method="post" action="/account/profile">
+    <input type="hidden" name="_csrf" value="{{.CSRF}}">
+    <label class="field"><span>Name (shown in the sign-in list)</span><input type="text" name="display" value="{{.User.DisplayName}}" maxlength="120" required></label>
+    <label class="field"><span>Username (lower-case letters, digits, dot, dash, underscore)</span><input type="text" name="username" value="{{.User.Username}}" maxlength="40" autocomplete="off" required></label>
+    <button class="btn" type="submit">Save</button>
+  </form>
+</section>
+<section class="card">
+  <h2>Change PIN</h2>
+  <form method="post" action="/account/pin">
+    <input type="hidden" name="_csrf" value="{{.CSRF}}">
+    <label class="field"><span>Current PIN</span><input type="password" name="current" autocomplete="current-password" required></label>
+    <label class="field"><span>New PIN (4 to 8 letters or digits)</span><input type="password" name="new" autocomplete="new-password" minlength="4" maxlength="8" required></label>
+    <label class="field"><span>New PIN again</span><input type="password" name="again" autocomplete="new-password" minlength="4" maxlength="8" required></label>
+    <button class="btn" type="submit">Change PIN</button>
+  </form>
+</section>
+{{template "foot" .}}{{end}}
+
+{{define "admin_officers"}}{{template "head" .}}
+{{template "admin_nav" .}}
+<h1>Gate officers</h1>
+<p class="sub">Pick the officer's name from the eligible workers (Fit or Fit with note), give a username and a PIN. On the scanner page an officer signs in with the username and the PIN. An officer whose MCU stops being Fit or Fit with note is archived automatically (checked every few hours); restoring is up to you. PINs are stored scrambled and cannot be shown again: set a new PIN if one is forgotten. Two officers may have the same PIN. Archive an officer to stop their access but keep the record; remove deletes them for good.</p>
+{{if .Admin.Flash}}<p class="ok" role="status">{{.Admin.Flash}}</p>{{end}}
+{{if .Admin.Err}}<p class="error" role="alert">{{.Admin.Err}}</p>{{end}}
+
+<form class="addrow card" method="post" action="/staff/admin/gate-officers">
+  <input type="hidden" name="_csrf" value="{{.CSRF}}">
+  <label class="field" for="officer-name"><span>Name (type 4 letters, then pick)</span><input id="officer-name" type="text" name="name" maxlength="120" autocomplete="off" required data-namesearch="/staff/admin/employee-names" data-min="4" data-pick-message="Pick a name from the list." spellcheck="false"></label>
+  <label class="field"><span>Username</span><input type="text" name="username" minlength="2" maxlength="40" autocomplete="off" autocapitalize="none" required></label>
+  <label class="field"><span>PIN (4 to 8 letters or digits)</span><input type="password" name="pin" minlength="4" maxlength="8" autocomplete="new-password" required></label>
+  <button class="btn" type="submit">Add</button>
+</form>
+
+<form class="toolbar" method="get" action="/staff/admin/gate-officers">
+  <label class="check"><input type="checkbox" name="archived" value="1"{{if .Admin.ShowArchived}} checked{{end}}> Show archived</label>
+  <button class="btn-small-solid" type="submit">Show</button>
+</form>
+
+<div class="tablewrap">
+<table>
+  <thead><tr><th scope="col">Name</th><th scope="col">Username</th><th scope="col">New PIN</th><th scope="col">Status</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+  <tbody>
+  {{range $o := .Admin.Officers}}
+  <tr{{if $o.Archived}} class="archived"{{end}}>
+    <td>{{$o.Name}}</td>
+    <td><input type="text" name="username" form="o{{$o.ID}}" value="{{$o.Username}}" minlength="2" maxlength="40" autocomplete="off" aria-label="Username of {{$o.Name}}" placeholder="set a username"></td>
+    <td><input type="password" name="pin" form="o{{$o.ID}}" minlength="4" maxlength="8" autocomplete="new-password" aria-label="New PIN for {{$o.Name}}" placeholder="leave empty to keep"></td>
+    <td>{{if $o.Archived}}Archived{{else if not $o.Username}}Needs a username{{else}}Active{{end}}</td>
+    <td class="actions">
+      <form id="o{{$o.ID}}" class="inline" method="post" action="/staff/admin/gate-officers/{{$o.ID}}">
+        <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+        <button class="btn-small-solid" type="submit" name="action" value="username">Save username</button>
+        <button class="btn-small-quiet" type="submit" name="action" value="pin" formnovalidate>Set PIN</button>
+        {{if $o.Archived}}<button class="btn-small-quiet" type="submit" name="action" value="restore" formnovalidate>Restore</button>
+        {{else}}<button class="btn-small-quiet" type="submit" name="action" value="archive" formnovalidate>Archive</button>{{end}}
+        <label class="check"><input type="checkbox" name="confirm" value="yes"> Confirm</label>
+        <button class="btn-small-quiet" type="submit" name="action" value="remove" formnovalidate>Remove</button>
+      </form>
+    </td>
+  </tr>
+  {{else}}
+  <tr><td colspan="5">No officers yet.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+<script src="/static/namesearch.js"></script>
+{{template "foot" .}}{{end}}
+
+{{define "admin_companies"}}{{template "head" .}}
+{{template "admin_nav" .}}
+<h1>Companies</h1>
+<p class="sub">This list is a copy of the one in hse-medpost. To add, rename or archive a company, change it in hse-medpost; the copy is refreshed every night and when you press Refresh now.</p>
+{{if .CompaniesPage.Flash}}<p class="ok" role="status">{{.CompaniesPage.Flash}}</p>{{end}}
+{{if .CompaniesPage.Err}}<p class="error" role="alert">{{.CompaniesPage.Err}}</p>{{end}}
+{{if .CompaniesPage.Unavail}}<p class="error" role="alert">{{.CompaniesPage.Unavail}}</p>{{else}}
+<form class="toolbar" method="post" action="/staff/admin/companies/refresh">
+  <input type="hidden" name="_csrf" value="{{.CSRF}}">
+  <button class="btn-small-solid" type="submit">Refresh now</button>
+  <span class="note">{{if .CompaniesPage.SyncedAt}}Last refreshed {{.CompaniesPage.SyncedAt}}. {{len .CompaniesPage.Rows}} companies.{{else}}Not refreshed yet.{{end}}</span>
+</form>
+<div class="tablewrap">
+<table>
+  <thead><tr><th scope="col">Company</th><th scope="col">Entity</th><th scope="col">Short name</th><th scope="col">Parent companies</th><th scope="col">Notes</th></tr></thead>
+  <tbody>
+  {{range .CompaniesPage.Rows}}
+  <tr>
+    <td>{{.Name}}</td>
+    <td>{{.Entity}}</td>
+    <td>{{.Abbreviation}}</td>
+    <td>{{range $i, $p := .Parents}}{{if $i}}, {{end}}{{$p.Name}}{{end}}</td>
+    <td>{{if .Gov}}Government{{end}}{{if and .Gov .Archived}}, {{end}}{{if .Archived}}Archived{{end}}</td>
+  </tr>
+  {{else}}
+  <tr><td colspan="5">No companies yet. Press Refresh now.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+{{end}}
+{{template "foot" .}}{{end}}
+
+{{define "admin_status"}}{{template "head" .}}
+{{template "admin_nav" .}}
+<h1>System status</h1>
+<p class="sub">What the scheduled work and the e-mail queue are doing. Times are Jakarta time.</p>
+{{if .Status.Flash}}<p class="ok" role="status">{{.Status.Flash}}</p>{{end}}
+{{if .Status.Err}}<p class="error" role="alert">{{.Status.Err}}</p>{{end}}
+
+<h2>Needs attention</h2>
+{{if .Status.Warnings}}
+<ul class="warnings">{{range .Status.Warnings}}<li class="error">{{.}}</li>{{end}}</ul>
+{{else}}<p class="ok">Nothing needs attention.</p>{{end}}
+
+<h2>Scheduled jobs</h2>
+{{if .Status.JobsOff}}<p class="error" role="alert">The job scheduler is not running in this process.</p>{{else}}
+<div class="tablewrap">
+<table>
+  <thead><tr><th scope="col">Job</th><th scope="col">Last run</th><th scope="col">Result</th><th scope="col">What it did</th><th scope="col"><span class="sr">Action</span></th></tr></thead>
+  <tbody>
+  {{range .Status.Jobs}}
+  <tr>
+    <td>{{.Label}}</td>
+    <td>{{if .Never}}Never run{{else}}{{.At}}{{end}}</td>
+    <td>{{if .Never}}-{{else}}{{.Result}}{{end}}</td>
+    <td>{{.Detail}}</td>
+    <td>
+      <form method="post" action="/staff/admin/status/run/{{.Name}}">
+        <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+        <button class="btn-small" type="submit">Run now</button>
+      </form>
+    </td>
+  </tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+<p class="note">Every job is safe to run again. The admin digest is only sent in its scheduled week, so Run now does not send it on other days.</p>
+{{end}}
+
+<h2>E-mail</h2>
+<p>{{if .Status.MailConfigured}}Mail server is set.{{else}}No mail server is set.{{end}} Waiting: {{.Status.Mail.Pending}}. Gave up: {{.Status.Mail.Failed}}. Sent: {{.Status.Mail.Sent}}.</p>
+
+<h3>Gave up</h3>
+<div class="tablewrap">
+<table>
+  <thead><tr><th scope="col">To</th><th scope="col">Subject</th><th scope="col">Attempts</th><th scope="col">Last error</th><th scope="col"><span class="sr">Action</span></th></tr></thead>
+  <tbody>
+  {{range .Status.Failed}}
+  <tr>
+    <td>{{.To}}</td><td>{{.Subject}}</td><td>{{.Attempts}}</td><td>{{.LastError}}</td>
+    <td>
+      <form method="post" action="/staff/admin/status/mail/{{.ID}}/retry">
+        <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+        <button class="btn-small" type="submit">Retry</button>
+      </form>
+    </td>
+  </tr>
+  {{else}}
+  <tr><td colspan="5">None.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+
+<h3>Waiting to be sent</h3>
+<div class="tablewrap">
+<table>
+  <thead><tr><th scope="col">To</th><th scope="col">Subject</th><th scope="col">Attempts</th><th scope="col">Next try</th><th scope="col">Last error</th></tr></thead>
+  <tbody>
+  {{range .Status.Pending}}
+  <tr><td>{{.To}}</td><td>{{.Subject}}</td><td>{{.Attempts}}</td><td>{{.Next}}</td><td>{{.LastError}}</td></tr>
+  {{else}}
+  <tr><td colspan="5">None.</td></tr>
+  {{end}}
+  </tbody>
+</table>
+</div>
+
+<h2>Gate sync</h2>
+<p>{{if not .Status.GateConfigured}}Gate sync is off.{{else if .Status.Sync.Never}}The gate has never synced.{{else}}Last synced {{.Status.Sync.At}}{{if .Status.Sync.Stale}} (out of date){{end}}.{{end}}</p>
+{{template "foot" .}}{{end}}

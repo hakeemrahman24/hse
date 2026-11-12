@@ -1,0 +1,44 @@
+{{/* Staff sign in: username and PIN, no widget (the PIN lockout protects the accounts). The
+date of birth form below is only shown again after a failed "My Entry Permit" lookup. */}}
+{{define "signin"}}{{template "head" .}}
+<section class="card narrow">
+  <h1>Sign in</h1>
+  {{template "signin_body" .}}
+</section>
+{{template "foot" .}}{{end}}
+
+{{define "signin_body"}}
+  {{if .SignIn.Err}}<p class="error" role="alert">{{.SignIn.Err}}</p>{{end}}
+  {{if eq .SignIn.Step 2}}{{template "signin_dob" .}}
+  {{else}}
+  <form method="post" action="/login" autocomplete="off">
+    <input type="hidden" name="next" value="{{.SignIn.Next}}">
+    <label class="field" for="si-user">
+      <span>Username</span>
+      <input id="si-user" name="username" type="text" value="{{.SignIn.Username}}" maxlength="60" required autocomplete="username" autocapitalize="none" spellcheck="false">
+    </label>
+    <label class="field" for="si-pin">
+      <span>PIN</span>
+      <input id="si-pin" name="pin" type="password" autocomplete="current-password" maxlength="8" required>
+    </label>
+    <button type="submit" class="btn">Sign in</button>
+  </form>
+  <p class="note"><a href="/">Back to home</a></p>
+  {{end}}
+{{end}}
+
+{{define "signin_dob"}}
+  {{if .My.Available}}
+  <form method="post" action="/my" autocomplete="off">
+    <input type="hidden" name="name" value="{{.SignIn.Name}}">
+    <p>My Layar Entry Permit for <strong>{{.SignIn.Name}}</strong>. <a href="/my/signin">Not you?</a></p>
+    <label class="field" for="si-dob">
+      <span>Date of birth (dd/mm/yyyy)</span>
+      <input data-date="dob" id="si-dob" name="dob" type="text" value="{{.My.DOB}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required autocomplete="off">
+    </label>
+    <div class="field">{{template "turnstile" .}}</div>
+    <button type="submit" class="btn">Show my permit</button>
+  </form>
+  {{else}}<p class="note">This lookup is not available right now. Please try again later.</p>{{end}}
+  <p class="note"><a href="/">Back to home</a></p>
+{{end}}

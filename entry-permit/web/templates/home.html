@@ -1,0 +1,183 @@
+{{/* Shared page frame: "head" and "foot" wrap every page. They live in this
+file because html/template keeps all templates in one namespace. */}}
+{{define "head"}}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · Entry Permit</title>
+<link rel="icon" type="image/png" href="/static/fire_lng.png">
+<link rel="apple-touch-icon" href="/static/fire_lng.png">
+<link rel="stylesheet" href="/static/app.css">
+{{if .OG.Title}}<meta property="og:type" content="website">
+<meta property="og:title" content="{{.OG.Title}}">
+<meta property="og:description" content="{{.OG.Description}}">
+<meta property="og:url" content="{{.OG.URL}}">
+<meta name="robots" content="noindex">
+{{end}}
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+  <a class="brand" href="/"><img class="brand-logo" src="/static/logo-white.png" alt="PT Layar Nusantara Gas" width="162" height="42"><span class="brand-name">Layar Entry Permit</span></a>
+  <nav aria-label="Main">
+    {{range .Links}}<a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}
+    {{if .My.SignedIn}}<form method="post" action="/my/logout" class="inline"><button type="submit" class="link">Sign out</button></form>{{end}}
+    {{if .User}}
+      <a href="/account">My account</a>
+      <form method="post" action="/logout" class="inline"><button type="submit" class="link">Sign out ({{.User.DisplayName}})</button></form>
+    {{end}}
+  </nav>
+</header>
+<div class="shell">
+<main>
+{{end}}
+
+{{define "foot"}}
+</main>
+</div>
+</div>
+<script src="/static/inputs.js" defer></script>
+</body>
+</html>
+{{end}}
+
+{{define "turnstile"}}{{if .My.Dev}}<input type="hidden" name="cf-turnstile-response" value="dev-pass">
+<p class="note">Development build: the security check is skipped.</p>{{else}}<div class="cf-turnstile" data-sitekey="{{.My.SiteKey}}"></div>
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{{end}}{{end}}
+
+{{/* The home page is four tiles and a gear (owner decision 2026-11-12, replacing the sign-in-only
+home of 2026-11-08). Staff tiles go to /login?next=..., which signs in and then opens the right
+page. The gear is the administrator sign in. */}}
+{{define "home"}}{{template "head" .}}
+<h1>Entry Permit</h1>
+<p class="sub">Choose what you need.</p>
+<div class="tiles home-tiles">
+  <a class="tile" href="/request">
+    <strong>Request Entry Permit</strong>
+    <span>Work permit or visitor permit. No sign in needed.</span>
+  </a>
+  <a class="tile" href="/my/signin">
+    <strong>My Entry Permit</strong>
+    <span>Working ticket, change my photo, download my card.</span>
+  </a>
+  <a class="tile" href="/login">
+    <strong>Staff sign in</strong>
+    <span>Reviewers and security personnel. Username and PIN.</span>
+  </a>
+</div>
+<p class="note"><a href="/login?next=admin">Settings</a> (administrators)</p>
+{{if .User}}<p class="note">You are signed in. <a href="/staff">Go to your page</a>.</p>{{end}}
+{{if .My.SignedIn}}<p class="note">You are signed in as a worker. <a href="/my">Go to my page</a>.</p>{{end}}
+{{template "foot" .}}{{end}}
+
+{{/* Worker sign in: searchable name, date of birth and the Cloudflare Turnstile check in one form. */}}
+{{define "my_signin"}}{{template "head" .}}
+<section class="card narrow">
+  <h1>My Entry Permit</h1>
+  <p class="sub">Type at least 4 letters of your name and pick it, then enter your date of birth.</p>
+  {{if .My.Available}}
+  <form method="post" action="/my" autocomplete="off">
+    <label class="field" for="mi-name">
+      <span>Employee name</span>
+      <input id="mi-name" name="name" type="text" minlength="4" maxlength="120" required
+             data-namesearch="/api/worker-names" data-min="4" autocomplete="off" spellcheck="false">
+    </label>
+    <label class="field" for="mi-dob">
+      <span>Date of birth (dd/mm/yyyy)</span>
+      <input data-date="dob" id="mi-dob" name="dob" type="text" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required autocomplete="off">
+    </label>
+    <div class="field">{{template "turnstile" .}}</div>
+    <button type="submit" class="btn">Show my permit</button>
+  </form>
+  {{else}}<p class="note">This lookup is not available right now. Please try again later.</p>{{end}}
+  <p class="note"><a href="/">Back to home</a></p>
+</section>
+<script src="/static/namesearch.js"></script>
+{{template "foot" .}}{{end}}
+
+{{define "request"}}{{template "head" .}}
+<section class="card narrow">
+  <h1>Request Entry Permit</h1>
+  <p class="sub">Choose the kind you need. You do not need to sign in.</p>
+  <div class="tiles">
+    <a class="tile" href="/permit">
+      <strong>Work Entry Permit</strong>
+      <span>For workers who will work on site. Needs a valid MCU.</span>
+    </a>
+    <a class="tile" href="/waiver">
+      <strong>Visitor Entry Permit</strong>
+      <span>For a short visit.</span>
+    </a>
+  </div>
+  <p class="note"><a href="/">Back to home</a></p>
+</section>
+{{template "foot" .}}{{end}}
+
+{{/* A worker's own page: a sidebar with three options. Plain anchors and CSS (no script): with
+one option chosen only that section shows, and without CSS support all three simply stack. */}}
+{{define "my"}}{{template "head" .}}
+<h1>My Layar Entry Permit</h1>
+<div class="side-content">
+    <section class="card" id="my-permit" aria-labelledby="h-my-permit">
+      <h2 id="h-my-permit">{{.My.Person.Name}}</h2>
+      <dl class="facts">
+        <dt>Company</dt><dd>{{if .My.Person.Company}}{{.My.Person.Company}}{{else}}Not recorded{{end}}</dd>
+        <dt>Position</dt><dd>{{if .My.Person.Position}}{{.My.Person.Position}}{{else}}Not recorded{{end}}</dd>
+        <dt>Medical checkup</dt><dd>{{if .My.Person.McuResult}}{{.My.Person.McuResult}}{{else}}No valid result on record{{end}}</dd>
+        {{if .My.Person.McuNote}}<dt>Medical note</dt><dd>{{.My.Person.McuNote}}</dd>{{end}}
+        <dt>MCU valid until</dt><dd>{{if .My.Person.McuValidUntil}}{{.My.Person.McuValidUntil}}{{else}}No valid MCU on record{{end}}</dd>
+      </dl>
+      <h3>My permits</h3>
+      {{if .My.Permits}}
+      <ul class="my-permits">
+      {{range .My.Permits}}
+        <li>{{if .LEP}}<strong>{{.LEP}}</strong>{{else}}<strong>Work Entry Permit</strong>{{end}}
+          <span class="state {{.Class}}">{{.Label}}</span>{{if .ValidUntil}} <span class="note">valid until {{.ValidUntil}}</span>{{end}}
+          {{if .CardURL}}<a class="btn-small" href="{{.CardURL}}">Open my permit</a>{{end}}
+          {{if and .CardURL $.My.PhotoToken}}<form method="post" action="/my/permit.pdf" class="inline">
+            <input type="hidden" name="token" value="{{$.My.PhotoToken}}"><input type="hidden" name="lep" value="{{.LEP}}">
+            <button type="submit" class="btn-small">Download PDF</button></form>{{end}}
+        </li>
+      {{end}}
+      </ul>
+      {{else}}<p class="note">No permit yet. <a href="/permit">Request a Work Entry Permit</a>.</p>{{end}}
+    </section>
+
+    {{if not .My.TicketPermits}}<section class="card" id="my-tickets" aria-labelledby="h-my-tickets">
+      <h2 id="h-my-tickets">My working tickets</h2>
+      <p class="note">No valid permit yet, so there is no working ticket to propose.</p>
+    </section>{{end}}
+
+    <section class="card" id="my-photos" aria-labelledby="h-my-photos">
+      <h2 id="h-my-photos">Photos</h2>
+      {{with .My.PhotoURL}}<p class="sub">My current photo</p>
+      <img class="my-photo-img" src="{{.}}" alt="My ID photo" width="150" height="200">
+      {{else}}<p class="note">No photo yet. Add one below; it will be on your permit card.</p>{{end}}
+      {{template "photo_form" .My.PhotoToken}}
+    </section>
+
+    <p class="note">You stay signed in on this device for a few hours, so you can open these options again without typing your name and date of birth. Press Sign out when you are done, especially on a shared phone.</p>
+</div>
+{{template "foot" .}}{{end}}
+
+{{define "photo_form"}}{{if .}}
+  <form method="post" action="/my/photo" enctype="multipart/form-data" class="photo-form">
+    <input type="hidden" name="token" value="{{.}}">
+    <label class="field" for="my-photo">
+      <span>Choose a new photo (JPG or PNG). It is sent as soon as you choose it, made small automatically, and replaces your old one.</span>
+      <input id="my-photo" name="photo" type="file" accept="image/jpeg,image/png" data-autosubmit required>
+    </label>
+    <noscript><button type="submit" class="btn">Upload</button></noscript>
+  </form>
+{{end}}{{end}}
+
+{{define "my_photo"}}{{template "head" .}}
+<h1>My photo</h1>
+<section class="card narrow">
+  {{if .Photo.Err}}<p class="error" role="alert">{{.Photo.Err}}</p>{{end}}
+  {{if .Photo.Done}}<p class="note" role="status">{{.Photo.Done}}</p>{{end}}
+  {{template "photo_form" .Photo.Token}}
+  <p><a class="btn-small" href="/my">Back to my page</a></p>
+</section>
+{{template "foot" .}}{{end}}

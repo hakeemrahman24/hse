@@ -1,0 +1,23 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "ayahaif-revampedgate",
+	"main": "src/index.js",
+	"compatibility_date": "2026-06-05",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+	"assets": {
+		"directory": "./public/"
+	},
+	"d1_databases": [
+		{
+			"binding": "gate_db",
+			"database_name": "entry-permit-gate",
+			"database_id": "71d93e3d-436d-4555-bc5e-50715afbef8b"
+		}
+	]
+}

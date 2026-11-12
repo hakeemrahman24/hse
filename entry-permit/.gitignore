@@ -1,0 +1,9 @@
+# Production data and secrets never go in git (see plan sections 3a and 6)
+/data/
+/reference/
+.env
+node_modules/
+.wrangler/
+.dev.vars
+db.env
+*.bak-*

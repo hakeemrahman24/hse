@@ -1,0 +1,30 @@
+{{define "card"}}{{template "head" .}}
+<h1>{{.Title}}</h1>
+<p class="lep-state"><span class="state {{.Card.StateClass}}">{{.Card.StateLabel}}</span></p>
+<article class="lepc card-{{.Card.Theme}}" aria-label="Entry permit card">
+  <div class="lepc-header"><img src="/static/fire_lng.png" alt="Layar Nusantara Gas"></div>
+  <div class="lepc-photo-wrap">
+    {{if .Card.PhotoURL}}<div class="lepc-photo"><img class="lepc-photo-img" src="{{.Card.PhotoURL}}" alt="ID photo"></div>
+    {{else}}<div class="lepc-photo-ph">No Photo</div>{{end}}
+  </div>
+  <div class="lepc-details">
+    <span class="lbl">Name:</span><span class="val">{{.Card.Name}}</span>
+    <span class="lbl">Company:</span><span class="val"><span class="val-main">{{.Card.Company}}</span>{{if .Card.Parent}}<span class="val-sub">({{.Card.Parent}})</span>{{end}}</span>
+    {{if .Card.Position}}<span class="lbl">Position:</span><span class="val">{{.Card.Position}}</span>{{end}}
+    <span class="lbl">Entry Permit:</span><span class="val">{{.Card.LEP}}</span>
+    <span class="lbl">Valid Until:</span><span class="val">{{.Card.ValidUntil}}</span>
+  </div>
+  <div class="lepc-footer">
+    <div class="lepc-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="lepc-qr">{{.Card.QR}}</div>
+  </div>
+</article>
+<script src="/static/cardfit.js" defer></script>
+<p class="note">Names are shortened on this page. The worker can open the working schedule with the permit number and date of birth.</p>
+<p><a class="btn" href="/ticket?lep={{.Card.LEP}}">Open working schedule</a></p>
+{{template "foot" .}}{{end}}
+
+{{define "card_missing"}}{{template "head" .}}
+<h1>{{.Title}}</h1>
+<section class="card"><p>No entry permit was found for this number.</p></section>
+{{template "foot" .}}{{end}}

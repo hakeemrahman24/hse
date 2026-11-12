@@ -1,0 +1,497 @@
+alias	canonical
+Op Crane	Crane Operator
+Opr Crane	Crane Operator
+Operator Crane	Crane Operator
+Crane Op	Crane Operator
+Crane Opr	Crane Operator
+Opr. Crane	Crane Operator
+Mobile Crane Operator	Crane Operator
+Tower Crane Operator	Crane Operator
+Crawler Crane Operator	Crane Operator
+Op. Crane Mobile	Crane Operator
+Operator Alat Angkat	Crane Operator
+Juru Crane	Crane Operator
+Crane Driver	Crane Operator
+Radiographer	NDT Radiographer
+RT Operator	NDT Radiographer
+Radiografi	NDT Radiographer
+NDT RT	NDT Radiographer
+X-Ray Operator	NDT Radiographer
+Gamma Ray Operator	NDT Radiographer
+NDT Technician RT	NDT Radiographer
+Juru Radiografi	NDT Radiographer
+Radiography Technician	NDT Radiographer
+RT Man	NDT Radiographer
+NDT Level II RT	NDT Radiographer
+NDT Level III	NDT Radiographer
+Film Interpreter	NDT Radiographer
+Safety Manager	HSE Manager
+Manager HSE	HSE Manager
+Manager K3	HSE Manager
+Site Safety Manager	HSE Manager
+Project HSE Manager	HSE Manager
+QHSE Manager	HSE Manager
+Head of HSE	HSE Manager
+HSE Head	HSE Manager
+Chief Safety Officer	HSE Manager
+ERT Leader	Emergency Response Team Leader
+ERT Coordinator	Emergency Response Team Leader
+Emergency Coordinator	Emergency Response Team Leader
+Fire Team Leader	Emergency Response Team Leader
+Rescue Team Leader	Emergency Response Team Leader
+ERO	Emergency Response Team Leader
+Emergency Response Officer	Emergency Response Team Leader
+ERT Supervisor	Emergency Response Team Leader
+Fire & Rescue Leader	Emergency Response Team Leader
+Koordinator Tanggap Darurat	Emergency Response Team Leader
+CS Entrant	Confined Space Entrant
+Confined Space Worker	Confined Space Entrant
+Pekerja Ruang Terbatas	Confined Space Entrant
+Vessel Entry Worker	Confined Space Entrant
+Tank Entrant	Confined Space Entrant
+Manhole Worker	Confined Space Entrant
+CS Entry Person	Confined Space Entrant
+Vessel Cleaner	Confined Space Entrant
+Tank Cleaner	Confined Space Entrant
+CS Attendant	Confined Space Attendant
+Standby Man	Confined Space Attendant
+Entry Attendant	Confined Space Attendant
+Hole Watch	Confined Space Attendant
+Confined Space Monitor	Confined Space Attendant
+CS Watchman	Confined Space Attendant
+Rescue Standby	Confined Space Attendant
+CS Supervisor External	Confined Space Attendant
+Juru Ledak	Blaster / Shot Firer
+Blasting Technician	Blaster / Shot Firer
+Explosive Technician	Blaster / Shot Firer
+Shot Firer	Blaster / Shot Firer
+Blasting Operator	Blaster / Shot Firer
+Demolition Blaster	Blaster / Shot Firer
+Explosive Handler	Blaster / Shot Firer
+Explosives Engineer	Blaster / Shot Firer
+Penyelam	Diver / Diving Supervisor
+Commercial Diver	Diver / Diving Supervisor
+Saturation Diver	Diver / Diving Supervisor
+SCUBA Diver	Diver / Diving Supervisor
+Diving Supervisor	Diver / Diving Supervisor
+Dive Supervisor	Diver / Diving Supervisor
+Diving Coordinator	Diver / Diving Supervisor
+Underwater Technician	Diver / Diving Supervisor
+Subsea Diver	Diver / Diving Supervisor
+Rigging	Rigger
+Rigger Man	Rigger
+Tukang Rigging	Rigger
+Juru Ikat	Rigger
+Lifting Rigger	Rigger
+Rigger Foreman	Rigger
+Senior Rigger	Rigger
+Rigger Kelas I	Rigger
+Rigger Kelas II	Rigger
+Rope Rigger	Rigger
+Steel Rigger	Rigger
+Rigger/Banksman	Rigger
+Lift Supervisor	Lifting Supervisor
+Lifting Supv	Lifting Supervisor
+Lifting Coordinator	Lifting Supervisor
+Rigging Supervisor	Lifting Supervisor
+Lifting Engineer	Lifting Supervisor
+Crane Coordinator	Lifting Supervisor
+Lifting Foreman	Lifting Supervisor
+Supv Lifting	Lifting Supervisor
+Banksman	Banksman / Signalman
+Signalman	Banksman / Signalman
+Signal Man	Banksman / Signalman
+Juru Isyarat	Banksman / Signalman
+Crane Signalman	Banksman / Signalman
+Lifting Signalman	Banksman / Signalman
+Slinger Banksman	Banksman / Signalman
+Scaffolding Worker	Scaffolder
+Tukang Scaffolding	Scaffolder
+Pekerja Scaffolding	Scaffolder
+Scaffolder Basic	Scaffolder
+Scaffolder Advanced	Scaffolder
+Scaffolding Man	Scaffolder
+Scaffold Builder	Scaffolder
+Scaffolding Crew	Scaffolder
+Scaffolding Installer	Scaffolder
+Scaffolding Erector	Scaffolder
+Perancah Worker	Scaffolder
+Tukang Perancah	Scaffolder
+Scaffolding Inspector	Scaffold Inspector
+Scaffold Supervisor	Scaffold Inspector
+Scaffolding Supv	Scaffold Inspector
+Scaffold Checker	Scaffold Inspector
+Perancah Inspector	Scaffold Inspector
+Scaffolding Foreman	Scaffold Inspector
+Scaffold Coordinator	Scaffold Inspector
+Supv Scaffolding	Scaffold Inspector
+Scaffold Engineer	Scaffold Inspector
+Juru Las	Welder
+Tukang Las	Welder
+Welder Structural	Welder
+Welder Pipeline	Welder
+Pipe Welder	Welder
+Welder TIG	Welder
+Welder MIG	Welder
+Welder SMAW	Welder
+Welder 6G	Welder
+Welder Certified	Welder
+Las Listrik	Welder
+Las GTAW	Welder
+Welder Pressure Vessel	Welder
+Welder Stainless	Welder
+Welder Carbon Steel	Welder
+NDT UT	NDT Technician
+NDT MT	NDT Technician
+NDT PT	NDT Technician
+Ultrasonic Technician	NDT Technician
+Magnetic Particle Inspector	NDT Technician
+Penetrant Test Tech	NDT Technician
+NDT Inspector	NDT Technician
+NDT Level II	NDT Technician
+Quality Inspector NDT	NDT Technician
+Inspection Technician	NDT Technician
+QC Inspector NDT	NDT Technician
+Electrical Technician	Electrician
+Teknisi Listrik	Electrician
+Tukang Listrik	Electrician
+Electrician Instrumentation	Electrician
+Electrical Installer	Electrician
+E&I Technician	Electrician
+Instrument Electrician	Electrician
+Electrical Man	Electrician
+Power Electrician	Electrician
+Control Electrician	Electrician
+Juru Listrik	Electrician
+Technician Electrical	Electrician
+Electrical Fitter	Electrician
+Tukang Insulasi	Insulation Technician
+Insulation Worker	Insulation Technician
+Insulation Installer	Insulation Technician
+Thermal Insulation	Insulation Technician
+Pipe Insulator	Insulation Technician
+Cladding Technician	Insulation Technician
+Insulation Fitter	Insulation Technician
+Heat Tracing Technician	Insulation Technician
+HEO	Heavy Equipment Operator
+Operator Alat Berat	Heavy Equipment Operator
+Op Alat Berat	Heavy Equipment Operator
+Opr Alat Berat	Heavy Equipment Operator
+Excavator Operator	Heavy Equipment Operator
+Operator Excavator	Heavy Equipment Operator
+Bulldozer Operator	Heavy Equipment Operator
+Operator Bulldozer	Heavy Equipment Operator
+Grader Operator	Heavy Equipment Operator
+Operator Grader	Heavy Equipment Operator
+Backhoe Operator	Heavy Equipment Operator
+Loader Operator	Heavy Equipment Operator
+Operator Loader	Heavy Equipment Operator
+Compactor Operator	Heavy Equipment Operator
+Dozer Operator	Heavy Equipment Operator
+Plant Operator	Heavy Equipment Operator
+Equipment Operator	Heavy Equipment Operator
+Op Forklift	Forklift Operator
+Opr Forklift	Forklift Operator
+Operator Forklift	Forklift Operator
+Forklift Driver	Forklift Operator
+Forklift Man	Forklift Operator
+Juru Forklift	Forklift Operator
+Reach Truck Operator	Forklift Operator
+Telehandler Operator	Forklift Operator
+Pump Operator	Pump / Compressor Operator
+Operator Pompa	Pump / Compressor Operator
+Compressor Operator	Pump / Compressor Operator
+Operator Compressor	Pump / Compressor Operator
+Op Pump	Pump / Compressor Operator
+Opr Pompa	Pump / Compressor Operator
+Pumping Operator	Pump / Compressor Operator
+High Pressure Pump Operator	Pump / Compressor Operator
+Safety Officer	HSE Officer
+HSE Man	HSE Officer
+Safety Man	HSE Officer
+K3 Officer	HSE Officer
+Petugas K3	HSE Officer
+HSE Rep	HSE Officer
+Safety Rep	HSE Officer
+Safety Coordinator	HSE Officer
+HSE Coordinator	HSE Officer
+Field HSE	HSE Officer
+Site Safety Officer	HSE Officer
+HSE Inspector	HSE Officer
+HSE Advisor	HSE Officer
+Safety Advisor	HSE Officer
+QHSE Officer	HSE Officer
+SHE Officer	HSE Officer
+EHS Officer	HSE Officer
+Ahli K3 Umum	HSE Officer
+Safety Supervisor	HSE Supervisor
+HSE Supv	HSE Supervisor
+Safety Supv	HSE Supervisor
+Senior HSE	HSE Supervisor
+Lead HSE	HSE Supervisor
+HSE Lead	HSE Supervisor
+Safety Lead	HSE Supervisor
+K3 Supervisor	HSE Supervisor
+HSE Foreman	HSE Supervisor
+Senior Safety Officer	HSE Supervisor
+QHSE Supervisor	HSE Supervisor
+Fireman	Fire Watcher
+Fire Watch	Fire Watcher
+Fire Guard	Fire Watcher
+Pemadam Kebakaran	Fire Watcher
+Fire Fighter	Fire Watcher
+Fire Marshal	Fire Watcher
+Petugas Pemadam	Fire Watcher
+Hot Work Fire Watch	Fire Watcher
+Welder Fire Watcher	Fire Watcher
+Security	Security Guard
+Satpam	Security Guard
+Guard	Security Guard
+Security Personnel	Security Guard
+Security Officer	Security Guard
+Gate Guard	Security Guard
+Security Man	Security Guard
+Petugas Keamanan	Security Guard
+Security Staff	Security Guard
+Site Security	Security Guard
+Security Patrol	Security Guard
+Security Post	Security Guard
+Security Supv	Security Supervisor
+Kepala Satpam	Security Supervisor
+Security Foreman	Security Supervisor
+Security Coordinator	Security Supervisor
+Security Lead	Security Supervisor
+Senior Security	Security Supervisor
+Security Team Leader	Security Supervisor
+Chief Security	Security Supervisor
+Paramedis	Paramedic
+Para Medic	Paramedic
+Medic	Paramedic
+Site Medic	Paramedic
+Field Medic	Paramedic
+Camp Medic	Paramedic
+Project Medic	Paramedic
+EMT	Paramedic
+Emergency Medical Technician	Paramedic
+First Aider	Paramedic
+Medical Attendant	Paramedic
+Tenaga Medis	Paramedic
+Perawat Lapangan	Paramedic
+Dokter	Doctor / Site Physician
+Site Doctor	Doctor / Site Physician
+Project Doctor	Doctor / Site Physician
+Company Doctor	Doctor / Site Physician
+Medical Officer	Doctor / Site Physician
+Physician	Doctor / Site Physician
+General Practitioner	Doctor / Site Physician
+GP	Doctor / Site Physician
+Dokter Umum	Doctor / Site Physician
+Dokter Perusahaan	Doctor / Site Physician
+Occupational Health Doctor	Doctor / Site Physician
+Dokter K3	Doctor / Site Physician
+Perawat	Nurse
+Site Nurse	Nurse
+Project Nurse	Nurse
+Camp Nurse	Nurse
+Medical Nurse	Nurse
+Occupational Nurse	Nurse
+Health Nurse	Nurse
+Juru Rawat	Nurse
+IRATA Technician	Rope Access Technician
+Rope Access	Rope Access Technician
+Abseiling Technician	Rope Access Technician
+Industrial Climber	Rope Access Technician
+WAH Technician	Rope Access Technician
+Rope Access Level 1	Rope Access Technician
+Rope Access Level 2	Rope Access Technician
+Rope Access Level 3	Rope Access Technician
+Suspended Access	Rope Access Technician
+Rope Access Inspector	Rope Access Technician
+Working at Height Worker	WAH Worker
+Pekerja Ketinggian	WAH Worker
+Elevated Work Worker	WAH Worker
+Height Worker	WAH Worker
+WAH Crew	WAH Worker
+Aerial Worker	WAH Worker
+Pekerja di Atas	WAH Worker
+Hazmat Worker	Hazmat Handler
+B3 Handler	Hazmat Handler
+Chemical Handler	Hazmat Handler
+Dangerous Goods Handler	Hazmat Handler
+Hazardous Material Worker	Hazmat Handler
+Chemical Technician	Hazmat Handler
+B3 Technician	Hazmat Handler
+Petugas B3	Hazmat Handler
+Offshore Personnel	Offshore Worker
+Platform Worker	Offshore Worker
+Rig Worker	Offshore Worker
+Offshore Crew	Offshore Worker
+Offshore Technician	Offshore Worker
+Offshore Hand	Offshore Worker
+Roughneck	Offshore Worker
+Roustabout	Offshore Worker
+Platform Crew	Offshore Worker
+Offshore Maintenance Worker	Offshore Worker
+Pekerja Lepas Pantai	Offshore Worker
+H2S Worker	H2S Trained Worker
+Sour Service Worker	H2S Trained Worker
+H2S Awareness	H2S Trained Worker
+Gas Safety Worker	H2S Trained Worker
+H2S Trained	H2S Trained Worker
+Sour Gas Worker	H2S Trained Worker
+Steel Erector	Structural Steel Erector
+Iron Worker	Structural Steel Erector
+Steel Worker	Structural Steel Erector
+Structural Erector	Structural Steel Erector
+Steel Fabricator Erector	Structural Steel Erector
+Tukang Besi Struktural	Structural Steel Erector
+Steel Fitter Erector	Structural Steel Erector
+Erector	Structural Steel Erector
+Tukang Kayu	Carpenter / Formwork
+Carpenter	Carpenter / Formwork
+Formwork Worker	Carpenter / Formwork
+Bekisting Worker	Carpenter / Formwork
+Tukang Bekisting	Carpenter / Formwork
+Shuttering Carpenter	Carpenter / Formwork
+Formwork Crew	Carpenter / Formwork
+Shuttering Worker	Carpenter / Formwork
+Tukang Cor	Concrete Worker
+Concrete Finisher	Concrete Worker
+Concrete Worker	Concrete Worker
+Concrete Crew	Concrete Worker
+Concreting Worker	Concrete Worker
+Cor Beton Worker	Concrete Worker
+Concrete Pump Operator	Concrete Worker
+Concrete Vibrator Operator	Concrete Worker
+Tukang Batu	Mason / Bricklayer
+Mason	Mason / Bricklayer
+Bricklayer	Mason / Bricklayer
+Stone Mason	Mason / Bricklayer
+Masonry Worker	Mason / Bricklayer
+Tukang Pasang Batu	Mason / Bricklayer
+Pipe Fitter	Pipefitter
+Tukang Pipa	Pipefitter
+Piping Fitter	Pipefitter
+Pipe Installer	Pipefitter
+Piping Crew	Pipefitter
+Pipe Man	Pipefitter
+Piping Technician	Pipefitter
+Pipe Erector	Pipefitter
+Pipe Fabricator	Pipefitter
+Fitter Pipa	Pipefitter
+Plumber Industrial	Pipefitter
+Fitter Mekanik	Mechanical Fitter
+Mechanic Fitter	Mechanical Fitter
+Mechanical Technician	Mechanical Fitter
+Maintenance Fitter	Mechanical Fitter
+Rotating Equipment Fitter	Mechanical Fitter
+Equipment Fitter	Mechanical Fitter
+Mekanik Fitter	Mechanical Fitter
+Mechanical Man	Mechanical Fitter
+Vessel Technician	Pressure Vessel Technician
+Tank Technician	Pressure Vessel Technician
+Pressure Vessel Tech	Pressure Vessel Technician
+Storage Tank Tech	Pressure Vessel Technician
+Vessel Inspector	Pressure Vessel Technician
+Tank Inspector	Pressure Vessel Technician
+Pressure Equipment Tech	Pressure Vessel Technician
+Vessel Maintenance Tech	Pressure Vessel Technician
+Instrumen Technician	Instrument Technician
+Instrumentation Tech	Instrument Technician
+Control Technician	Instrument Technician
+I&C Technician	Instrument Technician
+Instrument Man	Instrument Technician
+Instrument Fitter	Instrument Technician
+SCADA Technician	Instrument Technician
+DCS Technician	Instrument Technician
+PLC Technician	Instrument Technician
+Field Instrument Tech	Instrument Technician
+Electrical Instrument Tech	E&I Technician
+EI Technician	E&I Technician
+Electrical & Instrument	E&I Technician
+E and I Tech	E&I Technician
+Elec Instrument Technician	E&I Technician
+E/I Technician	E&I Technician
+Helper	General Worker / Helper
+Pekerja Umum	General Worker / Helper
+Pekerja Harian	General Worker / Helper
+General Labor	General Worker / Helper
+Labor	General Worker / Helper
+Labourer	General Worker / Helper
+Pembantu Tukang	General Worker / Helper
+Asisten Tukang	General Worker / Helper
+Handyman	General Worker / Helper
+General Hand	General Worker / Helper
+Site Helper	General Worker / Helper
+Offsider	General Worker / Helper
+Construction Helper	General Worker / Helper
+Project Helper	General Worker / Helper
+Tukang Bantu	General Worker / Helper
+Pengemudi	Driver
+Driver Proyek	Driver
+Site Driver	Driver
+Project Driver	Driver
+Vehicle Driver	Driver
+Car Driver	Driver
+Bus Driver	Driver
+Truck Driver	Driver
+Driver Kendaraan	Driver
+Driver Operasional	Driver
+Transport Driver	Driver
+Sopir	Driver
+Sopir Proyek	Driver
+Juru Ukur	Surveyor
+Survey Tech	Surveyor
+Land Surveyor	Surveyor
+Survey Crew	Surveyor
+Geodetic Surveyor	Surveyor
+Survey Assistant	Surveyor
+Topographic Surveyor	Surveyor
+Survey Man	Surveyor
+Dokumen Kontrol	Document Controller
+Doc Control	Document Controller
+Document Control	Document Controller
+DC Officer	Document Controller
+Document Officer	Document Controller
+Document Admin	Document Controller
+Document Specialist	Document Controller
+Records Controller	Document Controller
+Administration	Admin / Site Admin
+Site Administration	Admin / Site Admin
+Project Admin	Admin / Site Admin
+Admin Staff	Admin / Site Admin
+Office Admin	Admin / Site Admin
+Admin Officer	Admin / Site Admin
+Clerk	Admin / Site Admin
+Site Clerk	Admin / Site Admin
+Project Clerk	Admin / Site Admin
+Admin Proyek	Admin / Site Admin
+Store Keeper	Storekeeper
+Gudang	Storekeeper
+Warehouse Man	Storekeeper
+Storeroom Keeper	Storekeeper
+Material Controller	Storekeeper
+Inventory Clerk	Storekeeper
+Store Man	Storekeeper
+Logistic Staff	Storekeeper
+Warehouse Staff	Storekeeper
+Material Man	Storekeeper
+Keeper Gudang	Storekeeper
+Stock Controller	Storekeeper
+Juru Masak	Cook / Catering Staff
+Cook	Cook / Catering Staff
+Chef	Cook / Catering Staff
+Catering	Cook / Catering Staff
+Catering Staff	Cook / Catering Staff
+Kitchen Staff	Cook / Catering Staff
+Camp Cook	Cook / Catering Staff
+Mess Cook	Cook / Catering Staff
+Food Handler	Cook / Catering Staff
+Cleaning Service	Cleaner / Housekeeping
+Housekeeping	Cleaner / Housekeeping
+Janitor	Cleaner / Housekeeping
+Petugas Kebersihan	Cleaner / Housekeeping
+Sanitation Worker	Cleaner / Housekeeping
+Camp Cleaner	Cleaner / Housekeeping
+Site Cleaner	Cleaner / Housekeeping
+OB	Cleaner / Housekeeping

@@ -1,0 +1,87 @@
+{{define "review"}}{{template "head" .}}
+<h1>{{.Title}}</h1>
+{{if .User}}<p class="sub">Signed in as {{.User.DisplayName}}. Open the documents, then approve or reject. A rejection needs a note.</p>{{end}}
+{{if .Review.Flash}}<p class="note" role="status">{{.Review.Flash}}</p>{{end}}
+{{if .Review.Err}}<p class="error" role="alert">{{.Review.Err}}</p>{{end}}
+
+<section class="card" aria-labelledby="pending-h">
+  <h2 id="pending-h">Waiting for approval</h2>
+  {{if .Review.Pending}}<ul class="pending">{{range .Review.Pending}}<li>{{.Label}}{{if .Own}} (you){{end}}: {{.Count}}</li>{{end}}</ul>
+  {{else}}<p>No approvals are waiting.</p>{{end}}
+</section>
+
+{{if and (not .Review.Permits) (not .Review.Waivers)}}
+<section class="card"><p>Nothing is waiting for you.</p></section>
+{{end}}
+
+{{if .Review.Permits}}<h2>Work permits</h2>{{end}}
+{{range .Review.Permits}}
+<section class="card">
+  <h3>{{.WorkerName}} <small>{{.RequestID}}</small></h3>
+  <dl class="facts">
+    <dt>Company</dt><dd>{{.Company}}</dd>
+    <dt>Position</dt><dd>{{.Position}}</dd>
+    <dt>Nationality</dt><dd>{{.Nationality}}</dd>
+    <dt>Work location</dt><dd>{{.WorkLocation}}</dd>
+    <dt>MCU</dt><dd>{{.McuResult}}, valid until {{.McuValidUntil}}</dd>
+    <dt>Requested by</dt><dd>{{.RequesterName}} ({{.RequesterEmail}}) on {{.CreatedAt}}</dd>
+  </dl>
+  {{template "review_steps" .Steps}}
+  {{template "review_docs" .Docs}}
+  <form method="post" action="/staff/review">
+    <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+    <input type="hidden" name="stage" value="{{$.Review.Stage}}">
+    <input type="hidden" name="subject" value="{{.RequestID}}">
+    <label class="field" for="note-{{.RequestID}}"><span>Note (needed to reject)</span>
+      <textarea id="note-{{.RequestID}}" name="note" rows="2" maxlength="500"></textarea></label>
+    <button type="submit" class="btn" name="action" value="approve">Approve</button>
+    <button type="submit" class="btn-small-quiet" name="action" value="reject">Reject</button>
+  </form>
+</section>
+{{end}}
+
+{{if .Review.Waivers}}<h2>Visitor waivers</h2>{{end}}
+{{range .Review.Waivers}}
+<section class="card">
+  <h3>{{.Name}} <small>{{.RequestID}}</small></h3>
+  <dl class="facts">
+    <dt>Company</dt><dd>{{.Company}}</dd>
+    <dt>Position</dt><dd>{{.Position}}, {{.Department}}</dd>
+    <dt>Nationality</dt><dd>{{.Nationality}}</dd>
+    <dt>Visit</dt><dd>{{.VisitFrom}} to {{.VisitTo}} ({{.Days}} day{{if ne .Days 1}}s{{end}}) at {{.VisitLocation}}</dd>
+    <dt>Purpose</dt><dd>{{.Purpose}}</dd>
+    <dt>Identified risk</dt><dd>{{.Risk}}</dd>
+    <dt>Precaution</dt><dd>{{.Precaution}}</dd>
+    <dt>How it will be prevented</dt><dd>{{.Prevent}}</dd>
+    {{if .Medicine}}<dt>Medicines</dt><dd>{{.Medicine}}{{if .MedicineNotes}}. Notes: {{.MedicineNotes}}{{end}}</dd>{{end}}
+    {{if .Recorded}}
+    <dt>High risk</dt><dd>{{if .HighRisk}}<span class="state state-bad">Yes</span>{{else}}<span class="state state-valid">No</span>{{end}}</dd>
+    <dt>Risk exposure (Yes)</dt><dd>{{with .RiskYes}}{{range $i, $x := .}}{{if $i}}; {{end}}{{$x}}{{end}}{{else}}None{{end}}</dd>
+    <dt>Health declaration (Yes)</dt><dd>{{with .HealthYes}}{{range $i, $x := .}}{{if $i}}; {{end}}{{$x}}{{end}}{{else}}None{{end}}</dd>
+    {{else}}<dt>Risk and health answers</dt><dd class="note">Not recorded (an older request).</dd>{{end}}
+    <dt>Requested by</dt><dd>{{.RequesterName}} ({{.RequesterEmail}}) on {{.CreatedAt}}</dd>
+  </dl>
+  {{template "review_steps" .Steps}}
+  {{template "review_docs" .Docs}}
+  <form method="post" action="/staff/review">
+    <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+    <input type="hidden" name="stage" value="{{$.Review.Stage}}">
+    <input type="hidden" name="subject" value="{{.RequestID}}">
+    <label class="field" for="note-{{.RequestID}}"><span>Note (needed to reject)</span>
+      <textarea id="note-{{.RequestID}}" name="note" rows="2" maxlength="500"></textarea></label>
+    <button type="submit" class="btn" name="action" value="approve">Approve</button>
+    <button type="submit" class="btn-small-quiet" name="action" value="reject">Reject</button>
+  </form>
+</section>
+{{end}}
+{{template "foot" .}}{{end}}
+
+{{define "review_steps"}}{{if .}}
+<h4>Earlier decisions</h4>
+<ul>{{range .}}<li>{{.Stage}}: {{.Decision}} by {{.Reviewer}} on {{.At}}{{if .Note}}. “{{.Note}}”{{end}}</li>{{end}}</ul>
+{{end}}{{end}}
+
+{{define "review_docs"}}{{if .}}
+<h4>Documents</h4>
+<ul>{{range .}}<li><a href="/staff/file?path={{.Path}}" target="_blank" rel="noopener noreferrer">{{.Label}}</a></li>{{end}}</ul>
+{{else}}<p class="note">No documents were uploaded.</p>{{end}}{{end}}

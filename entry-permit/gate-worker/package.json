@@ -1,0 +1,17 @@
+{
+  "name": "entry-permit-gate",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "d1:schema": "wrangler d1 execute entry-permit-gate --remote --file=schema.sql",
+    "d1:migrate-photo": "wrangler d1 execute entry-permit-gate --remote --command=\"ALTER TABLE permits ADD COLUMN id_photo_url TEXT;\"",
+    "start": "wrangler dev",
+    "test": "node --test test/*.test.js"
+  },
+  "devDependencies": {
+    "wrangler": "^4.98.0"
+  },
+  "type": "module"
+}

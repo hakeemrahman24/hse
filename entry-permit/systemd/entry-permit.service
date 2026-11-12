@@ -1,0 +1,13 @@
+[Unit]
+Description=entry-permit
+After=network.target mariadb.service
+
+[Service]
+WorkingDirectory=%h/projects/entry-permit
+ExecStart=%h/projects/entry-permit/entry-permit
+EnvironmentFile=%h/projects/entry-permit/.env
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

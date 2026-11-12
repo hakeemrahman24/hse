@@ -1,0 +1,69 @@
+{{define "ticket"}}{{template "head" .}}
+<h1>Working schedule</h1>
+{{if .Ticket.Open}}{{template "ticket_open" .}}{{else}}
+<p class="sub">Enter your permit number and your date of birth to see your tickets and propose the next one.</p>
+<div class="card narrow">
+  {{if .Ticket.Err}}<p class="error" role="alert">{{.Ticket.Err}}</p>{{end}}
+  {{if .Ticket.Available}}
+  <form method="post" action="/ticket" autocomplete="off">
+    <label class="field" for="t-lep"><span>Permit number (LEP-xxxxx, or WVR-xxxxx for a visitor)</span>
+      <input id="t-lep" name="lep" type="text" value="{{.Ticket.LEP}}" maxlength="12" required autocapitalize="characters" spellcheck="false"></label>
+    <label class="field" for="t-dob"><span>Date of birth (ddmmyyyy, for example 05031988)</span>
+      <input id="t-dob" name="dob" type="text" inputmode="numeric" maxlength="10" placeholder="ddmmyyyy" required autocomplete="off"></label>
+    <div class="field">{{template "turnstile" .}}</div>
+    <button type="submit" class="btn">Open my schedule</button>
+  </form>
+  {{else}}<p class="note">This page is not available right now. Please try again later.</p>{{end}}
+</div>
+{{end}}
+<p><a href="/my">Back</a></p>
+{{template "foot" .}}{{end}}
+
+{{define "ticket_open"}}{{with .Ticket}}
+<section class="card narrow">
+  {{if .Err}}<p class="error" role="alert">{{.Err}}</p>{{end}}
+  {{if .Notice}}<p class="note" role="status">{{.Notice}}</p>{{end}}
+  <h2>{{.Name}}</h2>
+  <dl class="facts">
+    <dt>Permit</dt><dd>{{.LEP}}</dd>
+    {{if .Waiver}}<dt>Visit</dt><dd>{{.Visit}}</dd>{{end}}
+  </dl>
+
+  <h3>Tickets</h3>
+  {{if .Tickets}}
+  <div class="table-wrap"><table>
+    <thead><tr><th>Ticket</th><th>Arrival</th><th>Departure</th><th>Days</th><th>Location</th><th>Status</th><th>Pattern</th></tr></thead>
+    <tbody>{{range .Tickets}}<tr><td>{{.ID}}</td><td>{{.Arrival}}</td><td>{{.Departure}}</td><td>{{.Days}}</td><td>{{.Location}}</td><td>{{.Status}}</td><td>{{.Pattern}}</td></tr>{{end}}</tbody>
+  </table></div>
+  {{else}}<p class="note">No tickets yet.</p>{{end}}
+
+  {{if .Waiver}}<p class="note">A visitor's ticket is made with the waiver and cannot be changed here.</p>{{end}}
+  {{if .CanPropose}}
+  <h3>Propose the next ticket</h3>
+  <form method="post" action="/ticket/propose" enctype="multipart/form-data" autocomplete="off">
+    <input type="hidden" name="token" value="{{.Token}}">
+    <label class="field" for="t-arr"><span>Planned arrival, dd/mm/yyyy</span>
+      <input data-date id="t-arr" name="arrival" type="text" value="{{index .Vals "arrival"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+    <label class="field" for="t-dep"><span>Planned departure, dd/mm/yyyy</span>
+      <input data-date id="t-dep" name="departure" type="text" value="{{index .Vals "departure"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+    <label class="field"><span><input type="checkbox" name="fatigue_consent"{{if index .Vals "fatigue_consent"}} checked{{end}}> I agree to take part in the fatigue survey. This is required when the ticket goes past the normal rotation or follows a short break.</span></label>
+    {{if .FitNote}}
+    <h4>Your MCU result is "Fit with note"</h4>
+    <label class="field"><span><input type="checkbox" name="mcu_note_agreement"{{if index .Vals "mcu_note_agreement"}} checked{{end}}> I have read the MCU note disclaimer and I will tell the site clinic about any change in my health.</span></label>
+    <label class="field" for="t-med"><span>Do you take personal medication?</span>
+      <select id="t-med" name="medication_answer">
+        {{$m := index .Vals "medication_answer"}}<option value="">Choose…</option>
+        <option value="N"{{if eq $m "N"}} selected{{end}}>No</option>
+        <option value="Y"{{if eq $m "Y"}} selected{{end}}>Yes</option>
+      </select></label>
+    <label class="field" for="t-meddet"><span>Medication details (if yes)</span>
+      <input id="t-meddet" name="medication_details" type="text" value="{{index .Vals "medication_details"}}" maxlength="255"></label>
+    <label class="field" for="t-medphoto"><span>Photo of the medicine (if yes)</span>
+      <input id="t-medphoto" name="medicine_photo" type="file" accept="image/jpeg,image/png"></label>
+    {{end}}
+    <button type="submit" class="btn">Send the ticket</button>
+  </form>
+  {{end}}
+  <p><a class="btn-small-quiet" href="/ticket">Open another permit</a></p>
+</section>
+{{end}}{{end}}

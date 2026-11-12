@@ -1,0 +1,39 @@
+keywords	canonical	risk_tier
+crane, crane op, tower crane, mobile crane, crawler crane, overhead crane, juru crane	Crane Operator	CRITICAL
+rigg, rigger, juru ikat, lifting rigger, tukang rigging	Rigger	HIGH
+banksman, signalman, flagman, juru isyarat, slinger	Banksman / Signalman	HIGH
+lifting supv, lift supervisor, lifting coordinator, lifting foreman	Lifting Supervisor	HIGH
+scaffold, perancah, tukang perancah, scaffolding	Scaffolder	HIGH
+weld, las, juru las, tukang las, welder, pipe welder, las listrik	Welder	HIGH
+radiograf, x-ray, xray, gamma ray, rt operator, film interpret, juru radiografi	NDT Radiographer	CRITICAL
+radiasi, bapeten, sumber radiasi, zat radioaktif	NDT Radiographer	CRITICAL
+ndt, ultrasonic, magnetic particle, penetrant, ut tech, mt tech, pt tech	NDT Technician	HIGH
+electr, listrik, juru listrik, tukang listrik, teknisi listrik, electrical fitter	Electrician	HIGH
+instrument, instrumen, i&c, scada, dcs, plc, field instrument	Instrument Technician	HIGH
+e&i, ei tech, e and i, elec instrument	E&I Technician	HIGH
+alat berat, heo, excavat, bulldoz, grader, backhoe, loader, compactor, dozer, plant operator	Heavy Equipment Operator	HIGH
+forklift, reach truck, telehandler	Forklift Operator	HIGH
+pump, pompa, compressor, high pressure pump	Pump / Compressor Operator	HIGH
+safety, hse, k3, she, ehs, qhse, ahli k3, petugas k3, safety officer, safety man	HSE Officer	HIGH
+ert, emergency response, tanggap darurat, fire team, rescue team, erо	ERT Leader	CRITICAL
+fire watch, fire watcher, fireman, fire guard, pemadam, fire marshal	Fire Watcher	HIGH
+security, satpam, guard, petugas keamanan	Security Guard	MEDIUM
+medic, paramedis, paramedic, emt, first aid, tenaga medis, perawat lapangan, paramedik	Paramedic	HIGH
+dokter, doctor, physician, medical officer, dokter k3, dokter perusahaan	Doctor / Site Physician	HIGH
+perawat, nurse, juru rawat, camp nurse, site nurse	Nurse	MEDIUM
+confined, ruang terbatas, vessel entry, tank entry, manhole, tank cleaner, vessel cleaner	Confined Space Entrant	CRITICAL
+standby man, hole watch, cs attendant, entry attendant, confined space monitor	Confined Space Attendant	CRITICAL
+irata, rope access, abseiling, industrial climber, suspended access	Rope Access Technician	HIGH
+height, ketinggian, elevated work, wah, pekerja di atas	WAH Worker	HIGH
+ledak, blast, explosive, shot firer, juru ledak, blasting	Blaster / Shot Firer	CRITICAL
+hazmat, b3, chemical handler, dangerous goods, bahan berbahaya, bahan kimia	Hazmat Handler	HIGH
+offshore, platform, rig, bosiet, roughneck, roustabout, lepas pantai	Offshore Worker	HIGH
+diver, diving, penyelam, subsea, saturation diver, scuba	Diver / Diving Supervisor	CRITICAL
+h2s, sour gas, sour service, hidrogen sulfida	H2S Trained Worker	HIGH
+pipe, pipa, piping, pipefitter, fitter pipa, plumber industrial	Pipefitter	HIGH
+mechanical fitter, mekanik fitter, rotating equipment, maintenance fitter	Mechanical Fitter	HIGH
+vessel, bejana, pressure vessel, storage tank, tangki bertekanan	Pressure Vessel Technician	HIGH
+steel erector, iron worker, structural erector, tukang besi struktural	Structural Steel Erector	HIGH
+insul, insulasi, insulation, cladding, heat tracing	Insulation Technician	HIGH
+helper, pekerja umum, tukang bantu, general labor, labour, buruh	General Worker / Helper	LOW
+driver, sopir, pengemudi, transport	Driver	LOW

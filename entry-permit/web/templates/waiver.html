@@ -1,0 +1,175 @@
+{{define "waiver"}}{{template "head" .}}
+<h1>Visitor Entry Permit</h1>
+<p class="sub">For a short visit, also called a visiting waiver. Fill in the visitor's details and documents. The request goes to the clinic doctor first, then to the reviewers.</p>
+<div class="card wide-cards">
+  {{if .Waiver.Err}}<p class="error" role="alert">{{.Waiver.Err}}</p>{{end}}
+  {{if .Waiver.Available}}{{with .Waiver}}
+  <form method="post" action="/waiver" enctype="multipart/form-data" autocomplete="off">
+  {{$w := .}}
+  <section class="fcard">
+    <h2 class="fcard-title"><span class="step">1</span>Who is asking</h2>
+    <div class="form-grid">
+    <label class="field" for="w-rname"><span>Your name (the person making this request)</span>
+      <input id="w-rname" name="requester_name" type="text" value="{{index .Vals "requester_name"}}" maxlength="120" required autocomplete="name"></label>
+    <label class="field" for="w-rmail"><span>Your email (the decision is sent here)</span>
+      <input id="w-rmail" name="requester_email" type="email" value="{{index .Vals "requester_email"}}" maxlength="160" required autocomplete="email"></label>
+    <label class="field" for="w-smail"><span>Spare email (optional, a second address that gets the decision too)</span>
+      <input id="w-smail" name="spare_email" type="email" value="{{index .Vals "spare_email"}}" maxlength="160" autocomplete="off"></label>
+    <label class="field" for="w-phone"><span>Visitor's phone number</span>
+      <input id="w-phone" name="phone" type="tel" value="{{index .Vals "phone"}}" maxlength="20" required placeholder="081234567890"></label>
+
+    </div>
+  </section>
+  <section class="fcard">
+    <h2 class="fcard-title"><span class="step">2</span>The visit</h2>
+    <div class="form-grid">
+    <label class="field" for="w-type"><span>Visitor from</span>
+      <select id="w-type" name="applicant_type" required>
+        {{$t := index .Vals "applicant_type"}}
+        {{range .Types}}<option value="{{.}}"{{if eq . $t}} selected{{end}}>{{if eq . "Government"}}A Government office{{else}}A company{{end}}</option>{{end}}
+      </select></label>
+    <label class="field" for="w-company"><span>Company (a Government visitor picks a Government office)</span>
+      <select id="w-company" name="company_id" required>
+        <option value="">Choose…</option>
+        {{$c := index .Vals "company_id"}}{{range .Companies}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) $c}} selected{{end}}>{{.Name}}{{if .Gov}} (Government){{end}}</option>{{end}}
+      </select></label>
+    <label class="field" for="w-from"><span>Visit from, dd/mm/yyyy</span>
+      <input data-date id="w-from" name="from" type="text" value="{{index .Vals "from"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+    <label class="field" for="w-to"><span>Visit until, dd/mm/yyyy</span>
+      <input data-date id="w-to" name="to" type="text" value="{{index .Vals "to"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+    <label class="field" for="w-loc"><span>Visit location</span>
+      <input id="w-loc" name="visit_location" type="text" value="{{index .Vals "visit_location"}}" maxlength="120" required></label>
+    <label class="field field-wide" for="w-purpose"><span>Purpose of the visit</span>
+      <input id="w-purpose" name="purpose" type="text" value="{{index .Vals "purpose"}}" maxlength="255" required></label>
+
+    </div>
+  </section>
+  <section class="fcard">
+    <h2 class="fcard-title"><span class="step">3</span>The visitor</h2>
+    <div class="form-grid">
+    <label class="field" for="w-name"><span>Visitor's full name</span>
+      <input id="w-name" name="name" type="text" value="{{index .Vals "name"}}" maxlength="120" required></label>
+    <label class="field" for="w-gender"><span>Gender</span>
+      <select id="w-gender" name="gender" required>
+        {{$g := index .Vals "gender"}}<option value="">Choose…</option>
+        {{range .Genders}}<option value="{{.}}"{{if eq . $g}} selected{{end}}>{{.}}</option>{{end}}
+      </select></label>
+    <label class="field" for="w-dob"><span>Date of birth, dd/mm/yyyy</span>
+      <input data-date="dob" id="w-dob" name="dob" type="text" value="{{index .Vals "dob"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+    {{if .Nationalities}}
+    <label class="field" for="w-nat"><span>Nationality</span>
+      <select id="w-nat" name="nationality" required>
+        {{$n := index .Vals "nationality"}}<option value="">Choose…</option>
+        {{range .Nationalities}}<option value="{{.}}"{{if eq . $n}} selected{{end}}>{{.}}</option>{{end}}
+      </select></label>
+    {{else}}
+    <label class="field" for="w-nat"><span>Nationality</span>
+      <input id="w-nat" name="nationality" type="text" value="{{index .Vals "nationality"}}" maxlength="60" required></label>
+    {{end}}
+    <label class="field" for="w-nik"><span id="w-nik-label">NIK, or passport number for a foreign visitor</span>
+      <input id="w-nik" name="nik" type="text" data-id-by="w-nat" value="{{index .Vals "nik"}}" maxlength="24" required></label>
+    <label class="field" for="w-pos"><span>Position</span>
+      <input id="w-pos" name="position" type="text" value="{{index .Vals "position"}}" maxlength="120" required></label>
+    <label class="field" for="w-dept"><span>Department</span>
+      <input id="w-dept" name="department" type="text" value="{{index .Vals "department"}}" maxlength="120" required></label>
+
+    </div>
+  </section>
+  <section class="fcard">
+    <h2 class="fcard-title"><span class="step">4</span>Reason of deviation</h2>
+    <div class="form-grid">
+    <div class="field field-wide callout"><span>Type of non-conformance</span><p>{{.Nonconformance}}</p></div>
+    <label class="field field-wide" for="w-risk"><span>Identified potential risk</span>
+      <textarea id="w-risk" name="risk" rows="2" maxlength="500" required>{{index .Vals "risk"}}</textarea></label>
+    <label class="field" for="w-prec"><span>Precaution</span>
+      <textarea id="w-prec" name="precaution" rows="2" maxlength="500" required>{{index .Vals "precaution"}}</textarea></label>
+    <label class="field" for="w-prev"><span>How to prevent the non-conformance</span>
+      <textarea id="w-prev" name="prevent" rows="2" maxlength="500" required>{{index .Vals "prevent"}}</textarea></label>
+    </div>
+  </section>
+  <section class="fcard">
+    <h2 class="fcard-title"><span class="step">5</span>Medicines and supplements</h2>
+    <div class="form-grid">
+    <label class="field field-wide check"><input type="checkbox" name="takes_medicine"{{if index .Vals "takes_medicine"}} checked{{end}}> The visitor will take medicines or supplements during this visit (then fill in at least the first line)</label>
+    <label class="field" for="w-med1"><span>Medicine name (1)</span><input id="w-med1" name="medicine1" type="text" value="{{index .Vals "medicine1"}}" maxlength="120"></label>
+    <label class="field" for="w-dose1"><span>Dosage, mg (1)</span><input id="w-dose1" name="dosage1" type="text" value="{{index .Vals "dosage1"}}" maxlength="120"></label>
+    <label class="field" for="w-med2"><span>Medicine name (2)</span><input id="w-med2" name="medicine2" type="text" value="{{index .Vals "medicine2"}}" maxlength="120"></label>
+    <label class="field" for="w-dose2"><span>Dosage, mg (2)</span><input id="w-dose2" name="dosage2" type="text" value="{{index .Vals "dosage2"}}" maxlength="120"></label>
+    <label class="field" for="w-med3"><span>Medicine name (3)</span><input id="w-med3" name="medicine3" type="text" value="{{index .Vals "medicine3"}}" maxlength="120"></label>
+    <label class="field" for="w-dose3"><span>Dosage, mg (3)</span><input id="w-dose3" name="dosage3" type="text" value="{{index .Vals "dosage3"}}" maxlength="120"></label>
+    <label class="field field-wide" for="w-mnotes"><span>Your own notes (optional): how often, when, prescribing doctor</span>
+      <textarea id="w-mnotes" name="medicine_notes" rows="2" maxlength="500">{{index .Vals "medicine_notes"}}</textarea></label>
+    </div>
+  </section>
+  <section class="fcard">
+    <h2 class="fcard-title"><span class="step">6</span>Risk exposure</h2>
+    <p class="sub">Answer each item honestly: No, N/A or Yes.</p>
+    <div class="form-grid">
+    {{range .Risk}}{{$val := index $w.Vals (printf "risk_%s" .Key)}}
+    <div class="qrow"><div class="qtext"><strong>{{.Label}}</strong>{{if .Hint}}<small>{{.Hint}}</small>{{end}}</div>
+        <div class="yn" role="radiogroup" aria-label="{{.Label}}">
+          <label><input type="radio" name="risk_{{.Key}}" value="No"{{if or (eq $val "") (eq $val "No")}} checked{{end}}> No</label>
+          <label><input type="radio" name="risk_{{.Key}}" value="N/A"{{if eq $val "N/A"}} checked{{end}}> N/A</label>
+          <label><input type="radio" name="risk_{{.Key}}" value="Yes"{{if eq $val "Yes"}} checked{{end}}> Yes</label>
+        </div></div>
+      {{end}}
+    </div>
+  </section>
+  <section class="fcard">
+    <h2 class="fcard-title"><span class="step">7</span>Health declaration</h2>
+    <p class="sub">To make sure you are in an acceptable physical and mental state for the visit, declare your health by answering each item.</p>
+    <div class="form-grid">
+      {{range .Health}}{{$val := index $w.Vals (printf "health_%s" .Key)}}
+      <div class="qrow"><div class="qtext"><strong>{{.Label}}</strong>{{if .Hint}}<small>{{.Hint}}</small>{{end}}</div>
+        <div class="yn" role="radiogroup" aria-label="{{.Label}}">
+          <label><input type="radio" name="health_{{.Key}}" value="No"{{if or (eq $val "") (eq $val "No")}} checked{{end}}> No</label>
+          <label><input type="radio" name="health_{{.Key}}" value="N/A"{{if eq $val "N/A"}} checked{{end}}> N/A</label>
+          <label><input type="radio" name="health_{{.Key}}" value="Yes"{{if eq $val "Yes"}} checked{{end}}> Yes</label>
+        </div></div>
+      {{end}}
+    </div>
+  </section>
+  <section class="fcard">
+    <h2 class="fcard-title"><span class="step">8</span>Documents and declaration</h2>
+    <p class="sub">PDF, JPG or PNG files.</p>
+    <div class="form-grid">
+    <label class="field" for="w-iddoc"><span>ID card (KTP), or the passport for a foreign visitor</span>
+      <input id="w-iddoc" name="id_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
+    <label class="field" for="w-idphoto"><span>ID photo</span>
+      <input id="w-idphoto" name="id_photo" type="file" accept="image/jpeg,image/png" required></label>
+    <label class="field" for="w-letter"><span>Appointment letter</span>
+      <input id="w-letter" name="letter_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
+
+    <h3>Foreign visitors only</h3>
+    <label class="field" for="w-ppuntil"><span>Passport valid until, dd/mm/yyyy</span>
+      <input data-date id="w-ppuntil" name="passport_until" type="text" value="{{index .Vals "passport_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10"></label>
+    <label class="field" for="w-vuntil"><span>ITAS or e-visa valid until, dd/mm/yyyy</span>
+      <input data-date id="w-vuntil" name="visa_until" type="text" value="{{index .Vals "visa_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10"></label>
+    <label class="field" for="w-vdoc"><span>ITAS or e-visa document</span>
+      <input id="w-vdoc" name="visa_doc" type="file" accept="application/pdf,image/jpeg,image/png"></label>
+
+    <label class="field field-wide"><span><input type="checkbox" name="declaration"{{if index .Vals "declaration"}} checked{{end}} required> I declare that the details and documents I am sending are true and belong to this visitor.</span></label>
+    <div class="field field-wide">{{template "turnstile" $}}</div>
+    </div>
+  </section>
+  <button type="submit" class="btn">Send the request</button>
+  </form>
+  {{end}}{{else}}<p class="note">This form is not available right now. Please try again later.</p>{{end}}
+</div>
+<p><a href="/">Back to home</a></p>
+{{template "foot" .}}{{end}}
+
+{{define "waiver_done"}}{{template "head" .}}
+{{with .Waiver.Done}}
+<h1>Request sent</h1>
+<section class="card narrow">
+  <p>The visitor entry request for <strong>{{.Name}}</strong> ({{.Company}}) was saved and is waiting for the doctor's review.</p>
+  <dl class="facts">
+    <dt>Request number</dt><dd><strong>{{.RequestID}}</strong></dd>
+    <dt>Visit</dt><dd>{{.From}} to {{.To}} ({{.Days}} day{{if ne .Days 1}}s{{end}})</dd>
+  </dl>
+  <p class="note">Keep the request number. A confirmation email to {{.Email}} cannot be sent yet (the email service is built in a later step), so nothing has been mailed.</p>
+  <p><a class="btn-small-quiet" href="/waiver">Make another request</a> <a class="btn-small-quiet" href="/">Back to home</a></p>
+</section>
+{{end}}
+{{template "foot" .}}{{end}}

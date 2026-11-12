@@ -1,0 +1,20 @@
+keywords	classification	risk_tier
+ceo, coo, cfo, cto, vp, vice president, direktur, director, president director, presdir	Executive	LOW
+general manager, gm, kepala divisi, division head	Executive	LOW
+project manager, pm, manajer proyek, construction manager, site manager	Management	LOW
+manager, manajer, kepala bagian, kepala departemen, department head	Management	LOW
+superintendent, supt, site superintendent	Management	LOW
+supervisor, supv, foreman, mandor, kepala regu, group leader	Management	LOW
+engineer, insinyur, technical engineer, design engineer, process engineer, structural engineer	Professional	LOW
+coordinator, koordinator, lead, team lead	Professional	LOW
+planner, scheduler, planning engineer, cost engineer, estimator	Professional	LOW
+quantity surveyor, qs, cost control, cost controller	Professional	LOW
+inspector, quality inspector, qi, qc inspector, quality control, qc, qa, qaqc, quality control, quality assurance, civil, architecture, inspector	Professional	LOW
+procurement, pengadaan, purchasing, buyer, supply chain	Professional	LOW
+contract, legal, hukum, contract admin, contract specialist	Professional	LOW
+hr, hrd, human resource, sdm, sumber daya manusia, personalia, personnel	Support	LOW
+finance, keuangan, accounting, akuntan, accountant, payroll, treasurer	Support	LOW
+it, information technology, sistem, system analyst, programmer, developer, helpdesk	Support	LOW
+logistic, logistik, transport, transportation, fleet	Support	LOW
+community relation, comrel, external affair, stakeholder, public relation, humas	Support	LOW
+training, trainer, instructor, facilitator	Support	LOW

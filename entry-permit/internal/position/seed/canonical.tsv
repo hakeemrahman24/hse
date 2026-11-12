@@ -1,0 +1,51 @@
+name	category	risk_tier	certificate	cert_required
+Crane Operator	Lifting & Rigging	CRITICAL	SIO Crane – Kemnaker / Sertifikat Operator Alat Berat Kelas I	Y
+NDT Radiographer	Welding & Skilled Trades	CRITICAL	Sertifikat NDT Radiografi – BAPETEN / BNSP	Y
+HSE Manager	HSE Personnel	CRITICAL	AK3 Umum + Pengalaman Min. 5 thn / AK3 Spesialis	Y
+Emergency Response Team Leader	HSE Personnel	CRITICAL	AK3 + Sertifikat Penanggulangan Kebakaran – Kemnaker	Y
+Confined Space Entrant	Confined Space	CRITICAL	Sertifikat K3 Ruang Terbatas – Kemnaker	Y
+Confined Space Attendant	Confined Space	CRITICAL	Sertifikat K3 Ruang Terbatas – Kemnaker	Y
+Blaster / Shot Firer	Explosive / Hazmat	CRITICAL	Sertifikat Juru Ledak – Polri / Kementerian ESDM	Y
+Diver / Diving Supervisor	Offshore Specific	CRITICAL	Sertifikat Penyelam – Kemnaker / BNSP	Y
+Rigger	Lifting & Rigging	HIGH	Sertifikat Rigger Kelas I/II – Kemnaker	Y
+Lifting Supervisor	Lifting & Rigging	HIGH	Sertifikat Pengawas Angkat – Kemnaker	Y
+Banksman / Signalman	Lifting & Rigging	HIGH	Sertifikat K3 Alat Angkat – Kemnaker	Y
+Scaffolder	Scaffolding	HIGH	Sertifikat Scaffolding Kelas I/II – Kemnaker	Y
+Scaffold Inspector	Scaffolding	HIGH	Sertifikat Pengawas Scaffolding – Kemnaker	Y
+Welder	Welding & Skilled Trades	HIGH	Sertifikat Juru Las Kelas I/II – BNSP	Y
+NDT Technician	Welding & Skilled Trades	HIGH	Sertifikat NDT – BNSP / LSP Migas	Y
+Electrician	Welding & Skilled Trades	HIGH	Sertifikat K3 Listrik – Kemnaker / BNSP	N
+Insulation Technician	Welding & Skilled Trades	HIGH	Sertifikat Tukang Insulasi – BNSP	N
+Heavy Equipment Operator	Heavy Equipment	HIGH	SIO Alat Berat Kelas I – Kemnaker	Y
+Forklift Operator	Heavy Equipment	HIGH	SIO Forklift – Kemnaker	Y
+Pump / Compressor Operator	Heavy Equipment	HIGH	Sertifikat Operator Pompa – BNSP / Kemnaker	N
+HSE Officer	HSE Personnel	HIGH	AK3 Umum – Kemnaker RI	Y
+HSE Supervisor	HSE Personnel	HIGH	AK3 Umum + Min. 3 tahun pengalaman	Y
+Fire Watcher	HSE Personnel	HIGH	Sertifikat Penanggulangan Kebakaran Kelas D – Kemnaker	Y
+Security Guard	Security	MEDIUM	Gada Pratama – Polri / Lemdiklat	Y
+Security Supervisor	Security	MEDIUM	Gada Madya – Polri	Y
+Paramedic	Medical	HIGH	Sertifikat Paramedik – Kemenkes RI / STR Perawat	Y
+Doctor / Site Physician	Medical	HIGH	STR Dokter – Kemenkes RI / Surat Izin Praktik (SIP)	Y
+Nurse	Medical	MEDIUM	STR Perawat – Kemenkes RI / SIPP	Y
+Rope Access Technician	Working at Height	HIGH	Sertifikat K3 Bekerja di Ketinggian – Kemnaker	Y
+WAH Worker	Working at Height	HIGH	Sertifikat K3 Bekerja di Ketinggian – Kemnaker	N
+Hazmat Handler	Explosive / Hazmat	HIGH	Sertifikat K3 B3 – Kemnaker / KLHK	N
+Offshore Worker	Offshore Specific	HIGH	Sertifikat K3 Migas – SKK Migas / Kemnaker	Y
+H2S Trained Worker	Offshore Specific	HIGH	Sertifikat H2S Awareness – SKK Migas	Y
+Structural Steel Erector	Civil & Structural	HIGH	Sertifikat Tukang Besi Struktural – BNSP	N
+Carpenter / Formwork	Civil & Structural	MEDIUM	Sertifikat Tukang Kayu / Bekisting – BNSP	N
+Concrete Worker	Civil & Structural	MEDIUM	Sertifikat Tukang Cor – BNSP	N
+Mason / Bricklayer	Civil & Structural	MEDIUM	Sertifikat Tukang Batu – BNSP	N
+Pipefitter	Piping & Mechanical	HIGH	Sertifikat Pipefitter – BNSP / LSP Migas	N
+Mechanical Fitter	Piping & Mechanical	HIGH	Sertifikat Teknisi Mekanik – BNSP	N
+Pressure Vessel Technician	Piping & Mechanical	HIGH	Sertifikat Operator Bejana Tekan – Kemnaker / BNSP	N
+Instrument Technician	Electrical & Instrument	HIGH	Sertifikat Teknisi Instrumentasi – BNSP / LSP Migas	N
+E&I Technician	Electrical & Instrument	HIGH	Sertifikat K3 Listrik + Instrumentasi – Kemnaker / BNSP	N
+General Worker / Helper	General / Support	LOW	Safety Induction – Site HSE / SKK Migas	N
+Driver	General / Support	LOW	SIM sesuai kelas kendaraan – Polri	Y
+Surveyor	General / Support	LOW	Sertifikat Juru Ukur – BNSP	N
+Document Controller	General / Support	LOW	Tidak dipersyaratkan secara regulasi	N
+Admin / Site Admin	General / Support	LOW	Tidak dipersyaratkan secara regulasi	N
+Storekeeper	General / Support	LOW	Tidak dipersyaratkan secara regulasi	N
+Cook / Catering Staff	General / Support	LOW	Sertifikat Higiene Sanitasi Pangan – Kemenkes	N
+Cleaner / Housekeeping	General / Support	LOW	Tidak dipersyaratkan secara regulasi	N

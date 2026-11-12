@@ -1,0 +1,263 @@
+/* Entry Permit: compact and consistent. One accent (the gate page's blue), gray everywhere else,
+   square corners, space instead of boxes. Desktop first; only the gate officer's scanner page (the
+   gate Worker's own page) is built for a phone, but every page also works at phone width.
+   One spacing scale (4 / 8 / 12 / 16 / 24 px) and one type scale (13 / 15 / 18 / 22 px) so pages
+   look alike. One small stylesheet, no external fonts or scripts (CSP: self only). */
+:root {
+  --bg: #f4f6f9;
+  --card: #ffffff;
+  --ink: #111827;
+  --muted: #5b6472;
+  --line: #e3e7ec;
+  --field: #f3f4f6;
+  --brand: #0057d9;
+  --brand-dark: #004bb8;
+  --brand-ink: #ffffff;
+  --navy: #002b6b;
+  --error: #d93025;
+  --ok: #15803d;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
+  --fs-sm: 0.8667rem;   /* 13px: labels, notes, table text */
+  --fs-md: 1rem;        /* 15px: body */
+  --fs-lg: 1.2rem;      /* 18px: section titles */
+  --fs-xl: 1.4667rem;   /* 22px: page title */
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--bg);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+a, button, input, select, .tile { transition: background-color 0.12s, border-color 0.12s, color 0.12s; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* Page frame: a slim navy bar across the top (logo on the left, the menu on the right) and one
+   centred white panel under it. Same on every screen size; the bar wraps on a phone. */
+.topbar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: var(--s1) var(--s4); padding: var(--s2) var(--s4); min-height: 58px; color: #fff; background: var(--navy);
+}
+.brand { display: flex; align-items: center; gap: var(--s3); color: #fff; text-decoration: none; }
+.brand-logo { display: block; height: 42px; width: auto; }
+.brand-name { padding-left: var(--s3); border-left: 1px solid rgba(255, 255, 255, 0.35); font-weight: 600; font-size: var(--fs-md); letter-spacing: 0.02em; }
+.topbar nav { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--s4); font-size: var(--fs-sm); }
+.topbar nav a { color: rgba(255, 255, 255, 0.82); text-decoration: none; padding: var(--s2) 0; border-bottom: 2px solid transparent; }
+.topbar nav a:hover, .topbar nav a:focus-visible { color: #fff; }
+.topbar nav a[aria-current="page"] { color: #fff; font-weight: 600; border-bottom-color: #fff; }
+.inline { display: inline; margin: 0; }
+button.link { background: none; border: 0; padding: var(--s2) 0; font: inherit; color: var(--muted); cursor: pointer; }
+button.link:hover { color: var(--ink); text-decoration: underline; }
+.topbar button.link { color: rgba(255, 255, 255, 0.82); font-size: var(--fs-sm); }
+.topbar button.link:hover { color: #fff; text-decoration: none; }
+/* Button heights: two sizes only (40 / 30px), the same for a <button> and for a link dressed as one.
+   Flex centring plus a fixed minimum height and a 1px border (transparent when the look has none),
+   so text size and padding can differ without the heights ever differing. */
+.btn, .btn-small, .btn-small-solid, .btn-small-quiet {
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+  font: inherit; line-height: 1.2; text-decoration: none; cursor: pointer; border-radius: 0; vertical-align: middle;
+}
+.btn-small { background: var(--brand); color: var(--brand-ink) !important; min-height: 30px; padding: 0 var(--s3) !important; font-size: var(--fs-sm); font-weight: 500; border: 1px solid var(--brand) !important; }
+.btn-small:hover { background: var(--brand-dark); border-color: var(--brand-dark) !important; }
+.shell { width: 100%; max-width: 1040px; margin: var(--s4) auto 0; background: var(--card); border: 1px solid var(--line); }
+.app:has(.tablewrap) .shell { max-width: 1240px; }
+main { padding: var(--s5); }
+@media (max-width: 720px) {
+  .shell { margin-top: 0; border-left: 0; border-right: 0; }
+  main { padding: var(--s4) var(--s3) var(--s5); }
+  .topbar { padding: var(--s2) var(--s3); }
+  .brand-name { display: none; }
+}
+
+/* Type: one clear step between the page title, section titles and body text. */
+h1 { margin: 0 0 var(--s1); font-size: var(--fs-xl); font-weight: 600; line-height: 1.25; letter-spacing: -0.01em; }
+h2 { margin: 0 0 var(--s2); font-size: var(--fs-lg); font-weight: 600; line-height: 1.3; }
+h3, h4 { margin: var(--s5) 0 var(--s2); font-size: var(--fs-sm); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+p { margin: 0 0 var(--s3); }
+.sub { margin: 0 0 var(--s4); color: var(--muted); }
+.note { margin: var(--s3) 0 0; color: var(--muted); font-size: var(--fs-sm); }
+a { color: var(--brand); }
+
+/* Surfaces: no boxes inside boxes. A card is only a block of space; stacked ones get a hairline. */
+.card { background: transparent; border: 0; padding: 0; }
+.card.narrow { max-width: 420px; margin: 0; }
+.card + .card, section.card + section.card { margin-top: var(--s5); padding-top: var(--s5); border-top: 1px solid var(--line); }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--s3); margin: var(--s2) 0 var(--s4); }
+.tile {
+  position: relative; display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3) var(--s4); padding-right: 36px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 0;
+  color: var(--ink); text-decoration: none;
+}
+.tile strong { font-size: var(--fs-md); color: var(--ink); font-weight: 600; }
+.tile span { color: var(--muted); font-size: var(--fs-sm); }
+.tile::after { content: "\2192"; position: absolute; right: var(--s4); top: 50%; transform: translateY(-50%); color: var(--muted); }
+.tile:hover::after, .tile:focus-visible::after { color: var(--brand); }
+.tile:hover, .tile:focus-visible { border-color: var(--brand); }
+.tile:hover strong, .tile:focus-visible strong { color: var(--brand); }
+
+/* Forms: a pale filled field, the blue only when it has focus; small muted label above. */
+.field { display: block; margin: 0 0 var(--s3); }
+.field > span:not(.date-field) { display: block; margin-bottom: var(--s1); font-weight: 500; font-size: var(--fs-sm); color: var(--muted); }
+input[type="text"], input[type="password"], input[type="email"], input[type="tel"], input[type="number"], input[type="file"], select, textarea {
+  width: 100%; min-height: 36px; padding: 7px 10px; font: inherit; color: var(--ink);
+  background: var(--field); border: 1px solid transparent; border-radius: 0;
+}
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid rgba(0, 87, 217, 0.25); outline-offset: 0; background: #fff; border-color: var(--brand); }
+button:focus-visible, a:focus-visible { outline: 2px solid rgba(0, 87, 217, 0.45); outline-offset: 2px; }
+.btn {
+  width: auto; min-width: 140px; min-height: 40px; margin-top: var(--s1); padding: 0 var(--s5); font-weight: 600;
+  color: var(--brand-ink); background: var(--brand); border: 1px solid var(--brand);
+}
+.btn:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+.error { margin: 0 0 var(--s3); padding: var(--s2) var(--s3); color: var(--error); background: #fef2f2; border-left: 3px solid var(--error); border-radius: 0; }
+.ok { margin: 0 0 var(--s3); padding: var(--s2) var(--s3); color: #0b5d2a; background: #f0fdf4; border-left: 3px solid var(--ok); border-radius: 0; }
+
+/* Long forms (permit step 2, visitor form): two columns on the wide panel. Headings, notes, long
+   fields (.field-wide), the declaration and the button take the whole row; one column when narrow. */
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--s5); }
+.form-grid > h3, .form-grid > h4, .form-grid > p, .form-grid > .field-wide { grid-column: 1 / -1; }
+.form-grid > h3:first-child, .form-grid > h4:first-child { margin-top: 0; }
+.form-grid > .btn { grid-column: 1 / -1; justify-self: start; }
+@media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
+
+/* Date box with a calendar button (inputs.js): the text box stays the real field, the native date
+   input is only there to open the browser's picker. */
+.date-field { position: relative; display: block; background: var(--field); }
+.date-field:focus-within { background: #fff; }
+.date-field > input[type="text"] { position: relative; z-index: 1; background: transparent; padding-right: 44px; }
+.date-field > input[type="text"]:focus-visible { background: transparent; }
+.date-ghost { position: absolute; z-index: 0; top: 1px; bottom: 1px; left: 13px; display: flex; align-items: center; white-space: pre; font: inherit; pointer-events: none; }
+.date-ghost i { font-style: normal; }
+.g-typed { visibility: hidden; }
+.g-rest { color: #9ca3af; }
+.date-pick { position: absolute; top: 0; right: 0; bottom: 0; width: 42px; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: var(--muted); cursor: pointer; }
+.date-pick:hover, .date-pick:focus-visible { color: var(--brand); }
+.date-native { position: absolute; right: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+/* Searchable dropdown (combobox.js) */
+.cb { position: relative; }
+.cb-native { position: absolute; left: 0; bottom: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.cb-list {
+  position: absolute; z-index: 5; left: 0; right: 0; max-height: 260px; overflow-y: auto; margin-top: 2px;
+  background: #fff; border: 1px solid var(--line); border-radius: 0; box-shadow: 0 8px 24px rgba(17, 24, 39, 0.1);
+}
+.cb-item { display: block; width: 100%; padding: 8px 12px; text-align: left; font: inherit; color: var(--ink); background: none; border: 0; cursor: pointer; }
+.cb-item:hover, .cb-item.active { background: #eef4ff; }
+.cb-none { margin: 0; padding: 8px 12px; color: var(--muted); }
+.cb-list[hidden] { display: none; }
+
+/* Admin: sub menu, list editor, tables */
+.subnav { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin: 0 0 var(--s4); border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
+.subnav a { color: var(--muted); text-decoration: none; padding: var(--s2) 0; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.subnav a:hover { color: var(--ink); }
+.subnav a[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--brand); }
+.addrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0 var(--s3); align-items: end; margin-bottom: var(--s2); }
+.addrow .btn { margin: 0 0 var(--s3); }
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); margin: 0 0 var(--s3); }
+.toolbar input[type="text"] { max-width: 280px; }
+.check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-sm); }
+.check input { margin: 0; }
+.tablewrap { overflow-x: auto; background: var(--card); border: 0; }
+table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+th { text-align: left; padding: var(--s2) var(--s3); color: var(--muted); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; background: none; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: var(--s2) var(--s3); border-bottom: 1px solid var(--line); vertical-align: middle; }
+tbody tr:hover td { background: #f9fafb; }
+tr:last-child td { border-bottom: 0; }
+td input[type="text"], td input[type="password"], td input[type="email"], td select { padding: 6px 8px; min-width: 120px; }
+td.actions { white-space: nowrap; }
+td.empty { text-align: center; color: var(--muted); padding: var(--s5) var(--s3); }
+tr.archived td { color: var(--muted); background: #fafafa; }
+tr.archived input[type="text"], tr.archived select { color: var(--muted); }
+.btn-small-solid, .btn-small-quiet { min-height: 30px; font-size: var(--fs-sm); font-weight: 500; padding: 0 var(--s3); }
+.btn-small-solid { color: var(--brand-ink); background: var(--brand); border: 1px solid var(--brand); }
+.btn-small-solid:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+.btn-small-quiet { color: var(--brand); background: none; border: 1px solid transparent; }
+.btn-small-quiet:hover { background: #eef4ff; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Home page sections */
+.home-section { margin: 0 0 var(--s5); }
+.home-section h2 { margin: 0 0 var(--s1); font-size: var(--fs-lg); color: var(--ink); }
+.home-section .tiles { margin-top: 8px; }
+.facts { display: grid; grid-template-columns: max-content 1fr; gap: var(--s1) var(--s4); margin: var(--s2) 0 var(--s4); }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; }
+.tiles.five { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+/* Status: a small coloured word with a dot, never a coloured block. */
+.state { display: inline-block; font-weight: 600; padding: 0; background: none; border-radius: 0; color: var(--muted); }
+.state::before { content: "\25CF"; font-size: 0.6em; margin-right: 6px; vertical-align: middle; }
+.state-valid { color: var(--ok); }
+.state-bad { color: var(--error); }
+
+/* LEP card (public page): the legacy portrait ID card (2.125 x 3.375, lep-card-sample.html). Every size
+   is a multiple of --u, the card width over 2.125, so the card scales as one piece, at most 80% of the
+   screen height. The colours are the legacy palette, derived from one primary colour per theme
+   (company blue #0057d9, contractor orange #ea580c): dark = 38% black, mid = 22% white, light = 88%
+   white, lighter = 93% white, border = 42% white. Classes, not inline style: the CSP blocks inline style. */
+.lepc { --u: min(calc(80vh / 3.375), calc(90vw / 2.125), 180px); width: calc(2.125 * var(--u)); height: calc(3.375 * var(--u)); margin: 8px 0 16px;
+  display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15); background: var(--c-light); }
+.lepc.card-company { --c-primary: 0, 87, 217; --c-hi: 89, 146, 230; --c-dark: #003687; --c-mid: #387ce1; --c-light: #e0ebfa; --c-lighter: #edf3fc; --c-border: #6b9ee9; --c-accent: #0057d9; }
+.lepc.card-contractor { --c-primary: 234, 88, 12; --c-hi: 241, 146, 97; --c-dark: #913707; --c-mid: #ef7d41; --c-light: #fcebe2; --c-lighter: #fef3ee; --c-border: #f39e72; --c-accent: #ea580c; }
+.lepc-header { flex: 0 0 calc(0.55 * var(--u)); display: flex; align-items: center; padding: 0 calc(0.08 * var(--u)); box-sizing: border-box; overflow: hidden;
+  background: linear-gradient(145deg, rgba(var(--c-hi), 0.55), transparent 45%), linear-gradient(220deg, rgba(var(--c-primary), 0.78), transparent 50%), linear-gradient(180deg, var(--c-dark), var(--c-mid)); }
+.lepc-header img { height: 90%; width: auto; max-width: 90%; object-fit: contain; object-position: left center; }
+.lepc-photo-wrap { flex: 0 0 auto; text-align: center; padding: calc(0.06 * var(--u)) calc(0.1 * var(--u)) calc(0.04 * var(--u)); }
+.lepc-photo, .lepc-photo-ph { width: calc(0.9 * var(--u)); height: calc(1.2 * var(--u)); margin: 0 auto; box-sizing: border-box; border: 1px solid var(--c-border); background: var(--c-lighter); }
+.lepc-photo { position: relative; overflow: hidden; }
+.lepc-photo img { position: absolute; inset: 0; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: center 10%; display: block; }
+.lepc-photo-ph { display: flex; align-items: center; justify-content: center; font-size: calc(var(--u) * 8 / 72); color: var(--c-dark); }
+.lepc-details { flex: 1 1 auto; min-height: 0; overflow: hidden; display: grid; grid-template-columns: max-content minmax(0, 1fr); align-content: start; align-items: baseline;
+  column-gap: calc(0.08 * var(--u)); row-gap: 2px; padding: 0 calc(0.12 * var(--u)); box-sizing: border-box; font-size: calc(var(--u) * 7 / 72); line-height: 1.35; color: #1f2937; }
+.lepc-details .lbl { font-weight: 700; color: var(--c-dark); white-space: nowrap; }
+.lepc-details .val { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; column-gap: 0.2em; }
+.lepc-details .val-main { min-width: 0; overflow-wrap: anywhere; }
+.lepc-details .val-sub { font-size: 70%; font-weight: 600; color: var(--c-dark); white-space: nowrap; }
+.lepc-footer { flex: 0 0 calc(0.72 * var(--u)); display: flex; align-items: flex-end; justify-content: space-between; padding: 0 calc(0.1 * var(--u)) calc(0.1 * var(--u)); box-sizing: border-box; }
+.lepc-dots { display: flex; gap: calc(var(--u) / 25.4); }
+.lepc-dots i { width: calc(4 * var(--u) / 25.4); height: calc(4 * var(--u) / 25.4); background: var(--c-accent); }
+.lepc-qr { width: calc(0.62 * var(--u)); height: calc(0.62 * var(--u)); flex-shrink: 0; background: #fff; }
+.lepc-qr svg { display: block; width: 100%; height: 100%; }
+.lep-state { margin: 0 0 4px; }
+
+/* Dashboard and gate page: search bar above the lists */
+.searchbar { display: flex; flex-wrap: wrap; align-items: end; gap: var(--s2) var(--s3); margin: 0 0 var(--s4); }
+.searchbar .field { flex: 1 1 14rem; margin: 0; }
+
+/* admin status page: each warning is its own line, with no bullets */
+.warnings { list-style: none; margin: 0 0 16px; padding: 0; }
+.warnings li { margin-bottom: var(--s1); }
+
+/* Worker page: sections stack; with a chosen option (#my-...) as :target only that one shows. */
+.side-content > section { margin-bottom: var(--s3); }
+.app:has(.side-content > section:target) .side-content > section:not(:target) { display: none; }
+
+/* Worker page, Photos option: the current photo at the 3x4 shape of the card's photo frame. */
+.my-photo-img { display: block; width: 150px; height: 200px; margin: 0 0 var(--s3); object-fit: cover; object-position: center 10%; border: 1px solid var(--line); }
+
+.home-tiles { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+/* Long request forms are a stack of numbered cards (the old system's pages, on one screen): each
+   card is a titled block with the two-column grid inside. */
+textarea { resize: vertical; min-height: 56px; }
+.fcard { margin: 0 0 var(--s4); padding: var(--s3) var(--s4) var(--s1); border: 1px solid var(--line); background: var(--card); }
+.fcard-title { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s3); padding-bottom: var(--s2); font-size: var(--fs-md); border-bottom: 1px solid var(--line); }
+.fcard-title .step { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; font-size: var(--fs-sm); font-weight: 600; color: var(--brand-ink); background: var(--brand); }
+.fcard > .sub { margin: 0 0 var(--s3); font-size: var(--fs-sm); }
+.fcard .form-grid > h3 { margin-top: var(--s2); }
+.callout { padding: var(--s2) var(--s3); background: var(--field); border-left: 3px solid var(--brand); }
+.callout > span { display: block; margin-bottom: var(--s1); font-weight: 500; font-size: var(--fs-sm); color: var(--muted); }
+.callout > p { margin: 0; }
+label.check { display: flex; align-items: flex-start; gap: var(--s2); color: var(--ink); font-size: var(--fs-md); }
+label.check input { margin-top: 3px; }
+/* One Yes / No / N/A question per row: the text on the left, three radio buttons on the right. */
+.qrow { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
+.qrow:last-child { border-bottom: 0; }
+.qtext { display: flex; flex-direction: column; min-width: 0; }
+.qtext small { color: var(--muted); font-size: var(--fs-sm); }
+.yn { display: flex; flex: 0 0 auto; gap: var(--s3); }
+.yn label { display: inline-flex; align-items: center; gap: var(--s1); cursor: pointer; }
+.yn input { margin: 0; }
+@media (max-width: 520px) { .qrow { flex-direction: column; align-items: flex-start; gap: var(--s1); } }

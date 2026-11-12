@@ -1,0 +1,32 @@
+-- 008 permit part 2 (slice 3c): address, emergency contact, foreign documents, uploaded file paths
+-- and the medpost snapshot taken at submit. Days are CHAR(10), moments CHAR(19) (Jakarta).
+-- Keep in step with migrations/sqlite/008_permit_part2.sql. Run by hand after a mysqldump.
+ALTER TABLE permit ADD COLUMN entity VARCHAR(60) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN work_position VARCHAR(120) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN parents VARCHAR(400) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN mcu_result VARCHAR(20) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN phone VARCHAR(20) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN emergency_name VARCHAR(120) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN emergency_phone VARCHAR(20) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN province VARCHAR(80) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN regency VARCHAR(120) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN district VARCHAR(120) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN village VARCHAR(120) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN street VARCHAR(240) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN visa_type VARCHAR(10) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN visa_code VARCHAR(60) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN visa_issued CHAR(10) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN visa_issued_by VARCHAR(120) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN rptka_issued CHAR(10) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN rptka_expiry CHAR(10) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN rptka_days INT NOT NULL DEFAULT 0;
+ALTER TABLE permit ADD COLUMN immigration_until CHAR(10) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN police_until CHAR(10) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN passport_until CHAR(10) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN id_doc VARCHAR(80) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN id_photo VARCHAR(80) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN visa_doc VARCHAR(80) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN rptka_doc VARCHAR(80) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN immigration_doc VARCHAR(80) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN police_doc VARCHAR(80) NOT NULL DEFAULT '';
+ALTER TABLE permit ADD COLUMN declared_at CHAR(19) NOT NULL DEFAULT '';

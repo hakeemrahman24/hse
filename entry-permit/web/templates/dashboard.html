@@ -1,0 +1,89 @@
+{{define "sync_note"}}
+{{if .Never}}<p class="note" role="status">The gate has not been synced yet, so Inside and gate activity may be empty.</p>
+{{else}}<p class="sub">Gate data last synced {{.At}}.</p>
+{{if .Stale}}<p class="error" role="alert">Gate data is out of date: the last good sync was at {{.At}}. People may be shown as inside or outside wrongly.</p>{{end}}{{end}}
+{{end}}
+
+{{define "dash_rows"}}
+<div class="tablewrap"><table>
+  <thead><tr><th>Name</th><th>Company</th><th>Position</th><th>Number</th><th>Status</th><th>Window</th><th>Valid until</th></tr></thead>
+  <tbody>
+  {{range .}}<tr>
+    <td>{{.Name}}</td><td>{{.Company}}</td><td>{{.Position}}</td>
+    <td>{{if .HasCard}}<a href="/c/{{.ID}}">{{.ID}}</a>{{else}}{{.ID}}{{end}}</td>
+    <td>{{.Status}}</td>
+    <td>{{if .Arrival}}{{.Arrival}} to {{.Departure}}{{end}}</td>
+    <td>{{.ValidUntil}}</td>
+  </tr>{{end}}
+  </tbody>
+</table></div>
+{{end}}
+
+{{define "dash_inside"}}
+<div class="tablewrap"><table>
+  <thead><tr><th>Name</th><th>Company</th><th>Number</th><th>Gate</th><th>Since</th><th>Officer</th></tr></thead>
+  <tbody>
+  {{range .}}<tr><td>{{.Name}}</td><td>{{.Company}}</td><td>{{.ID}}</td><td>{{.Gate}}</td><td>{{.At}}</td><td>{{.Officer}}</td></tr>{{end}}
+  </tbody>
+</table></div>
+{{end}}
+
+{{define "dash_activity"}}
+<div class="tablewrap"><table>
+  <thead><tr><th>Time</th><th>Name</th><th>Number</th><th>Action</th><th>Reason</th><th>Gate</th><th>Officer</th></tr></thead>
+  <tbody>
+  {{range .}}<tr><td>{{.At}}</td><td>{{.Name}}</td><td>{{.ID}}</td><td>{{.Action}}</td><td>{{.Reason}}</td><td>{{.Gate}}</td><td>{{.Officer}}</td></tr>{{end}}
+  </tbody>
+</table></div>
+{{end}}
+
+{{define "dashboard"}}{{template "head" .}}
+<h1>{{.Title}}</h1>
+{{if .User}}<p class="sub">Signed in as {{.User.DisplayName}}. Read only.</p>{{end}}
+<nav class="subnav" aria-label="Dashboard lists">
+  {{range .Dash.Tabs}}<a href="/staff/dashboard?tab={{.Slug}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}} ({{.Count}})</a>{{end}}
+</nav>
+<form method="get" action="/staff/dashboard" class="searchbar">
+  <input type="hidden" name="tab" value="{{.Dash.Tab}}">
+  <label class="field" for="dash-q"><span>Search name, company, position or number</span>
+    <input id="dash-q" type="search" name="q" value="{{.Dash.Q}}" maxlength="80" autocomplete="off"></label>
+  <button type="submit" class="btn-small">Search</button>
+  <a class="btn-small-quiet" href="{{.Dash.PDFHref}}">Download PDF</a>
+</form>
+
+{{if eq .Dash.Tab "gate"}}
+  {{template "sync_note" .Dash.Sync}}
+  <h2>Inside now ({{len .Dash.Inside}})</h2>
+  {{if .Dash.Inside}}{{template "dash_inside" .Dash.Inside}}{{else}}<section class="card"><p>No one matches.</p></section>{{end}}
+  <h2>Latest gate activity</h2>
+  {{if .Dash.Activity}}{{template "dash_activity" .Dash.Activity}}{{else}}<section class="card"><p>No one matches.</p></section>{{end}}
+{{else}}
+  {{if .Dash.Rows}}{{template "dash_rows" .Dash.Rows}}{{else}}<section class="card"><p>{{if .Dash.Q}}No one matches that search.{{else}}Nothing on this list.{{end}}</p></section>{{end}}
+{{end}}
+{{template "foot" .}}{{end}}
+
+{{define "gate"}}{{template "head" .}}
+<h1>{{.Title}}</h1>
+{{if .User}}<p class="sub">Signed in as {{.User.DisplayName}}. Check-in and check-out are done on the gate scanner page.</p>{{end}}
+{{template "sync_note" .Dash.Sync}}
+<form method="get" action="/staff/gate" class="searchbar">
+  <label class="field" for="gate-lep"><span>Permit number</span>
+    <input id="gate-lep" type="text" name="lep" value="{{.Dash.Lep}}" maxlength="9" placeholder="LEP-ABCDE" autocomplete="off" autocapitalize="characters"></label>
+  <button type="submit" class="btn-small">Look up</button>
+</form>
+{{if .Dash.Hint}}<p class="error" role="alert">{{.Dash.Hint}}</p>{{end}}
+{{with .Dash.Lookup}}
+<section class="card">
+  <h2>{{.Row.Name}} <small>{{.Row.ID}}</small></h2>
+  <p class="{{.StateClass}}"><strong>{{.State}}</strong></p>
+  <dl class="facts">
+    <dt>Company</dt><dd>{{.Row.Company}}</dd>
+    <dt>Position</dt><dd>{{.Row.Position}}</dd>
+    <dt>Valid until</dt><dd>{{.Row.ValidUntil}}</dd>
+  </dl>
+  {{if .Activity}}<h3>Recent scans</h3>{{template "dash_activity" .Activity}}{{end}}
+</section>
+{{end}}
+<h2>Inside now ({{len .Dash.Inside}})</h2>
+{{if .Dash.Inside}}{{template "dash_inside" .Dash.Inside}}{{else}}<section class="card"><p>No one is inside.</p></section>{{end}}
+{{template "foot" .}}{{end}}
