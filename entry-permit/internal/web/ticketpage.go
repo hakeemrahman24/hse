@@ -90,6 +90,12 @@ type TicketRow struct {
 	ID, Arrival, Departure, Location, Status, Pattern string
 	Rest, RestClass                                   string // the rest before this ticket, and how to colour it
 	Days                                              int
+	Weeks                                             string // the length in weeks, e.g. "2" or "2.5"
+}
+
+// weeksLabel is days over seven with one decimal, and no ".0" on whole weeks.
+func weeksLabel(days int) string {
+	return strings.TrimSuffix(fmt.Sprintf("%.1f", float64(days)/7), ".0")
 }
 
 func (a *App) ticketAvailable() bool {
@@ -210,7 +216,7 @@ func (a *App) ticketOpen(ctx context.Context, lep, token string) (TicketData, in
 	}
 	for _, t := range rows {
 		d.Tickets = append(d.Tickets, TicketRow{ID: t.ID, Arrival: string(t.Arrival), Departure: string(t.Departure),
-			Location: t.Location, Status: string(t.Status), Pattern: t.Pattern, Days: t.Days()})
+			Location: t.Location, Status: string(t.Status), Pattern: t.Pattern, Days: t.Days(), Weeks: weeksLabel(t.Days())})
 	}
 	if strings.HasPrefix(lep, "WVR-") {
 		info, found, err := a.Waivers.Access(ctx, lep)

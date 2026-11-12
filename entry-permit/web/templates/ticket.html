@@ -32,8 +32,8 @@
   <h3>Tickets</h3>
   {{if .Tickets}}
   <div class="table-wrap"><table>
-    <thead><tr><th>Ticket</th><th>Arrival</th><th>Departure</th><th>Days</th><th>Location</th><th>Status</th><th>Pattern</th><th>Rest before</th></tr></thead>
-    <tbody>{{range .Tickets}}<tr><td>{{.ID}}</td><td>{{.Arrival}}</td><td>{{.Departure}}</td><td>{{.Days}}</td><td>{{.Location}}</td><td>{{.Status}}</td><td>{{.Pattern}}</td><td>{{if .Rest}}<span class="state {{.RestClass}}">{{.Rest}}</span>{{end}}</td></tr>{{end}}</tbody>
+    <thead><tr><th>Ticket</th><th>Arrival</th><th>Departure</th><th>Days</th><th>Weeks</th><th>Location</th><th>Status</th><th>Pattern</th><th>Rest before</th></tr></thead>
+    <tbody>{{range .Tickets}}<tr><td>{{.ID}}</td><td>{{.Arrival}}</td><td>{{.Departure}}</td><td>{{.Days}}</td><td>{{.Weeks}}</td><td>{{.Location}}</td><td>{{.Status}}</td><td>{{.Pattern}}</td><td>{{if .Rest}}<span class="state {{.RestClass}}">{{.Rest}}</span>{{end}}</td></tr>{{end}}</tbody>
   </table></div>
   {{if .RestNote}}<p class="note">{{.RestNote}}</p>{{end}}
   {{else}}<p class="note">No tickets yet.</p>{{end}}

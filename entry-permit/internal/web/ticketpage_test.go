@@ -309,3 +309,11 @@ func TestWaiverTicketIsShownButNeverProposed(t *testing.T) {
 		t.Errorf("proposing on a waiver: %d %q", code, alertText(body))
 	}
 }
+
+func TestWeeksLabelShowsWholeAndPartWeeks(t *testing.T) {
+	for days, want := range map[int]string{14: "2", 7: "1", 17: "2.4", 3: "0.4", 28: "4"} {
+		if got := weeksLabel(days); got != want {
+			t.Errorf("weeksLabel(%d) = %q, want %q", days, got, want)
+		}
+	}
+}
