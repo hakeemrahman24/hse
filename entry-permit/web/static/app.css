@@ -149,12 +149,16 @@ button:focus-visible, a:focus-visible { outline: 2px solid rgba(0, 87, 217, 0.45
 .cb-list[hidden] { display: none; }
 
 /* Admin: sub menu, list editor, tables */
-.subnav { display: flex; flex-wrap: wrap; gap: var(--s1) var(--s4); margin: 0 0 var(--s4); border-bottom: 1px solid var(--line); font-size: var(--fs-sm); }
+.subnav { display: flex; flex-wrap: wrap; gap: 0 8px; margin: 0 0 var(--s3); border-bottom: 1px solid var(--line); font-size: 0.8rem; }
 .subnav a { color: var(--muted); text-decoration: none; padding: var(--s2) 0; border-bottom: 2px solid transparent; margin-bottom: -1px; }
 .subnav a:hover { color: var(--ink); }
 .subnav a[aria-current="page"] { color: var(--ink); font-weight: 600; border-bottom-color: var(--brand); }
-.addrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0 var(--s3); align-items: end; margin-bottom: var(--s2); }
-.addrow .btn { margin: 0 0 var(--s3); }
+.addrow { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s2) var(--s3); margin: 0 0 var(--s3); }
+.addrow .field { flex: 1 1 160px; margin: 0; }
+.addrow fieldset.field { flex: 1 1 520px; padding: 0; border: 0; }
+.addrow legend { padding: 0; margin-bottom: var(--s1); font-weight: 500; font-size: var(--fs-sm); color: var(--muted); }
+.addrow fieldset .check { margin-right: var(--s3); }
+.addrow .btn { flex: 0 0 auto; min-width: 96px; min-height: 36px; margin: 0; }
 .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s2) var(--s4); margin: 0 0 var(--s3); }
 .toolbar input[type="text"] { max-width: 280px; }
 .check { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: var(--fs-sm); }
@@ -162,7 +166,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid rgba(0, 87, 217, 0.45
 .tablewrap { overflow-x: auto; background: var(--card); border: 0; }
 table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
 th { text-align: left; padding: var(--s2) var(--s3); color: var(--muted); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; background: none; border-bottom: 1px solid var(--line); white-space: nowrap; }
-td { padding: var(--s2) var(--s3); border-bottom: 1px solid var(--line); vertical-align: middle; }
+td { padding: 6px var(--s3); border-bottom: 1px solid var(--line); vertical-align: middle; }
 tbody tr:hover td { background: #f9fafb; }
 tr:last-child td { border-bottom: 0; }
 td input[type="text"], td input[type="password"], td input[type="email"], td select { padding: 6px 8px; min-width: 120px; }
@@ -250,8 +254,8 @@ textarea { resize: vertical; min-height: 56px; }
 .callout { padding: var(--s2) var(--s3); background: var(--field); border-left: 3px solid var(--brand); }
 .callout > span { display: block; margin-bottom: var(--s1); font-weight: 500; font-size: var(--fs-sm); color: var(--muted); }
 .callout > p { margin: 0; }
-label.check { display: flex; align-items: flex-start; gap: var(--s2); color: var(--ink); font-size: var(--fs-md); }
-label.check input { margin-top: 3px; }
+label.field.check { display: flex; align-items: flex-start; gap: var(--s2); color: var(--ink); font-size: var(--fs-md); }
+label.field.check input { margin-top: 3px; }
 /* One Yes / No / N/A question per row: the text on the left, three radio buttons on the right. */
 .qrow { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--line); }
 .qrow:last-child { border-bottom: 0; }
@@ -261,3 +265,18 @@ label.check input { margin-top: 3px; }
 .yn label { display: inline-flex; align-items: center; gap: var(--s1); cursor: pointer; }
 .yn input { margin: 0; }
 @media (max-width: 520px) { .qrow { flex-direction: column; align-items: flex-start; gap: var(--s1); } }
+
+/* Admin pages: tighter than the public forms. Tables hold many rows, so the numbers (setting values),
+   role ticks and long help texts take as little height as they can. */
+.subnav ~ .sub { max-width: 100ch; margin-bottom: var(--s3); font-size: var(--fs-sm); }
+.subnav ~ h1 { font-size: var(--fs-lg); }
+td input[type="number"] { width: 96px; }
+td select { width: auto; max-width: 100%; }
+td > label.check { width: 48%; margin: 0; font-size: var(--fs-sm); }
+td:has(> label.check) { min-width: 320px; }
+td small { color: var(--muted); }
+.tiles-compact { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: var(--s2); margin: var(--s1) 0 var(--s3); }
+.tiles-compact .tile { padding: var(--s2) var(--s3); padding-right: 32px; }
+.tiles-compact .tile span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.tiles-compact .tile span.error { margin: var(--s1) 0 0; padding: 2px var(--s2); }
+h3 + .tiles-compact { margin-top: var(--s1); }
