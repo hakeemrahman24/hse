@@ -44,6 +44,9 @@ type Row struct {
 	Stage                   string // Pending: stage1, doctor, final
 	At, Gate, Action        string // Inside and gate activity
 	Reason, Officer         string
+	PrevEnd                 string // Rest: the day the previous ticket ended
+	RestDays, RestRequired  int    // Rest: the gap, and the rest the rules ask for
+	RestKind, RestLabel     string // Rest: "short", "ok", ... and the words for it
 }
 
 // Store reads the lists.

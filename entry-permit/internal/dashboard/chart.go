@@ -61,6 +61,8 @@ func soonMatches(r Row, tab, today string) bool {
 		return r.ValidUntil != "" && r.ValidUntil >= today && r.ValidUntil <= string(dates.Day(today).AddDays(soonRegisteredDays))
 	case "active":
 		return r.Departure != "" && r.Departure >= today && r.Departure <= string(dates.Day(today).AddDays(soonTicketDays))
+	case "rest":
+		return r.RestKind == "short" || r.RestKind == "overlap"
 	case "scheduled":
 		return r.Arrival != "" && r.Arrival >= today && r.Arrival <= string(dates.Day(today).AddDays(soonTicketDays))
 	}

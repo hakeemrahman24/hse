@@ -17,6 +17,7 @@ import (
 	"entry-permit/internal/phone"
 	"entry-permit/internal/ticket"
 	"entry-permit/internal/waiver"
+	"entry-permit/internal/worker"
 )
 
 const (
@@ -79,6 +80,7 @@ type TicketData struct {
 	Visit      string
 	Tickets    []TicketRow
 	CanPropose bool
+	RestNote   string // when the next full rest ends, said once above the list
 	FitNote    bool
 	Vals       map[string]string
 }
@@ -86,6 +88,7 @@ type TicketData struct {
 // TicketRow is one ticket as listed on the page.
 type TicketRow struct {
 	ID, Arrival, Departure, Location, Status, Pattern string
+	Rest, RestClass                                   string // the rest before this ticket, and how to colour it
 	Days                                              int
 }
 
@@ -222,5 +225,28 @@ func (a *App) ticketOpen(ctx context.Context, lep, token string) (TicketData, in
 		return d, http.StatusServiceUnavailable, "This page is not available right now. Please try again later."
 	}
 	d.Name, d.CanPropose, d.FitNote = info.WorkerName, true, ticket.IsMCUFitWithNote(info.McuResult)
+	// The rest before each ticket is read with the same rules as a proposal (ticket.Analyze).
+	wni := !worker.Employee{Nationality: info.Nationality}.IsForeign()
+	pol := a.policy()
+	gaps := ticket.RestGaps(pol, rows, wni)
+	for i, t := range rows {
+		if g, ok := gaps[t.ID]; ok {
+			d.Tickets[i].Rest, d.Tickets[i].RestClass = g.Label(), restClass(g.Kind)
+		}
+	}
+	if day, req := ticket.EarliestFullRest(pol, rows, wni); day != "" {
+		d.RestNote = fmt.Sprintf("A full rest is %d days after a ticket ends. Counting from your last ticket, a new rotation that arrives on or after %s is a full rest.", req, day)
+	}
 	return d, 0, ""
+}
+
+// restClass picks the colour word for a rest kind: a short break or an overlap stands out.
+func restClass(kind string) string {
+	switch kind {
+	case "short", "overlap":
+		return "state-bad"
+	case "ok":
+		return "state-valid"
+	}
+	return ""
 }

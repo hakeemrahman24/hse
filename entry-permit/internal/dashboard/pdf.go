@@ -77,6 +77,8 @@ func columnsFor(tab string) []col {
 		return []col{cName, cCompany, cPos, cNumber, {"Status", 28, func(r Row) string { return r.Status }}, {"Window", 46, windowText}, cGate, cSince}
 	case "scheduled":
 		return []col{cName, cCompany, cPos, cNumber, {"Arrival", 28, func(r Row) string { return r.Arrival }}, {"Departure", 28, func(r Row) string { return r.Departure }}}
+	case "rest":
+		return []col{cName, cCompany, cNumber, {"Previous ended", 28, func(r Row) string { return r.PrevEnd }}, {"Next arrival", 28, func(r Row) string { return r.Arrival }}, {"Rest", 62, func(r Row) string { return r.RestLabel }}}
 	case "inside":
 		return []col{cName, cCompany, cNumber, cGate, cSince, cOfficer}
 	case "activity":

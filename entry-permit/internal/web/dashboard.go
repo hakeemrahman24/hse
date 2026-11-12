@@ -72,6 +72,7 @@ type DashData struct {
 	SoonLabel     string // the pill's text for this tab; empty when the tab has no such pill
 	Soon          bool
 	ShowCheckedIn bool
+	ShowKind      bool // the work / visitor pick-list (not on Rest, which is work tickets only)
 	CheckedIn     bool
 	Level2        bool
 	Filtered      bool // any filter is on, so "Clear" is offered
@@ -118,7 +119,7 @@ func (a *App) dashboardPage(w http.ResponseWriter, r *http.Request, u *staff.Use
 }
 
 // soonLabels are the pill texts, one per tab that has such a pill.
-var soonLabels = map[string]string{"registered": "Expiring in 1 month", "active": "Ticket ending in 7 days", "scheduled": "Starting in 7 days"}
+var soonLabels = map[string]string{"registered": "Expiring in 1 month", "active": "Ticket ending in 7 days", "scheduled": "Starting in 7 days", "rest": "Short breaks only"}
 
 // dashData builds what one tab shows from the query string (tab, q, kind, company, soon,
 // checked_in, group, date). The page and the PDF both use it, so the file can never hold more, or
@@ -136,6 +137,7 @@ func (a *App) dashData(ctx context.Context, v url.Values) (DashData, error) {
 		{"registered", func() ([]dashboard.Row, error) { return st.Registered(ctx) }},
 		{"active", func() ([]dashboard.Row, error) { return st.Active(ctx, today) }},
 		{"scheduled", func() ([]dashboard.Row, error) { return st.Scheduled(ctx, today) }},
+		{"rest", func() ([]dashboard.Row, error) { return st.RestGaps(ctx, a.policy()) }},
 		{"gate", func() ([]dashboard.Row, error) { return st.Inside(ctx) }},
 	} {
 		if lists[l.slug], err = l.load(); err != nil {
@@ -156,8 +158,8 @@ func (a *App) dashData(ctx context.Context, v url.Values) (DashData, error) {
 	}
 	opts.Companies = v["company"]
 	d := DashData{Tab: tab, Q: opts.Q, Sync: a.syncNote(ctx), Kind: string(opts.Kind), Soon: opts.Soon, SoonLabel: soonLabels[tab],
-		ShowCheckedIn: tab == "active", CheckedIn: opts.CheckedIn, Level2: opts.Level2, Total: len(lists[tab])}
-	for _, t := range []struct{ slug, label string }{{"pending", "Pending"}, {"registered", "Registered"}, {"active", "Active"}, {"scheduled", "Scheduled"}, {"gate", "Gate"}} {
+		ShowCheckedIn: tab == "active", ShowKind: tab != "rest", CheckedIn: opts.CheckedIn, Level2: opts.Level2, Total: len(lists[tab])}
+	for _, t := range []struct{ slug, label string }{{"pending", "Pending"}, {"registered", "Registered"}, {"active", "Active"}, {"scheduled", "Scheduled"}, {"rest", "Rest"}, {"gate", "Gate"}} {
 		d.Tabs = append(d.Tabs, DashTab{Slug: t.slug, Label: t.label, Count: len(lists[t.slug]), Current: t.slug == tab})
 	}
 	switch tab {

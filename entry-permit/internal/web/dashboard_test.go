@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -337,5 +338,59 @@ func TestDashboardFiltersChartsAndGateDay(t *testing.T) {
 	_, body := e.get(t, "/staff/dashboard?tab=registered", c)
 	if !strings.Contains(body, `class="pie"`) || strings.Contains(body, "style=") || !strings.Contains(body, `name="company"`) {
 		t.Errorf("registered page lacks the chart or filters, or uses inline style")
+	}
+}
+
+// Rest between tickets: the Rest tab lists each gap with the proposal rules' verdict, and Short
+// breaks only keeps the ones that fall short of the required rest.
+func TestDashboardRestTabListsTheGapsBetweenTickets(t *testing.T) {
+	e := newEnv(t)
+	e.reviewPermit(t, "WEP-00001", "Approved", 1, "", "LEP-AAAAA", "2027-01-31")
+	for i, tk := range []struct{ from, to string }{
+		{"2026-01-01", "2026-01-20"}, {"2026-01-21", "2026-02-10"}, {"2026-02-20", "2026-03-10"}, {"2026-05-01", "2026-05-20"},
+	} {
+		if _, err := e.db.Exec(`INSERT INTO ticket (ticket_id, lep_no, is_work, status, arrival, departure, location, pattern, rotation_no, submitted_at)
+			VALUES (?, 'LEP-AAAAA', 1, 'Closed', ?, ?, 'Onshore', 'Normal', ?, '2026-01-01 08:00:00')`, fmt.Sprintf("TKT-0000%d", i), tk.from, tk.to, i+1); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ctx := context.Background()
+	d, err := e.app.dashData(ctx, url.Values{"tab": {"rest"}})
+	if err != nil || len(d.Rows) != 3 || d.ShowKind {
+		t.Fatalf("rest tab: %d rows, showKind %v, %v", len(d.Rows), d.ShowKind, err)
+	}
+	if d.Rows[0].RestKind != "consecutive" || d.Rows[1].RestKind != "short" || d.Rows[1].RestDays != 10 || d.Rows[2].RestKind != "ok" || d.Rows[1].PrevEnd != "2026-02-10" {
+		t.Errorf("rows %+v", d.Rows)
+	}
+	short, _ := e.app.dashData(ctx, url.Values{"tab": {"rest"}, "soon": {"1"}})
+	if len(short.Rows) != 1 || short.Rows[0].RestKind != "short" || short.SoonLabel != "Short breaks only" {
+		t.Errorf("short breaks only: %+v", short.Rows)
+	}
+	c := e.reviewer(t, "viewer", staff.Dashboard)
+	_, body := e.get(t, "/staff/dashboard?tab=rest", c)
+	if !strings.Contains(body, "Rest before it") || !strings.Contains(body, "10 days: short break") || !strings.Contains(body, "Rest (3)") {
+		t.Errorf("rest page lacks the gaps:\n%s", body)
+	}
+}
+
+// The worker's own ticket page shows the same rest before each ticket, and when a full rest ends.
+func TestWorkerTicketPageShowsTheRestBeforeEachTicket(t *testing.T) {
+	e := newEnv(t)
+	e.reviewPermit(t, "WEP-00001", "Approved", 1, "", "LEP-AAAAA", "2027-01-31")
+	for i, tk := range []struct{ from, to string }{{"2026-02-01", "2026-02-10"}, {"2026-02-20", "2026-03-10"}} {
+		if _, err := e.db.Exec(`INSERT INTO ticket (ticket_id, lep_no, is_work, status, arrival, departure, location, pattern, rotation_no, submitted_at)
+			VALUES (?, 'LEP-AAAAA', 1, 'Closed', ?, ?, 'Onshore', 'Normal', ?, '2026-01-01 08:00:00')`, fmt.Sprintf("TKT-0000%d", i), tk.from, tk.to, i+1); err != nil {
+			t.Fatal(err)
+		}
+	}
+	d, status, msg := e.app.ticketOpen(context.Background(), "LEP-AAAAA", "tok")
+	if status != 0 {
+		t.Fatalf("ticketOpen: %d %s", status, msg)
+	}
+	if len(d.Tickets) != 2 || d.Tickets[0].Rest != "First ticket" || !strings.Contains(d.Tickets[1].Rest, "10 days: short break") || d.Tickets[1].RestClass != "state-bad" {
+		t.Errorf("tickets %+v", d.Tickets)
+	}
+	if !strings.Contains(d.RestNote, "2026-03-24") { // the last ticket ended 2026-03-10; 14 days of rest
+		t.Errorf("rest note %q", d.RestNote)
 	}
 }

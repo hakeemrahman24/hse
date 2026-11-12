@@ -5,11 +5,11 @@
 {{end}}
 
 {{define "dash_rows"}}
-<div class="tablewrap"><table>
+<div class="tablewrap dense"><table>
   <thead><tr><th>Name</th><th>Company</th><th>Position</th><th>Number</th><th>Status</th><th>Window</th><th>Valid until</th></tr></thead>
   <tbody>
   {{range .}}<tr>
-    <td>{{.Name}}</td><td>{{.Company}}</td><td>{{.Position}}</td>
+    <td title="{{.Name}}">{{.Name}}</td><td title="{{.Company}}">{{.Company}}</td><td title="{{.Position}}">{{.Position}}</td>
     <td>{{if .HasCard}}<a href="/c/{{.ID}}">{{.ID}}</a>{{else}}{{.ID}}{{end}}</td>
     <td>{{.Status}}</td>
     <td>{{if .Arrival}}{{.Arrival}} to {{.Departure}}{{end}}</td>
@@ -19,8 +19,20 @@
 </table></div>
 {{end}}
 
+{{define "dash_rest"}}
+<div class="tablewrap dense"><table>
+  <thead><tr><th>Name</th><th>Company</th><th>Number</th><th>Previous ended</th><th>Next ticket</th><th>Rest before it</th></tr></thead>
+  <tbody>
+  {{range .}}<tr>
+    <td title="{{.Name}}">{{.Name}}</td><td title="{{.Company}}">{{.Company}}</td><td><a href="/c/{{.ID}}">{{.ID}}</a></td><td>{{.PrevEnd}}</td><td>{{.Arrival}} to {{.Departure}}</td>
+    <td><span class="state {{if or (eq .RestKind "short") (eq .RestKind "overlap")}}state-bad{{else if eq .RestKind "ok"}}state-valid{{end}}">{{.RestLabel}}</span></td>
+  </tr>{{end}}
+  </tbody>
+</table></div>
+{{end}}
+
 {{define "dash_inside"}}
-<div class="tablewrap"><table>
+<div class="tablewrap dense"><table>
   <thead><tr><th>Name</th><th>Company</th><th>Number</th><th>Gate</th><th>Since</th><th>Officer</th></tr></thead>
   <tbody>
   {{range .}}<tr><td>{{.Name}}</td><td>{{.Company}}</td><td>{{.ID}}</td><td>{{.Gate}}</td><td>{{.At}}</td><td>{{.Officer}}</td></tr>{{end}}
@@ -29,7 +41,7 @@
 {{end}}
 
 {{define "dash_activity"}}
-<div class="tablewrap"><table>
+<div class="tablewrap dense"><table>
   <thead><tr><th>Time</th><th>Name</th><th>Number</th><th>Action</th><th>Reason</th><th>Gate</th><th>Officer</th></tr></thead>
   <tbody>
   {{range .}}<tr><td>{{.At}}</td><td>{{.Name}}</td><td>{{.ID}}</td><td>{{.Action}}</td><td>{{.Reason}}</td><td>{{.Gate}}</td><td>{{.Officer}}</td></tr>{{end}}
@@ -46,27 +58,27 @@
 
 {{define "dashboard"}}{{template "head" .}}
 <h1>{{.Title}}</h1>
-<nav class="subnav" aria-label="Dashboard lists">
+<nav class="tabs" aria-label="Dashboard lists">
   {{range .Dash.Tabs}}<a href="/staff/dashboard?tab={{.Slug}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}} ({{.Count}})</a>{{end}}
 </nav>
-
+<div class="tabpanel">
 <form method="get" action="/staff/dashboard" class="filterbar" data-autoform>
   <input type="hidden" name="tab" value="{{.Dash.Tab}}">
-  <input type="search" name="q" value="{{.Dash.Q}}" maxlength="80" autocomplete="off" placeholder="Search name, company, position or number" aria-label="Search">
+  <input type="search" name="q" value="{{.Dash.Q}}" maxlength="80" autocomplete="off" placeholder="Search name, company, number" aria-label="Search">
   {{if .Dash.Charted}}
-  <select name="kind" aria-label="Permit kind">
-    <option value="">Work and visitor</option>
+  {{if .Dash.ShowKind}}<select name="kind" aria-label="Permit kind">
+    <option value="">All kinds</option>
     <option value="work"{{if eq .Dash.Kind "work"}} selected{{end}}>Work</option>
     <option value="visitor"{{if eq .Dash.Kind "visitor"}} selected{{end}}>Visitor</option>
-  </select>
+  </select>{{end}}
   <details class="ms"><summary>{{.Dash.CompanyLabel}}</summary>
     <div class="ms-panel">{{range .Dash.CompanyOpts}}<label class="check"><input type="checkbox" name="company" value="{{.Name}}"{{if .On}} checked{{end}}> {{.Name}}</label>{{else}}<p class="note">No companies on this list.</p>{{end}}</div>
   </details>
   {{if .Dash.SoonLabel}}<label class="pill"><input type="checkbox" name="soon" value="1"{{if .Dash.Soon}} checked{{end}}> {{.Dash.SoonLabel}}</label>{{end}}
   {{if .Dash.ShowCheckedIn}}<label class="pill"><input type="checkbox" name="checked_in" value="1"{{if .Dash.CheckedIn}} checked{{end}}> Checked in</label>{{end}}
   <select name="group" aria-label="Group the pie by">
-    <option value="">Pie: all companies</option>
-    <option value="level2"{{if .Dash.Level2}} selected{{end}}>Pie: until level 2</option>
+    <option value="">Pie: all</option>
+    <option value="level2"{{if .Dash.Level2}} selected{{end}}>Pie: to level 2</option>
   </select>
   {{end}}
   {{if eq .Dash.Tab "gate"}}
@@ -95,13 +107,14 @@
   </div>
   {{if .Dash.Rows}}{{template "dash_rows" .Dash.Rows}}{{else}}<p class="note">{{if .Dash.Q}}No one matches that search.{{else}}Nothing is waiting.{{end}}</p>{{end}}
 {{else}}
-  <div class="chartpanel">
+  {{if ne .Dash.Tab "rest"}}<div class="chartpanel">
     <h3>Company distribution{{if .Dash.Level2}}, until level 2{{end}}</h3>
     <div class="chartbody">{{template "pie" .Dash.Slices}}</div>
-  </div>
-  <p class="note">{{len .Dash.Rows}}{{if .Dash.Filtered}} of {{.Dash.Total}}{{end}} {{if eq (len .Dash.Rows) 1}}person{{else}}people{{end}}.</p>
-  {{if .Dash.Rows}}{{template "dash_rows" .Dash.Rows}}{{else}}<p class="note">{{if .Dash.Filtered}}No one matches these filters.{{else}}Nothing on this list.{{end}}</p>{{end}}
+  </div>{{end}}
+  <p class="note">{{len .Dash.Rows}}{{if .Dash.Filtered}} of {{.Dash.Total}}{{end}} {{if eq .Dash.Tab "rest"}}rest gaps between tickets{{else if eq (len .Dash.Rows) 1}}person{{else}}people{{end}}.</p>
+  {{if .Dash.Rows}}{{if eq .Dash.Tab "rest"}}{{template "dash_rest" .Dash.Rows}}{{else}}{{template "dash_rows" .Dash.Rows}}{{end}}{{else}}<p class="note">{{if .Dash.Filtered}}No one matches these filters.{{else}}Nothing on this list.{{end}}</p>{{end}}
 {{end}}
+</div>
 {{template "foot" .}}{{end}}
 
 {{define "gate"}}{{template "head" .}}

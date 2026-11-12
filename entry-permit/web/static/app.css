@@ -325,3 +325,54 @@ td small { color: var(--muted); }
 .stagestrip > .stagechart > h3 { flex: 1 1 100%; }
 .stagestrip .legend { max-height: 120px; }
 main h2 { margin: var(--s3) 0 var(--s1); }
+
+/* Dashboard (a tabbed page). One text size for everything on it (13px: tabs, controls, notes,
+   legend, table heads and cells), so nothing looks bigger than its neighbour. Rows stay on one
+   line (long names are cut with "..." and show in full on hover), so a screen holds many rows. */
+.shell:has(.tabs) main { padding: var(--s3) var(--s4) var(--s4); font-size: var(--fs-sm); }
+.shell:has(.tabs) h1 { margin: 0 0 var(--s2); font-size: var(--fs-lg); }
+.shell:has(.tabs) h2 { margin: var(--s2) 0 var(--s1); font-size: inherit; font-weight: 600; }
+.shell:has(.tabs) h3 { font-size: inherit; }
+.shell:has(.tabs) .note, .shell:has(.tabs) .sub { margin: var(--s1) 0; font-size: inherit; }
+.shell:has(.tabs) :is(input, select, button, .btn-small, .btn-small-quiet, .pill, .ms summary, .legend, table, th, td) { font-size: inherit; }
+
+/* Tabs with a clear frame: each tab is a bordered box, the open one is white with a blue top edge and
+   joins the bordered panel below it. */
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; margin: 0; padding: 0; border-bottom: 1px solid var(--tab-line); }
+.tabs a { padding: 6px 14px; margin-bottom: -1px; color: var(--muted); text-decoration: none; background: #eceff3; border: 1px solid var(--line); border-bottom: 1px solid var(--tab-line); }
+.tabs a:hover { color: var(--ink); background: #f5f7fa; }
+.tabs a[aria-current="page"] { padding-bottom: 7px; color: var(--ink); font-weight: 600; background: #fff; border-color: var(--tab-line); border-top: 2px solid var(--brand); border-bottom: 1px solid #fff; }
+.tabpanel { padding: var(--s3); border: 1px solid var(--tab-line); border-top: 0; }
+:root { --tab-line: #8b95a5; }
+
+.dense table { line-height: 1.3; }
+.dense th { padding: 3px 8px; font-weight: 600; letter-spacing: 0.02em; text-transform: none; white-space: nowrap; }
+.dense td { padding: 2px 8px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dense tbody tr:hover td { background: #f4f7fb; }
+
+.filterbar { gap: 6px; margin-bottom: var(--s2); }
+.filterbar input[type="search"] { flex: 0 1 230px; min-height: 26px; padding: 2px 8px; }
+.filterbar select, .filterbar input[type="date"], .ms summary, .pill, .filterbar .btn-small, .filterbar .btn-small-quiet { min-height: 26px; }
+.filterbar select, .filterbar input[type="date"] { padding: 2px 6px; }
+.filterbar .btn-small, .filterbar .btn-small-quiet { padding: 0 var(--s2) !important; }
+.pill { padding: 0 var(--s2); }
+.ms summary { padding: 0 var(--s2); max-width: 180px; }
+.chartpanel { margin-bottom: var(--s2); padding: var(--s1) var(--s3) var(--s2); }
+.chartpanel h3, .stagechart h3 { margin: 0 0 var(--s1); font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--ink); }
+.pie { width: 96px; height: 96px; }
+.legend { max-height: 100px; }
+.stagestrip { margin-bottom: var(--s2); }
+.stagestrip > div { min-width: 70px; padding: var(--s1) var(--s3); }
+.stagestrip > div > b { font-size: var(--fs-lg); }
+.stagestrip > div > span { font-size: inherit; }
+
+/* Home tiles: one colour each (a thick left edge, a tinted hover and a coloured title and arrow), so
+   the three choices are told apart at a glance. The same three colours as the dashboard charts. */
+.tile-blue { --tile: #0057d9; --tile-tint: #eef4ff; }
+.tile-green { --tile: #188038; --tile-tint: #edf7f0; }
+.tile-orange { --tile: #c26401; --tile-tint: #fff4e8; }
+.home-tiles .tile { border-left: 5px solid var(--tile); padding-top: var(--s4); padding-bottom: var(--s4); }
+.home-tiles .tile strong { color: var(--tile); font-size: var(--fs-lg); }
+.home-tiles .tile::after { color: var(--tile); }
+.home-tiles .tile:hover, .home-tiles .tile:focus-visible { background: var(--tile-tint); border-color: var(--tile); }
+.home-tiles .tile:hover strong, .home-tiles .tile:focus-visible strong { color: var(--tile); }
