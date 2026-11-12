@@ -36,7 +36,7 @@ func (a *API) SetCertificates(src CertificateSource) { a.certs = src }
 
 // OwnCertificateRecord returns the checkup record a document in the submitter's scope (their own,
 // their company's, a subcontractor's) was linked to, when the certificate may be offered: the
-// document is Closed, or Reviewed with an eligible result (see Submission.CertificateReady). A document
+// document is Closed, or Reviewed with a certificate result (see Submission.CertificateReady). A document
 // outside the scope, one with no record, or one that is not eligible is ErrNotFound, so the route
 // cannot be used to probe other people's documents or other results.
 func (s *Store) OwnCertificateRecord(ctx context.Context, sc Scope, id int64) (int64, error) {
@@ -46,12 +46,49 @@ func (s *Store) OwnCertificateRecord(ctx context.Context, sc Scope, id int64) (i
 		`SELECT s.FK_McuRecordID FROM McuSubmission s
 		 LEFT JOIN McuRecord rec ON rec.McuRecordID = s.FK_McuRecordID
 		 WHERE s.SubmissionID = ? AND `+clause+` AND s.FK_McuRecordID IS NOT NULL
-		   AND (s.Status = ? OR (s.Status = ? AND rec.ResultCriteria IN ('Fit', 'FitWithNote')))`,
+		   AND (s.Status = ? OR (s.Status = ? AND rec.ResultCriteria IN ('Fit', 'FitWithNote', 'TemporaryUnfit', 'Unfit')))`,
 		append(append([]any{id}, args...), SubClosed, SubReviewed)...).Scan(&record)
+	if err == nil {
+		return record, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return 0, err
+	}
+	// Not linked (or not yet eligible): the worker may still have a certificate on the MCU tab.
+	var status string
+	err = s.DB.QueryRowContext(ctx, `SELECT s.Status FROM McuSubmission s WHERE s.SubmissionID = ? AND `+clause, append([]any{id}, args...)...).Scan(&status)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, ErrNotFound
 	}
-	return record, err
+	if err != nil {
+		return 0, err
+	}
+	if record, err = s.latestCertificateRecord(ctx, id, status); err != nil {
+		return 0, err
+	}
+	if record == 0 {
+		return 0, ErrNotFound
+	}
+	return record, nil
+}
+
+// AttachCertificates fills CertRecordID of each document, so the list, the link and the zip agree with
+// OwnCertificateRecord. One small lookup per document that has no linked certificate (a page holds
+// docPageSize rows). A failed lookup only leaves that row without a link, and is logged.
+func (s *Store) AttachCertificates(ctx context.Context, docs []Submission) {
+	for i := range docs {
+		d := &docs[i]
+		if d.linkedCertificateReady() {
+			d.CertRecordID = d.RecordID
+			continue
+		}
+		record, err := s.latestCertificateRecord(ctx, d.ID, d.Status)
+		if err != nil {
+			log.Printf("mcusubmit: latest certificate of document %d: %v", d.ID, err)
+			continue
+		}
+		d.CertRecordID = record
+	}
 }
 
 // DocumentCertificate lets a submitter download the health certificate of their own document once it is eligible.

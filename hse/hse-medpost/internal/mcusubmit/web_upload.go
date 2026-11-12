@@ -135,6 +135,7 @@ func (a *API) Documents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if a.certs != nil {
+		a.Store.AttachCertificates(r.Context(), result.Rows)
 		for _, d := range result.Rows {
 			if d.CertificateReady() {
 				p.ZipURL = zipQuery(p.Form)

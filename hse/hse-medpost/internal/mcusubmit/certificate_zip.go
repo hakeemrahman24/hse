@@ -68,6 +68,7 @@ func (a *API) CertificatesZip(w http.ResponseWriter, r *http.Request) {
 			a.serverError(w, "zip search", err)
 			return
 		}
+		a.Store.AttachCertificates(r.Context(), res.Rows)
 		for _, d := range res.Rows {
 			if d.CertificateReady() && len(docs) < maxZipCertificates {
 				docs = append(docs, d)
@@ -88,7 +89,7 @@ func (a *API) CertificatesZip(w http.ResponseWriter, r *http.Request) {
 	var files []entry
 	var skipped []string
 	for _, d := range docs {
-		cert, err := a.certs.Certificate(r.Context(), d.RecordID)
+		cert, err := a.certs.Certificate(r.Context(), d.CertRecordID)
 		var unavailable *CertificateUnavailable
 		switch {
 		case errors.As(err, &unavailable):

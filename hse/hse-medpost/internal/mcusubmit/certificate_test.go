@@ -176,7 +176,7 @@ func (u *uploadEnv) reviewedDoc(name, result string) int64 {
 	return id
 }
 
-// Owner, 2026-11-12: a worker who is eligible (Fit or Fit with note) gets the certificate on the
+// Owner, 2026-11-12: a worker who is Fit, Fit with note, Temporarily Unfit or Unfit gets the certificate on the
 // submitter's page as soon as the result is saved, without waiting for the notice mail to close it.
 func TestCertificateIsOfferedAsSoonAsTheResultIsEligibleEvenBeforeTheDocumentCloses(t *testing.T) {
 	u := newUploadEnv(t)
@@ -184,13 +184,14 @@ func TestCertificateIsOfferedAsSoonAsTheResultIsEligibleEvenBeforeTheDocumentClo
 	fit := u.reviewedDoc("Siti Aminah", "Fit")
 	note := u.reviewedDoc("Budi Hartono", "FitWithNote")
 	unfit := u.reviewedDoc("Joko Susilo", "Unfit")
+	tempUnfit := u.reviewedDoc("Dewi Lestari", "TemporaryUnfit")
 	followUp := u.reviewedDoc("Agus Salim", "NeedFollowUp")
 
 	list := u.get("/mcu-submit/documents", u.cookie).Body.String()
 	for name, c := range map[string]struct {
 		id   int64
 		want bool
-	}{"Fit": {fit, true}, "Fit with note": {note, true}, "Unfit": {unfit, false}, "Needs follow-up": {followUp, false}} {
+	}{"Fit": {fit, true}, "Fit with note": {note, true}, "Unfit": {unfit, true}, "Temporarily unfit": {tempUnfit, true}, "Needs follow-up": {followUp, false}} {
 		path := fmt.Sprintf("/mcu-submit/documents/%d/certificate", c.id)
 		if got := strings.Contains(list, path); got != c.want {
 			t.Errorf("%s: list offers the certificate = %v, want %v", name, got, c.want)
@@ -211,7 +212,8 @@ func TestCertificatesZipAlsoHoldsEligibleDocumentsThatAreNotClosedYet(t *testing
 	u.api.SetCertificates(&fakeCerts{dir: t.TempDir()})
 	closed := u.closedDoc("Siti Aminah")
 	fit := u.reviewedDoc("Budi Hartono", "Fit")
-	u.reviewedDoc("Joko Susilo", "Unfit")
+	unfit := u.reviewedDoc("Joko Susilo", "Unfit")
+	u.reviewedDoc("Agus Salim", "NeedFollowUp")
 
 	// The link is offered on a list that has only an eligible, not yet closed row.
 	if body := u.get("/mcu-submit/documents?status=Reviewed", u.cookie).Body.String(); !strings.Contains(body, "certificates.zip") {
@@ -230,8 +232,8 @@ func TestCertificatesZipAlsoHoldsEligibleDocumentsThatAreNotClosedYet(t *testing
 		names = append(names, f.Name)
 	}
 	got := strings.Join(names, " ")
-	if len(zr.File) != 2 || !strings.Contains(got, itoa(closed)+"-") || !strings.Contains(got, itoa(fit)+"-") {
-		t.Errorf("zip holds %v, want the Closed and the eligible Reviewed document only (not the Unfit one)", names)
+	if len(zr.File) != 3 || !strings.Contains(got, itoa(closed)+"-") || !strings.Contains(got, itoa(fit)+"-") || !strings.Contains(got, itoa(unfit)+"-") {
+		t.Errorf("zip holds %v, want the Closed, Fit and Unfit documents only (not the follow-up one)", names)
 	}
 }
 
@@ -251,5 +253,42 @@ func TestCertificateOpensInTheBrowserWithViewAndIsSavedWithout(t *testing.T) {
 	}
 	if body := u.get("/mcu-submit/documents", u.cookie).Body.String(); !strings.Contains(body, path+"?view=1") {
 		t.Error("the list has no View certificate link")
+	}
+}
+
+// Owner, 2026-11-12: a worker who already has a certificate on the MCU tab gets it on the submitter's page
+// too, even when this document was never linked to that checkup (HR did not send it through the portal, or
+// the reviewer has not linked it yet). The worker is found the way the Submitted tab finds them: name and
+// date of birth. A Fit record still has to be Close, as on the MCU tab; a non-fit one has no such step.
+func TestCertificateOnTheMcuTabIsAlsoOfferedToTheSubmitterOfAnUnlinkedDocument(t *testing.T) {
+	u := newUploadEnv(t)
+	u.api.SetCertificates(&fakeCerts{dir: t.TempDir()})
+	cases := []struct {
+		name, result, status string
+		want                 bool
+	}{
+		{"Siti Aminah", "Fit", "Close", true},
+		{"Budi Hartono", "Fit", "Open", false},
+		{"Joko Susilo", "Unfit", "Open", true},
+		{"Agus Salim", "NeedFollowUp", "Close", false},
+	}
+	ids := make([]int64, len(cases))
+	for i, c := range cases {
+		ids[i] = sentDoc(u.t, u.store, u.userID, c.name) // Pending, no checkup linked
+		addRecord(u.t, u.store, seedWorker(u.t, u.store, c.name, "1990-04-12", u.companyID), "MedC-"+itoa(ids[i]), c.result, "2027-01-01", c.status, 1)
+	}
+	list := u.get("/mcu-submit/documents", u.cookie).Body.String()
+	for i, c := range cases {
+		path := fmt.Sprintf("/mcu-submit/documents/%d/certificate", ids[i])
+		if got := strings.Contains(list, path); got != c.want {
+			t.Errorf("%s %s/%s: list offers the certificate = %v, want %v", c.name, c.result, c.status, got, c.want)
+		}
+		want := http.StatusNotFound
+		if c.want {
+			want = http.StatusOK
+		}
+		if rec := u.get(path, u.cookie); rec.Code != want {
+			t.Errorf("%s: download = %d, want %d", c.name, rec.Code, want)
+		}
 	}
 }

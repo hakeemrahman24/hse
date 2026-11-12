@@ -171,6 +171,19 @@
       // Which checkup the Latest result column comes from, so a reviewer can tell it apart from this document.
       fact('Latest checkup', [d.latest.checkUpId, d.latest.dateCheckUp, d.latest.validUntil ? 'valid until ' + d.latest.validUntil : ''].filter(Boolean).join(' \u00b7 '));
     }
+    // A certificate that already exists on the MCU tab for this worker's latest checkup opens from here too
+    // (owner, 2026-11-12). The route is the MCU tab's own, so it applies the same rules.
+    if (d.latest && d.latest.certificate && d.latest.recordId) {
+      var certDd = document.createElement('dd');
+      var certLink = document.createElement('a');
+      certLink.href = '/api/mcu-records/' + d.latest.recordId + '/certificate.pdf';
+      certLink.target = '_blank'; certLink.rel = 'noopener';
+      certLink.textContent = 'Open certificate';
+      certLink.setAttribute('aria-label', 'Open the health certificate of ' + d.worker);
+      var certDt = document.createElement('dt'); certDt.textContent = 'Certificate';
+      certDd.appendChild(certLink);
+      facts.appendChild(certDt); facts.appendChild(certDd);
+    }
     panel.appendChild(facts);
 
     var canAct = d.status === 'Pending' || d.status === 'Reviewed';

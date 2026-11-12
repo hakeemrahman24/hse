@@ -11,11 +11,13 @@ import (
 // shows it in the More panel, because HR does not always send an update through the portal: the
 // reviewer can still see where the worker stands without leaving the page.
 type LatestRecord struct {
+	RecordID    int64  `json:"recordId"` // McuRecordID: what the certificate download is asked for
 	CheckUpID   string `json:"checkUpId"`
 	DateCheckUp string `json:"dateCheckUp"`
 	Result      string `json:"result"`
 	ValidUntil  string `json:"validUntil"`
 	Status      string `json:"status"`
+	Certificate bool   `json:"certificate"` // the MCU tab offers a certificate for it (see HasCertificate)
 }
 
 // nameKey makes two spellings of one name comparable: case and spacing are ignored, nothing else.
@@ -75,15 +77,48 @@ func (s *Store) LatestRecord(ctx context.Context, id int64) (*LatestRecord, erro
 	}
 	var r LatestRecord
 	err = s.DB.QueryRowContext(ctx,
-		`SELECT CheckUpID, COALESCE(DateCheckUp, ''), COALESCE(ResultCriteria, ''), COALESCE(ResultValidUntil, ''), COALESCE(CheckUpStatus, '')
+		`SELECT McuRecordID, CheckUpID, COALESCE(DateCheckUp, ''), COALESCE(ResultCriteria, ''), COALESCE(ResultValidUntil, ''), COALESCE(CheckUpStatus, '')
 		 FROM McuRecord WHERE FK_PatientID IN (`+marks+`)
 		 ORDER BY COALESCE(DateCheckUp, '') DESC, McuRecordID DESC LIMIT 1`, args...).
-		Scan(&r.CheckUpID, &r.DateCheckUp, &r.Result, &r.ValidUntil, &r.Status)
+		Scan(&r.RecordID, &r.CheckUpID, &r.DateCheckUp, &r.Result, &r.ValidUntil, &r.Status)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
 		return nil, err
 	}
+	r.Certificate = r.HasCertificate()
 	return &r, nil
+}
+
+// HasCertificate says whether the MCU tab offers a certificate for this checkup. It is the same rule the
+// certificate generator applies (internal/entrymcu CertificateFile): a Temporarily Unfit or Unfit result
+// always has one (the written opinion the company keeps), Fit and Fit with note only once the record is
+// Close. The generator still has the last word, for example it refuses an overdue or archived record.
+func (l LatestRecord) HasCertificate() bool {
+	switch l.Result {
+	case "TemporaryUnfit", "Unfit":
+		return true
+	case "Fit", "FitWithNote":
+		return l.Status == "Close"
+	}
+	return false
+}
+
+// certificateStatuses are the document statuses that may show a worker's existing certificate: the
+// document has been sent, and was not rejected or withdrawn.
+var certificateStatuses = map[string]bool{SubPending: true, SubReviewed: true, SubClosed: true}
+
+// latestCertificateRecord returns the worker's newest checkup when it has a certificate and the document
+// (in this status) may show it, else 0. This is how a certificate that already exists on the MCU tab
+// reaches the submitter although the document was never linked to that checkup (owner, 2026-11-12).
+func (s *Store) latestCertificateRecord(ctx context.Context, id int64, status string) (int64, error) {
+	if !certificateStatuses[status] {
+		return 0, nil
+	}
+	l, err := s.LatestRecord(ctx, id)
+	if err != nil || l == nil || !l.HasCertificate() {
+		return 0, err
+	}
+	return l.RecordID, nil
 }

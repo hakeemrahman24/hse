@@ -79,10 +79,14 @@ type Submission struct {
 	Recommendation        string // the linked checkup's recommendation
 	PatNik, PatPassportNo string
 	PatGender             string
-	RecordID              int64  // the checkup record a Closed document was linked to, 0 = none
-	Notified              bool   // the submitter was mailed about it (CertNotifiedAt set); a non-Fit document stays Reviewed
-	RenewedBy             string // "Renewed by <checkup ID>" once a follow-up checkup replaced the linked record
-	PatientID, CompanyID  int64
+	RecordID              int64 // the checkup record a Closed document was linked to, 0 = none
+	// CertRecordID is the checkup whose certificate the submitter's page offers, 0 = none. It is filled by
+	// AttachCertificates, not by the list query: it is the linked record when that has a certificate, else
+	// the worker's latest record on the MCU tab.
+	CertRecordID         int64
+	Notified             bool   // the submitter was mailed about it (CertNotifiedAt set); a non-Fit document stays Reviewed
+	RenewedBy            string // "Renewed by <checkup ID>" once a follow-up checkup replaced the linked record
+	PatientID, CompanyID int64
 	// PatCompanyAbbr is the abbreviation of the company named in PatCompanyText ("" when it has none
 	// or the text matches no company). Lists show it first and the full name small.
 	PatCompanyAbbr     string
@@ -122,14 +126,22 @@ func (d Submission) ResultMessage() string {
 }
 
 // CertificateReady says whether the submitter's page offers this document's health certificate: it
-// needs a linked checkup, and either the document is Closed or it is Reviewed with an eligible result
-// (Fit or Fit with note). Owner, 2026-11-12: an eligible worker does not wait for the notice mail.
+// needs a linked checkup, and either the document is Closed or it is Reviewed with a result that has a
+// certificate: Fit, Fit with note, Temporarily Unfit or Unfit. Owner, 2026-11-12: the submitter does not
+// wait for the notice mail, and a worker who is not fit still gets the written opinion the company keeps
+// (the staff generator already makes it; non-fit documents stay Reviewed, never Closed, so Closed alone
+// would hide them). Incomplete and Need follow-up have no certificate yet.
 // OwnCertificateRecord applies the same rule to the download, so the link and the route agree.
-func (d Submission) CertificateReady() bool {
+var certificateResults = map[string]bool{"Fit": true, "FitWithNote": true, "TemporaryUnfit": true, "Unfit": true}
+
+func (d Submission) CertificateReady() bool { return d.CertRecordID != 0 }
+
+// linkedCertificateReady is the rule above applied to the linked record alone.
+func (d Submission) linkedCertificateReady() bool {
 	if d.RecordID == 0 {
 		return false
 	}
-	return d.Status == SubClosed || (d.Status == SubReviewed && (d.Result == "Fit" || d.Result == "FitWithNote"))
+	return d.Status == SubClosed || (d.Status == SubReviewed && certificateResults[d.Result])
 }
 
 func nullInt(v int64) sql.NullInt64 { return sql.NullInt64{Int64: v, Valid: v != 0} }

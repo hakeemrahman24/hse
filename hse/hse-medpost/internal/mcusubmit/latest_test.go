@@ -74,3 +74,16 @@ func TestStaffListCarriesTheLatestCheckupOfEachWorker(t *testing.T) {
 		}
 	}
 }
+
+// The Submitted tab offers a certificate only for a checkup the MCU tab has one for: Unfit always, Fit
+// once Close, and nothing for a result that has no certificate.
+func TestLatestRecordSaysWhetherTheMcuTabHasACertificate(t *testing.T) {
+	for _, c := range []struct {
+		result, status string
+		want           bool
+	}{{"Unfit", "Open", true}, {"TemporaryUnfit", "Open", true}, {"Fit", "Close", true}, {"FitWithNote", "Open", false}, {"NeedFollowUp", "Close", false}} {
+		if got := (LatestRecord{Result: c.result, Status: c.status}).HasCertificate(); got != c.want {
+			t.Errorf("%s/%s = %v, want %v", c.result, c.status, got, c.want)
+		}
+	}
+}

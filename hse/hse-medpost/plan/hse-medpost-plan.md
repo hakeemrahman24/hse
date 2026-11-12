@@ -309,6 +309,14 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 ## Progress Log
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
+### 2026-11-12 — Certificates for Temporarily Unfit / Unfit, and any certificate already on the MCU tab
+
+- **What changed:**
+  1. *Non-fit results get a certificate on the submitter's page* (`batches.go`, `certificate.go`): Temporarily Unfit and Unfit join Fit and Fit with note (`certificateResults`). Why: Closed is only for Fit/Fit with note, so these documents stayed Reviewed and the page never offered their certificate, although the MCU tab (staff generator, `entrymcu.CertificateFile`) already makes it (the written opinion the company keeps). Incomplete and Need follow-up still have none.
+  2. *A certificate already on the MCU tab reaches the submitter and the Submitted tab* (`latest.go`, `certificate.go`, `web_upload.go`, `certificate_zip.go`, `mcu-submitted.js`): when a sent document has no eligible linked checkup, the worker's latest checkup (same name + date of birth match as the Submitted tab) is used if it has a certificate (Unfit always, Fit once `Close`). `Store.AttachCertificates` fills `Submission.CertRecordID` for the list and zip; `OwnCertificateRecord` applies the same rule to the download. The Submitted More panel shows an "Open certificate" link (MCU tab's own route, doctor/CMO only).
+  3. The PDF itself is still made on first open and cached (existing `CertificateFile`), not pre-generated when the result is saved.
+- **Open:** whether to pre-generate at save time; whether a name + date-of-birth match is enough to hand a submitter an earlier checkup's certificate (same rule as the Latest checkup display); not yet committed or deployed.
+
 ### 2026-11-12 — Submitted tab: narrow-screen fix, latest result and checkup, certificate for eligible workers
 
 - **What changed:**
