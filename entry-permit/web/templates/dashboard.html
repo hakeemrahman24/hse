@@ -85,6 +85,7 @@
   <select name="group" aria-label="Group the pie by">
     <option value="">Pie: all</option>
     <option value="level2"{{if .Dash.Level2}} selected{{end}}>Pie: to level 2</option>
+    <option value="ring"{{if .Dash.RingPie}} selected{{end}}>Pie: by ring</option>
   </select>
   {{end}}
   {{if eq .Dash.Tab "gate"}}
@@ -114,7 +115,7 @@
   {{if .Dash.Rows}}{{template "dash_rows" .Dash.Rows}}{{else}}<p class="note">{{if .Dash.Q}}No one matches that search.{{else}}Nothing is waiting.{{end}}</p>{{end}}
 {{else}}
   {{if ne .Dash.Tab "rest"}}<div class="chartpanel">
-    <h3>Company distribution{{if .Dash.Level2}}, until level 2{{end}}</h3>
+    <h3>{{if .Dash.RingPie}}Ring distribution{{else}}Company distribution{{end}}{{if .Dash.Level2}}, until level 2{{end}}</h3>
     <div class="chartbody">{{template "pie" .Dash.Slices}}</div>
   </div>{{end}}
   <p class="note">{{len .Dash.Rows}}{{if .Dash.Filtered}} of {{.Dash.Total}}{{end}} {{if eq .Dash.Tab "rest"}}rest gaps between tickets{{else if eq (len .Dash.Rows) 1}}person{{else}}people{{end}}.</p>

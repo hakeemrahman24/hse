@@ -399,3 +399,22 @@ func TestWorkerTicketPageShowsTheRestBeforeEachTicket(t *testing.T) {
 		t.Errorf("rest note %q", d.RestNote)
 	}
 }
+
+func TestDashboardPieCanShowTheRingFromTheRequestAddress(t *testing.T) {
+	e := newEnv(t)
+	cookies := e.reviewer(t, "dewi", staff.Dashboard)
+	e.cardPermit(t)
+	if _, err := e.db.Exec(`UPDATE permit SET nationality = 'Indonesia', province = 'Papua Barat', regency = 'Sorong' WHERE lep_no = ?`, testLEP); err != nil {
+		t.Fatal(err)
+	}
+	_, body := e.get(t, "/staff/dashboard?tab=registered&group=ring", cookies)
+	for _, want := range []string{"Ring distribution", "Ring4", `value="ring" selected`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page lacks %q", want)
+		}
+	}
+	_, plain := e.get(t, "/staff/dashboard?tab=registered", cookies)
+	if strings.Contains(plain, "Ring distribution") {
+		t.Error("the company pie is the default")
+	}
+}

@@ -14,6 +14,7 @@ import (
 	"entry-permit/internal/dashboard"
 	"entry-permit/internal/dates"
 	"entry-permit/internal/gatesync"
+	"entry-permit/internal/reflist"
 	"entry-permit/internal/staff"
 )
 
@@ -76,6 +77,7 @@ type DashData struct {
 	ShowKind      bool   // the work / visitor pick-list (not on Rest, which is work tickets only)
 	CheckedIn     bool
 	Level2        bool
+	RingPie       bool // the pie shows the ring of each permit, not the company
 	Filtered      bool // any filter is on, so "Clear" is offered
 	Total         int  // rows the tab holds before any filter
 	Charted       bool // the tab shows a company pie
@@ -207,6 +209,11 @@ func (a *App) dashData(ctx context.Context, v url.Values) (DashData, error) {
 		d.CompanyLabel = companyLabel(opts.Companies)
 		d.Rows = dashboard.Apply(lists[tab], opts, tab, today)
 		d.Charted, d.Slices = true, dashboard.Distribution(d.Rows, opts.Level2)
+		if d.RingPie = v.Get("group") == "ring"; d.RingPie {
+			if d.Slices, err = a.ringSlices(ctx, st, d.Rows); err != nil {
+				return DashData{}, err
+			}
+		}
 		d.Filtered = opts.Q != "" || opts.Kind != "" || len(opts.Companies) > 0 || opts.Soon || opts.CheckedIn || opts.RestKind != ""
 	}
 	d.PDFHref = pdfHref(d, v)
@@ -346,4 +353,25 @@ func (a *App) gateLookup(ctx context.Context, st dashboard.Store, lep string) (*
 	}
 	state := card.StateOf(row.Status, dates.Day(row.ValidUntil), a.Clock.Today())
 	return &GateLookup{Row: row, State: state.Label(), StateClass: stateClass(state), Activity: activity}, "", nil
+}
+
+// ringSlices builds the Ring pie: each permit's ring comes from the address on its request.
+func (a *App) ringSlices(ctx context.Context, st dashboard.Store, rows []dashboard.Row) ([]dashboard.Slice, error) {
+	places, err := st.PermitPlaces(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("ring places: %w", err)
+	}
+	var rules []dashboard.RingRule
+	if def, ok := reflist.Find("ring"); ok && a.Lists != nil {
+		items, err := a.Lists.Items(ctx, def, false)
+		if err != nil {
+			return nil, fmt.Errorf("ring list: %w", err)
+		}
+		for _, it := range items {
+			if len(it.Values) >= 3 {
+				rules = append(rules, dashboard.RingRule{Ring: it.Values[0], Label: it.Values[1], Level: it.Values[2]})
+			}
+		}
+	}
+	return dashboard.RingDistribution(dashboard.WithRings(rows, places, rules)), nil
 }

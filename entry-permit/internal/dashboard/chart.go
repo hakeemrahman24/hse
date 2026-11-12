@@ -102,8 +102,7 @@ const noCompany = "(No company)"
 // Distribution counts rows per company, sorted by company name. With level2 a company deeper
 // than level 2 is counted on its level 2 parent ("Until level 2"); levels 0 to 2 stay as they are.
 func Distribution(rows []Row, level2 bool) []Slice {
-	counts := map[string]int{}
-	for _, r := range rows {
+	return distribute(rows, func(r Row) string {
 		label := strings.TrimSpace(r.Company)
 		if level2 {
 			if up := level2Parent(r.Parents); up != "" {
@@ -113,7 +112,15 @@ func Distribution(rows []Row, level2 bool) []Slice {
 		if label == "" {
 			label = noCompany
 		}
-		counts[label]++
+		return label
+	})
+}
+
+// distribute counts rows per label, sorted by label.
+func distribute(rows []Row, labelOf func(Row) string) []Slice {
+	counts := map[string]int{}
+	for _, r := range rows {
+		counts[labelOf(r)]++
 	}
 	labels := make([]string, 0, len(counts))
 	for l := range counts {

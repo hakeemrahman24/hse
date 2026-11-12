@@ -47,6 +47,7 @@ type Row struct {
 	PrevEnd                 string // Rest: the day the previous ticket ended
 	RestDays, RestRequired  int    // Rest: the gap, and the rest the rules ask for
 	RestKind, RestLabel     string // Rest: "short", "ok", ... and the words for it
+	Ring                    string // set by WithRings, for the Ring pie
 }
 
 // Store reads the lists.
