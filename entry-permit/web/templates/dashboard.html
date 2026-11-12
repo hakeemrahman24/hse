@@ -6,7 +6,7 @@
 
 {{define "dash_rows"}}
 <div class="tablewrap dense"><table class="sortable fixed8">
-  <thead><tr><th>Name</th><th>Company</th><th>Position</th><th>Number</th><th>Status</th><th>Window</th><th>Weeks</th><th>Valid until</th></tr></thead>
+  <thead><tr><th>Name</th><th>Company</th><th>Position</th><th>Number</th><th>Status</th><th>Window</th><th title="Weeks since the ticket began, up to today">Weeks in</th><th>Valid until</th></tr></thead>
   <tbody>
   {{range .}}<tr>
     <td title="{{.Name}}">{{.Name}}</td><td title="{{.Company}}">{{.Company}}</td><td title="{{.Position}}">{{.Position}}</td>

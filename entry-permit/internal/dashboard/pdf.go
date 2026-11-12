@@ -37,7 +37,7 @@ type Doc struct {
 	Inside, Activity  []Row  // the Gate tab
 }
 
-var cWeeks = col{"Weeks", 14, func(r Row) string { return r.Weeks() }}
+var cWeeks = col{"Weeks in", 16, func(r Row) string { return r.Weeks }}
 
 type col struct {
 	head string

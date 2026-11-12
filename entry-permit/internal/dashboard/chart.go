@@ -51,10 +51,21 @@ func Apply(rows []Row, o Options, tab, today string) []Row {
 		case o.RestKind != "" && r.RestKind != o.RestKind:
 		case o.CheckedIn && r.Status != "Inside":
 		default:
+			r.Weeks = WeeksSince(r.Arrival, today)
 			out = append(out, r)
 		}
 	}
 	return out
+}
+
+// WeeksSince is how long a ticket has been running: the weeks from its first day to today, one
+// decimal and no ".0" on whole weeks. A ticket that has not begun, or has no start, is "".
+func WeeksSince(arrival, today string) string {
+	if arrival == "" || arrival > today {
+		return ""
+	}
+	days := dates.DaysBetween(dates.Day(arrival), dates.Day(today))
+	return strings.TrimSuffix(fmt.Sprintf("%.1f", float64(days)/7), ".0")
 }
 
 func soonMatches(r Row, tab, today string) bool {

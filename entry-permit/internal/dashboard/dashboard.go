@@ -16,7 +16,6 @@ import (
 	"sort"
 	"strings"
 
-	"entry-permit/internal/dates"
 	"entry-permit/internal/permit"
 	"entry-permit/internal/waiver"
 )
@@ -49,6 +48,7 @@ type Row struct {
 	RestDays, RestRequired  int    // Rest: the gap, and the rest the rules ask for
 	RestKind, RestLabel     string // Rest: "short", "ok", ... and the words for it
 	Ring                    string // set by WithRings, for the Ring pie
+	Weeks                   string // set by Apply: weeks since the ticket began, up to today
 }
 
 // Store reads the lists.
@@ -415,13 +415,4 @@ func (s Store) Find(ctx context.Context, id string) (Row, bool, error) {
 
 // HasCard reports whether the row's number opens a public card: only a work
 // permit that has been issued an LEP number has one.
-// Weeks is the ticket window's length in weeks (one decimal, no ".0" on whole weeks), or "" with no window.
-func (r Row) Weeks() string {
-	if r.Arrival == "" || r.Departure == "" {
-		return ""
-	}
-	days := dates.InclusiveDays(dates.Day(r.Arrival), dates.Day(r.Departure))
-	return strings.TrimSuffix(fmt.Sprintf("%.1f", float64(days)/7), ".0")
-}
-
 func (r Row) HasCard() bool { return r.Kind == KindWork && strings.HasPrefix(r.ID, "LEP-") }
