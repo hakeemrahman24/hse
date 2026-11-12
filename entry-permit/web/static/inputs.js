@@ -246,7 +246,20 @@
     });
   }
 
+  // setupAutoForm applies a filter form as soon as a pick-list, tick box or day is changed. The
+  // search box is left alone (it has its own button), and without script the button still works.
+  function setupAutoForm(form) {
+    form.addEventListener('change', function (e) {
+      var t = e.target;
+      if (t && (t.tagName === 'SELECT' || t.type === 'checkbox' || t.type === 'date')) {
+        if (typeof form.requestSubmit === 'function') form.requestSubmit();
+        else form.submit();
+      }
+    });
+  }
+
   api.enhance = function (doc) {
+    each(doc, 'form[data-autoform]', setupAutoForm);
     each(doc, 'input[data-autosubmit]', setupAutoSubmit);
     each(doc, 'input[data-id-by]', setupId);
     each(doc, 'input[data-date]', setupDate);

@@ -17,44 +17,21 @@
 <h1>{{if .Admin.Super}}Administration{{else}}Gate administration{{end}}</h1>
 <p class="sub">{{if .Admin.Super}}Edit the lists the forms use.{{else}}Manage the gate officers, gates and purpose areas.{{end}} Every change is written to the audit log.</p>
 <h3>Lists the forms use</h3>
-<div class="tiles tiles-compact">
-  <a class="tile" href="/staff/admin/gate-officers" title="Who can scan at the gate, and their codes.">
-    <strong>Gate officers</strong>
-    <span>Who can scan at the gate, and their codes.</span>
-  </a>
+<ul class="rowlist">
+  <li><a href="/staff/admin/gate-officers"><strong>Gate officers</strong><span>Who can scan at the gate, and their codes.</span></a></li>
   {{range .Admin.Defs}}
-  <a class="tile" href="{{.Path}}" title="{{.Help}}">
-    <strong>{{.Label}}</strong>
-    <span>{{.Help}}</span>
-    {{if and (eq .Key "malaria") $.Admin.MalariaOrphans}}<span class="error">{{$.Admin.MalariaOrphans}} to review: no longer in the region list</span>{{end}}
-  </a>
+  <li><a href="{{.Path}}"><strong>{{.Label}}</strong><span>{{.Help}}</span>{{if and (eq .Key "malaria") $.Admin.MalariaOrphans}}<em class="badge-bad">{{$.Admin.MalariaOrphans}} to review</em>{{end}}</a></li>
   {{end}}
-</div>
+</ul>
 {{if .Admin.Super}}
 <h3>System</h3>
-<div class="tiles tiles-compact">
-  <a class="tile" href="/staff/admin/status" title="Scheduled jobs, the e-mail queue and anything that needs attention.">
-    <strong>System status</strong>
-    <span>Scheduled jobs, the e-mail queue and anything that needs attention.</span>
-    {{if .Admin.StatusWarnings}}<span class="error">{{.Admin.StatusWarnings}} to look at</span>{{end}}
-  </a>
-  <a class="tile" href="/staff/admin/companies" title="The company list copied from hse-medpost (read only).">
-    <strong>Companies</strong>
-    <span>The company list copied from hse-medpost (read only).</span>
-  </a>
-  <a class="tile" href="/staff/admin/users" title="Add staff, set roles, reset a PIN, switch accounts on or off.">
-    <strong>Users</strong>
-    <span>Add staff, set roles, reset a PIN, switch accounts on or off.</span>
-  </a>
-  <a class="tile" href="/staff/admin/settings" title="Rotation weeks, rest days, grace periods, login limits.">
-    <strong>Settings</strong>
-    <span>Rotation weeks, rest days, grace periods, login limits.</span>
-  </a>
-  <a class="tile" href="/staff/admin/audit" title="Who changed what, and when.">
-    <strong>Audit log</strong>
-    <span>Who changed what, and when.</span>
-  </a>
-</div>
+<ul class="rowlist">
+  <li><a href="/staff/admin/status"><strong>System status</strong><span>Scheduled jobs, the e-mail queue and anything that needs attention.</span>{{if .Admin.StatusWarnings}}<em class="badge-bad">{{.Admin.StatusWarnings}} to look at</em>{{end}}</a></li>
+  <li><a href="/staff/admin/companies"><strong>Companies</strong><span>The company list copied from hse-medpost (read only).</span></a></li>
+  <li><a href="/staff/admin/users"><strong>Users</strong><span>Add staff, set roles, reset a PIN, switch accounts on or off.</span></a></li>
+  <li><a href="/staff/admin/settings"><strong>Settings</strong><span>Rotation weeks, rest days, grace periods, login limits.</span></a></li>
+  <li><a href="/staff/admin/audit"><strong>Audit log</strong><span>Who changed what, and when.</span></a></li>
+</ul>
 {{end}}
 {{template "foot" .}}{{end}}
 

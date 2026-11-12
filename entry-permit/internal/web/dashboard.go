@@ -45,6 +45,12 @@ type GateLookup struct {
 	Activity   []dashboard.Row
 }
 
+// CompanyOpt is one entry of the company picker.
+type CompanyOpt struct {
+	Name string
+	On   bool
+}
+
 // DashData feeds the dashboard and the gate page.
 type DashData struct {
 	Tab      string
@@ -54,10 +60,28 @@ type DashData struct {
 	Inside   []dashboard.Row
 	Activity []dashboard.Row
 	Sync     SyncNote
-	PDFHref  string // the PDF of the tab and search on screen
+	PDFHref  string // the PDF of the tab and filters on screen
 	Lep      string // the permit number typed on the gate page, only when well-formed
 	Hint     string // why a lookup shows nothing
 	Lookup   *GateLookup
+
+	// The filter bar and the charts (the old dashboard's behaviour, as plain GET links and forms).
+	Kind          string // "", "work" or "visitor"
+	CompanyOpts   []CompanyOpt
+	CompanyLabel  string // the picker's summary: "All companies", the one picked, or "3 companies"
+	SoonLabel     string // the pill's text for this tab; empty when the tab has no such pill
+	Soon          bool
+	ShowCheckedIn bool
+	CheckedIn     bool
+	Level2        bool
+	Filtered      bool // any filter is on, so "Clear" is offered
+	Total         int  // rows the tab holds before any filter
+	Charted       bool // the tab shows a company pie
+	Slices        []dashboard.Slice
+	Stages        []dashboard.StageCount // Pending: how many wait at each stage
+	Approval      []dashboard.Slice      // Pending: the approved / rejected pie
+	Day, PrevDay  string                 // Gate: the day shown and the day before
+	NextDay       string                 // empty when the day shown is today
 }
 
 func (a *App) dash() dashboard.Store { return dashboard.Store{DB: a.SQL} }
@@ -85,7 +109,7 @@ func (a *App) dashFail(w http.ResponseWriter, what string, err error) {
 // dashboardPage is /staff/dashboard: five tabs of read-only lists with a search box.
 // It is open to every staff member, so no list holds a birth date, e-mail or file.
 func (a *App) dashboardPage(w http.ResponseWriter, r *http.Request, u *staff.User) {
-	d, err := a.dashData(r.Context(), r.URL.Query().Get("tab"), r.URL.Query().Get("q"))
+	d, err := a.dashData(r.Context(), r.URL.Query())
 	if err != nil {
 		a.dashFail(w, "page", err)
 		return
@@ -93,9 +117,14 @@ func (a *App) dashboardPage(w http.ResponseWriter, r *http.Request, u *staff.Use
 	a.render(w, "dashboard", http.StatusOK, View{Title: staff.Dashboard.Label(), User: u, Links: menu(*u, staff.Dashboard.Slug()), Dash: d})
 }
 
-// dashData builds what one tab shows. The page and the PDF both use it, so the
-// file can never hold more, or different rows, than the screen.
-func (a *App) dashData(ctx context.Context, tab, query string) (DashData, error) {
+// soonLabels are the pill texts, one per tab that has such a pill.
+var soonLabels = map[string]string{"registered": "Expiring in 1 month", "active": "Ticket ending in 7 days", "scheduled": "Starting in 7 days"}
+
+// dashData builds what one tab shows from the query string (tab, q, kind, company, soon,
+// checked_in, group, date). The page and the PDF both use it, so the file can never hold more, or
+// different rows, than the screen.
+func (a *App) dashData(ctx context.Context, v url.Values) (DashData, error) {
+	tab := v.Get("tab")
 	st, today := a.dash(), string(a.Clock.Today())
 	lists := map[string][]dashboard.Row{}
 	var err error
@@ -117,22 +146,81 @@ func (a *App) dashData(ctx context.Context, tab, query string) (DashData, error)
 	if _, ok := lists[tab]; !ok {
 		tab = defaultDashTab // an unknown tab is the default, never an error
 	}
-	q := strings.TrimSpace(query)
-	d := DashData{Tab: tab, Q: q, Sync: a.syncNote(ctx)}
+	opts := dashboard.Options{Q: strings.TrimSpace(v.Get("q")), Soon: v.Get("soon") == "1" && soonLabels[tab] != "",
+		CheckedIn: v.Get("checked_in") == "1" && tab == "active", Level2: v.Get("group") == "level2"}
+	switch dashboard.Kind(v.Get("kind")) {
+	case dashboard.KindWork:
+		opts.Kind = dashboard.KindWork
+	case dashboard.KindVisitor:
+		opts.Kind = dashboard.KindVisitor
+	}
+	opts.Companies = v["company"]
+	d := DashData{Tab: tab, Q: opts.Q, Sync: a.syncNote(ctx), Kind: string(opts.Kind), Soon: opts.Soon, SoonLabel: soonLabels[tab],
+		ShowCheckedIn: tab == "active", CheckedIn: opts.CheckedIn, Level2: opts.Level2, Total: len(lists[tab])}
 	for _, t := range []struct{ slug, label string }{{"pending", "Pending"}, {"registered", "Registered"}, {"active", "Active"}, {"scheduled", "Scheduled"}, {"gate", "Gate"}} {
 		d.Tabs = append(d.Tabs, DashTab{Slug: t.slug, Label: t.label, Count: len(lists[t.slug]), Current: t.slug == tab})
 	}
-	if tab == "gate" {
-		d.Inside = dashboard.Filter(lists["gate"], q)
-		if d.Activity, err = st.GateActivity(ctx, "", gateActivityRows); err != nil {
+	switch tab {
+	case "gate":
+		d.Inside = dashboard.Filter(lists["gate"], opts.Q)
+		d.Day = gateDay(v.Get("date"), today)
+		d.PrevDay = string(dates.Day(d.Day).AddDays(-1))
+		if d.Day < today {
+			d.NextDay = string(dates.Day(d.Day).AddDays(1))
+		}
+		if d.Activity, err = st.GateActivityOn(ctx, d.Day, gateActivityRows); err != nil {
 			return DashData{}, fmt.Errorf("gate activity: %w", err)
 		}
-		d.Activity = dashboard.Filter(d.Activity, q)
-	} else {
-		d.Rows = dashboard.Filter(lists[tab], q)
+		d.Activity = dashboard.Filter(d.Activity, opts.Q)
+		d.Filtered = opts.Q != "" || d.Day != today
+	case "pending":
+		d.Rows = dashboard.Filter(lists[tab], opts.Q)
+		d.Stages = dashboard.StageCounts(lists[tab])
+		if d.Approval, err = st.ApprovalStats(ctx); err != nil {
+			return DashData{}, fmt.Errorf("approval stats: %w", err)
+		}
+		d.Filtered = opts.Q != ""
+	default:
+		picked := map[string]bool{}
+		for _, c := range opts.Companies {
+			picked[c] = true
+		}
+		for _, c := range dashboard.Companies(lists[tab]) {
+			d.CompanyOpts = append(d.CompanyOpts, CompanyOpt{Name: c, On: picked[c]})
+		}
+		// A company that is no longer in the list cannot stay picked and hide everything.
+		opts.Companies = opts.Companies[:0:0]
+		for _, c := range d.CompanyOpts {
+			if c.On {
+				opts.Companies = append(opts.Companies, c.Name)
+			}
+		}
+		d.CompanyLabel = companyLabel(opts.Companies)
+		d.Rows = dashboard.Apply(lists[tab], opts, tab, today)
+		d.Charted, d.Slices = true, dashboard.Distribution(d.Rows, opts.Level2)
+		d.Filtered = opts.Q != "" || opts.Kind != "" || len(opts.Companies) > 0 || opts.Soon || opts.CheckedIn
 	}
-	d.PDFHref = pdfHref(d)
+	d.PDFHref = pdfHref(d, v)
 	return d, nil
+}
+
+// gateDay reads the gate tab's day: a real yyyy-mm-dd that is not in the future, else today.
+func gateDay(s, today string) string {
+	day, err := dates.ParseDay(strings.TrimSpace(s))
+	if err != nil || string(day) > today {
+		return today
+	}
+	return string(day)
+}
+
+func companyLabel(picked []string) string {
+	switch len(picked) {
+	case 0:
+		return "All companies"
+	case 1:
+		return picked[0]
+	}
+	return fmt.Sprintf("%d companies", len(picked))
 }
 
 // syncLine is the sentence the PDF prints about how fresh the gate data is.
@@ -171,7 +259,7 @@ func (a *App) dashboardPDF(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
 		return
 	}
-	d, err := a.dashData(r.Context(), r.URL.Query().Get("tab"), r.URL.Query().Get("q"))
+	d, err := a.dashData(r.Context(), r.URL.Query())
 	if err != nil {
 		a.dashFail(w, "pdf", err)
 		return
@@ -194,13 +282,19 @@ func (a *App) dashboardPDF(w http.ResponseWriter, r *http.Request) {
 	_, _ = buf.WriteTo(w)
 }
 
-// pdfHref is the link to the PDF of the tab and search now on screen.
-func pdfHref(d DashData) string {
-	v := url.Values{"tab": {d.Tab}}
-	if d.Q != "" {
-		v.Set("q", d.Q)
+// pdfHref is the link to the PDF of the tab and filters now on screen. Only the known filter
+// names are carried over, so nothing else typed in the address bar reaches the link.
+func pdfHref(d DashData, v url.Values) string {
+	out := url.Values{"tab": {d.Tab}}
+	for _, k := range []string{"q", "kind", "soon", "checked_in", "group", "date"} {
+		if x := v.Get(k); x != "" {
+			out.Set(k, x)
+		}
 	}
-	return "/staff/dashboard.pdf?" + v.Encode()
+	for _, c := range v["company"] {
+		out.Add("company", c)
+	}
+	return "/staff/dashboard.pdf?" + out.Encode()
 }
 
 // gatePage is /staff/gate, where the QR scan link lands for a gate officer:

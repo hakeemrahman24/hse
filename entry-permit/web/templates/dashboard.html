@@ -37,28 +37,70 @@
 </table></div>
 {{end}}
 
+{{define "pie"}}{{if .}}<svg class="pie" viewBox="0 0 120 120" role="img" aria-label="Pie chart">
+  {{if eq (len .) 1}}{{with index . 0}}<circle cx="60" cy="60" r="56" fill="{{.Color}}"></circle>{{end}}
+  {{else}}{{range .}}<path d="{{.Path}}" fill="{{.Color}}" stroke="#fff" stroke-width="1"><title>{{.Label}}: {{.Value}} ({{.Percent}})</title></path>{{end}}{{end}}
+</svg>
+<ul class="legend">{{range .}}<li><svg class="sw" viewBox="0 0 10 10" aria-hidden="true"><rect width="10" height="10" fill="{{.Color}}"></rect></svg><span>{{.Label}}</span><b>{{.Value}}</b></li>{{end}}</ul>
+{{else}}<p class="note">No matching records.</p>{{end}}{{end}}
+
 {{define "dashboard"}}{{template "head" .}}
 <h1>{{.Title}}</h1>
-{{if .User}}<p class="sub">Signed in as {{.User.DisplayName}}. Read only.</p>{{end}}
 <nav class="subnav" aria-label="Dashboard lists">
   {{range .Dash.Tabs}}<a href="/staff/dashboard?tab={{.Slug}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}} ({{.Count}})</a>{{end}}
 </nav>
-<form method="get" action="/staff/dashboard" class="searchbar">
+
+<form method="get" action="/staff/dashboard" class="filterbar" data-autoform>
   <input type="hidden" name="tab" value="{{.Dash.Tab}}">
-  <label class="field" for="dash-q"><span>Search name, company, position or number</span>
-    <input id="dash-q" type="search" name="q" value="{{.Dash.Q}}" maxlength="80" autocomplete="off"></label>
-  <button type="submit" class="btn-small">Search</button>
+  <input type="search" name="q" value="{{.Dash.Q}}" maxlength="80" autocomplete="off" placeholder="Search name, company, position or number" aria-label="Search">
+  {{if .Dash.Charted}}
+  <select name="kind" aria-label="Permit kind">
+    <option value="">Work and visitor</option>
+    <option value="work"{{if eq .Dash.Kind "work"}} selected{{end}}>Work</option>
+    <option value="visitor"{{if eq .Dash.Kind "visitor"}} selected{{end}}>Visitor</option>
+  </select>
+  <details class="ms"><summary>{{.Dash.CompanyLabel}}</summary>
+    <div class="ms-panel">{{range .Dash.CompanyOpts}}<label class="check"><input type="checkbox" name="company" value="{{.Name}}"{{if .On}} checked{{end}}> {{.Name}}</label>{{else}}<p class="note">No companies on this list.</p>{{end}}</div>
+  </details>
+  {{if .Dash.SoonLabel}}<label class="pill"><input type="checkbox" name="soon" value="1"{{if .Dash.Soon}} checked{{end}}> {{.Dash.SoonLabel}}</label>{{end}}
+  {{if .Dash.ShowCheckedIn}}<label class="pill"><input type="checkbox" name="checked_in" value="1"{{if .Dash.CheckedIn}} checked{{end}}> Checked in</label>{{end}}
+  <select name="group" aria-label="Group the pie by">
+    <option value="">Pie: all companies</option>
+    <option value="level2"{{if .Dash.Level2}} selected{{end}}>Pie: until level 2</option>
+  </select>
+  {{end}}
+  {{if eq .Dash.Tab "gate"}}
+  <span class="daynav">
+    <a class="btn-small-quiet" href="/staff/dashboard?tab=gate&amp;date={{.Dash.PrevDay}}" title="Previous day" aria-label="Previous day">&#9664;</a>
+    <input type="date" name="date" value="{{.Dash.Day}}" aria-label="Day">
+    {{if .Dash.NextDay}}<a class="btn-small-quiet" href="/staff/dashboard?tab=gate&amp;date={{.Dash.NextDay}}" title="Next day" aria-label="Next day">&#9654;</a>{{else}}<span class="btn-small-quiet off" aria-hidden="true">&#9654;</span>{{end}}
+  </span>
+  {{end}}
+  <button type="submit" class="btn-small">Apply</button>
+  {{if .Dash.Filtered}}<a class="btn-small-quiet" href="/staff/dashboard?tab={{.Dash.Tab}}">Clear</a>{{end}}
   <a class="btn-small-quiet" href="{{.Dash.PDFHref}}">Download PDF</a>
 </form>
 
 {{if eq .Dash.Tab "gate"}}
   {{template "sync_note" .Dash.Sync}}
   <h2>Inside now ({{len .Dash.Inside}})</h2>
-  {{if .Dash.Inside}}{{template "dash_inside" .Dash.Inside}}{{else}}<section class="card"><p>No one matches.</p></section>{{end}}
-  <h2>Latest gate activity</h2>
-  {{if .Dash.Activity}}{{template "dash_activity" .Dash.Activity}}{{else}}<section class="card"><p>No one matches.</p></section>{{end}}
+  {{if .Dash.Inside}}{{template "dash_inside" .Dash.Inside}}{{else}}<p class="note">No one matches.</p>{{end}}
+  <h2>Gate activity, {{.Dash.Day}} ({{len .Dash.Activity}})</h2>
+  {{if .Dash.Activity}}{{template "dash_activity" .Dash.Activity}}{{else}}<p class="note">No scans that day{{if .Dash.Q}} match{{end}}.</p>{{end}}
+{{else if eq .Dash.Tab "pending"}}
+  <div class="stagestrip">
+    <div><b>{{len .Dash.Rows}}{{if .Dash.Q}} of {{.Dash.Total}}{{end}}</b><span>pending</span></div>
+    {{range .Dash.Stages}}<div><b>{{.Count}}</b><span>{{.Label}}</span></div>{{end}}
+    <div class="stagechart"><h3>Work permit approvals</h3>{{template "pie" .Dash.Approval}}</div>
+  </div>
+  {{if .Dash.Rows}}{{template "dash_rows" .Dash.Rows}}{{else}}<p class="note">{{if .Dash.Q}}No one matches that search.{{else}}Nothing is waiting.{{end}}</p>{{end}}
 {{else}}
-  {{if .Dash.Rows}}{{template "dash_rows" .Dash.Rows}}{{else}}<section class="card"><p>{{if .Dash.Q}}No one matches that search.{{else}}Nothing on this list.{{end}}</p></section>{{end}}
+  <div class="chartpanel">
+    <h3>Company distribution{{if .Dash.Level2}}, until level 2{{end}}</h3>
+    <div class="chartbody">{{template "pie" .Dash.Slices}}</div>
+  </div>
+  <p class="note">{{len .Dash.Rows}}{{if .Dash.Filtered}} of {{.Dash.Total}}{{end}} {{if eq (len .Dash.Rows) 1}}person{{else}}people{{end}}.</p>
+  {{if .Dash.Rows}}{{template "dash_rows" .Dash.Rows}}{{else}}<p class="note">{{if .Dash.Filtered}}No one matches these filters.{{else}}Nothing on this list.{{end}}</p>{{end}}
 {{end}}
 {{template "foot" .}}{{end}}
 

@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -227,7 +228,7 @@ func TestPDFExportCarriesTheTabTheSearchAndWhoAskedForIt(t *testing.T) {
 	e.dashSynced(t, 1, "2026-11-06 07:58:00")
 	u := &staff.User{Username: "viewer", DisplayName: "Viewer"}
 
-	hit, err := e.app.dashData(context.Background(), "registered", " santoso ")
+	hit, err := e.app.dashData(context.Background(), url.Values{"tab": {"registered"}, "q": {" santoso "}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -236,16 +237,16 @@ func TestPDFExportCarriesTheTabTheSearchAndWhoAskedForIt(t *testing.T) {
 		doc.GeneratedAt != "2026-11-06 08:00:00" || len(doc.Rows) != 1 || !strings.Contains(doc.Sync, "2026-11-06 07:58:00") {
 		t.Errorf("doc = %+v", doc)
 	}
-	miss, _ := e.app.dashData(context.Background(), "registered", "nobody")
+	miss, _ := e.app.dashData(context.Background(), url.Values{"tab": {"registered"}, "q": {"nobody"}})
 	if got := exportDoc(miss, u, "x"); len(got.Rows) != 0 {
 		t.Errorf("a search with no match still has %d rows", len(got.Rows))
 	}
-	gate, _ := e.app.dashData(context.Background(), "gate", "")
+	gate, _ := e.app.dashData(context.Background(), url.Values{"tab": {"gate"}, "q": {""}})
 	if g := exportDoc(gate, u, "x"); len(g.Inside) != 1 || len(g.Activity) != 1 || g.Rows != nil {
 		t.Errorf("gate doc = %+v", g)
 	}
 	e.clock.now = "2026-11-06 09:00:00" // an old sync is said to be old in the file too
-	stale, _ := e.app.dashData(context.Background(), "gate", "")
+	stale, _ := e.app.dashData(context.Background(), url.Values{"tab": {"gate"}, "q": {""}})
 	if g := exportDoc(stale, u, "x"); !strings.Contains(g.Sync, "out of date") {
 		t.Errorf("stale sync line = %q", g.Sync)
 	}
@@ -287,5 +288,54 @@ func TestTheDashboardOffersThePDFOfWhatIsOnScreen(t *testing.T) {
 	_, body := e.get(t, "/staff/dashboard?tab=registered&q=as%27adul+haq", cookies)
 	if !strings.Contains(body, `href="/staff/dashboard.pdf?`) || !strings.Contains(body, "tab=registered") || !strings.Contains(body, "Download PDF") {
 		t.Errorf("no PDF link carrying the tab:\n%s", body)
+	}
+}
+
+// The filter bar's choices come in as query values; the page and the PDF read them the same way.
+func TestDashboardFiltersChartsAndGateDay(t *testing.T) {
+	e := newEnv(t)
+	e.reviewPermit(t, "WEP-00001", "Approved", 1, "", "LEP-AAAAA", "2027-01-31")
+	e.reviewPermit(t, "WEP-00002", "Approved", 2, "", "LEP-BBBBB", "2027-01-31")
+	if _, err := e.db.Exec(`UPDATE permit SET company = 'PT Lain', lep_valid_until = '2026-11-20' WHERE request_id = 'WEP-00002'`); err != nil {
+		t.Fatal(err)
+	}
+	e.reviewPermit(t, "WEP-00003", "PendingStage1", 3, "", "", "2027-01-31")
+	ctx := context.Background()
+
+	d, err := e.app.dashData(ctx, url.Values{"tab": {"registered"}, "company": {"PT Lain", "PT Gone"}})
+	if err != nil || len(d.Rows) != 1 || d.Rows[0].ID != "LEP-BBBBB" || d.CompanyLabel != "PT Lain" || !d.Filtered || d.Total != 2 {
+		t.Fatalf("company filter: %+v %v", d, err)
+	}
+	if len(d.Slices) != 1 || d.Slices[0].Label != "PT Lain" || len(d.CompanyOpts) != 2 {
+		t.Errorf("slices %+v options %+v", d.Slices, d.CompanyOpts)
+	}
+	soon, _ := e.app.dashData(ctx, url.Values{"tab": {"registered"}, "soon": {"1"}})
+	if len(soon.Rows) != 1 || soon.SoonLabel != "Expiring in 1 month" {
+		t.Errorf("soon: %+v", soon.Rows)
+	}
+	if none, _ := e.app.dashData(ctx, url.Values{"tab": {"pending"}, "soon": {"1"}, "kind": {"visitor"}}); len(none.Rows) != 1 || none.Soon {
+		t.Errorf("pending ignores the tab-only filters: %+v", none)
+	}
+	p, _ := e.app.dashData(ctx, url.Values{"tab": {"pending"}})
+	if len(p.Stages) != 3 || p.Stages[0].Count != 1 || len(p.Approval) == 0 {
+		t.Errorf("pending summary: %+v %+v", p.Stages, p.Approval)
+	}
+	// The gate day: a future or broken date is today, and the PDF link keeps the filters.
+	g, _ := e.app.dashData(ctx, url.Values{"tab": {"gate"}, "date": {"2999-01-01"}})
+	if g.Day != "2026-11-06" || g.NextDay != "" || g.PrevDay != "2026-11-05" {
+		t.Errorf("gate day %q prev %q next %q", g.Day, g.PrevDay, g.NextDay)
+	}
+	old, _ := e.app.dashData(ctx, url.Values{"tab": {"gate"}, "date": {"2026-11-01"}})
+	if old.Day != "2026-11-01" || old.NextDay != "2026-11-02" || !old.Filtered {
+		t.Errorf("old day: %+v", old)
+	}
+	if !strings.Contains(d.PDFHref, "company=PT+Lain") || !strings.Contains(d.PDFHref, "tab=registered") {
+		t.Errorf("PDF link %q", d.PDFHref)
+	}
+	// And on screen: the pie is drawn without inline style (the page's policy forbids it).
+	c := e.reviewer(t, "viewer", staff.Dashboard)
+	_, body := e.get(t, "/staff/dashboard?tab=registered", c)
+	if !strings.Contains(body, `class="pie"`) || strings.Contains(body, "style=") || !strings.Contains(body, `name="company"`) {
+		t.Errorf("registered page lacks the chart or filters, or uses inline style")
 	}
 }
