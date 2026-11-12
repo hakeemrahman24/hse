@@ -6,13 +6,14 @@
 
 {{define "dash_rows"}}
 <div class="tablewrap dense"><table>
-  <thead><tr><th>Name</th><th>Company</th><th>Position</th><th>Number</th><th>Status</th><th>Window</th><th>Valid until</th></tr></thead>
+  <thead><tr><th>Name</th><th>Company</th><th>Position</th><th>Number</th><th>Status</th><th>Window</th><th>Weeks</th><th>Valid until</th></tr></thead>
   <tbody>
   {{range .}}<tr>
     <td title="{{.Name}}">{{.Name}}</td><td title="{{.Company}}">{{.Company}}</td><td title="{{.Position}}">{{.Position}}</td>
     <td>{{if .HasCard}}<a href="/c/{{.ID}}">{{.ID}}</a>{{else}}{{.ID}}{{end}}</td>
     <td>{{.Status}}</td>
     <td>{{if .Arrival}}{{.Arrival}} to {{.Departure}}{{end}}</td>
+    <td>{{.Weeks}}</td>
     <td>{{.ValidUntil}}</td>
   </tr>{{end}}
   </tbody>

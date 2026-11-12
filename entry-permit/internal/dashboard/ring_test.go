@@ -39,3 +39,11 @@ func TestRingDistributionCountsWaiversAndMissingRings(t *testing.T) {
 		t.Errorf("slices %v", got)
 	}
 }
+
+func TestRowWeeksIsTheWindowLength(t *testing.T) {
+	for _, c := range []struct{ a, d, want string }{{"2026-11-01", "2026-11-14", "2"}, {"2026-11-01", "2026-11-17", "2.4"}, {"", "", ""}} {
+		if got := (Row{Arrival: c.a, Departure: c.d}).Weeks(); got != c.want {
+			t.Errorf("%s..%s: %q, want %q", c.a, c.d, got, c.want)
+		}
+	}
+}

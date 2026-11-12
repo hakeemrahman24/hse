@@ -345,9 +345,9 @@ main h2 { margin: var(--s3) 0 var(--s1); }
 .tabpanel { padding: var(--s3); border: 1px solid var(--tab-line); border-top: 0; }
 :root { --tab-line: #8b95a5; }
 
-.dense table { line-height: 1.3; }
-.dense th { padding: 3px 8px; font-weight: 600; letter-spacing: 0.02em; text-transform: none; white-space: nowrap; }
-.dense td { padding: 2px 8px; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dense table { line-height: 1.3; font-size: var(--fs-sm); width: 100%; }
+.dense th { padding: 3px 6px; font-weight: 600; letter-spacing: 0.02em; text-transform: none; white-space: nowrap; }
+.dense td { padding: 2px 6px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dense tbody tr:hover td { background: #f4f7fb; }
 
 .filterbar { gap: 6px; margin-bottom: var(--s2); }

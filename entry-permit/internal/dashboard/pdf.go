@@ -37,6 +37,8 @@ type Doc struct {
 	Inside, Activity  []Row  // the Gate tab
 }
 
+var cWeeks = col{"Weeks", 14, func(r Row) string { return r.Weeks() }}
+
 type col struct {
 	head string
 	w    float64
@@ -74,9 +76,9 @@ func columnsFor(tab string) []col {
 	case "pending":
 		return []col{cName, cCompany, cPos, {"Request", 28, func(r Row) string { return r.ID }}, {"Status", 40, func(r Row) string { return r.Status }}, {"Window", 50, windowText}}
 	case "active":
-		return []col{cName, cCompany, cPos, cNumber, {"Status", 28, func(r Row) string { return r.Status }}, {"Window", 46, windowText}, cGate, cSince}
+		return []col{cName, cCompany, cPos, cNumber, {"Status", 28, func(r Row) string { return r.Status }}, {"Window", 46, windowText}, cWeeks, cGate, cSince}
 	case "scheduled":
-		return []col{cName, cCompany, cPos, cNumber, {"Arrival", 28, func(r Row) string { return r.Arrival }}, {"Departure", 28, func(r Row) string { return r.Departure }}}
+		return []col{cName, cCompany, cPos, cNumber, {"Arrival", 28, func(r Row) string { return r.Arrival }}, {"Departure", 28, func(r Row) string { return r.Departure }}, cWeeks}
 	case "rest":
 		return []col{cName, cCompany, cNumber, {"Previous ended", 28, func(r Row) string { return r.PrevEnd }}, {"Next arrival", 28, func(r Row) string { return r.Arrival }}, {"Rest", 62, func(r Row) string { return r.RestLabel }}}
 	case "inside":
