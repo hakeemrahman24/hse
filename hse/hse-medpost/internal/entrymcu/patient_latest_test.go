@@ -130,3 +130,34 @@ func TestSyncAllPatientsKeepsPositionWhenNoVisitHasOne(t *testing.T) {
 		t.Fatalf("visitless patient position = %q, want Engineer", got)
 	}
 }
+
+// Height and blood type are measured at a checkup, but the patient row keeps
+// the newest recorded value of each so a later checkup can start from it.
+func TestSyncPatientFromLatestVisitCopiesHeightAndBloodType(t *testing.T) {
+	database := openExportTestDB(t)
+	for _, q := range []string{
+		`INSERT INTO Patient (Name, DateOfBirth, Gender) VALUES ('Budi Test', '1990-01-02', 'M')`,
+		`INSERT INTO McuRecord (FK_PatientID, Timestamp, ReviewDate, CheckUpID, HeightCm, BloodType) VALUES
+			(1, '2024-01-01T00:00:00', '2024-01-01', 'OLD1', 170.5, 'A'),
+			(1, '2025-01-01T00:00:00', '2025-01-01', 'NEW1', 171.0, 'B'),
+			(1, '2026-01-01T00:00:00', '2026-01-01', 'BLNK', NULL, '')`,
+	} {
+		if _, err := database.Exec(q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := db.SyncPatientFromLatestVisit(database, 1); err != nil {
+		t.Fatal(err)
+	}
+	var height sql.NullFloat64
+	var blood sql.NullString
+	if err := database.QueryRow(`SELECT HeightCm, BloodType FROM Patient WHERE PatientID = 1`).Scan(&height, &blood); err != nil {
+		t.Fatal(err)
+	}
+	if !height.Valid || height.Float64 != 171.0 {
+		t.Fatalf("height = %+v, want 171 (newest checkup that has one, blank 2026 skipped)", height)
+	}
+	if blood.String != "B" {
+		t.Fatalf("blood type = %q, want B", blood.String)
+	}
+}

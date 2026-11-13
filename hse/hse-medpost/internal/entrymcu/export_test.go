@@ -409,6 +409,7 @@ func openExportTestDB(t *testing.T) *sql.DB {
 		EnsurePhysicalExamNotesColumn,
 		EnsureBloodTypeColumn,
 		EnsurePatientPersonalIDColumn,
+		EnsurePatientHeightColumn,
 		EnsureMcuRecordPersonalIDColumn,
 		EnsureWorkLocationColumn,
 		EnsureSchemaIndexes,

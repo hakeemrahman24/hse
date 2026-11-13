@@ -346,11 +346,14 @@ type Patient struct {
 	NationalityID   *int64 `json:"nationalityId"`
 	NationalityName string `json:"nationalityName"`
 	BloodType       string `json:"bloodType"`
-	EmployeeID      string `json:"employeeId"`
-	CompanyID       *int64 `json:"companyId"`
-	CompanyName     string `json:"companyName"`
-	WorkPosition    string `json:"workPosition"`
-	PersonalID      string `json:"personalId"`
+	// HeightCm is the newest height recorded on a checkup (nil if none), kept
+	// on the patient by db.SyncPatientFromLatestVisit like BloodType.
+	HeightCm     *float64 `json:"heightCm"`
+	EmployeeID   string   `json:"employeeId"`
+	CompanyID    *int64   `json:"companyId"`
+	CompanyName  string   `json:"companyName"`
+	WorkPosition string   `json:"workPosition"`
+	PersonalID   string   `json:"personalId"`
 }
 
 // ListPatients supports an optional ?q= substring filter against Name, for
@@ -360,7 +363,7 @@ func (a *API) ListPatients(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	query := `
 		SELECT p.PatientID, p.Name, COALESCE(p.Gender,''), COALESCE(p.DateOfBirth,''),
-		       p.FK_NationalityID, COALESCE(n.Name,''), COALESCE(` + db.LatestBloodTypeSQL("p") + `,''),
+		       p.FK_NationalityID, COALESCE(n.Name,''), COALESCE(p.BloodType,''), p.HeightCm,
 		       COALESCE(p.EmployeeID,''), p.FK_CompanyID, COALESCE(c.Name,''), COALESCE(p.WorkPosition,''),
 		       COALESCE(p.PersonalID,'')
 		FROM Patient p
@@ -384,7 +387,7 @@ func (a *API) ListPatients(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var p Patient
 		if err := rows.Scan(&p.PatientID, &p.Name, &p.Gender, &p.DateOfBirth,
-			&p.NationalityID, &p.NationalityName, &p.BloodType,
+			&p.NationalityID, &p.NationalityName, &p.BloodType, &p.HeightCm,
 			&p.EmployeeID, &p.CompanyID, &p.CompanyName, &p.WorkPosition,
 			&p.PersonalID); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})

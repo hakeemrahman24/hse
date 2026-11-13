@@ -445,6 +445,25 @@ func EnsurePatientPersonalIDColumn(database *sql.DB) error {
 	return nil
 }
 
+// EnsurePatientHeightColumn adds Patient.HeightCm. Like Patient.BloodType it is
+// a derived copy of the newest value recorded on a checkup
+// (db.SyncPatientFromLatestVisit fills it), kept on the patient so the next
+// checkup can start from it. The checkup row stays the source of truth.
+// MariaDB gets the same column from migrations/mysql/046_patient_height.sql.
+func EnsurePatientHeightColumn(database *sql.DB) error {
+	hasColumn, err := patientHasColumn(database, "HeightCm")
+	if err != nil {
+		return fmt.Errorf("check Patient schema: %w", err)
+	}
+	if hasColumn {
+		return nil
+	}
+	if _, err := database.Exec(`ALTER TABLE Patient ADD COLUMN HeightCm REAL NULL`); err != nil {
+		return fmt.Errorf("add Patient.HeightCm: %w", err)
+	}
+	return nil
+}
+
 func mcuRecordHasColumn(database *sql.DB, column string) (bool, error) {
 	rows, err := database.Query(`PRAGMA table_info(McuRecord)`)
 	if err != nil {

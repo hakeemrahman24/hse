@@ -130,6 +130,9 @@ func main() {
 		if err := entrymcu.EnsurePatientPersonalIDColumn(database); err != nil {
 			log.Fatal(err)
 		}
+		if err := entrymcu.EnsurePatientHeightColumn(database); err != nil {
+			log.Fatal(err)
+		}
 		if err := entrymcu.EnsureMcuRecordPersonalIDColumn(database); err != nil {
 			log.Fatal(err)
 		}

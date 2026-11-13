@@ -23,16 +23,19 @@ func latestVisitValueSQL(column, patientRef string) string {
 		LIMIT 1)`, column, patientRef)
 }
 
-// syncPatientSQL sets Patient.FK_CompanyID and Patient.WorkPosition from the
-// latest checkup that has each. A patient with no such checkup keeps whatever
-// the column already holds.
+// syncPatientSQL sets Patient.FK_CompanyID, WorkPosition, BloodType and
+// HeightCm from the latest checkup that has each. A patient with no such
+// checkup keeps whatever the column already holds.
 var syncPatientSQL = `UPDATE Patient SET
 	FK_CompanyID = COALESCE(` + latestVisitValueSQL("FK_CompanyID", "Patient.PatientID") + `, FK_CompanyID),
-	WorkPosition = COALESCE(` + latestVisitValueSQL("WorkPosition", "Patient.PatientID") + `, WorkPosition)`
+	WorkPosition = COALESCE(` + latestVisitValueSQL("WorkPosition", "Patient.PatientID") + `, WorkPosition),
+	BloodType = COALESCE(` + latestVisitValueSQL("BloodType", "Patient.PatientID") + `, BloodType),
+	HeightCm = COALESCE(` + latestVisitValueSQL("HeightCm", "Patient.PatientID") + `, HeightCm)`
 
-// SyncPatientFromLatestVisit refreshes the patient's company and work position
-// from their latest checkup. Both columns are derived, not entered: staff pick
-// them on the visit and this keeps the patient row in step.
+// SyncPatientFromLatestVisit refreshes the patient's company, work position,
+// blood type and height from their latest checkups. These columns are derived,
+// not entered: staff record them on the visit and this keeps the patient row
+// in step, so a later checkup can start from them.
 //
 // Call it after anything that inserts, edits or deletes a McuRecord.
 func SyncPatientFromLatestVisit(e Execer, patientID int64) error {

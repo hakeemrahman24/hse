@@ -386,6 +386,7 @@ func openDirectoryTestDB(t *testing.T) *sql.DB {
 		entrymcu.EnsureRadiologyColumns,
 		entrymcu.EnsurePhysicalExamNotesColumn,
 		entrymcu.EnsureBloodTypeColumn,
+		entrymcu.EnsurePatientHeightColumn,
 		entrymcu.EnsureMcuRecordPersonalIDColumn,
 		// Lets the test database store IncompleteResult like production does.
 		entrymcu.EnsureResultCriteriaEditable,

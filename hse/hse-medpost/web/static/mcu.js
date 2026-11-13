@@ -498,6 +498,7 @@ function workerDetailFieldsHtml(p) {
       ${roField("Date of birth", p.dateOfBirth)}
       ${roField("Nationality", p.nationalityName)}
       ${roField("Blood type", p.bloodType)}
+      ${roField("Height (cm)", p.heightCm)}
       ${roField("Employee/badge ID", p.employeeId)}
       ${roField("NIK/Passport ID", p.personalId)}
       <label data-mcu-valid-until>
@@ -1886,13 +1887,15 @@ function latestNonBlankValue(records, key) {
   return null;
 }
 
-// New checkup: fill blood type and height from this patient's earlier records,
-// each taken from the newest record that has a value for it.
+// New checkup: start blood type and height from the patient's own values.
+// Those are kept in step with the newest checkup that recorded each, so they
+// are the reference; the history lookup is only a fallback for a patient row
+// that hasn't been synced yet.
 function prefillFromHistory() {
-  const height = latestNonBlankValue(patientHistoryCache, "heightCm");
-  if (height !== null) checkupForm.querySelector('[name="heightCm"]').value = height;
-  const bloodType = latestNonBlankValue(patientHistoryCache, "bloodType");
-  if (bloodType !== null) checkupForm.querySelector('[name="bloodType"]').value = bloodType;
+  const height = currentPatient?.heightCm ?? latestNonBlankValue(patientHistoryCache, "heightCm");
+  if (height !== null && height !== undefined) checkupForm.querySelector('[name="heightCm"]').value = height;
+  const bloodType = currentPatient?.bloodType || latestNonBlankValue(patientHistoryCache, "bloodType");
+  if (bloodType !== null && bloodType !== undefined) checkupForm.querySelector('[name="bloodType"]').value = bloodType;
 }
 
 async function openCheckupForm(rec) {
