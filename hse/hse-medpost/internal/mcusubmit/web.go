@@ -252,7 +252,8 @@ type page struct {
 
 	// Upload pages.
 	Docs          []Submission
-	Employees     []Employee // the My employees list on screen
+	Employees     []Employee // the Employee checkups list on screen
+	CanSubs       bool       // Employee checkups offers "Include subcontractors"
 	BatchID       int64      // the open batch; 0 when it has no documents
 	Nationalities []string
 	Caption       string   // table caption

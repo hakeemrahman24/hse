@@ -10,9 +10,9 @@ import (
 // "My employees" (owner, 2026-11-13): the account sees every worker of its own company with the
 // validity of their latest medical checkup, so HR can plan renewals without opening each document.
 // A worker belongs to the company through Patient.FK_CompanyID. Only the account's own company is
-// listed, not its subcontractors (My documents already lets a main contractor read those documents,
-// but a staff list is a different thing to hand out). The account comes from the session, never
-// from the request, so one company's HR cannot ask for another company's staff.
+// listed, and the subcontractors' workers only when the account ticks "Include subcontractors"
+// (owner, 2026-11-13; a main contractor already reads their documents). The companies come from the
+// session's Scope, never from the request, so nobody can ask for a company outside their tree.
 
 // Validity labels. They are the choices of the status filter, in the order HR thinks of them.
 const (
@@ -31,7 +31,7 @@ var employeeStatuses = []string{ValValid, ValExpiring, ValExpired, ValUnfit, Val
 // Employee is one worker of the company and where their latest checkup stands.
 type Employee struct {
 	PatientID                       int64
-	Name, Position                  string
+	Name, Position, Company         string
 	CheckUpDate, Result, ValidUntil string
 	Status                          string // one of the Val* labels
 	DaysLeft                        int    // days until ValidUntil; negative once expired; only meaningful for the three fit statuses
@@ -75,19 +75,24 @@ func validityOf(result, validUntil string, today time.Time, windowDays int) (sta
 // CompanyEmployees lists the workers of one company with their latest checkup (the newest by date,
 // the same order LatestRecord uses). A worker whose latest checkup is Archived / Exit has left and
 // is not listed. Worst first would hide the quiet majority, so it is by name; the page filters.
-func (s *Store) CompanyEmployees(ctx context.Context, companyID int64, windowDays int) ([]Employee, error) {
-	if companyID == 0 {
+func (s *Store) CompanyEmployees(ctx context.Context, companyIDs []int64, windowDays int) ([]Employee, error) {
+	if len(companyIDs) == 0 {
 		return nil, nil
 	}
+	marks, args := strings.TrimSuffix(strings.Repeat("?,", len(companyIDs)), ","), make([]any, len(companyIDs))
+	for i, id := range companyIDs {
+		args[i] = id
+	}
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT p.PatientID, p.Name, COALESCE(p.WorkPosition, ''), COALESCE(m.McuRecordID, 0),
+		`SELECT p.PatientID, p.Name, COALESCE(p.WorkPosition, ''), COALESCE(c.Name, ''), COALESCE(m.McuRecordID, 0),
 		        COALESCE(m.DateCheckUp, ''), COALESCE(m.ResultCriteria, ''), COALESCE(m.ResultValidUntil, ''), COALESCE(m.CheckUpStatus, '')
 		 FROM Patient p
+		 LEFT JOIN Company c ON c.CompanyID = p.FK_CompanyID
 		 LEFT JOIN McuRecord m ON m.McuRecordID = (
 		       SELECT m2.McuRecordID FROM McuRecord m2 WHERE m2.FK_PatientID = p.PatientID
 		       ORDER BY COALESCE(m2.DateCheckUp, '') DESC, m2.McuRecordID DESC LIMIT 1)
-		 WHERE p.FK_CompanyID = ?
-		 ORDER BY p.Name, p.PatientID`, companyID)
+		 WHERE p.FK_CompanyID IN (`+marks+`)
+		 ORDER BY p.Name, p.PatientID`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +103,7 @@ func (s *Store) CompanyEmployees(ctx context.Context, companyID int64, windowDay
 		var e Employee
 		var record int64
 		var checkUpStatus string
-		if err := rows.Scan(&e.PatientID, &e.Name, &e.Position, &record, &e.CheckUpDate, &e.Result, &e.ValidUntil, &checkUpStatus); err != nil {
+		if err := rows.Scan(&e.PatientID, &e.Name, &e.Position, &e.Company, &record, &e.CheckUpDate, &e.Result, &e.ValidUntil, &checkUpStatus); err != nil {
 			return nil, err
 		}
 		if checkUpStatus == "Archived / Exit" {
@@ -158,6 +163,17 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 	p.User, p.Caption = u, "Latest medical checkup of every worker of your company"
 	p.Statuses = employeeStatuses
 	p.Form = map[string]string{"worker": q.Get("worker"), "status": status}
+	sc, err := a.Store.ScopeFor(r.Context(), u)
+	if err != nil {
+		a.serverError(w, "scope", err)
+		return
+	}
+	// The option only exists for an account that has subcontractors; without any, the tick is ignored.
+	companies := []int64{u.CompanyID}
+	p.CanSubs = len(sc.CompanyIDs) > 1
+	if p.CanSubs && q.Get("subs") == "1" {
+		p.Form["subs"], companies = "1", sc.CompanyIDs
+	}
 	if !known {
 		p.Error = "Check the status you chose."
 		a.render(w, http.StatusBadRequest, "employees.html", p)
@@ -168,7 +184,7 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, "reminder settings", err)
 		return
 	}
-	all, err := a.Store.CompanyEmployees(r.Context(), u.CompanyID, cfg.DaysBefore)
+	all, err := a.Store.CompanyEmployees(r.Context(), companies, cfg.DaysBefore)
 	if err != nil {
 		a.serverError(w, "company employees", err)
 		return

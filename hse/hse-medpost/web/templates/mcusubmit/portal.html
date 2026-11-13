@@ -604,7 +604,7 @@
       </div>
       <p class="mp-hint">The latest medical checkup of each worker of your company and how long it stays valid.</p>
       {{template "error" .}}
-      <p class="mp-chips">{{range .Statuses}}{{if index $.Counts .}}<a class="mp-chip{{if eq . $.Form.status}} on{{end}}" href="/mcu-submit/employees?status={{.}}"{{if eq . $.Form.status}} aria-current="true"{{end}}><span>{{.}}</span> <b>{{index $.Counts .}}</b></a> {{end}}{{end}}</p>
+      <p class="mp-chips">{{range .Statuses}}{{if index $.Counts .}}<a class="mp-chip{{if eq . $.Form.status}} on{{end}}" href="/mcu-submit/employees?status={{.}}{{if $.Form.subs}}&amp;subs=1{{end}}"{{if eq . $.Form.status}} aria-current="true"{{end}}><span>{{.}}</span> <b>{{index $.Counts .}}</b></a> {{end}}{{end}}</p>
       <form method="get" action="/mcu-submit/employees" class="mp-filter" aria-label="Filter your employees">
         <div class="field"><label for="f-worker"><span>Employee</span></label>
           <input id="f-worker" name="worker" type="text" maxlength="60" value="{{.Form.worker}}" /></div>
@@ -612,14 +612,15 @@
           <select id="f-status" name="status"><option value="">All</option>
             {{range .Statuses}}<option value="{{.}}"{{if eq . $.Form.status}} selected{{end}}>{{.}}</option>{{end}}
           </select></div>
+        {{if .CanSubs}}<div class="field"><label for="f-subs"><input id="f-subs" name="subs" type="checkbox" value="1"{{if .Form.subs}} checked{{end}} /> <span>Include subcontractors</span></label></div>{{end}}
         <div class="submit-row"><button type="submit" class="btn-primary">Filter</button> <a class="btn-ghost" href="/mcu-submit/employees">Clear</a></div>
       </form>
       {{if .Employees}}
       <p class="mp-hint" role="status">{{.Result.Total}} {{if eq .Result.Total 1}}employee{{else}}employees{{end}}, page {{.Result.Page}} of {{.Result.Pages}}</p>
       <div class="mp-scroll"><table class="mp-table">
         <caption>{{.Caption}}</caption>
-        <thead><tr><th scope="col">Employee</th><th scope="col">Position</th><th scope="col">Last checkup</th><th scope="col">Valid until</th><th scope="col">Validity</th></tr></thead>
-        <tbody>{{range .Employees}}<tr><td>{{.Name}}</td><td>{{.Position}}</td><td>{{.CheckUpDate}}</td><td>{{if .HasValidity}}{{.ValidUntil}}{{else}}-{{end}}</td>
+        <thead><tr><th scope="col">Employee</th>{{if .Form.subs}}<th scope="col">Company</th>{{end}}<th scope="col">Position</th><th scope="col">Last checkup</th><th scope="col">Valid until</th><th scope="col">Validity</th></tr></thead>
+        <tbody>{{range .Employees}}<tr><td>{{.Name}}</td>{{if $.Form.subs}}<td>{{.Company}}</td>{{end}}<td>{{.Position}}</td><td>{{.CheckUpDate}}</td><td>{{if .HasValidity}}{{.ValidUntil}}{{else}}-{{end}}</td>
           <td><strong>{{.Status}}</strong>{{if .HasValidity}}{{if lt .DaysLeft 0}} <span class="mp-hint">expired</span>{{else}} <span class="mp-hint">{{.DaysLeft}} days left</span>{{end}}{{end}}</td></tr>{{end}}</tbody></table></div>
       {{if or .PrevURL .NextURL}}<p class="mp-actions">
         {{if .PrevURL}}<a class="btn-ghost" href="{{.PrevURL}}" rel="prev">Previous</a>{{end}}

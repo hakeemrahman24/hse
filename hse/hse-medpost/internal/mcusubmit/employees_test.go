@@ -52,7 +52,7 @@ func TestCompanyEmployeesListsOnlyTheCompanyWithTheirLatestCheckup(t *testing.T)
 	addRecord(t, s, old, "MedC-2", "Fit", "2099-01-01", "Open", 1)
 	addRecord(t, s, left, "MedC-3", "Fit", "2099-01-01", "Archived / Exit", 1)
 
-	got, err := s.CompanyEmployees(ctx, co, 30)
+	got, err := s.CompanyEmployees(ctx, []int64{co}, 30)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,5 +114,24 @@ func TestEmployeeCheckupsPageIsTranslated(t *testing.T) {
 		if body := resp.Body.String(); !strings.Contains(body, lang.want) || strings.Contains(body, "page 1 of 1") {
 			t.Errorf("%s page not translated", lang.code)
 		}
+	}
+}
+
+// Subcontractors' workers appear only when asked for, and only for an account that has subcontractors.
+func TestEmployeeCheckupsIncludeSubcontractorsOnlyOnRequest(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	seedWorker(t, e.store, "Own Worker", "1990-01-01", e.companyID)
+	sub := company(t, e.store, "PT Sub", e.companyID)
+	seedWorker(t, e.store, "Sub Worker", "1991-01-01", sub)
+
+	plain := e.get("/mcu-submit/employees", cookie).Body.String()
+	if strings.Contains(plain, "Sub Worker") || !strings.Contains(plain, "Include subcontractors") {
+		t.Errorf("default list must hold only the own company and offer the option")
+	}
+	withSubs := e.get("/mcu-submit/employees?subs=1", cookie).Body.String()
+	if !strings.Contains(withSubs, "Sub Worker") || !strings.Contains(withSubs, "PT Sub") || !strings.Contains(withSubs, "Own Worker") {
+		t.Errorf("subs=1 must add the subcontractor's workers with their company")
 	}
 }

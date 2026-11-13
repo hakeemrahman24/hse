@@ -313,7 +313,7 @@ _Convention: every session that changes code or makes a design decision appends 
 ### 2026-11-13 — "Employee checkups": the company's workers and how long their latest checkup stays valid
 
 - **What changed:** new submitter page `/mcu-submit/employees` (sidebar "Employee checkups", `internal/mcusubmit/employees.go`). It lists every worker with `Patient.FK_CompanyID` = the account's own company, with the latest checkup (newest by date, same order as `LatestRecord`), its valid-until date and a label: Valid, Expiring soon (same window as the reminder mails), Expired, Unfit, Temporarily unfit, Needs follow-up, Checkup in progress, No checkup on record. Chips with counts, name and status filters, 25 per page. Workers whose latest checkup is Archived / Exit are left out. Indonesian and Chinese texts added.
-- **Why own company only:** a subcontractor's staff list is not handed to the main contractor (documents already are readable by it, a staff list is a different thing). Easy to widen to `Scope.CompanyIDs` if the owner wants it.
+- **Subcontractors (owner, 2026-11-13):** own company by default; an account that has subcontractors gets an "Include subcontractors" tick (`?subs=1`) that adds their workers, with a Company column. Companies come from the session's `Scope`, never the request.
 - **Open:** depends on `Patient.FK_CompanyID` being filled; workers with no company on their record do not appear. Admin has no page. No schema change, nothing to run on MariaDB.
 
 ### 2026-11-13 — "Needs action" skips workers who already hold a Fit certificate

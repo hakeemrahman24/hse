@@ -54,9 +54,10 @@ var portalText = map[string][2]string{
 	"Download certificate": {"Unduh sertifikat", "下载证书"},
 
 	// Employee checkups
-	"Employee checkups": {"Check-up karyawan", "员工体检"},
-	"Employee":          {"Karyawan", "员工"},
-	"checkups":          {"medical check-up", "体检"},
+	"Employee checkups":      {"Check-up karyawan", "员工体检"},
+	"Employee":               {"Karyawan", "员工"},
+	"Include subcontractors": {"Sertakan subkontraktor", "包括分包商"},
+	"checkups":               {"medical check-up", "体检"},
 	"The latest medical checkup of each worker of your company and how long it stays valid.": {"Medical check-up terbaru setiap pekerja perusahaan Anda dan berapa lama berlakunya.", "贵公司每位员工最近一次体检及其有效期。"},
 	"Latest medical checkup of every worker of your company":                                 {"Medical check-up terbaru setiap pekerja perusahaan Anda", "贵公司每位员工的最近一次体检"},
 	"Validity":                         {"Masa berlaku", "有效状态"},
