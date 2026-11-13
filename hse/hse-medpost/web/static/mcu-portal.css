@@ -215,6 +215,23 @@ body.mp {
 .mp-filter input, .mp-filter select { width: auto; min-width: 150px; }
 .mp-filter .field label { display: block; margin-bottom: 4px; }
 
+/* Admin "Add an account": two columns, three rows (name | email, company | position, username | button).
+   One column on a phone. */
+.mp-addform {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  align-items: end;
+  max-width: 680px;
+  margin: 4px 0 16px;
+}
+.mp-addform .field { margin: 0; }
+.mp-addform .field label { display: block; margin-bottom: 4px; }
+.mp-addform input, .mp-addform select { width: 100%; min-width: 0; box-sizing: border-box; }
+.mp-addform .mp-hint { margin: 4px 0 0; }
+.mp-addform .submit-row { margin: 0; }
+@media (max-width: 560px) { .mp-addform { grid-template-columns: 1fr; } }
+
 /* Radio and checkbox rows on the admin settings pages. */
 .mp-choices { border: 0; padding: 0; margin: 0 0 12px; }
 .mp-check { display: flex; align-items: center; gap: 10px; margin: 6px 0; cursor: pointer; }
