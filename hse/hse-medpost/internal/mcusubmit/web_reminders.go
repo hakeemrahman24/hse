@@ -1,7 +1,9 @@
 package mcusubmit
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 )
 
@@ -78,4 +80,52 @@ func (a *API) ReminderSendNow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.reminderPage(w, r, http.StatusOK, admin, "", fmt.Sprintf("Sent to %d accounts about %d workers.", subs, workers))
+}
+
+// sampleReminderLines is what the test mail lists: made-up workers, one per stage, so the admin sees
+// every Status label. They are never real people and nothing is recorded as mailed.
+func (a *API) sampleReminderLines() []Expiring {
+	today := a.Store.clinicToday()
+	line := func(name, position string, days int) Expiring {
+		return Expiring{
+			Name: name, Position: position, Company: "PT Sample Company",
+			ValidUntil: today.AddDate(0, 0, days).Format(dateOnlyLayout), DaysLeft: days, Stage: reminderStage(days),
+		}
+	}
+	return []Expiring{
+		line("Sample Worker One", "Welder", -10), line("Sample Worker Two", "Rigger", 9),
+		line("Sample Worker Three", "Driver", 25), line("Sample Worker Four", "Operator", 52),
+	}
+}
+
+// ReminderTest sends the reminder mail, filled with sample workers, to an address the admin types.
+// It does not read the real lists, does not mark anyone as mailed and works while the master switch
+// is off, so the wording and the look can be checked before turning reminders on.
+func (a *API) ReminderTest(w http.ResponseWriter, r *http.Request) {
+	admin := a.requireAdmin(w, r)
+	if admin == nil {
+		return
+	}
+	if !parseForm(w, r) {
+		a.reminderPage(w, r, http.StatusBadRequest, admin, "The form could not be read.", "")
+		return
+	}
+	to, err := ParseEmail(r.PostFormValue("to"))
+	if err != nil {
+		a.reminderPage(w, r, http.StatusBadRequest, admin, err.Error()+".", "")
+		return
+	}
+	if a.mailer == nil {
+		a.reminderPage(w, r, http.StatusBadGateway, admin, "No mail sender is configured.", "")
+		return
+	}
+	lines := a.sampleReminderLines()
+	ctx, cancel := context.WithTimeout(r.Context(), mailTimeout)
+	defer cancel()
+	if err := sendRich(ctx, a.mailer, to, "TEST: Medical checkups that expire soon", reminderBody(a.baseURL, lines), reminderHTML(a.baseURL, lines)); err != nil {
+		log.Printf("mcusubmit: test reminder to %s failed: %v", to, err)
+		a.reminderPage(w, r, http.StatusBadGateway, admin, "The test mail was not sent: "+err.Error(), "")
+		return
+	}
+	a.reminderPage(w, r, http.StatusOK, admin, "", "Test reminder sent to "+to+" with sample workers. Nothing was recorded as mailed.")
 }

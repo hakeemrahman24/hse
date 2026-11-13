@@ -376,3 +376,39 @@ func TestAdminReminderPageSavesPreviewsAndSendsNow(t *testing.T) {
 		t.Errorf("Home lacks the Expiring soon list:\n%s", home.Body.String())
 	}
 }
+
+// The test reminder goes to the typed address with sample workers, works while reminders are off, is
+// admin only, and records nothing as mailed.
+func TestAdminCanSendATestReminderWithSampleWorkers(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, member := e.signIn("hr.budi", "a-long-passphrase-1")
+	_, admin := e.signIn("admin", "pelican-orbit-77")
+	form := url.Values{"to": {"checker@example.com"}}
+
+	if rec := e.post("/mcu-submit/admin/reminders/test", form, member); rec.Code != http.StatusNotFound {
+		t.Fatalf("a submitter sending a test = %d, want 404", rec.Code)
+	}
+	if rec := e.post("/mcu-submit/admin/reminders/test", url.Values{"to": {"not-an-email"}}, admin); rec.Code != http.StatusBadRequest {
+		t.Fatalf("a bad address = %d, want 400", rec.Code)
+	}
+	before := len(e.mail.sent)
+	rec := e.post("/mcu-submit/admin/reminders/test", form, admin)
+	if rec.Code != http.StatusOK || len(e.mail.sent) != before+1 {
+		t.Fatalf("test reminder = %d, mails %d -> %d", rec.Code, before, len(e.mail.sent))
+	}
+	m := e.mail.sent[len(e.mail.sent)-1]
+	if m.To != "checker@example.com" || !strings.HasPrefix(m.Subject, "TEST:") {
+		t.Errorf("mail = %+v", m)
+	}
+	for _, want := range []string{"Sample Worker One", "Expired", "Within 2 weeks", "Within 30 days", "Within 60 days"} {
+		if !strings.Contains(m.Body, want) {
+			t.Errorf("test mail lacks %q\n%s", want, m.Body)
+		}
+	}
+	var n int
+	_ = e.store.DB.QueryRow(`SELECT COUNT(*) FROM McuReminderSent`).Scan(&n)
+	if n != 0 {
+		t.Errorf("%d rows recorded as mailed by a test", n)
+	}
+}

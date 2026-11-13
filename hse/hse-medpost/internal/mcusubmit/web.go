@@ -181,6 +181,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("GET "+basePath+"/admin/reminders", a.ReminderPage)
 	in.HandleFunc("POST "+basePath+"/admin/reminders", a.ReminderSave)
 	in.HandleFunc("POST "+basePath+"/admin/reminders/send", a.ReminderSendNow)
+	in.HandleFunc("POST "+basePath+"/admin/reminders/test", a.ReminderTest)
 	in.HandleFunc("GET "+basePath+"/admin/mail", a.MailPage)
 	in.HandleFunc("POST "+basePath+"/admin/mail", a.MailSave)
 	in.HandleFunc("POST "+basePath+"/admin/mail/test", a.MailTest)

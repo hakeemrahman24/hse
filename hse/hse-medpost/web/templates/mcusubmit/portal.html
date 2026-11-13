@@ -819,6 +819,15 @@
       <h2>Right <span>now</span></h2>
       <p class="mp-hint">{{.Preview}}</p>
       <form method="post" action="/mcu-submit/admin/reminders/send"><button type="submit" class="btn-ghost">Send now</button></form>
+      <h2>Send a <span>test reminder</span></h2>
+      <p class="mp-hint">Sends the reminder mail with made-up workers, one for each status, to the address you type. Nothing real is read or recorded, and it works while reminders are off.</p>
+      <div class="login-card mp-wide">
+        <form method="post" action="/mcu-submit/admin/reminders/test">
+          <div class="field"><label for="rt-to"><span>Send to</span></label>
+            <input id="rt-to" name="to" type="email" maxlength="254" required /></div>
+          <button type="submit" class="btn-ghost">Send test reminder</button>
+        </form>
+      </div>
     </section>
 {{template "foot" .}}{{end}}
 
