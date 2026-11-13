@@ -2,6 +2,7 @@ package mcusubmit
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"testing"
@@ -133,5 +134,58 @@ func TestEmployeeCheckupsIncludeSubcontractorsOnlyOnRequest(t *testing.T) {
 	withSubs := e.get("/mcu-submit/employees?subs=1", cookie).Body.String()
 	if !strings.Contains(withSubs, "Sub Worker") || !strings.Contains(withSubs, "PT Sub") || !strings.Contains(withSubs, "Own Worker") {
 		t.Errorf("subs=1 must add the subcontractor's workers with their company")
+	}
+}
+
+// Employee checkups offers a certificate link for a worker whose latest checkup has one (Fit once Close,
+// Unfit always), serves it to the own company and subcontractors, and gives another company's worker,
+// a worker with no certificate and an unknown id the same 404.
+func TestEmployeeCheckupsCertificateLinkAndDownload(t *testing.T) {
+	u := newUploadEnv(t)
+	certs := &fakeCerts{dir: t.TempDir()}
+	u.api.SetCertificates(certs)
+
+	fit := seedWorker(t, u.store, "Fit Closed", "1990-01-01", u.companyID)
+	addRecord(t, u.store, fit, "E-1", "Fit", "2099-01-01", "Close", 1)
+	open := seedWorker(t, u.store, "Fit Still Open", "1990-01-02", u.companyID)
+	addRecord(t, u.store, open, "E-2", "Fit", "2099-01-01", "Open", 1)
+	unfit := seedWorker(t, u.store, "Unfit One", "1990-01-03", u.companyID)
+	addRecord(t, u.store, unfit, "E-3", "Unfit", "", "Open", 0)
+	res, err := u.store.DB.Exec(`INSERT INTO Company (Name) VALUES ('PT Other')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, _ := res.LastInsertId()
+	stranger := seedWorker(t, u.store, "Stranger", "1990-01-04", other)
+	addRecord(t, u.store, stranger, "E-4", "Fit", "2099-01-01", "Close", 1)
+	sub := company(t, u.store, "PT Sub", u.companyID)
+	subWorker := seedWorker(t, u.store, "Sub Worker", "1990-01-05", sub)
+	addRecord(t, u.store, subWorker, "E-5", "Fit", "2099-01-01", "Close", 1)
+
+	body := u.get("/mcu-submit/employees", u.cookie).Body.String()
+	link := func(id int64) string { return fmt.Sprintf("/mcu-submit/employees/%d/certificate", id) }
+	for id, want := range map[int64]bool{fit: true, open: false, unfit: true} {
+		if got := strings.Contains(body, link(id)+`?view=1`); got != want {
+			t.Errorf("worker %d link shown = %v, want %v", id, got, want)
+		}
+	}
+
+	rec := u.get(link(fit), u.cookie)
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/pdf" || !strings.Contains(rec.Header().Get("Content-Disposition"), "attachment") {
+		t.Fatalf("download = %d, %v", rec.Code, rec.Header())
+	}
+	if v := u.get(link(unfit)+"?view=1", u.cookie); v.Code != http.StatusOK || !strings.Contains(v.Header().Get("Content-Disposition"), "inline") {
+		t.Errorf("view = %d, %v", v.Code, v.Header())
+	}
+	if got := u.get(link(subWorker), u.cookie).Code; got != http.StatusOK {
+		t.Errorf("a subcontractor's worker = %d, want 200", got)
+	}
+	for name, id := range map[string]int64{"another company": stranger, "no certificate yet": open, "unknown worker": 999999} {
+		if got := u.get(link(id), u.cookie).Code; got != http.StatusNotFound {
+			t.Errorf("%s = %d, want 404", name, got)
+		}
+	}
+	if got := u.get(link(fit)).Code; got == http.StatusOK { // no cookie: signed out
+		t.Errorf("signed out = 200")
 	}
 }

@@ -160,6 +160,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("GET "+basePath+"/workers", a.WorkerSearch)
 	in.HandleFunc("GET "+basePath+"/documents", a.Documents)
 	in.HandleFunc("GET "+basePath+"/employees", a.Employees)
+	in.HandleFunc("GET "+basePath+"/employees/{id}/certificate", a.EmployeeCertificate)
 	in.HandleFunc("GET "+basePath+"/documents/{id}/review", a.ReviewPage)
 	in.HandleFunc("POST "+basePath+"/documents/{id}/confirm", a.ConfirmDocument)
 	in.HandleFunc("GET "+basePath+"/documents/{id}/file", a.DocumentFile)

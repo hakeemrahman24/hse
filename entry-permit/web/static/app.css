@@ -798,3 +798,6 @@ input[type="text"], input[type="search"], input[type="password"], input[type="em
 /* Top bar: the white company logo alone, no wordmark. */
 .brand-logo { height: 38px; width: auto; }
 @media (max-width: 860px) { .brand-logo { height: 34px; } }
+/* ID card header: the white company logo alone on a solid band in the card colour (dark blue or dark orange). */
+.lepc-header { flex-basis: calc(0.55 * var(--u)); padding: 0 calc(0.1 * var(--u)); background: var(--c-dark); border-bottom: calc(0.04 * var(--u)) solid var(--c-mid); }
+.lepc-header img { height: 76%; width: auto; max-width: 100%; }

@@ -9,6 +9,7 @@ import (
 	"mime"
 	"net/http"
 	"os"
+	"strconv"
 )
 
 // The health certificate belongs to the checkup record the reviewer saved, not to the submitted
@@ -138,7 +139,7 @@ func (a *API) serveCertificate(w http.ResponseWriter, r *http.Request, u *Submit
 		return
 	}
 	defer f.Close()
-	if err := a.Store.LogEvent(r.Context(), Event{ActorType: ActorSubmitter, ActorID: u.ID, EntityType: entityType, EntityID: entityID, Action: "CertificateDownloaded"}); err != nil {
+	if err := a.Store.LogEvent(r.Context(), Event{ActorType: ActorSubmitter, ActorID: u.ID, EntityType: entityType, EntityID: entityID, Action: "CertificateDownloaded", Detail: "record " + strconv.FormatInt(record, 10)}); err != nil {
 		log.Printf("mcusubmit: log certificate download: %v", err)
 	}
 	h := w.Header()
@@ -153,4 +154,3 @@ func (a *API) serveCertificate(w http.ResponseWriter, r *http.Request, u *Submit
 	h.Set("Cache-Control", "no-store")
 	_, _ = io.Copy(w, f)
 }
-

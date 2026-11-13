@@ -2,6 +2,9 @@ package mcusubmit
 
 import (
 	"context"
+	"database/sql"
+	"errors"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -36,6 +39,7 @@ type Employee struct {
 	Status                          string // one of the Val* labels
 	DaysLeft                        int    // days until ValidUntil; negative once expired; only meaningful for the three fit statuses
 	HasValidity                     bool   // Status is Valid, Expiring soon or Expired (DaysLeft means something)
+	HasCertificate                  bool   // the latest checkup has a certificate the page may offer (see LatestRecord.HasCertificate)
 }
 
 // validityOf turns a checkup's result and validity date into the label HR reads. It is pure so the
@@ -113,6 +117,8 @@ func (s *Store) CompanyEmployees(ctx context.Context, companyIDs []int64, window
 			e.Status = ValNone
 		} else {
 			e.Status, e.DaysLeft, e.HasValidity = validityOf(e.Result, e.ValidUntil, today, windowDays)
+			// The same rule as the document list and the MCU tab: Unfit always, Fit only once Close.
+			e.HasCertificate = LatestRecord{Result: e.Result, Status: checkUpStatus}.HasCertificate()
 		}
 		out = append(out, e)
 	}
@@ -189,6 +195,11 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 	for _, e := range all {
 		p.Counts[e.Status]++
 	}
+	if a.certs == nil { // a build without the clinical side has no download route, so no links
+		for i := range all {
+			all[i].HasCertificate = false
+		}
+	}
 	rows := filterEmployees(all, p.Form["worker"], status)
 	page, _ := parseID(q.Get("page"))
 	p.Employees, p.Result = pageOf(rows, int(page))
@@ -214,4 +225,57 @@ func pageOf(rows []Employee, page int) ([]Employee, DocPage) {
 		hi = total
 	}
 	return rows[lo:hi], DocPage{Total: total, PageSize: docPageSize, Page: page, Pages: pages}
+}
+
+// EmployeeCertificateRecord returns the newest checkup of a worker when the worker belongs to a company
+// in the account's scope (own company or a subcontractor) and that checkup has a certificate, else
+// ErrNotFound. The worker id comes from the link, so the company check is what stops one company
+// from opening another's certificate, and a missing worker and a forbidden one look the same.
+func (s *Store) EmployeeCertificateRecord(ctx context.Context, sc Scope, patientID int64) (int64, error) {
+	var company sql.NullInt64
+	if err := s.DB.QueryRowContext(ctx, `SELECT FK_CompanyID FROM Patient WHERE PatientID = ?`, patientID).Scan(&company); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, ErrNotFound
+		}
+		return 0, err
+	}
+	if !company.Valid || !sc.Covers(company.Int64) {
+		return 0, ErrNotFound
+	}
+	var l LatestRecord
+	err := s.DB.QueryRowContext(ctx,
+		`SELECT McuRecordID, COALESCE(ResultCriteria, ''), COALESCE(CheckUpStatus, '') FROM McuRecord WHERE FK_PatientID = ?
+		 ORDER BY COALESCE(DateCheckUp, '') DESC, McuRecordID DESC LIMIT 1`, patientID).Scan(&l.RecordID, &l.Result, &l.Status)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && !l.HasCertificate()) {
+		return 0, ErrNotFound
+	}
+	return l.RecordID, err
+}
+
+// EmployeeCertificate sends the certificate of a worker's latest checkup (?view=1 opens it in the tab).
+func (a *API) EmployeeCertificate(w http.ResponseWriter, r *http.Request) {
+	u := a.requireUser(w, r)
+	if u == nil {
+		return
+	}
+	id, ok := parseID(r.PathValue("id"))
+	if !ok || a.certs == nil || u.Role == RoleAdmin {
+		a.notFound(w, u)
+		return
+	}
+	sc, err := a.Store.ScopeFor(r.Context(), u)
+	if err != nil {
+		a.serverError(w, "scope", err)
+		return
+	}
+	record, err := a.Store.EmployeeCertificateRecord(r.Context(), sc, id)
+	if err != nil {
+		if !errors.Is(err, ErrNotFound) {
+			log.Printf("mcusubmit: employee certificate record: %v", err)
+		}
+		a.notFound(w, u)
+		return
+	}
+	// The audit row is about the account that downloaded; Detail holds the checkup record id, never a name.
+	a.serveCertificate(w, r, u, record, EntitySubmitter, u.ID)
 }

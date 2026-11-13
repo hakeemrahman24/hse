@@ -163,7 +163,7 @@ func TestCardPageUsesTheLegacyCardLayoutAndColours(t *testing.T) {
 	e.cardPermit(t)
 	_, body := e.get(t, "/c/"+testLEP, nil)
 	for _, want := range []string{
-		`class="lepc card-contractor"`, `lepc-header`, `/static/logo-color.png`, `lepc-photo-ph`,
+		`class="lepc card-contractor"`, `lepc-header`, `/static/logo-white.png`, `lepc-photo-ph`,
 		"Name:", "Company:", "Position:", "Entry Permit:", "Valid Until:", "(PT Karya)", "<svg", "/static/cardfit.js",
 	} {
 		if !strings.Contains(body, want) {
