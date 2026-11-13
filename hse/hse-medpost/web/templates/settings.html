@@ -20,7 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
-  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref19" />
+  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref20" />
   <script>
     document.documentElement.classList.remove("vt-cover");
   </script>
@@ -517,29 +517,53 @@
         </div>
         <div class="settings-panel" data-panel="region-api">
           <div class="settings-panel-body">
-            <div class="app-sidebar-label">Regency list with malaria endemicity</div>
+            <div class="app-sidebar-label">What it is</div>
             <p class="ds-note">Every regency and city with its province and what the Kemenkes malaria map says about it. Other databases read it instead of copying names, so a name they store always matches the one shown here. Read-only.</p>
+
+            <div class="app-sidebar-label">Address</div>
             <ul class="directory-links">
               <li><a href="https://medical-activities.ayahaif.my.id/api/directory/regions">https://medical-activities.ayahaif.my.id/api/directory/regions</a></li>
             </ul>
-            <p class="ds-note">Send <code>Authorization: Bearer &lt;token&gt;</code>. Either token from the Employee API page works; the regency list is not sensitive, so use the eligible token. The content follows the Region list on the previous page: after a refresh the new names are served at once.</p>
 
-            <div class="app-sidebar-label" style="margin-top:18px">What each regency carries</div>
+            <div class="app-sidebar-label">Access</div>
+            <p class="ds-note">Send <code>Authorization: Bearer &lt;token&gt;</code>. Either token from the Employee API page works. The regency list is not sensitive, so give other databases the eligible token.</p>
+
+            <div class="app-sidebar-label">Freshness</div>
+            <p class="ds-note">The names follow the Region list on the Region &amp; malaria data page, and the endemicity follows its applied list. After a refresh or an Apply, the new content is served at once.</p>
+
+            <div class="app-sidebar-label">One regency</div>
+            <pre class="ds-example">{
+  "code": "62.12",
+  "name": "Kabupaten Murung Raya",
+  "province": "Kalimantan Tengah",
+  "endemicity": {
+    "status": "low",
+    "label": "Endemis Rendah",
+    "free": false,
+    "dataYear": 2026,
+    "per1000": 2.39,
+    "appliedAt": "2026-11-14"
+  }
+}</pre>
+            <p class="ds-note">The response is a list of these, ordered by province and then name. The values above are an example.</p>
+
+            <div class="app-sidebar-label">Fields</div>
             <div class="table-scroll">
-              <table class="data-table compact">
+              <table class="data-table ds-fields">
                 <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
                 <tbody>
-                  <tr><td><code>code</code>, <code>name</code>, <code>province</code></td><td>The regency's code (for example 62.12), official name and province name.</td></tr>
-                  <tr><td><code>endemicity.status</code></td><td><code>free</code> (the map's Eliminasi), <code>low</code> (Endemis Rendah), <code>medium</code> (Endemis Sedang), <code>high</code> (Endemis Tinggi I, II or III) or <code>unknown</code>.</td></tr>
+                  <tr><td><code>code</code> <code>name</code> <code>province</code></td><td>The regency's code (for example 62.12), official name and province name.</td></tr>
+                  <tr><td><code>endemicity.status</code></td><td><code>free</code> (the map's Eliminasi), <code>low</code> (Endemis Rendah), <code>medium</code> (Endemis Sedang), <code>high</code> (Endemis Tinggi I, II or III), or <code>unknown</code>.</td></tr>
                   <tr><td><code>endemicity.label</code></td><td>The map's own wording, including Tinggi I / II / III.</td></tr>
                   <tr><td><code>endemicity.free</code></td><td>True only for Eliminasi.</td></tr>
                   <tr><td><code>endemicity.dataYear</code></td><td>The map year the row comes from. An older year for regencies the newest map does not have yet.</td></tr>
                   <tr><td><code>endemicity.per1000</code></td><td>Cases per 1,000 of the total population, as the map computes it. It can disagree with the label.</td></tr>
-                  <tr><td><code>endemicity.appliedAt</code></td><td>The date the endemicity list was applied on the previous page.</td></tr>
+                  <tr><td><code>endemicity.appliedAt</code></td><td>The date the endemicity list was applied.</td></tr>
                 </tbody>
               </table>
             </div>
-            <p class="ds-note" style="margin-top:8px"><strong><code>unknown</code> means there is no data for that regency. It must never be read as free.</strong> It is also what every regency says until an admin has read the map and applied it. The map's case data is not yet validated by Kemenkes.</p>
+
+            <p class="ds-warning"><strong>unknown means there is no data for that regency. It must never be read as free.</strong> It is also what every regency says until an admin has read the map and applied it. The map's case data is not yet validated by Kemenkes.</p>
           </div>
         </div>
         {{end}}

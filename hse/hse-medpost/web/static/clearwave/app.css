@@ -3424,6 +3424,16 @@ body:has(.app-shell.is-form-focus) .app-dev-credit p {
 .ds-form label { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
 .ds-form label span { white-space: nowrap; }
 .ds-form select { width: auto; min-width: 8rem; }
+/* Region API page: a field table that stays a table (not the two-column name/value grid that
+   ".settings-shell .data-table.compact" turns every two-column table into), a sample response,
+   and a warning box. */
+.ds-fields { width: 100%; border-collapse: collapse; }
+.ds-fields th, .ds-fields td { text-align: left; vertical-align: top; padding: 8px 14px 8px 0; border-bottom: 1px solid var(--border); }
+.ds-fields td:first-child { white-space: nowrap; width: 1%; }
+.ds-fields code, .ds-note code { white-space: nowrap; }
+.ds-example { margin: 0 0 6px; padding: 10px 14px; overflow-x: auto; font-size: 0.8125rem; line-height: 1.5; border: 1px solid var(--border); border-radius: 8px; background: rgba(0,0,0,0.03); }
+.ds-warning { margin: 14px 0 0; padding: 10px 14px; border-radius: 8px; border: 1px solid #fedf89; background: #fffaeb; color: #93370d; font-size: 0.875rem; }
+
 .ds-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 8px 0; }
 .ds-filter label { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
 .ds-filter input[type="search"] { min-width: 14rem; }
