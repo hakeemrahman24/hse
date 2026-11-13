@@ -769,3 +769,6 @@ input[type="text"], input[type="search"], input[type="password"], input[type="em
 .chip { display: inline-flex; align-items: center; min-height: 22px; padding: 0 var(--s2); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.02em; }
 .chip-ticket { color: var(--brand-ink); background: var(--brand); }
 .chip-none { color: var(--muted); background: transparent; border: 1px dashed rgba(31, 29, 38, 0.4); }
+/* Working schedule page: the ticket list and the apply form are two panels, the list scrolls sideways on a phone. */
+.side-content > .card .tablewrap table { min-width: 560px; }
+.side-content > .card .form-grid > .field-wide { margin-bottom: var(--s2); }

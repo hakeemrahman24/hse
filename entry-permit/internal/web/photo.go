@@ -229,8 +229,8 @@ func (a *App) myPermits(r *http.Request, e worker.Employee) []MyPermit {
 	return out
 }
 
-// liveTicketText describes the newest working ticket on a permit that is still alive (waiting for the
-// doctor, or approved), or "" when the permit has none, so the worker page can offer "Apply" instead.
+// liveTicketText describes the newest approved working ticket on a permit, or "" when it has none, so the
+// worker page can offer "Apply" instead.
 // WHY a failure shows "": the worker can still open the schedule page, where the real list is shown.
 func (a *App) liveTicketText(r *http.Request, lep string) string {
 	if a.Tickets == nil {
@@ -243,19 +243,15 @@ func (a *App) liveTicketText(r *http.Request, lep string) string {
 	}
 	best, found := ticket.Ticket{}, false
 	for _, t := range rows {
-		st := ticket.NormalizeStatus(string(t.Status))
-		if (st == ticket.StatusPendingDoctor || st == ticket.StatusApproved) && (!found || t.Arrival > best.Arrival) {
+		// A worker's ticket is approved by the rules at once (no doctor stage), so Approved is the only live state.
+		if ticket.NormalizeStatus(string(t.Status)) == ticket.StatusApproved && (!found || t.Arrival > best.Arrival) {
 			best, found = t, true
 		}
 	}
 	if !found {
 		return ""
 	}
-	label := "Approved"
-	if ticket.NormalizeStatus(string(best.Status)) == ticket.StatusPendingDoctor {
-		label = "Waiting for the doctor"
-	}
-	return fmt.Sprintf("%s to %s, %s", best.Arrival, best.Departure, label)
+	return fmt.Sprintf("%s to %s, Approved", best.Arrival, best.Departure)
 }
 
 // myTicket opens the working-ticket page for a permit of the worker who just proved who they
