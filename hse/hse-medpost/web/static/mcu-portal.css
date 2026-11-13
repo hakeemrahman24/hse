@@ -215,6 +215,12 @@ body.mp {
 .mp-filter input, .mp-filter select { width: auto; min-width: 150px; }
 .mp-filter .field label { display: block; margin-bottom: 4px; }
 
+/* Admin "Add account": closed until clicked (a details element, no script). The summary looks like a button. */
+.mp-add { margin: 8px 0 16px; }
+.mp-add > summary { display: inline-block; cursor: pointer; list-style: none; }
+.mp-add > summary::-webkit-details-marker { display: none; }
+.mp-add[open] > summary { margin-bottom: 8px; }
+
 /* Admin "Add an account": two columns, three rows (name | email, company | position, username | button).
    One column on a phone. */
 .mp-addform {

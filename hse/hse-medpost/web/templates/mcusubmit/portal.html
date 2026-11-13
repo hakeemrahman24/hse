@@ -49,7 +49,7 @@
       {{if eq .User.Role "Admin"}}
       <div class="app-sidebar-label">Review</div>
       <div class="app-program-list mp-side">
-        <a class="app-program-item{{if eq .Nav "admin"}} active{{end}}" href="/mcu-submit/admin"{{if eq .Nav "admin"}} aria-current="page"{{end}}><span class="app-program-item-title">Account requests</span></a>
+        <a class="app-program-item{{if eq .Nav "admin"}} active{{end}}" href="/mcu-submit/admin"{{if eq .Nav "admin"}} aria-current="page"{{end}}><span class="app-program-item-title">Accounts</span></a>
       </div>
       <div class="app-sidebar-label">Mail</div>
       <div class="app-program-list mp-side">
@@ -649,7 +649,7 @@
 
 {{define "admin.html"}}{{template "head" .}}
     <section class="mp-section">
-      <h1>Account <span>requests</span></h1>
+      <h1><span>Accounts</span></h1>
       {{if .Pending}}
       <div class="mp-scroll"><table class="mp-table mp-docs">
         <caption>Waiting for a decision (email confirmed)</caption>
@@ -669,17 +669,19 @@
         </tbody></table></div>
       {{else}}<p class="mp-hint">No requests are waiting.</p>{{end}}
 
-      <h2>Add an <span>account</span></h2>
-      <p class="mp-hint">For a person who cannot use the request form. The account is active at once. A random temporary password is shown once after you save; give it to the person, who must choose their own at the first sign-in. Two accounts per company.</p>
-      <form method="post" action="/mcu-submit/admin/create" class="mp-addform" autocomplete="off" aria-label="Add an account">
-        <div class="field"><label for="n-name"><span>Full name</span></label><input id="n-name" name="name" type="text" maxlength="80" required /><p class="mp-hint">Written in Title Case, extra spaces removed.</p></div>
-        <div class="field"><label for="n-email"><span>Email</span></label><input id="n-email" name="email" type="email" maxlength="120" required /><p class="mp-hint">The domain is checked before the account is made.</p></div>
-        <div class="field"><label for="n-company"><span>Company</span></label>
-          <select id="n-company" name="company" required><option value="">Choose…</option>{{range .Companies}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></div>
-        <div class="field"><label for="n-position"><span>Position</span></label><input id="n-position" name="position" type="text" maxlength="80" required /></div>
-        <div class="field"><label for="n-username"><span>Username</span></label><input id="n-username" name="username" type="text" maxlength="40" required autocapitalize="none" spellcheck="false" style="text-transform:lowercase" /><p class="mp-hint">Lower case letters, digits, dots or underscores. 3 to 40.</p></div>
-        <div class="submit-row"><button type="submit" class="btn-primary">Add account</button></div>
-      </form>
+      <details class="mp-add">
+        <summary class="btn-primary">Add account</summary>
+        <p class="mp-hint">For a person who cannot use the request form. The account is active at once with the default password, and a welcome email with their details and a sign-in link is sent. They must choose their own password at the first sign-in. Two accounts per company.</p>
+        <form method="post" action="/mcu-submit/admin/create" class="mp-addform" autocomplete="off" aria-label="Add an account">
+          <div class="field"><label for="n-name"><span>Full name</span></label><input id="n-name" name="name" type="text" maxlength="80" required /><p class="mp-hint">Written in Title Case, extra spaces removed.</p></div>
+          <div class="field"><label for="n-email"><span>Email</span></label><input id="n-email" name="email" type="email" maxlength="120" required /><p class="mp-hint">The domain is checked before the account is made.</p></div>
+          <div class="field"><label for="n-company"><span>Company</span></label>
+            <select id="n-company" name="company" required><option value="">Choose…</option>{{range .Companies}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></div>
+          <div class="field"><label for="n-position"><span>Position</span></label><input id="n-position" name="position" type="text" maxlength="80" required /></div>
+          <div class="field"><label for="n-username"><span>Username</span></label><input id="n-username" name="username" type="text" maxlength="40" required autocapitalize="none" spellcheck="false" style="text-transform:lowercase" /><p class="mp-hint">Lower case letters, digits, dots or underscores. 3 to 40.</p></div>
+          <div class="submit-row"><button type="submit" class="btn-primary">Add account</button></div>
+        </form>
+      </details>
 
       <h2>All <span>accounts</span></h2>
       <p class="mp-actions"><a class="btn-ghost" href="/mcu-submit/romif/statement">View ROMIF statement</a></p>
