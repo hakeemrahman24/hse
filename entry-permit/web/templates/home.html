@@ -44,7 +44,7 @@ Public visitors see the permit pages and the portal; staff also get their own pa
     {{else}}<li><a href="/my/signin"{{if eq .Nav "my"}} aria-current="page"{{end}}>Check my permit</a></li>{{end}}
   </ul>
   {{if .McuURL}}<p class="side-label">Medical checkup</p>
-  <ul role="list"><li><a class="side-mcu" href="{{.McuURL}}">Submit results<span class="side-hint">opens the portal</span></a></li></ul>{{end}}
+  <ul role="list"><li><a class="side-mcu" href="{{.McuURL}}" target="_blank" rel="noopener">Submit results<span class="side-hint">opens the portal</span></a></li></ul>{{end}}
   {{if and (eq .Nav "my") .Links}}<p class="side-label">On this page</p>
   <ul role="list">{{range .Links}}<li><a href="{{.Href}}">{{.Label}}</a></li>{{end}}</ul>{{end}}
   {{if .User}}<p class="side-label">Your work</p>
@@ -119,8 +119,8 @@ small links at the bottom, because most visitors are companies and workers. */}}
       <p>For companies. Send each worker's medical checkup result as a PDF, then follow its status.</p>
       <p class="door-need">The medical team approves new company accounts. You get an email to choose your login.</p>
       {{if .McuURL}}<div class="door-actions">
-        <a class="btn" href="{{.McuURL}}/signin">Sign in</a>
-        <a class="btn-small" href="{{.McuURL}}/register">Request an account</a>
+        <a class="btn" href="{{.McuBase}}/signin" target="_blank" rel="noopener">Sign in</a>
+        <a class="btn-small" href="{{.McuBase}}/register" target="_blank" rel="noopener">Request an account</a>
       </div>{{else}}<p class="note">Ask the medical team for the portal address.</p>{{end}}
     </section>
   </div>
@@ -178,7 +178,7 @@ small links at the bottom, because most visitors are companies and workers. */}}
       <div class="door-actions"><a class="btn" href="/waiver">Request a Visitor Entry Permit</a></div>
     </section>
   </div>
-  {{if .McuURL}}<p class="note callout-line">The worker has no valid MCU yet? The company sends it first through the <a href="{{.McuURL}}">medical checkup portal</a>.</p>{{end}}
+  {{if .McuURL}}<p class="note callout-line">The worker has no valid MCU yet? The company sends it first through the <a href="{{.McuURL}}" target="_blank" rel="noopener">medical checkup portal</a>.</p>{{end}}
   <p class="note landing-foot"><a href="/">Back to home</a></p>
 </section>
 {{template "foot" .}}{{end}}

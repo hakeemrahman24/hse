@@ -121,6 +121,7 @@ type View struct {
 	Users         UsersData
 	My            MyData
 	McuURL        string // the medical checkup portal address, for the side menu and the landing page
+	McuBase       string // McuURL without a trailing /signin, so "/signin" and "/register" can be added to it
 	Nav           string // which side menu item is current (see navKey); set by render
 	Permit        PermitData
 	Waiver        WaiverData
@@ -213,6 +214,7 @@ func (a *App) render(w http.ResponseWriter, name string, status int, v View) {
 	if v.McuURL == "" {
 		v.McuURL = a.McuPortalURL
 	}
+	v.McuBase = strings.TrimSuffix(v.McuURL, "/signin")
 	if v.Nav == "" {
 		v.Nav = navKey(name)
 	}

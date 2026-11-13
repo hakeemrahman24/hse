@@ -455,3 +455,21 @@ func TestWaiverFormHasSectionNavAndStickySubmit(t *testing.T) {
 		}
 	}
 }
+
+func TestMedicalLinksOpenInANewTabAndNeverDoubleTheSigninPath(t *testing.T) {
+	e := newEnv(t)
+	e.setMcuURL("https://medpost.example.com/mcu-submit/signin") // the address as it is kept in Settings
+	_, body := e.get(t, "/", nil)
+	for _, want := range []string{
+		`href="https://medpost.example.com/mcu-submit/signin" target="_blank" rel="noopener">Sign in`,
+		`href="https://medpost.example.com/mcu-submit/register" target="_blank" rel="noopener">Request an account`,
+		`class="side-mcu" href="https://medpost.example.com/mcu-submit/signin" target="_blank" rel="noopener"`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("home lacks %q", want)
+		}
+	}
+	if strings.Contains(body, "/signin/signin") {
+		t.Errorf("the sign-in path must not be added twice")
+	}
+}

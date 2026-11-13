@@ -59,7 +59,7 @@
   </dl>
   {{if .Blocked}}
     {{if not $.Permit.Err}}<p class="error" role="alert">{{.BlockedText}}</p>{{end}}
-    {{if $.McuURL}}<p><a class="btn-small" href="{{$.McuURL}}">Open the medical checkup portal</a></p>{{end}}
+    {{if $.McuURL}}<p><a class="btn-small" href="{{$.McuURL}}" target="_blank" rel="noopener">Open the medical checkup portal</a></p>{{end}}
   {{else}}
     {{if .Foreign}}<p class="note">This worker is a foreign national. The date can be earlier once the visa and passport dates are entered in the next step.</p>{{end}}
     {{if .Reuse}}<p class="note">This worker had a permit before. {{if .McuRenewal}}Their MCU has been renewed, so a new request is allowed. {{end}}Their earlier phone, address and emergency contact will be offered again.</p>{{end}}
