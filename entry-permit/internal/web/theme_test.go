@@ -34,7 +34,7 @@ func TestEveryPageHeaderShowsTheCompanyLogoAndTheBrowserIcon(t *testing.T) {
 	e := newEnv(t)
 	for _, path := range []string{"/", "/request", "/permit", "/login"} {
 		_, body := e.get(t, path, nil)
-		for _, want := range []string{`src="/static/fire_lng.png"`, `rel="icon"`, `class="brand-logo"`} {
+		for _, want := range []string{`src="/static/logo-white.png"`, `rel="icon"`, `class="brand-logo"`} {
 			if !strings.Contains(body, want) {
 				t.Errorf("%s lacks %q", path, want)
 			}

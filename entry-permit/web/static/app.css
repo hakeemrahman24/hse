@@ -795,3 +795,6 @@ input[type="text"], input[type="search"], input[type="password"], input[type="em
 /* The header carries the full company logo (flame and name), so it is a little taller than the old flame-only one. */
 .lepc-header { flex-basis: calc(0.64 * var(--u)); padding: calc(0.04 * var(--u)) calc(0.08 * var(--u)); }
 .lepc-header img { height: 100%; }
+/* Top bar: the white company logo alone, no wordmark. */
+.brand-logo { height: 38px; width: auto; }
+@media (max-width: 860px) { .brand-logo { height: 34px; } }

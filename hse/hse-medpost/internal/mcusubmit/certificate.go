@@ -115,6 +115,13 @@ func (a *API) DocumentCertificate(w http.ResponseWriter, r *http.Request) {
 		a.notFound(w, u)
 		return
 	}
+	a.serveCertificate(w, r, u, record, EntitySubmission, id)
+}
+
+// serveCertificate builds the certificate of one checkup record and sends the PDF. Both the document
+// link and the Employee checkups link end here, so the rules for unavailable certificates, the
+// headers and the audit event are the same. entityType/entityID say what the audit event is about.
+func (a *API) serveCertificate(w http.ResponseWriter, r *http.Request, u *Submitter, record int64, entityType string, entityID int64) {
 	cert, err := a.certs.Certificate(r.Context(), record)
 	var unavailable *CertificateUnavailable
 	if errors.As(err, &unavailable) {
@@ -131,7 +138,7 @@ func (a *API) DocumentCertificate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer f.Close()
-	if err := a.Store.LogEvent(r.Context(), Event{ActorType: ActorSubmitter, ActorID: u.ID, EntityType: EntitySubmission, EntityID: id, Action: "CertificateDownloaded"}); err != nil {
+	if err := a.Store.LogEvent(r.Context(), Event{ActorType: ActorSubmitter, ActorID: u.ID, EntityType: entityType, EntityID: entityID, Action: "CertificateDownloaded"}); err != nil {
 		log.Printf("mcusubmit: log certificate download: %v", err)
 	}
 	h := w.Header()
@@ -146,3 +153,4 @@ func (a *API) DocumentCertificate(w http.ResponseWriter, r *http.Request) {
 	h.Set("Cache-Control", "no-store")
 	_, _ = io.Copy(w, f)
 }
+
