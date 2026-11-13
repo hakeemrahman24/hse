@@ -2,6 +2,7 @@ package card
 
 import (
 	"bytes"
+	_ "embed"
 	"fmt"
 	"image"
 	"image/color"
@@ -15,6 +16,16 @@ import (
 	"github.com/go-pdf/fpdf"
 	"rsc.io/qr"
 )
+
+// logoWhite is the white company logo on a transparent background, the same file the site header uses.
+// WHY a copy inside this package: go:embed cannot reach web/static, and the PDF must not depend on files
+// being found at run time.
+//
+//go:embed assets/logo-white.png
+var logoWhite []byte
+
+// logoH is the printed logo height in the header band; the width follows the picture (371 x 96).
+const logoH = 10.0
 
 // compress is switched off by tests so the page text can be read in the bytes.
 var compress = true
@@ -63,10 +74,10 @@ func PDF(w io.Writer, c PDFCard) error {
 	r, g, b := themeRGB(ThemeFor(c.Entity))
 	p.SetFillColor(r, g, b)
 	p.Rect(0, 0, pdfW, headerH, "F")
+	logoOpt := fpdf.ImageOptions{ImageType: "PNG"}
+	p.RegisterImageOptionsReader("logo", logoOpt, bytes.NewReader(logoWhite))
+	p.ImageOptions("logo", pdfMargin, (headerH-logoH)/2, 0, logoH, false, logoOpt, 0, "")
 	p.SetTextColor(255, 255, 255)
-	p.SetFont("Helvetica", "B", 13)
-	p.SetXY(pdfMargin, 3)
-	p.CellFormat(80, 9, "Layar Entry Permit", "", 0, "L", false, 0, "")
 	p.SetFont("Helvetica", "B", 12)
 	p.SetXY(pdfW-pdfMargin-60, 3)
 	p.CellFormat(60, 9, tr(c.LEP), "", 0, "R", false, 0, "")

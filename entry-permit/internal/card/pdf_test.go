@@ -68,11 +68,14 @@ func TestPDFEmbedsAPhotoWhenThereIsOne(t *testing.T) {
 	}
 	c := sampleCard()
 	c.Photo = jb.Bytes()
-	if out := render(t, c); !strings.Contains(out, "/Subtype /Image") {
-		t.Error("the photo is not in the PDF")
+	// The company logo is always an image, so the photo shows as one more image than the card without it.
+	without := strings.Count(render(t, sampleCard()), "/Subtype /Image")
+	with := strings.Count(render(t, c), "/Subtype /Image")
+	if without == 0 {
+		t.Error("the company logo is not in the PDF")
 	}
-	if out := render(t, sampleCard()); strings.Contains(out, "/Subtype /Image") {
-		t.Error("an image appeared without a photo")
+	if with <= without {
+		t.Errorf("the photo is not in the PDF: %d images with it, %d without", with, without)
 	}
 }
 
