@@ -113,7 +113,16 @@ func (a *API) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 		case existing.Status == StatusRequested && existing.EmailVerifiedAt == "":
 			a.mailVerifyLink(r, existing.ID, email) // they lost the first mail: send a fresh link
 		default:
+			// Owner, 2026-11-13: the person asking is told on the page, not only by mail, so they
+			// know at once to sign in instead of waiting for a link that will never come. The mail
+			// still goes, for the case where somebody else typed the address.
 			a.sendMail(r.Context(), email, "You already have an account", alreadyRegisteredMail(a.baseURL))
+			msg := emailRegisteredMsg
+			if existing.Status == StatusRequested {
+				msg = emailWaitingMsg
+			}
+			a.registerForm(w, r, http.StatusConflict, form, msg)
+			return
 		}
 	case errors.Is(err, ErrCompanyFull):
 		a.registerForm(w, r, http.StatusConflict, form, companyFullMsg)
@@ -124,6 +133,11 @@ func (a *API) RegisterSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	reply()
 }
+
+const (
+	emailRegisteredMsg = "This email is already registered. Sign in, or choose Forgot password on the sign-in page if you do not remember it."
+	emailWaitingMsg    = "A request for this email is already waiting for approval. You will get an email when it is decided."
+)
 
 // companyFullMsg tells the person what to do instead: the two people of the company can change their
 // own login email or username when someone leaves, so nobody needs a third account.
@@ -286,7 +300,8 @@ func (a *API) SignInPage(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, basePath+"/home", http.StatusSeeOther)
 		return
 	}
-	a.signInForm(w, http.StatusOK, "", "")
+	// The welcome mail of an account the admin added links here with the username filled in.
+	a.signInForm(w, http.StatusOK, SanitizeUsernameHint(r.URL.Query().Get("username")), "")
 }
 
 const signInFailed = "Wrong username or password, or the account is not available. Five wrong passwords lock an account for 15 minutes."
@@ -460,4 +475,14 @@ func (a *API) RomifStatement(w http.ResponseWriter, r *http.Request) {
 		p.Notice = "You signed this statement on " + at + "."
 	}
 	a.render(w, http.StatusOK, "romifview.html", p)
+}
+
+// SanitizeUsernameHint keeps a ?username= value only when it is a valid username, so the sign-in page
+// never echoes arbitrary text from a link (the template escapes it anyway; this keeps it tidy).
+func SanitizeUsernameHint(v string) string {
+	v = strings.ToLower(strings.TrimSpace(v))
+	if ValidUsername(v) != nil {
+		return ""
+	}
+	return v
 }

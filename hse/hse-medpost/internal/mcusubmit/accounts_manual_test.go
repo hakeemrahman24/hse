@@ -4,7 +4,6 @@ import (
 	"context"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
 	"testing"
 )
@@ -28,8 +27,7 @@ func TestAdminAddedAccountMustChangeItsTemporaryPassword(t *testing.T) {
 		t.Fatalf("the page does not show the default password:\n%s", rec.Body)
 	}
 	mail := e.mail.last(t)
-	link := regexp.MustCompile(`/mcu-submit/reset\?token=([0-9a-f]{64})`).FindStringSubmatch(mail.Body)
-	if mail.To != "budi@example.com" || link == nil || !strings.Contains(mail.Body, "budi.s") || !strings.Contains(mail.Body, "Welder") {
+	if mail.To != "budi@example.com" || !strings.Contains(mail.Body, "/mcu-submit/signin?username=budi.s") || !strings.Contains(mail.Body, "budi.s") || !strings.Contains(mail.Body, "Welder") {
 		t.Fatalf("welcome mail = %+v", mail)
 	}
 	if rec := e.post("/mcu-submit/admin/create", form, admin); rec.Code != http.StatusConflict {
@@ -79,25 +77,14 @@ func TestAdminAddedAccountMustChangeItsTemporaryPassword(t *testing.T) {
 	}
 }
 
-// The welcome mail's link is the normal way in: it sets the password and clears the must-change flag.
-func TestWelcomeLinkChoosesThePasswordAndClearsTheFlag(t *testing.T) {
+// The welcome link opens the sign-in page with the username filled in.
+func TestSignInPageFillsInTheUsernameFromTheWelcomeLink(t *testing.T) {
 	e := newEnv(t)
-	_, admin := e.signIn("admin", "pelican-orbit-77")
-	form := url.Values{"name": {"Siti Aminah"}, "email": {"siti@example.com"}, "company": {itoa(e.companyID)}, "position": {"Nurse"}, "username": {"siti.a"}}
-	if rec := e.post("/mcu-submit/admin/create", form, admin); rec.Code != http.StatusOK {
-		t.Fatalf("create = %d", rec.Code)
+	if body := e.get("/mcu-submit/signin?username=budi.s").Body.String(); !strings.Contains(body, `value="budi.s"`) {
+		t.Errorf("username not filled in")
 	}
-	token := regexp.MustCompile(`token=([0-9a-f]{64})`).FindStringSubmatch(e.mail.last(t).Body)[1]
-	done := e.post("/mcu-submit/reset", url.Values{"token": {token}, "password": {"my-own-secret-5"}, "confirm": {"my-own-secret-5"}})
-	if done.Code != http.StatusOK {
-		t.Fatalf("reset = %d\n%s", done.Code, done.Body)
-	}
-	_, cookie := e.signIn("siti.a", "my-own-secret-5")
-	if cookie == nil {
-		t.Fatal("new password does not sign in")
-	}
-	if got := e.get("/mcu-submit/home", cookie); got.Code == http.StatusSeeOther && got.Header().Get("Location") == "/mcu-submit/password" {
-		t.Error("still sent to the change-password page")
+	if body := e.get("/mcu-submit/signin?username=%3Cscript%3E").Body.String(); strings.Contains(body, "&lt;script") {
+		t.Errorf("a bad username was echoed")
 	}
 }
 

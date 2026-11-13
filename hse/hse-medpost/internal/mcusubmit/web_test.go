@@ -183,20 +183,20 @@ func TestRegisterCreatesARequestAndMailsAVerifyLink(t *testing.T) {
 	}
 }
 
-// The reply must not depend on whether the address is already registered, or the form tells
-// anyone who asks which emails have accounts.
-func TestRegisterGivesTheSameReplyForAnExistingEmail(t *testing.T) {
+// Owner, 2026-11-13: someone who asks for an account with an email that already has one is told so on
+// the page (and the address is mailed too). A request still unconfirmed is not an account yet, so it
+// keeps the neutral reply and just gets a fresh link.
+func TestRegisterTellsTheRequesterWhenTheEmailIsAlreadyRegistered(t *testing.T) {
 	e := newEnv(t)
 	first := e.post("/mcu-submit/register", e.registerForm("budi@example.com"))
 	again := e.post("/mcu-submit/register", e.registerForm("budi@example.com"))
-
 	if again.Code != first.Code || again.Body.String() != first.Body.String() {
-		t.Fatalf("replies differ:\nfirst %d %q\nagain %d %q", first.Code, first.Body, again.Code, again.Body)
+		t.Fatalf("an unconfirmed request should get the neutral reply both times:\nfirst %d\nagain %d", first.Code, again.Code)
 	}
 	e.onboard("other@example.com", "other.o", "pelican-orbit-77")
 	known := e.post("/mcu-submit/register", e.registerForm("other@example.com"))
-	if known.Code != first.Code || known.Body.String() != first.Body.String() {
-		t.Fatalf("a verified account gets a different reply:\n%d %q", known.Code, known.Body)
+	if known.Code != http.StatusConflict || !strings.Contains(known.Body.String(), "already registered") {
+		t.Fatalf("a registered email should be told on the page: %d\n%s", known.Code, known.Body)
 	}
 	if m := e.mail.last(t); !strings.Contains(strings.ToLower(m.Subject), "already") {
 		t.Fatalf("an existing account should be mailed a notice, got %+v", m)

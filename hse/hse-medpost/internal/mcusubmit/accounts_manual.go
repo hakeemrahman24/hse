@@ -5,27 +5,27 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
 // Accounts the admin adds by hand (owner, 2026-11-13). Every such account starts with the same
 // default password, DefaultPassword, and must replace it before anything else opens (the portal
 // minimum is 6 characters, so the owner chose a simple six-digit one). The person gets a welcome
-// email with their account details and a link to choose a new password straight away, so in the
-// normal case the default password is never needed.
+// email with their account details and a link to the sign-in page.
 //
 // The default is known to everyone, so the account is only as safe as how soon the person changes
-// it: the welcome link works for welcomeTTL, and the admin page says who still has not.
+// it.
 const (
 	DefaultPassword = "123456"
-	welcomeTTL      = setupTTL // the same 3 days as the link a approved request gets
 )
 
-// welcomeMail tells a person their account was made and how to get in. It carries the default
-// password because the person needs it if they sign in without using the link.
-func welcomeMail(baseURL, name, username, company, position, token string) string {
+// welcomeMail tells a person their account was made and how to get in. The link is the portal's
+// sign-in page with the username filled in (owner, 2026-11-13): they sign in with the default password
+// and are asked for a new one straight away. It carries the default password because the person
+// needs it for that first sign-in.
+func welcomeMail(baseURL, name, username, company, position string) string {
 	return fmt.Sprintf(`Hello %s,
 
 An account was created for you on the medical checkup submission portal.
@@ -34,16 +34,14 @@ Name:      %s
 Company:   %s
 Position:  %s
 Username:  %s
-Password:  %s (temporary, you must change it at your first sign-in)
+Password:  %s (temporary)
 
-To choose your own password now, open this link (it works for 3 days and only once):
+Open this link and sign in with the username and temporary password above. You will be asked to choose your own password straight away:
 
-%s/mcu-submit/reset?token=%s
-
-Or sign in at %s/mcu-submit/signin with the username and temporary password above; you will be asked for a new password straight away.
+%s/mcu-submit/signin?username=%s
 
 If you did not expect this account, contact the medpost administrator.
-`, name, name, company, position, username, DefaultPassword, baseURL, token, baseURL)
+`, name, name, company, position, username, DefaultPassword, baseURL, url.QueryEscape(username))
 }
 
 // EnsureMustChangePasswordColumn adds Submitter.MustChangePassword to an older SQLite database;
@@ -163,14 +161,10 @@ func (a *API) AdminCreate(w http.ResponseWriter, r *http.Request) {
 	a.audit(r, ActorSubmitter, admin.ID, EntitySubmitter, id, "CreatedByAdmin")
 	// The welcome mail is best effort, like every mail here: sendMail only logs a failure. The account
 	// works either way, so the admin is told to pass the details on if the mail does not arrive.
-	if token, err := a.Store.IssueToken(r.Context(), id, PurposeReset, "", welcomeTTL); err != nil {
-		log.Printf("mcusubmit: account %d created but no welcome link: %v", id, err)
-	} else {
-		company := a.allCompanies(r.Context())[companyID].Name
-		a.sendMail(r.Context(), email, "Your medical checkup portal account", welcomeMail(a.baseURL, name, username, company, position, token))
-	}
+	company := a.allCompanies(r.Context())[companyID].Name
+	a.sendMail(r.Context(), email, "Your medical checkup portal account", welcomeMail(a.baseURL, name, username, company, position))
 	a.message(w, http.StatusOK, "Account created",
-		"The account for "+name+" is active. Username: "+username+", default password: "+DefaultPassword+". A welcome email with the details and a link to choose a password was sent to "+email+"; if it does not arrive, give them the username and default password yourself. They must choose their own password at the first sign-in.", admin)
+		"The account for "+name+" is active. Username: "+username+", default password: "+DefaultPassword+". A welcome email with the details and a sign-in link was sent to "+email+"; if it does not arrive, give them the username and default password yourself. They must choose their own password at the first sign-in.", admin)
 }
 
 // PasswordChangePage and PasswordChangeSubmit are the first stop of an account that still has its
