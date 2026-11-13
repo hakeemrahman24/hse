@@ -1,4 +1,4 @@
--- Accounts the admin adds by hand (owner, 2026-11-13) get a random temporary password and must replace
+-- Accounts the admin adds by hand (owner, 2026-11-13) get the default password and must replace
 -- it at the first sign-in. This flag is what the portal checks on every request. SQLite gets the column
 -- from mcusubmit.EnsureMustChangePasswordColumn at startup.
 --
