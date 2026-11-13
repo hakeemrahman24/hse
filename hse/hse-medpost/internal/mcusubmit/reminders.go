@@ -65,6 +65,34 @@ func (s *Store) SaveReminderSettings(ctx context.Context, c ReminderConfig, admi
 // goes into a mail.
 type Expiring struct {
 	Name, Position, Company, ValidUntil string
+	DaysLeft                            int    // negative once lapsed
+	Stage                               string // one of the Stage* labels; "" when the worker is not in a reminder stage
+}
+
+// The reminder stages (owner, 2026-11-13): a worker is in the mail only at these points, nothing
+// else. The window is the earliest stage, the grace period the last one.
+const (
+	reminderWindowDays = 60 // first stage; the mail ignores the Settings "within (days)" value
+	StageExpired       = "Expired"
+	StageTwoWeeks      = "Within 2 weeks"
+	StageThirtyDays    = "Within 30 days"
+	StageSixtyDays     = "Within 60 days"
+)
+
+// reminderStage names where a checkup stands: expired (less than 32 days ago, the caller filters
+// the rest), within 14 days, within 30 days, within 60 days. Beyond 60 days there is no stage.
+func reminderStage(daysLeft int) string {
+	switch {
+	case daysLeft < 0:
+		return StageExpired
+	case daysLeft <= 14:
+		return StageTwoWeeks
+	case daysLeft <= 30:
+		return StageThirtyDays
+	case daysLeft <= reminderWindowDays:
+		return StageSixtyDays
+	}
+	return ""
 }
 
 // clinicToday is today's date in the clinic's zone, the same day ResultValidUntil is written in.
@@ -110,6 +138,11 @@ func (s *Store) ExpiringFor(ctx context.Context, submitterID int64, windowDays, 
 		if err := rows.Scan(&e.Name, &e.Position, &e.Company, &e.ValidUntil); err != nil {
 			return nil, err
 		}
+		if end, perr := time.Parse(dateOnlyLayout, e.ValidUntil); perr == nil {
+			day := time.Date(today.Year(), today.Month(), today.Day(), 0, 0, 0, 0, time.UTC)
+			e.DaysLeft = int(end.Sub(day).Hours() / 24)
+			e.Stage = reminderStage(e.DaysLeft)
+		}
 		out = append(out, e)
 	}
 	return out, rows.Err()
@@ -152,7 +185,7 @@ func (s *Store) dueReminders(ctx context.Context, c ReminderConfig) ([]reminderT
 
 	var due []reminderTarget
 	for _, t := range all {
-		lines, err := s.ExpiringFor(ctx, t.id, c.DaysBefore, lapsedGraceDays)
+		lines, err := s.ExpiringFor(ctx, t.id, reminderWindowDays, lapsedGraceDays)
 		if err != nil {
 			return nil, err
 		}
@@ -215,11 +248,11 @@ func (s *Store) RunReminders(ctx context.Context, m Mailer, portalURL string) (s
 func reminderHTML(portalURL string, lines []Expiring) string {
 	rows := make([][]string, 0, len(lines))
 	for _, l := range lines {
-		rows = append(rows, []string{l.Name, l.Position, l.Company, l.ValidUntil})
+		rows = append(rows, []string{l.Name, l.Position, l.Company, l.ValidUntil, l.Stage})
 	}
 	return htmlPage(
-		htmlPara("These medical checkups of the workers you submitted expire soon, or expired less than a month ago:"),
-		htmlTable([]string{"Employee", "Position", "Company", "Valid until"}, rows),
+		htmlPara("These medical checkups of the workers you submitted expire within 60 days, or expired less than a month ago:"),
+		htmlTable([]string{"Employee", "Position", "Company", "Valid until", "Status"}, rows),
 		htmlLink("Submit the renewed checkup here:", portalURL+basePath+"/batch"),
 		htmlLink("To stop these mails, switch them off in Settings:", portalURL+basePath+"/settings"),
 		htmlPara("This mail holds no ID numbers or birth dates on purpose."),
@@ -229,9 +262,9 @@ func reminderHTML(portalURL string, lines []Expiring) string {
 
 func reminderBody(portalURL string, lines []Expiring) string {
 	var b strings.Builder
-	b.WriteString("These medical checkups of the workers you submitted expire soon, or expired less than a month ago:\n\n")
+	b.WriteString("These medical checkups of the workers you submitted expire within 60 days, or expired less than a month ago:\n\n")
 	for _, l := range lines {
-		fmt.Fprintf(&b, "- %s | %s | %s | valid until %s\n", oneLine(l.Name), oneLine(l.Position), oneLine(l.Company), l.ValidUntil)
+		fmt.Fprintf(&b, "- %s | %s | %s | valid until %s | %s\n", oneLine(l.Name), oneLine(l.Position), oneLine(l.Company), l.ValidUntil, l.Stage)
 	}
 	fmt.Fprintf(&b, "\nSubmit the renewed checkup here: %s/batch\n", portalURL+basePath)
 	fmt.Fprintf(&b, "To stop these mails, switch them off in Settings: %s/settings\n", portalURL+basePath)

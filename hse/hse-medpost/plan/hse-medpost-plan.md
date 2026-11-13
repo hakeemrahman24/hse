@@ -313,6 +313,7 @@ _Convention: every session that changes code or makes a design decision appends 
 ### 2026-11-13 — Reminder mail: still-valid or lapsed less than 32 days ago only
 
 - **What changed:** the reminder mail (`ExpiringFor` with `lapsedGraceDays = 31`) lists a worker whose Fit checkup ends within the reminder window, or ended 31 days ago or less; a worker further past their date is skipped. Before, a lapsed worker was never listed. Mail wording and the admin Reminders hint say so. Home's "Expiring soon" table is unchanged (still-valid only).
+- **Stages (owner, same day, later):** the mail no longer lists "valid" workers generally. It has four stages only, shown in a Status column: Expired (31 days or fewer ago), Within 2 weeks (0-14 days left), Within 30 days (15-30), Within 60 days (31-60). The mail ignores the Settings "within (days)" value (fixed `reminderWindowDays = 60`); that value now only drives Home's list. **Open:** the repeat period (default 30 days) is per submitter, so a mail at day 55 blocks the next until day 25, which can skip the 2-weeks stage; set the repeat to 14 or less on the Reminders page for the stages to land.
 - **Reading of the request:** "< 32 days after last medical checkup" was taken as 32 days after the checkup's end date. If the owner meant something else, only the `lapsedGraceDays` rule changes.
 
 ### 2026-11-13 — Admin adds an account by hand, with a temporary password

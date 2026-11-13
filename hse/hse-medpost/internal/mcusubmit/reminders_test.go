@@ -149,6 +149,44 @@ func TestReminderMailKeepsRecentlyLapsedCheckupsAndSkipsOlderOnes(t *testing.T) 
 	}
 }
 
+// The mail has four stages and nothing else: expired (less than 32 days ago), within 2 weeks, within
+// 30 days, within 60 days. A worker with more than 60 days left is not in it. Today is 2026-10-28.
+func TestReminderStagesAreTwoWeeksThirtyDaysSixtyDaysAndExpired(t *testing.T) {
+	cases := []struct {
+		days int
+		want string
+	}{{-31, StageExpired}, {-1, StageExpired}, {0, StageTwoWeeks}, {14, StageTwoWeeks}, {15, StageThirtyDays}, {30, StageThirtyDays}, {31, StageSixtyDays}, {60, StageSixtyDays}, {61, ""}}
+	for _, c := range cases {
+		if got := reminderStage(c.days); got != c.want {
+			t.Errorf("%d days left = %q, want %q", c.days, got, c.want)
+		}
+	}
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	hr := activeSubmitter(t, s, co, "hrone@example.com")
+	for _, w := range []struct{ name, until string }{
+		{"A Two Weeks", "2026-11-05"}, {"B Thirty", "2026-11-20"}, {"C Sixty", "2026-12-20"}, {"D Far Off", "2026-12-30"}, {"E Lapsed", "2026-10-10"},
+	} {
+		id := seedWorker(t, s, w.name, "1990-01-01", co)
+		addRecord(t, s, id, "T-"+w.name, "Fit", w.until, "Open", 1)
+		sentFor(t, s, hr, id, w.name)
+	}
+	got, err := s.ExpiringFor(ctx, hr, reminderWindowDays, lapsedGraceDays)
+	stages := map[string]string{}
+	for _, e := range got {
+		stages[e.Name] = e.Stage
+	}
+	want := map[string]string{"A Two Weeks": StageTwoWeeks, "B Thirty": StageThirtyDays, "C Sixty": StageSixtyDays, "E Lapsed": StageExpired}
+	if err != nil || len(stages) != len(want) {
+		t.Fatalf("stages = %v, %v; want %v (Far Off has more than 60 days)", stages, err, want)
+	}
+	for n, st := range want {
+		if stages[n] != st {
+			t.Errorf("%s = %q, want %q", n, stages[n], st)
+		}
+	}
+}
+
 func TestRemindersAreOffUntilTheAdminTurnsThemOn(t *testing.T) {
 	s, _, _, _ := reminderWorld(t)
 	m := &fakeMailer{}

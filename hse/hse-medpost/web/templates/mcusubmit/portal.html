@@ -807,13 +807,13 @@
 {{define "reminders.html"}}{{template "head" .}}
     <section class="mp-section">
       <h1>Expiry <span>reminders</span></h1>
-      <p class="mp-hint">Each submitter gets one mail listing the workers they submitted whose checkup is about to expire or expired less than a month ago (31 days or fewer). Anyone further past their date is left out. The mail holds no ID numbers or birth dates. Submitters can switch it off in their own Settings.</p>
+      <p class="mp-hint">Each submitter gets one mail listing the workers they submitted whose checkup ends within 60 days (marked within 60 days, within 30 days or within 2 weeks) or ended less than a month ago (31 days or fewer). Everyone else is left out. The mail holds no ID numbers or birth dates. Submitters can switch it off in their own Settings.</p>
       {{template "error" .}}
       {{if .Notice}}<p class="mp-notice" role="status">{{.Notice}}</p>{{end}}
       <div class="login-card mp-wide">
         <form method="post" action="/mcu-submit/admin/reminders">
           <div class="field"><label class="mp-check"><input type="checkbox" name="enabled"{{if .Reminder.Enabled}} checked{{end}} /> <span>Send reminder mails (checked every day at 08:00 WIB)</span></label></div>
-          <div class="field"><label for="rm-days"><span>Remind when a checkup expires within (days)</span></label>
+          <div class="field"><label for="rm-days"><span>Home page list: show checkups expiring within (days). The mail always uses 60, 30 and 14 days.</span></label>
             <input id="rm-days" name="days_before" type="number" min="1" max="365" value="{{.Reminder.DaysBefore}}" required /></div>
           <div class="field"><label for="rm-repeat"><span>Do not mail the same person again within (days)</span></label>
             <input id="rm-repeat" name="repeat_days" type="number" min="1" max="365" value="{{.Reminder.RepeatDays}}" required /></div>
