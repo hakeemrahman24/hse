@@ -425,6 +425,7 @@ function initMalariaForm() {
     sameAsPatient: document.getElementById("mal-head-same"),
     regency: document.getElementById("mal-regency"),
     regencyList: document.getElementById("mal-regency-list"),
+    endemicity: document.getElementById("mal-endemicity"),
     district: document.getElementById("mal-district"),
     districtList: document.getElementById("mal-district-list"),
     village: document.getElementById("mal-village"),
@@ -668,6 +669,40 @@ function initMalariaForm() {
   // result shows its regency and province), and the regency fills itself in from
   // the district. The village is searched among the chosen district's villages and
   // stays disabled until a district is chosen.
+  // Tells the clinician what the Kemenkes malaria map says about the patient's regency, so a
+  // patient from an endemic area is noticed while the exam is entered. It is only a notice: it
+  // never blocks saving, and a regency the list does not have reads "No data" (never "free"). A slow answer
+  // for a regency that has since been changed is dropped. Text is set with textContent.
+  async function showEndemicity(code) {
+    const box = els.endemicity;
+    if (!box) return;
+    box.hidden = true;
+    box.classList.remove("mal-endemicity-free", "mal-endemicity-endemic", "mal-endemicity-none");
+    if (!code) return;
+    try {
+      const info = await getJSON("/api/endemicity/" + encodeURIComponent(code));
+      if (regencyPicker.code !== code || !info) return;
+      if (!info.known) {
+        // Not on the applied list: say so, so a missing regency is not mistaken for a free one.
+        box.textContent = "No data";
+        box.classList.add("mal-endemicity-none");
+        box.hidden = false;
+        return;
+      }
+      const year = info.dataYear ? ", map " + info.dataYear : "";
+      if (info.free) {
+        box.textContent = info.name + ": free of malaria (Eliminasi" + year + ").";
+        box.classList.add("mal-endemicity-free");
+      } else {
+        box.textContent = info.name + ": malaria-endemic area, " + info.label + " (" + info.per1000.toFixed(2) + " positives per 1,000" + year + ").";
+        box.classList.add("mal-endemicity-endemic");
+      }
+      box.hidden = false;
+    } catch {
+      /* the notice is a convenience; a failed lookup must not disturb the form */
+    }
+  }
+
   const searchAnyDistrict = (text) =>
     getJSON("/api/regions?level=3&limit=" + REMOTE_RESULT_LIMIT + "&q=" + encodeURIComponent(text));
   const villagePicker = createSearchPicker({ input: els.village, list: els.villageList, onChange() {} });
@@ -683,6 +718,7 @@ function initMalariaForm() {
       // the district. Local lists carry no parentCode, but there it already matches.
       if (item.parentCode && item.parentCode !== regencyPicker.code) {
         regencyPicker.set({ code: item.parentCode, name: String(item.path).split(", ")[0] });
+        showEndemicity(item.parentCode); // set() does not call the regency's onChange
       }
       loadChildren(villagePicker, districtPicker, item.code, "Search village…");
     },
@@ -694,6 +730,7 @@ function initMalariaForm() {
       districtPicker.clear();
       villagePicker.clear();
       villagePicker.setEnabled(false, "Choose a district first");
+      showEndemicity(item ? item.code : "");
       if (item) {
         districtPicker.useLocal();
         loadChildren(districtPicker, regencyPicker, item.code, "Search district…");
@@ -789,6 +826,7 @@ function initMalariaForm() {
     els.purpose.value = "1"; // On arrival
     els.examType.value = "RDT";
     regencyPicker.reset(); // also empties the district and the village
+    showEndemicity("");
     districtPicker.reset();
     villagePicker.reset();
     setDate(clinicToday());

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,6 +14,7 @@ import (
 	"hse-medpost/internal/company"
 	"hse-medpost/internal/config"
 	"hse-medpost/internal/correctiveaction"
+	"hse-medpost/internal/datasync"
 	"hse-medpost/internal/db"
 	"hse-medpost/internal/directory"
 	"hse-medpost/internal/emr"
@@ -49,7 +51,7 @@ func main() {
 		if err := sofi.DropOldQuestionnaireTables(database); err != nil {
 			log.Fatal(err)
 		}
-		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "020_mcu_portal_digest.sql", "021_mcu_mail_setting.sql", "022_mcu_submission_record_unique.sql", "023_unfit_is_open.sql", "024_sofi_preview.sql", "025_document_reference.sql", "026_sofi_dimensions.sql", "027_sofi_items.sql", "028_corrective_action.sql", "029_mcu_notice_setting.sql", "030_corrective_action_document.sql"} {
+		for _, name := range []string{"001_sqlite.sql", "002_position_role.sql", "003_subheaders.sql", "004_company.sql", "005_patient.sql", "006_entrymcu.sql", "007_mcu_certificate_log.sql", "008_mcu_email_notification.sql", "009_patient_name_index.sql", "010_project.sql", "011_screening.sql", "012_fatigue.sql", "013_region.sql", "014_visit_malaria.sql", "015_sofi.sql", "016_mcu_submission.sql", "017_mcu_submission_batches.sql", "018_sofi_window.sql", "019_sofi_period_note.sql", "020_mcu_portal_digest.sql", "021_mcu_mail_setting.sql", "022_mcu_submission_record_unique.sql", "023_unfit_is_open.sql", "024_sofi_preview.sql", "025_document_reference.sql", "026_sofi_dimensions.sql", "027_sofi_items.sql", "028_corrective_action.sql", "029_mcu_notice_setting.sql", "030_corrective_action_document.sql", "031_data_sync.sql"} {
 			sqlText, err := db.LoadMigrationFile(filepath.Join("migrations", "sqlite", name))
 			if err != nil {
 				log.Fatal(err)
@@ -513,6 +515,15 @@ func main() {
 	mux.Handle("GET /api/directory/token", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(directoryAPI.GetToken))))
 	mux.Handle("POST /api/directory/token", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(directoryAPI.RotateToken))))
 	mux.Handle("POST /api/directory/full-token", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(directoryAPI.RotateToken))))
+
+	// Region list and Kemenkes malaria map refresh (owner, 2026-11-13): admin-only settings and a
+	// background check every hour that runs whichever source's interval has passed. Needs
+	// migrations/sqlite/031 or migrations/mysql/047; without them it logs and does nothing.
+	dataSync := datasync.New(&datasync.Store{DB: database})
+	dataSync.Register(mux, func(h http.Handler) http.Handler { return middleware.RequireAuth(middleware.RequireAdmin(h)) })
+	// The screening form asks which endemicity a patient's regency has; any signed-in staff may.
+	dataSync.RegisterRead(mux, middleware.RequireAuth)
+	go dataSync.Run(context.Background())
 
 	mux.Handle("GET /api/checkup-criteria", middleware.RequireAuth(http.HandlerFunc(entrymcuAPI.ListCheckUpCriteria)))
 	mux.Handle("POST /api/checkup-criteria", middleware.RequireAuth(middleware.RequireAdmin(http.HandlerFunc(entrymcuAPI.CreateCheckUpCriteria))))

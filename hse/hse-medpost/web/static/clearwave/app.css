@@ -3410,6 +3410,20 @@ body:has(.app-shell.is-form-focus) .app-dev-credit p {
   padding: 8px 12px 10px;
 }
 
+/* Malaria exam form: the regency's endemicity notice */
+.mal-endemicity { margin: 0; padding: 8px 12px; border-radius: 8px; border: 1px solid; font-size: 0.875rem; }
+.mal-endemicity-free { color: #05603a; background: #ecfdf3; border-color: #a6f4c5; }
+.mal-endemicity-endemic { color: #93370d; background: #fffaeb; border-color: #fedf89; }
+.mal-endemicity-none { color: #475467; background: #f2f4f7; border-color: #d0d5dd; }
+
+/* Settings > Region & malaria data */
+.ds-note { color: var(--text-2); font-size: 0.875rem; margin: 0 0 8px; }
+.ds-status, .ds-msg { color: var(--text-3); font-size: 0.875rem; margin: 6px 0; }
+.ds-msg.error { color: #b42318; }
+.ds-actions { display: flex; gap: 8px; align-self: end; flex-wrap: wrap; }
+.ds-source-note { color: var(--text-2); font-size: 0.8125rem; padding-left: 18px; margin: 6px 0 0; }
+.ds-source-note li { margin-bottom: 4px; }
+
 .directory-links {
   margin: 0 0 12px;
   padding-left: 1.15rem;

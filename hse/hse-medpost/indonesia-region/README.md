@@ -31,6 +31,12 @@ government renames or merges an area.
 
 ## Updating from GitHub
 
+**The server now does this by itself** (`internal/datasync`, Settings > Region & malaria data): every
+6 months by default, with the same checks as below, replacing the `Region` table in one transaction. The
+script and `load.sh` stay as the manual fallback (for example before the first deploy, or to load a
+specific commit).
+
+
 ```
 python3 -I update.py --dry-run   # fetch, check, show what changed, write nothing
 python3 -I update.py             # same, then write data/

@@ -1,15 +1,36 @@
 package directory
 
 import (
+	"context"
 	"log"
+	"math"
 	"net/http"
+
+	"hse-medpost/internal/datasync"
 )
 
-// Region is one regency or city (kabupaten / kota) with its province name.
+// Region is one regency or city (kabupaten / kota) with its province name and what the Kemenkes
+// malaria map says about it.
 type Region struct {
-	Code     string `json:"code"`
-	Name     string `json:"name"`
-	Province string `json:"province"`
+	Code       string     `json:"code"`
+	Name       string     `json:"name"`
+	Province   string     `json:"province"`
+	Endemicity Endemicity `json:"endemicity"`
+}
+
+// Endemicity is the malaria endemicity of a regency, from the applied Kemenkes list. Status is
+// free, low, medium, high or unknown; "unknown" means medpost has NO data for the regency and
+// must never be read as free. Label is the map's own wording (Endemis Tinggi I/II/III included),
+// DataYear the map year the row came from (an older year for regencies the newest map lacks), and
+// AppliedAt the date the list was applied. The map's case data is not validated by Kemenkes, and
+// Per1000 is cases per 1,000 of the total population, which can disagree with the label.
+type Endemicity struct {
+	Status    string  `json:"status"`
+	Label     string  `json:"label,omitempty"`
+	Free      bool    `json:"free"`
+	DataYear  int     `json:"dataYear,omitempty"`
+	Per1000   float64 `json:"per1000,omitempty"`
+	AppliedAt string  `json:"appliedAt,omitempty"`
 }
 
 // Regions answers GET /api/directory/regions with every regency and city and
@@ -45,5 +66,29 @@ func (a *API) Regions(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "db error"})
 		return
 	}
+	a.addEndemicity(r.Context(), out)
 	writeJSON(w, http.StatusOK, out)
+}
+
+// addEndemicity fills each regency's endemicity from the applied list. WHY it never fails the
+// request: the regency list is what other databases depend on. If the endemicity tables are
+// missing (migration 031/047 not run yet) or unreadable, every regency says "unknown" and the
+// reason is logged, so a problem here can only hide the extra field, never break the names.
+func (a *API) addEndemicity(ctx context.Context, regions []Region) {
+	rows, appliedAt, err := (&datasync.Store{DB: a.DB}).Snapshot(ctx)
+	if err != nil {
+		log.Printf("directory regions: endemicity unavailable, sending unknown: %v", err)
+		rows = nil
+	}
+	for i := range regions {
+		regions[i].Endemicity = Endemicity{Status: datasync.StatusUnknown}
+		row, ok := rows[regions[i].Code]
+		if !ok {
+			continue
+		}
+		regions[i].Endemicity = Endemicity{
+			Status: datasync.Status(row.Label), Label: row.Label, Free: row.Label == "Eliminasi",
+			DataYear: row.DataYear, Per1000: math.Round(row.Per1000()*100) / 100, AppliedAt: appliedAt,
+		}
+	}
 }

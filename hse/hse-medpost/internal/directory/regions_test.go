@@ -72,15 +72,55 @@ func TestRegionsListsRegenciesWithProvinceOnly(t *testing.T) {
 		t.Fatalf("%d %+v", code, rows)
 	}
 	// Ordered by province then name; districts (level 3) and provinces are not listed.
-	want := []Region{
+	want := []struct{ code, name, province string }{
 		{"11.01", "Kabupaten Aceh Selatan", "Aceh"},
 		{"96.01", "Kabupaten Sorong", "Papua Barat Daya"},
 		{"96.71", "Kota Sorong", "Papua Barat Daya"},
 	}
-	for i := range want {
-		if rows[i] != want[i] {
-			t.Errorf("row %d: %+v want %+v", i, rows[i], want[i])
+	for i, w := range want {
+		if rows[i].Code != w.code || rows[i].Name != w.name || rows[i].Province != w.province {
+			t.Errorf("row %d: %+v want %+v", i, rows[i], w)
 		}
+		// This database has no endemicity tables (migration 031/047 not run): the regency list
+		// must still be served, with every regency "unknown", never "free".
+		if rows[i].Endemicity != (Endemicity{Status: "unknown"}) {
+			t.Errorf("row %d endemicity without the tables: %+v", i, rows[i].Endemicity)
+		}
+	}
+}
+
+func TestRegionsCarryTheAppliedEndemicity(t *testing.T) {
+	database := openRegionsTestDB(t)
+	sqlText, err := db.LoadMigrationFile(filepath.Join("..", "..", "migrations", "sqlite", "031_data_sync.sql"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := db.Migrate(database, sqlText); err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		`INSERT INTO MalariaEndemicity VALUES ('96.01', 'Kabupaten Sorong', 'Papua Barat Daya', 'Endemis Tinggi I', 2025, 1141, 124207, '2026-11-13 11:31:55')`,
+		`INSERT INTO MalariaEndemicity VALUES ('11.01', 'Kabupaten Aceh Selatan', 'Aceh', 'Eliminasi', 2024, 0, 100000, '')`,
+		`UPDATE DataSyncSetting SET AppliedAt = '2026-11-14T08:00:00' WHERE Source = 'endemicity'`,
+	} {
+		if _, err := database.Exec(stmt); err != nil {
+			t.Fatal(err)
+		}
+	}
+	api := &API{DB: database, Token: "secret", Now: fixedNow}
+	_, rows := getRegions(t, api, "secret")
+	byCode := map[string]Endemicity{}
+	for _, r := range rows {
+		byCode[r.Code] = r.Endemicity
+	}
+	if got := byCode["96.01"]; got != (Endemicity{Status: "high", Label: "Endemis Tinggi I", DataYear: 2025, Per1000: 9.19, AppliedAt: "2026-11-14"}) {
+		t.Errorf("endemic regency: %+v", got)
+	}
+	if got := byCode["11.01"]; got != (Endemicity{Status: "free", Label: "Eliminasi", Free: true, DataYear: 2024, AppliedAt: "2026-11-14"}) {
+		t.Errorf("free regency: %+v", got)
+	}
+	if got := byCode["96.71"]; got != (Endemicity{Status: "unknown"}) {
+		t.Errorf("a regency not on the list must be unknown, not free: %+v", got)
 	}
 }
 

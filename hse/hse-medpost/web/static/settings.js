@@ -279,6 +279,14 @@ const sectionMeta = {
     title: "Occupational health risks",
     hint: "Optional risks on the medical checkup form. A trigger word in Work position ticks that box. Staff can untick it, and a checkup can be saved with none selected.",
   },
+  "data-sources": {
+    title: "Region & malaria data",
+    hint: "Keeps the Indonesia region list and the Kemenkes malaria endemicity map up to date. Both can run by themselves on a schedule; the malaria data is only applied after you review it.",
+  },
+  "region-api": {
+    title: "Region API",
+    hint: "The regency list other databases read, with each regency's malaria endemicity from the Kemenkes map. It uses the same tokens as the Employee API.",
+  },
   "employee-api": {
     title: "Employee API",
     hint: "Token other databases send when they search employees and the latest Fit or Fit with note review. Update replaces it. Give the new value to each database server.",

@@ -20,7 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
-  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref17" />
+  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref18" />
   <script>
     document.documentElement.classList.remove("vt-cover");
   </script>
@@ -68,6 +68,16 @@
           </button>
           <!-- "Email notifications" nav item shelved — see the settings-panel[data-panel="mcu-notifications"]
                comment below and plan/hse-medpost-plan.md's Progress Log for why and how to revive it. -->
+        </div>
+
+        <div class="app-sidebar-label">Data sources</div>
+        <div class="app-program-list">
+          <button type="button" class="app-program-item" data-section="data-sources">
+            <span class="app-program-item-title">Region &amp; malaria data</span>
+          </button>
+          <button type="button" class="app-program-item" data-section="region-api">
+            <span class="app-program-item-title">Region API</span>
+          </button>
         </div>
 
         <div class="app-sidebar-label">MCU lookups</div>
@@ -440,6 +450,89 @@
           </div>
         </div>
 
+        {{if eq .Role "admin"}}
+        <div class="settings-panel" data-panel="data-sources">
+          <div class="settings-panel-body">
+            <div class="app-sidebar-label">Region list (province, regency, district, village)</div>
+            <p class="ds-note">Refreshed from the public GitHub dataset that follows the Ministry of Home Affairs decree. A refresh is checked row by row and is refused, leaving the current list untouched, if it looks broken.</p>
+            <form class="settings-grid ds-form" data-source="region" onsubmit="return false">
+              <label><span>Refresh automatically</span><input type="checkbox" class="ds-enabled" /></label>
+              <label><span>Every</span><select class="ds-interval"></select></label>
+              <div class="ds-actions">
+                <button type="button" class="btn-primary ds-save">Save</button>
+                <button type="button" class="btn-ghost ds-run">Update now</button>
+              </div>
+            </form>
+            <p class="ds-status" id="ds-region-status"></p>
+            <p class="ds-msg" id="ds-region-msg" role="status"></p>
+
+            <div class="app-sidebar-label" style="margin-top:24px">Malaria endemicity (Kemenkes map)</div>
+            <p class="ds-note">Read from the Kemenkes malaria map. A new read is only <strong>proposed</strong>: nothing changes until you review it below and press Apply.</p>
+            <form class="settings-grid ds-form" data-source="endemicity" onsubmit="return false">
+              <label><span>Read automatically</span><input type="checkbox" class="ds-enabled" /></label>
+              <label><span>Every</span><select class="ds-interval"></select></label>
+              <div class="ds-actions">
+                <button type="button" class="btn-primary ds-save">Save</button>
+                <button type="button" class="btn-ghost ds-run">Read the map now</button>
+              </div>
+            </form>
+            <p class="ds-status" id="ds-endemicity-status"></p>
+            <p class="ds-msg" id="ds-endemicity-msg" role="status"></p>
+
+            <div id="ds-pending" hidden>
+              <div class="app-sidebar-label">Waiting for your review</div>
+              <p class="ds-note" id="ds-pending-summary"></p>
+              <div class="ds-actions">
+                <button type="button" class="btn-primary" id="ds-apply">Apply</button>
+                <button type="button" class="btn-ghost" id="ds-discard">Discard</button>
+              </div>
+              <div class="table-scroll">
+                <table class="data-table compact">
+                  <thead><tr><th>Regency</th><th>Province</th><th>Now</th><th>Proposed</th></tr></thead>
+                  <tbody id="ds-changes"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="app-sidebar-label" style="margin-top:24px">Applied list</div>
+            <p class="ds-note" id="ds-applied-summary"></p>
+            <ul class="ds-source-note" id="ds-source-note">
+              <li>Source: Kemenkes malaria map data (malaria.kemkes.go.id), regency level, <span id="ds-read-date">not read yet</span>. The site says case data is not yet validated.</li>
+              <li>Labels are as published on the map. "Positives per 1,000" here is cases / total population, so it can differ from the official API (for example Murung Raya is labelled Rendah).</li>
+              <li>"Free of malaria" is the map's "Eliminasi": the regency has reached malaria elimination. Tinggi I / II / III is the map's own sub-class for high-endemic regencies.</li>
+              <li id="ds-fallback-note" hidden></li>
+            </ul>
+          </div>
+        </div>
+        <div class="settings-panel" data-panel="region-api">
+          <div class="settings-panel-body">
+            <div class="app-sidebar-label">Regency list with malaria endemicity</div>
+            <p class="ds-note">Every regency and city with its province and what the Kemenkes malaria map says about it. Other databases read it instead of copying names, so a name they store always matches the one shown here. Read-only.</p>
+            <ul class="directory-links">
+              <li><a href="https://medical-activities.ayahaif.my.id/api/directory/regions">https://medical-activities.ayahaif.my.id/api/directory/regions</a></li>
+            </ul>
+            <p class="ds-note">Send <code>Authorization: Bearer &lt;token&gt;</code>. Either token from the Employee API page works; the regency list is not sensitive, so use the eligible token. The content follows the Region list on the previous page: after a refresh the new names are served at once.</p>
+
+            <div class="app-sidebar-label" style="margin-top:18px">What each regency carries</div>
+            <div class="table-scroll">
+              <table class="data-table compact">
+                <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+                <tbody>
+                  <tr><td><code>code</code>, <code>name</code>, <code>province</code></td><td>The regency's code (for example 62.12), official name and province name.</td></tr>
+                  <tr><td><code>endemicity.status</code></td><td><code>free</code> (the map's Eliminasi), <code>low</code> (Endemis Rendah), <code>medium</code> (Endemis Sedang), <code>high</code> (Endemis Tinggi I, II or III) or <code>unknown</code>.</td></tr>
+                  <tr><td><code>endemicity.label</code></td><td>The map's own wording, including Tinggi I / II / III.</td></tr>
+                  <tr><td><code>endemicity.free</code></td><td>True only for Eliminasi.</td></tr>
+                  <tr><td><code>endemicity.dataYear</code></td><td>The map year the row comes from. An older year for regencies the newest map does not have yet.</td></tr>
+                  <tr><td><code>endemicity.per1000</code></td><td>Cases per 1,000 of the total population, as the map computes it. It can disagree with the label.</td></tr>
+                  <tr><td><code>endemicity.appliedAt</code></td><td>The date the endemicity list was applied on the previous page.</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="ds-note" style="margin-top:8px"><strong><code>unknown</code> means there is no data for that regency. It must never be read as free.</strong> It is also what every regency says until an admin has read the map and applied it. The map's case data is not yet validated by Kemenkes.</p>
+          </div>
+        </div>
+        {{end}}
+
         <div class="settings-panel" data-panel="employee-api">
           <div class="settings-panel-body">
             <div class="app-sidebar-label">Eligible token</div>
@@ -755,6 +848,7 @@
   <script src="/static/presence.js"></script>
   <script src="/static/settings.js?v=20261109-sofiq"></script>
   {{if eq .Role "admin"}}<script src="/static/sofi-schedule.js"></script>
+  <script src="/static/data-sources.js"></script>
   <script src="/static/sofi-questionnaire.js?v=2"></script>{{end}}
 
   <footer class="app-dev-credit">
