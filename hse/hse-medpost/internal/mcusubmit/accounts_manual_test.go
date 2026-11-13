@@ -88,6 +88,32 @@ func TestSignInPageFillsInTheUsernameFromTheWelcomeLink(t *testing.T) {
 	}
 }
 
+// The name is written like a worker's name in the checkup form, the username in lower case, and an
+// address whose domain cannot receive mail is refused.
+func TestAdminCreateCleansNameAndUsernameAndChecksTheDomain(t *testing.T) {
+	e := newEnv(t)
+	_, admin := e.signIn("admin", "pelican-orbit-77")
+	form := url.Values{"name": {"  BUDI   santoso "}, "email": {"Budi@Example.com"}, "company": {itoa(e.companyID)}, "position": {"Welder"}, "username": {"Budi.S"}}
+	rec := e.post("/mcu-submit/admin/create", form, admin)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "Budi Santoso") {
+		t.Fatalf("create = %d\n%s", rec.Code, rec.Body)
+	}
+	u, err := e.store.ByEmail(context.Background(), "budi@example.com")
+	if err != nil || u.Name != "Budi Santoso" || u.Username != "budi.s" {
+		t.Errorf("stored %+v, %v; want Title Case name, lower case username and email", u, err)
+	}
+
+	e.api.MailDomainOK = func(context.Context, string) bool { return false }
+	form.Set("email", "siti@nonexistent-domain.test")
+	form.Set("username", "siti.a")
+	if rec := e.post("/mcu-submit/admin/create", form, admin); rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "cannot receive mail") {
+		t.Errorf("a dead domain = %d, want 400 with the domain message", rec.Code)
+	}
+	if _, err := e.store.ByEmail(context.Background(), "siti@nonexistent-domain.test"); err == nil {
+		t.Error("an account was made for a dead domain")
+	}
+}
+
 func TestAdminCreateRefusesBadInput(t *testing.T) {
 	e := newEnv(t)
 	_, admin := e.signIn("admin", "pelican-orbit-77")

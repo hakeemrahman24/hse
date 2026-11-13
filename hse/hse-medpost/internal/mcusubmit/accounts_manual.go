@@ -127,16 +127,31 @@ func (a *API) AdminCreate(w http.ResponseWriter, r *http.Request) {
 		a.message(w, http.StatusBadRequest, "Invalid request", "The form could not be read.", admin)
 		return
 	}
+	// Same cleaning as a worker's name in the checkup form: letters only, extra spaces collapsed,
+	// Title Case. The username is always lower case.
 	name, position := SanitizeName(r.PostFormValue("name")), SanitizeJobTitle(r.PostFormValue("position"))
 	email, emailErr := ParseEmail(r.PostFormValue("email"))
 	companyID, okCompany := parseID(r.PostFormValue("company"))
 	username := strings.ToLower(strings.TrimSpace(r.PostFormValue("username")))
+	var problem string
 	switch {
-	case name == "" || emailErr != nil || !okCompany || position == "":
-		a.message(w, http.StatusBadRequest, "Check the form", "Name, a valid email, company and position are all needed.", admin)
-		return
+	case name == "":
+		problem = "Enter the full name (letters only)."
+	case emailErr != nil:
+		problem = "Enter a valid email address, like name@company.com."
+	case !okCompany:
+		problem = "Choose a company."
+	case position == "":
+		problem = "Enter the position."
 	case ValidUsername(username) != nil:
-		a.message(w, http.StatusBadRequest, "Check the form", ValidUsername(username).Error()+".", admin)
+		problem = ValidUsername(username).Error() + "."
+	case !a.MailDomainOK(r.Context(), email[strings.LastIndex(email, "@")+1:]):
+		// The same domain test the request form and the email change use: the domain must exist and
+		// be able to receive mail, so a made-up address is caught before the account exists.
+		problem = "That email domain cannot receive mail. Check the address."
+	}
+	if problem != "" {
+		a.message(w, http.StatusBadRequest, "Check the form", problem, admin)
 		return
 	}
 	hash, err := HashPassword(DefaultPassword)
