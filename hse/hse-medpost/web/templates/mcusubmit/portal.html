@@ -807,7 +807,7 @@
 {{define "reminders.html"}}{{template "head" .}}
     <section class="mp-section">
       <h1>Expiry <span>reminders</span></h1>
-      <p class="mp-hint">Each submitter gets one mail listing the workers they submitted whose checkup is about to expire. The mail holds no ID numbers or birth dates. Submitters can switch it off in their own Settings.</p>
+      <p class="mp-hint">Each submitter gets one mail listing the workers they submitted whose checkup is about to expire or expired less than a month ago (31 days or fewer). Anyone further past their date is left out. The mail holds no ID numbers or birth dates. Submitters can switch it off in their own Settings.</p>
       {{template "error" .}}
       {{if .Notice}}<p class="mp-notice" role="status">{{.Notice}}</p>{{end}}
       <div class="login-card mp-wide">

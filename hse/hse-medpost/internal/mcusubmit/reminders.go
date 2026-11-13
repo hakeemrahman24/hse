@@ -70,14 +70,22 @@ type Expiring struct {
 // clinicToday is today's date in the clinic's zone, the same day ResultValidUntil is written in.
 func (s *Store) clinicToday() time.Time { return s.now().In(dates.ClinicLocation) }
 
+// lapsedGraceDays is how long after its end date a checkup is still in the reminder mail: expired
+// less than 32 days ago (owner, 2026-11-13). Beyond that the worker is skipped.
+const lapsedGraceDays = 31
+
 // ExpiringFor lists the submitter's own workers (patients on one of their sent, not withdrawn or
 // rejected documents) whose current checkup was fit and lapses within the window, soonest first.
 // The rules match entrymcu's fetchExpiringSoon with activeOnly: a closed, archived, unfit or
 // superseded record is not chased. Only the submitter's own workers are listed, so one company's
 // HR never sees another company's staff.
-func (s *Store) ExpiringFor(ctx context.Context, submitterID int64, windowDays int) ([]Expiring, error) {
+//
+// graceDays also keeps a checkup that lapsed up to that many days ago (owner, 2026-11-13): the mail
+// still chases a worker who has just expired, but stops once they are well past it, so it does not
+// nag about people who have left or are long overdue. Home passes 0 and lists only what is still valid.
+func (s *Store) ExpiringFor(ctx context.Context, submitterID int64, windowDays, graceDays int) ([]Expiring, error) {
 	today := s.clinicToday()
-	from := today.Format("2006-01-02")
+	from := today.AddDate(0, 0, -graceDays).Format("2006-01-02")
 	until := today.AddDate(0, 0, windowDays).Format("2006-01-02")
 	rows, err := s.DB.QueryContext(ctx,
 		`SELECT p.Name, COALESCE(MAX(m.WorkPosition), ''), COALESCE(MAX(co.Name), ''), MIN(m.ResultValidUntil)
@@ -144,7 +152,7 @@ func (s *Store) dueReminders(ctx context.Context, c ReminderConfig) ([]reminderT
 
 	var due []reminderTarget
 	for _, t := range all {
-		lines, err := s.ExpiringFor(ctx, t.id, c.DaysBefore)
+		lines, err := s.ExpiringFor(ctx, t.id, c.DaysBefore, lapsedGraceDays)
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +218,7 @@ func reminderHTML(portalURL string, lines []Expiring) string {
 		rows = append(rows, []string{l.Name, l.Position, l.Company, l.ValidUntil})
 	}
 	return htmlPage(
-		htmlPara("These medical checkups of the workers you submitted will expire soon:"),
+		htmlPara("These medical checkups of the workers you submitted expire soon, or expired less than a month ago:"),
 		htmlTable([]string{"Employee", "Position", "Company", "Valid until"}, rows),
 		htmlLink("Submit the renewed checkup here:", portalURL+basePath+"/batch"),
 		htmlLink("To stop these mails, switch them off in Settings:", portalURL+basePath+"/settings"),
@@ -221,7 +229,7 @@ func reminderHTML(portalURL string, lines []Expiring) string {
 
 func reminderBody(portalURL string, lines []Expiring) string {
 	var b strings.Builder
-	b.WriteString("These medical checkups of the workers you submitted will expire soon:\n\n")
+	b.WriteString("These medical checkups of the workers you submitted expire soon, or expired less than a month ago:\n\n")
 	for _, l := range lines {
 		fmt.Fprintf(&b, "- %s | %s | %s | valid until %s\n", oneLine(l.Name), oneLine(l.Position), oneLine(l.Company), l.ValidUntil)
 	}

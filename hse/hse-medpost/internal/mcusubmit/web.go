@@ -510,7 +510,7 @@ func (a *API) Home(w http.ResponseWriter, r *http.Request) {
 	if u.Role != RoleAdmin {
 		cfg, err := a.Store.ReminderSettings(r.Context())
 		if err == nil {
-			p.Expiring, err = a.Store.ExpiringFor(r.Context(), u.ID, cfg.DaysBefore)
+			p.Expiring, err = a.Store.ExpiringFor(r.Context(), u.ID, cfg.DaysBefore, 0)
 		}
 		if err != nil {
 			log.Printf("mcusubmit: expiring soon: %v", err)

@@ -85,14 +85,14 @@ func TestExpiringForListsOnlyTheSubmittersOwnCurrentCheckupsInTheWindow(t *testi
 	s, _, hr, other := reminderWorld(t)
 	ctx := context.Background()
 
-	got, err := s.ExpiringFor(ctx, hr, 60)
+	got, err := s.ExpiringFor(ctx, hr, 60, 0)
 	if err != nil || len(got) != 1 || got[0].Name != "Soon Worker" || got[0].ValidUntil != "2026-12-01" {
 		t.Fatalf("hr sees %+v, %v; want only Soon Worker until 2026-12-01", got, err)
 	}
-	if got, _ = s.ExpiringFor(ctx, hr, 300); len(got) != 2 || got[0].Name != "Soon Worker" {
+	if got, _ = s.ExpiringFor(ctx, hr, 300, 0); len(got) != 2 || got[0].Name != "Soon Worker" {
 		t.Errorf("wide window = %+v, want both, soonest first", got)
 	}
-	if got, _ = s.ExpiringFor(ctx, other, 300); len(got) != 0 {
+	if got, _ = s.ExpiringFor(ctx, other, 300, 0); len(got) != 0 {
 		t.Errorf("another submitter sees %+v: one company must not see a worker it never submitted", got)
 	}
 }
@@ -114,10 +114,38 @@ func TestExpiringForSkipsRecordsThatNeedNoReminder(t *testing.T) {
 		sentFor(t, s, hr, w, name)
 	}
 	expired := seedWorker(t, s, "Already Expired", "1990-01-01", co)
-	addRecord(t, s, expired, "S-X", "Fit", "2026-10-01", "Open", 1)
+	addRecord(t, s, expired, "S-X", "Fit", "2026-10-01", "Open", 1) // 27 days ago: only the mail's grace period keeps it
 	sentFor(t, s, hr, expired, "Already Expired")
-	if got, _ := s.ExpiringFor(ctx, hr, 60); len(got) != 0 {
+	if got, _ := s.ExpiringFor(ctx, hr, 60, 0); len(got) != 0 {
 		t.Fatalf("got %+v, want none: unfit, closed, archived, superseded and already expired are not chased", got)
+	}
+}
+
+// Today is 2026-10-28. The mail keeps a checkup that expired less than 32 days ago (31 days ago is
+// 2026-09-27) and skips anything older.
+func TestReminderMailKeepsRecentlyLapsedCheckupsAndSkipsOlderOnes(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	hr := activeSubmitter(t, s, co, "hrone@example.com")
+	for _, w := range []struct{ name, until string }{
+		{"Valid Soon", "2026-11-20"}, {"Lapsed 27 Days", "2026-10-01"}, {"Lapsed 31 Days", "2026-09-27"},
+		{"Lapsed 32 Days", "2026-09-26"}, {"Lapsed Long Ago", "2026-01-01"},
+	} {
+		id := seedWorker(t, s, w.name, "1990-01-01", co)
+		addRecord(t, s, id, "G-"+w.name, "Fit", w.until, "Open", 1)
+		sentFor(t, s, hr, id, w.name)
+	}
+	got, err := s.ExpiringFor(ctx, hr, 60, lapsedGraceDays)
+	names := []string{}
+	for _, e := range got {
+		names = append(names, e.Name)
+	}
+	want := "Lapsed 31 Days,Lapsed 27 Days,Valid Soon"
+	if err != nil || strings.Join(names, ",") != want {
+		t.Errorf("mail list = %v, %v; want %s (oldest first, 32 days and more skipped)", names, err, want)
+	}
+	if got, _ := s.ExpiringFor(ctx, hr, 60, 0); len(got) != 1 || got[0].Name != "Valid Soon" {
+		t.Errorf("without the grace period only the still-valid one is listed, got %+v", got)
 	}
 }
 
