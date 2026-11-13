@@ -201,12 +201,18 @@ one option chosen only that section shows, and without CSS support all three sim
       {{if .My.Permits}}
       <ul class="my-permits">
       {{range .My.Permits}}
-        <li>{{if .LEP}}<strong>{{.LEP}}</strong>{{else}}<strong>Work Entry Permit</strong>{{end}}
+        <li class="permit-row{{if .CanTicket}}{{if .TicketText}} has-ticket{{else}} no-ticket{{end}}{{end}}">{{if .LEP}}<strong>{{.LEP}}</strong>{{else}}<strong>Work Entry Permit</strong>{{end}}
           <span class="state {{.Class}}">{{.Label}}</span>{{if .ValidUntil}} <span class="note">valid until {{.ValidUntil}}</span>{{end}}
           {{if .CardURL}}<a class="btn-small" href="{{.CardURL}}">Open my permit</a>{{end}}
           {{if and .CardURL $.My.PhotoToken}}<form method="post" action="/my/permit.pdf" class="inline">
             <input type="hidden" name="token" value="{{$.My.PhotoToken}}"><input type="hidden" name="lep" value="{{.LEP}}">
             <button type="submit" class="btn-small">Download PDF</button></form>{{end}}
+          {{if .CanTicket}}<div class="ticket-line">
+            {{if .TicketText}}<span class="chip chip-ticket">Working ticket</span> <span class="note">{{.TicketText}}</span>
+            <a class="btn-small" href="/ticket?lep={{.LEP}}">View my schedule</a>
+            {{else}}<span class="chip chip-none">No working ticket yet</span>
+            <a class="btn" href="/ticket?lep={{.LEP}}">Apply for working ticket</a>{{end}}
+          </div>{{end}}
         </li>
       {{end}}
       </ul>

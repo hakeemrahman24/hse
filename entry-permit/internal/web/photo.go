@@ -14,6 +14,7 @@ import (
 	"entry-permit/internal/dates"
 	"entry-permit/internal/filestore"
 	"entry-permit/internal/permit"
+	"entry-permit/internal/ticket"
 	"entry-permit/internal/worker"
 )
 
@@ -188,6 +189,7 @@ type MyPermit struct {
 	CardURL                       string // blank when the permit has no card
 	CanTicket                     bool   // a Valid permit: the worker may open the ticket page
 	HasPhoto                      bool   // a photo file is stored for this permit
+	TicketText                    string // the newest live working ticket ("2026-11-20 to 2026-11-27, Approved"); blank when there is none
 }
 
 // maxMyPermits keeps the list short: the newest few are what a worker needs.
@@ -217,11 +219,43 @@ func (a *App) myPermits(r *http.Request, e worker.Employee) []MyPermit {
 			state := card.StateOf(p.Status, dates.Day(p.ValidUntil), today)
 			m.Label, m.Class, m.CardURL = state.Label(), stateClass(state), "/c/"+p.LEP
 			m.CanTicket = state == card.Valid
+			if m.CanTicket {
+				m.TicketText = a.liveTicketText(r, p.LEP)
+			}
 			m.HasPhoto = a.photoOnDisk(p.IDPhoto)
 		}
 		out = append(out, m)
 	}
 	return out
+}
+
+// liveTicketText describes the newest working ticket on a permit that is still alive (waiting for the
+// doctor, or approved), or "" when the permit has none, so the worker page can offer "Apply" instead.
+// WHY a failure shows "": the worker can still open the schedule page, where the real list is shown.
+func (a *App) liveTicketText(r *http.Request, lep string) string {
+	if a.Tickets == nil {
+		return ""
+	}
+	rows, err := a.Tickets.ForLEP(r.Context(), lep)
+	if err != nil {
+		log.Printf("my permits: tickets of %s: %v", lep, err)
+		return ""
+	}
+	best, found := ticket.Ticket{}, false
+	for _, t := range rows {
+		st := ticket.NormalizeStatus(string(t.Status))
+		if (st == ticket.StatusPendingDoctor || st == ticket.StatusApproved) && (!found || t.Arrival > best.Arrival) {
+			best, found = t, true
+		}
+	}
+	if !found {
+		return ""
+	}
+	label := "Approved"
+	if ticket.NormalizeStatus(string(best.Status)) == ticket.StatusPendingDoctor {
+		label = "Waiting for the doctor"
+	}
+	return fmt.Sprintf("%s to %s, %s", best.Arrival, best.Departure, label)
 }
 
 // myTicket opens the working-ticket page for a permit of the worker who just proved who they

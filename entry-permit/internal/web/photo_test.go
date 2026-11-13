@@ -2,6 +2,8 @@ package web
 
 import (
 	"bytes"
+	"context"
+	"entry-permit/internal/ticketlog"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -245,10 +247,16 @@ func TestResultPageShowsTheMedicalCheckupAndEachPermitWithItsLinks(t *testing.T)
 	if n := strings.Count(body, `action="/my/permit.pdf"`); n != 2 {
 		t.Errorf("%d download buttons, want 2 (every permit with a number)", n)
 	}
-	// The sidebar option is the action (owner request 2026-11-08): one link to the newest Valid permit's
-	// schedule, no second "Propose a working ticket" button inside the page.
-	if n := strings.Count(body, `href="/ticket?lep=`); n != 1 {
-		t.Errorf("%d working ticket links, want 1 (only the Valid permit)", n)
+	// Owner request 2026-11-14: each Valid permit says whether it has a working ticket and offers "Apply for
+	// working ticket" when it has none. The schedule link appears twice: the sidebar option and that button.
+	if n := strings.Count(body, `href="/ticket?lep=`); n != 2 {
+		t.Errorf("%d working ticket links, want 2 (sidebar option and the Apply button of the Valid permit)", n)
+	}
+	if n := strings.Count(body, "Apply for working ticket"); n != 1 {
+		t.Errorf("%d Apply buttons, want 1 (only the Valid permit)", n)
+	}
+	if !strings.Contains(body, "No working ticket yet") || !strings.Contains(body, "permit-row no-ticket") {
+		t.Error("a Valid permit without a ticket is not marked as such")
 	}
 	if strings.Contains(body, `action="/my/ticket"`) || strings.Contains(body, "Propose a working ticket") {
 		t.Error("a duplicate working ticket button is still on the page")
@@ -477,5 +485,31 @@ func TestOnlyTheMyPermitLookupAsksForExpiredWorkers(t *testing.T) {
 	}
 	if e.workers.expiredAsks != 1 {
 		t.Fatalf("the My permit lookup asked %d times, want 1", e.workers.expiredAsks)
+	}
+}
+
+func TestResultPageSeparatesAPermitWithAWorkingTicketFromOneWithout(t *testing.T) {
+	e := newEnv(t)
+	e.seedPermit(t, "WEP-AAAAA", "Approved", "LEP-AAAAA", "PT Maju", "2027-01-31", "2027-01-31")
+	e.seedPermit(t, "WEP-DDDDD", "Approved", "LEP-DDDDD", "PT Maju", "2027-01-31", "2027-01-31")
+	if err := (ticketlog.Store{DB: e.db}).Create(context.Background(), ticketlog.NewTicket{ID: "TKT-AAAA1", LEP: "LEP-AAAAA", Work: true, Status: "Approved",
+		Arrival: "2026-11-20", Departure: "2026-11-27", Location: "Onshore", Pattern: "Normal", RotationNo: 1, SubmittedAt: "2026-11-13 08:00:00"}); err != nil {
+		t.Fatal(err)
+	}
+	e.workers.people = []worker.Person{budi}
+	_, body := e.lookup(t, "Budi Santoso", "05/03/1988", "dev-pass")
+	if n := strings.Count(body, "permit-row has-ticket"); n != 1 {
+		t.Errorf("%d permits marked as having a ticket, want 1", n)
+	}
+	if n := strings.Count(body, "permit-row no-ticket"); n != 1 {
+		t.Errorf("%d permits marked as having no ticket, want 1", n)
+	}
+	for _, want := range []string{"2026-11-20 to 2026-11-27, Approved", "View my schedule", "Apply for working ticket"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("result page lacks %q", want)
+		}
+	}
+	if n := strings.Count(body, "Apply for working ticket"); n != 1 {
+		t.Errorf("%d Apply buttons, want 1 (only the permit without a ticket)", n)
 	}
 }
