@@ -310,6 +310,12 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
+### 2026-11-13 — Admin adds an account by hand, with a temporary password
+
+- **What changed:** Admin page has an "Add account" form (name, email, company, position, username). The account is Active at once (email counted as verified, the admin vouches), with a **random 12-character temporary password shown once** on the result page (`Cache-Control: no-store`, never mailed, never logged). The person's first sign-in sends every page to `/mcu-submit/password` (before the ROMIF too) until they choose their own; `SetPassword` clears the flag, so the settings and reset-by-mail paths clear it as well. New column `Submitter.MustChangePassword`: SQLite via `EnsureMustChangePasswordColumn` at startup, **MariaDB `migrations/mysql/048` must be run by hand BEFORE deploying this build**. Audit event `CreatedByAdmin`.
+- **Why random, not one fixed default:** a password shared by every new account is the first one anybody would try, and it would sit in this repo. If the owner really wants admin-typed passwords, only the form and `AdminCreate` change.
+- **Open:** two-accounts-per-company limit applies; no mail goes to the person (admin passes username + password on). An admin "reset to a temporary password" for existing accounts is not built.
+
 ### 2026-11-13 — "Employee checkups": the company's workers and how long their latest checkup stays valid
 
 - **What changed:** new submitter page `/mcu-submit/employees` (sidebar "Employee checkups", `internal/mcusubmit/employees.go`). It lists every worker with `Patient.FK_CompanyID` = the account's own company, with the latest checkup (newest by date, same order as `LatestRecord`), its valid-until date and a label: Valid, Expiring soon (same window as the reminder mails), Expired, Unfit, Temporarily unfit, Needs follow-up, Checkup in progress, No checkup on record. Chips with counts, name and status filters, 25 per page. Workers whose latest checkup is Archived / Exit are left out. Indonesian and Chinese texts added.

@@ -241,6 +241,24 @@
     </div>
 {{template "foot" .}}{{end}}
 
+{{define "passwordchange.html"}}{{template "head" .}}
+    <div class="login-wrap">
+      <div class="login-card">
+        <h1>Choose your <span>password</span></h1>
+        <p class="sub">You signed in with a temporary password. Choose your own before you continue.</p>
+        {{template "error" .}}
+        <form method="post" action="/mcu-submit/password" autocomplete="off">
+          <div class="field"><label for="password"><span>New password</span></label>
+            <input id="password" name="password" type="password" maxlength="72" required autocomplete="new-password" />
+            <p class="mp-hint">At least 6 characters. Not your username or email, and not a common password.</p></div>
+          <div class="field"><label for="confirm"><span>Repeat the password</span></label>
+            <input id="confirm" name="confirm" type="password" maxlength="72" required autocomplete="new-password" /></div>
+          <div class="submit-row"><button type="submit" class="btn-primary">Save password</button></div>
+        </form>
+      </div>
+    </div>
+{{template "foot" .}}{{end}}
+
 {{define "forgot.html"}}{{template "head" .}}
     <div class="login-wrap">
       <div class="login-card">
@@ -650,6 +668,18 @@
           </td></tr>{{end}}
         </tbody></table></div>
       {{else}}<p class="mp-hint">No requests are waiting.</p>{{end}}
+
+      <h2>Add an <span>account</span></h2>
+      <p class="mp-hint">For a person who cannot use the request form. The account is active at once. A random temporary password is shown once after you save; give it to the person, who must choose their own at the first sign-in. Two accounts per company.</p>
+      <form method="post" action="/mcu-submit/admin/create" class="mp-filter" autocomplete="off" aria-label="Add an account">
+        <div class="field"><label for="n-name"><span>Full name</span></label><input id="n-name" name="name" type="text" maxlength="80" required /></div>
+        <div class="field"><label for="n-email"><span>Email</span></label><input id="n-email" name="email" type="email" maxlength="120" required /></div>
+        <div class="field"><label for="n-company"><span>Company</span></label>
+          <select id="n-company" name="company" required><option value="">Choose…</option>{{range .Companies}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></div>
+        <div class="field"><label for="n-position"><span>Position</span></label><input id="n-position" name="position" type="text" maxlength="80" required /></div>
+        <div class="field"><label for="n-username"><span>Username</span></label><input id="n-username" name="username" type="text" maxlength="40" required autocapitalize="none" spellcheck="false" /></div>
+        <div class="submit-row"><button type="submit" class="btn-primary">Add account</button></div>
+      </form>
 
       <h2>All <span>accounts</span></h2>
       <p class="mp-actions"><a class="btn-ghost" href="/mcu-submit/romif/statement">View ROMIF statement</a></p>

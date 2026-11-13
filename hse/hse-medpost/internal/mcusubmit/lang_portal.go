@@ -53,6 +53,15 @@ var portalText = map[string][2]string{
 	"Withdraw":             {"Tarik", "撤回"},
 	"Download certificate": {"Unduh sertifikat", "下载证书"},
 
+	// Temporary password page
+	"Choose your": {"Pilih", "设置您的"},
+	"password":    {"kata sandi Anda", "密码"},
+	"You signed in with a temporary password. Choose your own before you continue.": {"Anda masuk dengan kata sandi sementara. Pilih kata sandi Anda sendiri sebelum melanjutkan.", "您使用的是临时密码。请先设置自己的密码再继续。"},
+	"New password":                        {"Kata sandi baru", "新密码"},
+	"Save password":                       {"Simpan kata sandi", "保存密码"},
+	"The two passwords are not the same.": {"Kedua kata sandi tidak sama.", "两次输入的密码不一致。"},
+	"Choose a password different from the temporary one.": {"Pilih kata sandi yang berbeda dari yang sementara.", "请选择与临时密码不同的密码。"},
+
 	// Employee checkups
 	"Employee checkups":      {"Check-up karyawan", "员工体检"},
 	"Employee":               {"Karyawan", "员工"},

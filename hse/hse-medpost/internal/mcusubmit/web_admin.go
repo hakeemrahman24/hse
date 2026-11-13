@@ -50,6 +50,9 @@ func (a *API) AdminPage(w http.ResponseWriter, r *http.Request) {
 	names := a.allCompanies(r.Context())
 	p := a.newPage("Admin")
 	p.User, p.Pending, p.Accounts = admin, a.toRows(waiting, names), a.toRows(others, names)
+	if p.Companies, err = a.companies(r.Context()); err != nil {
+		log.Printf("mcusubmit: company list for the add-account form: %v", err) // the form then has no choices
+	}
 	p.ShowArchived, p.ArchivedCount = showArchived, archived
 	if counts, err := a.Store.DocumentCounts(r.Context()); err != nil {
 		log.Printf("mcusubmit: document counts: %v", err) // the list still works without them

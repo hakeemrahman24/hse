@@ -36,6 +36,9 @@ func newTestStore(t *testing.T) (*Store, *fixedClock, int64) {
 	if err := EnsureNotifyRequestedColumn(database); err != nil {
 		t.Fatal(err)
 	}
+	if err := EnsureMustChangePasswordColumn(database); err != nil {
+		t.Fatal(err)
+	}
 	// Patient.PersonalID (the NIK or passport) is added to Patient by the entrymcu startup, not by 005.
 	if _, err := database.Exec(`ALTER TABLE Patient ADD COLUMN PersonalID TEXT NULL`); err != nil {
 		t.Fatal(err)

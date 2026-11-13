@@ -98,8 +98,8 @@ func (s *Store) CompleteSetup(ctx context.Context, id int64, username, passwordH
 // admin, who changes their own password from Settings like anyone else.
 func (s *Store) SetPassword(ctx context.Context, id int64, passwordHash string) error {
 	res, err := s.DB.ExecContext(ctx,
-		`UPDATE Submitter SET PasswordHash = ?, SessionVersion = SessionVersion + 1, FailedLogins = 0, LockedUntil = NULL
-		 WHERE SubmitterID = ?`, passwordHash, id)
+		`UPDATE Submitter SET PasswordHash = ?, SessionVersion = SessionVersion + 1, FailedLogins = 0, LockedUntil = NULL,
+		 MustChangePassword = 0 WHERE SubmitterID = ?`, passwordHash, id)
 	if err != nil {
 		return err
 	}

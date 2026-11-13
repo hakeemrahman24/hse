@@ -148,6 +148,8 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("POST "+basePath+"/settings/reminders", a.SaveReminders)
 	in.HandleFunc("GET "+basePath+"/email-change", a.EmailChangePage)
 	in.HandleFunc("POST "+basePath+"/email-change", a.EmailChangeSubmit)
+	in.HandleFunc("GET "+basePath+"/password", a.PasswordChangePage)
+	in.HandleFunc("POST "+basePath+"/password", a.PasswordChangeSubmit)
 	in.HandleFunc("GET "+basePath+"/romif", a.RomifPage)
 	in.HandleFunc("POST "+basePath+"/romif", a.RomifSubmit)
 	in.HandleFunc("GET "+basePath+"/romif/statement", a.RomifStatement)
@@ -167,6 +169,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("POST "+basePath+"/documents/{id}/withdraw", a.WithdrawDocument)
 	in.HandleFunc("POST "+basePath+"/webhooks/brevo", a.BrevoWebhook)
 	in.HandleFunc("GET "+basePath+"/admin", a.AdminPage)
+	in.HandleFunc("POST "+basePath+"/admin/create", a.AdminCreate)
 	in.HandleFunc("POST "+basePath+"/admin/approve", a.AdminApprove)
 	in.HandleFunc("POST "+basePath+"/admin/reject", a.AdminReject)
 	in.HandleFunc("POST "+basePath+"/admin/disable", a.AdminDisable)
@@ -427,6 +430,16 @@ func (a *API) requireUser(w http.ResponseWriter, r *http.Request) *Submitter {
 	if u == nil {
 		http.Redirect(w, r, basePath+"/signin", http.StatusSeeOther)
 		return nil
+	}
+	// An account with an admin-given temporary password replaces it before anything else, even the
+	// ROMIF. Failing open on a lookup error is the same trade as the ROMIF check below.
+	if !u.IsBuiltIn {
+		if must, err := a.Store.MustChangePassword(r.Context(), u.ID); err != nil {
+			log.Printf("mcusubmit: must-change-password lookup: %v", err)
+		} else if must {
+			http.Redirect(w, r, basePath+"/password", http.StatusSeeOther)
+			return nil
+		}
 	}
 	// An account that has not signed the ROMIF signs it before anything else. The built-in admin
 	// is not a person sending health data and never signs. A failed lookup lets the person in:
