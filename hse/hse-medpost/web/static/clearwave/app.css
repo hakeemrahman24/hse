@@ -3418,6 +3418,19 @@ body:has(.app-shell.is-form-focus) .app-dev-credit p {
 
 /* Settings > Region & malaria data */
 .ds-note { color: var(--text-2); font-size: 0.875rem; margin: 0 0 8px; }
+/* One row: switch, interval and buttons side by side (wraps on a narrow screen). The longer
+   selector beats ".settings-shell .settings-panel-body .settings-grid"-style grid rules. */
+.settings-shell .settings-panel-body .ds-form { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 0 0 6px; }
+.ds-form label { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+.ds-form label span { white-space: nowrap; }
+.ds-form select { width: auto; min-width: 8rem; }
+.ds-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px; margin: 8px 0; }
+.ds-filter label { display: inline-flex; align-items: center; gap: 8px; margin: 0; }
+.ds-filter input[type="search"] { min-width: 14rem; }
+.ds-count { color: var(--text-3); font-size: 0.8125rem; }
+.ds-table-scroll { max-height: 26rem; overflow: auto; }
+.ds-table-scroll thead th { position: sticky; top: 0; background: var(--bg, #fff); }
+.ds-table-scroll .num { text-align: right; font-variant-numeric: tabular-nums; }
 .ds-status, .ds-msg { color: var(--text-3); font-size: 0.875rem; margin: 6px 0; }
 .ds-msg.error { color: #b42318; }
 .ds-actions { display: flex; gap: 8px; align-self: end; flex-wrap: wrap; }

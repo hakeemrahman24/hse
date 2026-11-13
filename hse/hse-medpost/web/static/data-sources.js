@@ -91,9 +91,48 @@
       : "";
   }
 
+  // ---- the applied list as a table, filtered in the browser (about 500 rows) ----
+  let applied = [];
+  let levelsFilled = false;
+
+  function renderTable(labels) {
+    const level = $("ds-level");
+    if (!levelsFilled && labels.length) {
+      for (const l of labels) level.add(new Option(shown(l), l));
+      levelsFilled = true;
+    }
+    const q = $("ds-search").value.trim().toLowerCase();
+    const wanted = level.value;
+    const rows = applied.filter(
+      (r) => (!wanted || r.label === wanted) && (!q || (r.name + " " + r.province).toLowerCase().includes(q)),
+    );
+    $("ds-table-tools").hidden = !applied.length;
+    $("ds-table-wrap").hidden = !applied.length;
+    $("ds-count").textContent = rows.length + " of " + applied.length + " regencies";
+    const body = $("ds-applied-body");
+    body.replaceChildren();
+    for (const r of rows) {
+      const tr = body.insertRow();
+      const cells = [r.name, r.province, shown(r.label), String(r.dataYear), r.cases.toLocaleString("en-GB"), r.population.toLocaleString("en-GB"), r.per1000.toFixed(2)];
+      cells.forEach((text, i) => {
+        const td = tr.insertCell();
+        td.textContent = text;
+        if (i >= 4) td.className = "num";
+      });
+    }
+  }
+
+  let lastLabels = [];
+  $("ds-search").addEventListener("input", () => renderTable(lastLabels));
+  $("ds-level").addEventListener("change", () => renderTable(lastLabels));
+
   async function load() {
     try {
-      render(await call("GET", "/api/data-sync"));
+      const o = await call("GET", "/api/data-sync");
+      render(o);
+      lastLabels = o.labels;
+      applied = o.live ? await call("GET", "/api/data-sync/endemicity") : [];
+      renderTable(lastLabels);
     } catch (e) {
       say("ds-region-msg", e.message, true);
     }

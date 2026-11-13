@@ -533,6 +533,15 @@ func TestHandlersFlow(t *testing.T) {
 	if rec := do(mux, http.MethodPost, "/api/data-sync/endemicity/apply", ""); rec.Code != http.StatusOK {
 		t.Fatalf("apply: %d", rec.Code)
 	}
+	var applied []appliedRow
+	if err := json.Unmarshal(do(mux, http.MethodGet, "/api/data-sync/endemicity", "").Body.Bytes(), &applied); err != nil || len(applied) != 4 {
+		t.Fatalf("applied rows: %d, %v", len(applied), err)
+	}
+	for _, r := range applied {
+		if r.Code == "62.13" && (r.Status != "low" || r.Per1000 != 2.39 || r.Name != "Kabupaten Murung Raya") {
+			t.Errorf("applied row: %+v", r)
+		}
+	}
 	rec = do(mux, http.MethodGet, "/api/data-sync", "")
 	ov = overview{}
 	_ = json.Unmarshal(rec.Body.Bytes(), &ov)

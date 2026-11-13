@@ -20,7 +20,7 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,300&family=Playfair+Display:ital,wght@0,700;1,600&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
-  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref18" />
+  <link rel="stylesheet" href="/static/clearwave/app.css?v=ref19" />
   <script>
     document.documentElement.classList.remove("vt-cover");
   </script>
@@ -455,7 +455,7 @@
           <div class="settings-panel-body">
             <div class="app-sidebar-label">Region list (province, regency, district, village)</div>
             <p class="ds-note">Refreshed from the public GitHub dataset that follows the Ministry of Home Affairs decree. A refresh is checked row by row and is refused, leaving the current list untouched, if it looks broken.</p>
-            <form class="settings-grid ds-form" data-source="region" onsubmit="return false">
+            <form class="ds-form" data-source="region" onsubmit="return false">
               <label><span>Refresh automatically</span><input type="checkbox" class="ds-enabled" /></label>
               <label><span>Every</span><select class="ds-interval"></select></label>
               <div class="ds-actions">
@@ -468,7 +468,7 @@
 
             <div class="app-sidebar-label" style="margin-top:24px">Malaria endemicity (Kemenkes map)</div>
             <p class="ds-note">Read from the Kemenkes malaria map. A new read is only <strong>proposed</strong>: nothing changes until you review it below and press Apply.</p>
-            <form class="settings-grid ds-form" data-source="endemicity" onsubmit="return false">
+            <form class="ds-form" data-source="endemicity" onsubmit="return false">
               <label><span>Read automatically</span><input type="checkbox" class="ds-enabled" /></label>
               <label><span>Every</span><select class="ds-interval"></select></label>
               <div class="ds-actions">
@@ -496,6 +496,17 @@
 
             <div class="app-sidebar-label" style="margin-top:24px">Applied list</div>
             <p class="ds-note" id="ds-applied-summary"></p>
+            <div class="ds-filter" id="ds-table-tools" hidden>
+              <label><span>Search</span><input type="search" id="ds-search" placeholder="Regency or province" autocomplete="off" /></label>
+              <label><span>Endemicity</span><select id="ds-level"><option value="">All</option></select></label>
+              <span class="ds-count" id="ds-count" role="status"></span>
+            </div>
+            <div class="table-scroll ds-table-scroll" id="ds-table-wrap" hidden>
+              <table class="data-table compact">
+                <thead><tr><th>Regency</th><th>Province</th><th>Endemicity</th><th>Map year</th><th class="num">Cases</th><th class="num">Population</th><th class="num">Per 1,000</th></tr></thead>
+                <tbody id="ds-applied-body"></tbody>
+              </table>
+            </div>
             <ul class="ds-source-note" id="ds-source-note">
               <li>Source: Kemenkes malaria map data (malaria.kemkes.go.id), regency level, <span id="ds-read-date">not read yet</span>. The site says case data is not yet validated.</li>
               <li>Labels are as published on the map. "Positives per 1,000" here is cases / total population, so it can differ from the official API (for example Murung Raya is labelled Rendah).</li>

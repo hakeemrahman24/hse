@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
+	"math"
 	"net/http"
 	"regexp"
 	"sync"
@@ -203,6 +204,37 @@ func (s *Service) Overview(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+type appliedRow struct {
+	Code       string  `json:"code"`
+	Name       string  `json:"name"`
+	Province   string  `json:"province"`
+	Label      string  `json:"label"`
+	Status     string  `json:"status"`
+	DataYear   int     `json:"dataYear"`
+	Cases      int     `json:"cases"`
+	Population int     `json:"population"`
+	Per1000    float64 `json:"per1000"`
+}
+
+// AppliedRows answers GET /api/data-sync/endemicity: the applied list, one row per regency, for the
+// table on the Settings page. About 500 small rows, so it is sent whole and filtered in the browser.
+func (s *Service) AppliedRows(w http.ResponseWriter, r *http.Request) {
+	live, err := s.Store.Live(r.Context())
+	if err != nil {
+		log.Printf("datasync applied rows: %v", err)
+		fail(w, http.StatusInternalServerError, "db error")
+		return
+	}
+	out := make([]appliedRow, 0, len(live))
+	for _, row := range live {
+		out = append(out, appliedRow{
+			Code: row.Code, Name: row.Name, Province: row.Province, Label: row.Label, Status: Status(row.Label),
+			DataYear: row.DataYear, Cases: row.Cases, Population: row.Population, Per1000: math.Round(row.Per1000()*100) / 100,
+		})
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
 // Schedule answers PUT /api/data-sync/{source}: the on/off switch and the interval.
 func (s *Service) Schedule(w http.ResponseWriter, r *http.Request) {
 	var in struct {
@@ -312,6 +344,7 @@ func (s *Service) RegisterRead(mux *http.ServeMux, auth func(http.Handler) http.
 // Register adds the routes; admin wraps each handler with the admin check.
 func (s *Service) Register(mux *http.ServeMux, admin func(http.Handler) http.Handler) {
 	mux.Handle("GET /api/data-sync", admin(http.HandlerFunc(s.Overview)))
+	mux.Handle("GET /api/data-sync/endemicity", admin(http.HandlerFunc(s.AppliedRows)))
 	mux.Handle("PUT /api/data-sync/{source}", admin(http.HandlerFunc(s.Schedule)))
 	mux.Handle("POST /api/data-sync/{source}/run", admin(http.HandlerFunc(s.RunNow)))
 	mux.Handle("POST /api/data-sync/endemicity/apply", admin(http.HandlerFunc(s.Apply)))
