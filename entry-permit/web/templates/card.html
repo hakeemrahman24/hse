@@ -2,7 +2,7 @@
 <h1>{{.Title}}</h1>
 <p class="lep-state"><span class="state {{.Card.StateClass}}">{{.Card.StateLabel}}</span></p>
 <article class="lepc card-{{.Card.Theme}}" aria-label="Entry permit card">
-  <div class="lepc-header"><img src="/static/fire_lng.png" alt="Layar Nusantara Gas"></div>
+  <div class="lepc-header"><img src="/static/logo-color.png" alt="PT Layar Nusantara Gas"><span class="lepc-title">Entry <b>Permit</b></span></div>
   <div class="lepc-photo-wrap">
     {{if .Card.PhotoURL}}<div class="lepc-photo"><img class="lepc-photo-img" src="{{.Card.PhotoURL}}" alt="ID photo"></div>
     {{else}}<div class="lepc-photo-ph">No Photo</div>{{end}}
@@ -16,6 +16,7 @@
   </div>
   <div class="lepc-footer">
     <div class="lepc-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    <span class="lepc-kind">{{if eq .Card.Theme "contractor"}}Contractor{{else}}Company{{end}}</span>
     <div class="lepc-qr">{{.Card.QR}}</div>
   </div>
 </article>

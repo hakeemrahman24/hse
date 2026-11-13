@@ -775,3 +775,23 @@ input[type="text"], input[type="search"], input[type="password"], input[type="em
 /* Worker page: opening or downloading a permit is secondary; "Apply for working ticket" is the one filled button. */
 .my-permits .permit-row > a.btn-small, .my-permits .permit-row > form .btn-small, .my-permits .ticket-line .btn-small { background: #fff; color: var(--ink) !important; border: 1px solid rgba(31, 29, 38, 0.4) !important; font-weight: 400; }
 .my-permits .permit-row > a.btn-small:hover, .my-permits .permit-row > form .btn-small:hover, .my-permits .ticket-line .btn-small:hover { background: #fff; border-color: var(--accent-text) !important; color: var(--accent-text) !important; }
+
+/* ---- ID card, restyled to match the site. The colour code stays: blue for company staff, orange for
+   contractors (the palette variables above). What changes is the design: a white header with the flame and
+   the same two-tone "Entry Permit" wordmark as the site, a solid accent rule instead of the gradient, white
+   body, small capital labels over bold values, and a word that names the kind in the footer. ---- */
+.lepc { background: #fff; box-shadow: none; border: 1px solid rgba(31, 29, 38, 0.2); }
+.lepc-header { background: #fff; gap: calc(0.06 * var(--u)); border-bottom: calc(0.045 * var(--u)) solid var(--c-accent); }
+.lepc-header img { height: 80%; max-width: none; }
+.lepc-title { font-size: calc(var(--u) * 11 / 72); font-weight: 700; letter-spacing: -0.01em; color: #1f1d26; white-space: nowrap; }
+.lepc-title b { color: var(--c-accent); }
+.lepc-photo, .lepc-photo-ph { border: 1px solid var(--c-border); background: var(--c-light); }
+.lepc-details { row-gap: calc(var(--u) * 3 / 72); color: #1f1d26; }
+.lepc-details .lbl { font-size: 0.82em; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--c-dark); align-self: center; }
+.lepc-details .val { font-weight: 600; }
+.lepc-footer { align-items: flex-end; gap: calc(0.08 * var(--u)); border-top: 1px solid var(--c-light); }
+.lepc-dots { display: none; }
+.lepc-kind { align-self: flex-end; margin-bottom: calc(0.04 * var(--u)); padding: calc(var(--u) * 2 / 72) calc(var(--u) * 6 / 72); font-size: calc(var(--u) * 6 / 72); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #fff; background: var(--c-accent); }
+/* The header carries the full company logo (flame and name), so it is a little taller than the old flame-only one. */
+.lepc-header { flex-basis: calc(0.64 * var(--u)); padding: calc(0.04 * var(--u)) calc(0.08 * var(--u)); }
+.lepc-header img { height: 100%; }
