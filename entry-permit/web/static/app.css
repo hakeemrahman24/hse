@@ -696,3 +696,27 @@ th { color: var(--muted); }
   .brand-name { display: inline; font-size: 0.95rem; white-space: nowrap; }
   .side-label { margin: var(--s3) var(--s4) var(--s1); }
 }
+
+/* ---- Frame arranged like the medical portal's signed-in pages (clearwave .app-shell + .app-sidebar) ----
+   One centred column 1280px wide; the top bar content lines up with it. The menu is a 220px bordered
+   card that floats at the left (not a full-height strip), 12px from the bar and from the content,
+   sticky while the page scrolls, and it scrolls by itself with a 4px scrollbar. */
+.shell, .topbar { --frame: 1280px; }
+@media (min-width: 861px) {
+  .topbar { padding-inline: max(var(--s3), calc((100% - var(--frame)) / 2 + var(--s3))); }
+  .shell { grid-template-columns: 220px minmax(0, 1fr); gap: var(--s3); max-width: var(--frame); margin: 0 auto; padding: 0 var(--s3) var(--s4); }
+  main { margin: var(--s3) 0 0; }
+  .side {
+    position: sticky; top: var(--s3); align-self: start; margin-top: var(--s3);
+    min-height: 0; max-height: calc(100vh - 2 * var(--s3)); overflow-y: auto;
+    padding: 4px 4px 6px; background: var(--card); border: 1px solid var(--line);
+  }
+}
+/* Slim scrollbar (4px), the same for the menu, wide tables and drop-down lists. */
+.side, .tablewrap, .ms-panel, .cb-list {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ink) 45%, transparent) transparent;
+}
+.side::-webkit-scrollbar, .tablewrap::-webkit-scrollbar, .ms-panel::-webkit-scrollbar, .cb-list::-webkit-scrollbar { width: 4px; height: 4px; }
+.side::-webkit-scrollbar-track, .tablewrap::-webkit-scrollbar-track, .ms-panel::-webkit-scrollbar-track, .cb-list::-webkit-scrollbar-track { background: transparent; }
+.side::-webkit-scrollbar-thumb, .tablewrap::-webkit-scrollbar-thumb, .ms-panel::-webkit-scrollbar-thumb, .cb-list::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 45%, transparent); border-radius: 0; }
