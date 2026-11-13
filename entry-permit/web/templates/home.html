@@ -43,8 +43,6 @@ Public visitors see the permit pages and the portal; staff also get their own pa
     {{if .My.SignedIn}}<li><a href="/my"{{if eq .Nav "my"}} aria-current="page"{{end}}>My permit</a></li>
     {{else}}<li><a href="/my/signin"{{if eq .Nav "my"}} aria-current="page"{{end}}>Check my permit</a></li>{{end}}
   </ul>
-  {{if .McuURL}}<p class="side-label">Medical checkup</p>
-  <ul role="list"><li><a class="side-mcu" href="{{.McuURL}}" target="_blank" rel="noopener">Submit results<span class="side-hint">opens the portal</span></a></li></ul>{{end}}
   {{if and (eq .Nav "my") .Links}}<p class="side-label">On this page</p>
   <ul role="list">{{range .Links}}<li><a href="{{.Href}}">{{.Label}}</a></li>{{end}}</ul>{{end}}
   {{if .User}}<p class="side-label">Your work</p>

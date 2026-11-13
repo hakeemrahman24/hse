@@ -229,29 +229,34 @@ func (a *App) myPermits(r *http.Request, e worker.Employee) []MyPermit {
 	return out
 }
 
-// liveTicketText describes the newest approved working ticket on a permit, or "" when it has none, so the
-// worker page can offer "Apply" instead.
-// WHY a failure shows "": the worker can still open the schedule page, where the real list is shown.
-func (a *App) liveTicketText(r *http.Request, lep string) string {
+// liveTicket finds the newest approved working ticket on a permit. found is false when there is none,
+// so the worker page and the card can say "no working ticket yet" and offer "Apply".
+// WHY a failure reads as "none": the worker can still open the schedule page, where the real list is shown.
+func (a *App) liveTicket(r *http.Request, lep string) (t ticket.Ticket, found bool) {
 	if a.Tickets == nil {
-		return ""
+		return t, false
 	}
 	rows, err := a.Tickets.ForLEP(r.Context(), lep)
 	if err != nil {
 		log.Printf("my permits: tickets of %s: %v", lep, err)
-		return ""
+		return t, false
 	}
-	best, found := ticket.Ticket{}, false
-	for _, t := range rows {
+	for _, c := range rows {
 		// A worker's ticket is approved by the rules at once (no doctor stage), so Approved is the only live state.
-		if ticket.NormalizeStatus(string(t.Status)) == ticket.StatusApproved && (!found || t.Arrival > best.Arrival) {
-			best, found = t, true
+		if ticket.NormalizeStatus(string(c.Status)) == ticket.StatusApproved && (!found || c.Arrival > t.Arrival) {
+			t, found = c, true
 		}
 	}
+	return t, found
+}
+
+// liveTicketText is liveTicket as one line for the worker page: "2026-11-20 to 2026-11-27, Approved", or "".
+func (a *App) liveTicketText(r *http.Request, lep string) string {
+	t, found := a.liveTicket(r, lep)
 	if !found {
 		return ""
 	}
-	return fmt.Sprintf("%s to %s, Approved", best.Arrival, best.Departure)
+	return fmt.Sprintf("%s to %s, Approved", t.Arrival, t.Departure)
 }
 
 // myTicket opens the working-ticket page for a permit of the worker who just proved who they

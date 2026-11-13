@@ -134,3 +134,16 @@ func TestPDFEmbedsAPngOrGifPhotoToo(t *testing.T) {
 		}
 	}
 }
+
+func TestPDFWrapsALongCompanyNameOntoASecondLineAndCutsAnAbsurdOne(t *testing.T) {
+	c := sampleCard()
+	c.Company = "PT Karya Sejahtera Bersama Nusantara Engineering Services"
+	out := render(t, c)
+	if !strings.Contains(out, "Services") || strings.Contains(out, "...") {
+		t.Error("a long company name should wrap onto a second line in full")
+	}
+	c.Company = strings.Repeat("Perusahaan Konstruksi Jaya Abadi ", 8)
+	if out := render(t, c); !strings.Contains(out, "...") {
+		t.Error("an absurdly long company name should end with ...")
+	}
+}

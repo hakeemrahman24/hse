@@ -1,6 +1,6 @@
 {{define "card"}}{{template "head" .}}
 <h1>{{.Title}}</h1>
-<p class="lep-state"><span class="state {{.Card.StateClass}}">{{.Card.StateLabel}}</span>{{if .Card.TicketLabel}} <span class="chip {{.Card.TicketClass}}">{{.Card.TicketLabel}}</span>{{end}}</p>
+<p class="lep-state"><span class="state {{.Card.StateClass}}">{{.Card.StateLabel}}</span></p>
 <article class="lepc card-{{.Card.Theme}}" aria-label="Entry permit card">
   <div class="lepc-header"><img src="/static/logo-white.png" alt="PT Layar Nusantara Gas"></div>
   <div class="lepc-photo-wrap">
@@ -16,7 +16,10 @@
   </div>
   <div class="lepc-footer">
     <div class="lepc-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="lepc-foot-left">
+    {{if .Card.TicketTitle}}<div class="lepc-ticket lepc-ticket-{{.Card.TicketClass}}"><b>{{.Card.TicketTitle}}</b>{{if .Card.TicketDates}}<span>{{.Card.TicketDates}}</span>{{end}}</div>{{end}}
     <span class="lepc-kind">{{if eq .Card.Theme "contractor"}}Contractor{{else}}Company{{end}}</span>
+    </div>
     <div class="lepc-qr">{{.Card.QR}}</div>
   </div>
 </article>

@@ -278,7 +278,7 @@ func TestEveryPageHasASideMenuWithTheCurrentPageMarked(t *testing.T) {
 			t.Errorf("%s lacks the side menu", path)
 			continue
 		}
-		for _, want := range []string{`href="/request"`, `href="/my/signin"`, `href="https://medpost.example.com/mcu-submit"`, `href="/login"`} {
+		for _, want := range []string{`href="/request"`, `href="/my/signin"`, `href="/login"`} {
 			if !strings.Contains(body, want) {
 				t.Errorf("%s: side menu lacks %q", path, want)
 			}

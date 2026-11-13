@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"time"
 
 	"entry-permit/internal/card"
 	"entry-permit/internal/staff"
@@ -23,12 +24,12 @@ type OG struct {
 // CardData is the public card, already masked: the template cannot show more
 // than this struct holds.
 type CardData struct {
-	LEP, Name, Company, Parent, Position string
-	ValidUntil, StateLabel, StateClass   string
-	Theme                                string
-	PhotoURL                             string // blank unless the viewer may see the photo and one is stored
-	TicketLabel, TicketClass             string // working ticket marker; blank unless the viewer is the worker or staff, and the permit is Valid
-	QR                                   template.HTML
+	LEP, Name, Company, Parent, Position  string
+	ValidUntil, StateLabel, StateClass    string
+	Theme                                 string
+	PhotoURL                              string // blank unless the viewer may see the photo and one is stored
+	TicketTitle, TicketDates, TicketClass string // working ticket marker inside the card; blank unless the viewer is the worker or staff, and the permit is Valid
+	QR                                    template.HTML
 }
 
 // cardPhotoOf finds the stored photo path for a viewer who may see it: the permit's own signed-in
@@ -166,18 +167,18 @@ func (a *App) cardPage(w http.ResponseWriter, r *http.Request) {
 			photoURL = "/c/" + lep + "/photo"
 		}
 	}
-	ticketLabel, ticketClass := "", ""
+	ticketTitle, ticketDates, ticketClass := "", "", ""
 	// WHY only the worker and staff: the card page is open to anyone holding the number, and whether a
 	// person has a working schedule is not for strangers.
 	if state == card.Valid && (owner || a.currentUser(r) != nil) {
-		if text := a.liveTicketText(r, lep); text != "" {
-			ticketLabel, ticketClass = "Working ticket: "+text, "chip-ticket"
+		if t, has := a.liveTicket(r, lep); has {
+			ticketTitle, ticketDates, ticketClass = "Working ticket", shortDM(string(t.Arrival))+" to "+shortDM(string(t.Departure)), "has"
 		} else {
-			ticketLabel, ticketClass = "No working ticket yet", "chip-none"
+			ticketTitle, ticketClass = "No working ticket", "none"
 		}
 	}
 	d := CardData{
-		TicketLabel: ticketLabel, TicketClass: ticketClass,
+		TicketTitle: ticketTitle, TicketDates: ticketDates, TicketClass: ticketClass,
 		LEP: lep, Name: name, Company: info.Company, PhotoURL: photoURL,
 		Parent: card.LowestParent(info.Parents), Position: info.Position,
 		ValidUntil: card.ShortDate(info.ValidUntil),
@@ -212,4 +213,12 @@ func cardDescription(d CardData, s card.State) string {
 		parts = append(parts, s.Label())
 	}
 	return strings.Join(parts, " · ")
+}
+
+// shortDM turns "2026-11-20" into "20 Nov" for the small marker on the card; anything else is returned as it is.
+func shortDM(day string) string {
+	if t, err := time.Parse("2006-01-02", day); err == nil {
+		return t.Format("2 Jan")
+	}
+	return day
 }

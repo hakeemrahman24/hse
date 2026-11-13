@@ -801,3 +801,17 @@ input[type="text"], input[type="search"], input[type="password"], input[type="em
 /* ID card header: the white company logo alone on a solid band in the card colour (dark blue or dark orange). */
 .lepc-header { flex-basis: calc(0.55 * var(--u)); padding: 0 calc(0.1 * var(--u)); background: var(--c-dark); border-bottom: calc(0.04 * var(--u)) solid var(--c-mid); }
 .lepc-header img { height: 76%; width: auto; max-width: 100%; }
+
+/* Working ticket marker inside the card (worker and staff only): in the footer, above the kind block, where the
+   card had empty space. "has" is outlined in the card colour with the dates; "none" is dashed and grey. */
+.lepc-foot-left { display: flex; flex-direction: column; align-items: flex-start; align-self: flex-end; gap: calc(0.04 * var(--u)); min-width: 0; }
+.lepc-foot-left .lepc-kind { align-self: flex-start; margin: 0; }
+.lepc-ticket { display: flex; flex-direction: column; padding: calc(var(--u) * 2 / 72) calc(var(--u) * 5 / 72); font-size: calc(var(--u) * 6 / 72); line-height: 1.25; max-width: 100%; box-sizing: border-box; }
+.lepc-ticket b { font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.lepc-ticket span { font-weight: 600; }
+.lepc-ticket-has { color: var(--c-dark); background: var(--c-light); border: 1px solid var(--c-accent); }
+.lepc-ticket-none { color: #4d4a58; background: transparent; border: 1px dashed rgba(31, 29, 38, 0.45); }
+/* The card page: the card sits in the middle of the panel, and so do the line above and the button below it. */
+.lepc { margin-left: auto; margin-right: auto; }
+main:has(> .lepc) { text-align: center; }
+main:has(> .lepc) .lepc { text-align: left; }

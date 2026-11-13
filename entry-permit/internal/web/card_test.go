@@ -269,13 +269,13 @@ func TestCardPageSaysWhetherThereIsAWorkingTicketToTheOwnerAndStaffOnly(t *testi
 
 	// The public never learns whether a person has a schedule.
 	_, body := e.get(t, "/c/"+testLEP, nil)
-	if strings.Contains(body, "working ticket") || strings.Contains(body, "Working ticket") {
+	if strings.Contains(strings.ToLower(body), "working ticket") {
 		t.Error("the public card carries the working ticket marker")
 	}
 	// The owner and staff see "No working ticket yet" while there is none.
 	for name, who := range map[string][]*http.Cookie{"owner": owner, "staff": doctor} {
-		if _, body := e.get(t, "/c/"+testLEP, who); !strings.Contains(body, "No working ticket yet") {
-			t.Errorf("%s: no 'No working ticket yet' marker", name)
+		if _, body := e.get(t, "/c/"+testLEP, who); !strings.Contains(body, "<b>No working ticket</b>") {
+			t.Errorf("%s: no 'No working ticket' marker inside the card", name)
 		}
 	}
 	// With an approved ticket they see its dates instead.
@@ -284,7 +284,7 @@ func TestCardPageSaysWhetherThereIsAWorkingTicketToTheOwnerAndStaffOnly(t *testi
 		t.Fatal(err)
 	}
 	_, body = e.get(t, "/c/"+testLEP, owner)
-	if !strings.Contains(body, "Working ticket: 2026-11-20 to 2026-11-27, Approved") || strings.Contains(body, "No working ticket yet") {
+	if !strings.Contains(body, "<b>Working ticket</b><span>20 Nov to 27 Nov</span>") || strings.Contains(body, "No working ticket") {
 		t.Error("the owner's card does not show the approved ticket")
 	}
 }

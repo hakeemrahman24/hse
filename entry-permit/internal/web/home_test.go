@@ -463,7 +463,6 @@ func TestMedicalLinksOpenInANewTabAndNeverDoubleTheSigninPath(t *testing.T) {
 	for _, want := range []string{
 		`href="https://medpost.example.com/mcu-submit/signin" target="_blank" rel="noopener">Sign in`,
 		`href="https://medpost.example.com/mcu-submit/register" target="_blank" rel="noopener">Request an account`,
-		`class="side-mcu" href="https://medpost.example.com/mcu-submit/signin" target="_blank" rel="noopener"`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Errorf("home lacks %q", want)
@@ -471,5 +470,21 @@ func TestMedicalLinksOpenInANewTabAndNeverDoubleTheSigninPath(t *testing.T) {
 	}
 	if strings.Contains(body, "/signin/signin") {
 		t.Errorf("the sign-in path must not be added twice")
+	}
+}
+
+func TestMedicalCheckupIsNotInTheSideMenu(t *testing.T) {
+	e := newEnv(t)
+	e.setMcuURL("https://medpost.example.com/mcu-submit/signin")
+	_, body := e.get(t, "/", nil)
+	i, j := strings.Index(body, `<aside class="side"`), strings.Index(body, "</aside>")
+	if i < 0 || j < i {
+		t.Fatal("no side menu")
+	}
+	if menu := body[i:j]; strings.Contains(menu, "mcu-submit") || strings.Contains(menu, "Medical checkup") {
+		t.Error("the medical checkup portal is in the side menu; it belongs on the home page only")
+	}
+	if !strings.Contains(body[j:], "mcu-submit/register") {
+		t.Error("the home page lost its medical checkup door")
 	}
 }

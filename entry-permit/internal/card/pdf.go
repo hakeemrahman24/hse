@@ -91,11 +91,12 @@ func PDF(w io.Writer, c PDFCard) error {
 	textW := qrX - textX - 4
 	y := headerH + 6.0
 	for _, line := range []struct {
-		text  string
-		style string
-		size  float64
-		gray  bool
-	}{{c.Name, "B", 13, false}, {c.Company, "", 10, false}, {c.Parent, "", 9, true}, {c.Position, "", 10, false}} {
+		text     string
+		style    string
+		size     float64
+		gray     bool
+		maxLines int // a long company name wraps onto a second line before it is cut with "..."
+	}{{c.Name, "B", 13, false, 2}, {c.Company, "", 10, false, 2}, {c.Parent, "", 9, true, 1}, {c.Position, "", 10, false, 1}} {
 		if strings.TrimSpace(line.text) == "" {
 			continue
 		}
@@ -105,9 +106,12 @@ func PDF(w io.Writer, c PDFCard) error {
 		} else {
 			p.SetTextColor(20, 20, 20)
 		}
-		p.SetXY(textX, y)
-		p.CellFormat(textW, 6, fit(p, tr(line.text), textW), "", 0, "L", false, 0, "")
-		y += 6.5
+		for _, l := range wrapLines(p, tr(line.text), textW, line.maxLines) {
+			p.SetXY(textX, y)
+			p.CellFormat(textW, 5.2, l, "", 0, "L", false, 0, "")
+			y += 5.2
+		}
+		y += 1.3
 	}
 	p.SetTextColor(20, 20, 20)
 	p.SetFont("Helvetica", "", 10)
@@ -189,6 +193,20 @@ func drawQR(p *fpdf.Fpdf, code *qr.Code, x, y, size float64) {
 }
 
 // fit cuts text with "..." so it never runs past the width.
+// wrapLines breaks s into at most maxLines lines that fit width in the current font. Text that still does not
+// fit on the last line is cut with "...", so a very long name never runs into the QR code.
+func wrapLines(p *fpdf.Fpdf, s string, width float64, maxLines int) []string {
+	var out []string
+	for _, l := range p.SplitText(s, width) {
+		out = append(out, strings.TrimSpace(string(l)))
+	}
+	if len(out) <= maxLines {
+		return out
+	}
+	last := strings.Join(out[maxLines-1:], " ")
+	return append(out[:maxLines-1], fit(p, last, width))
+}
+
 func fit(p *fpdf.Fpdf, s string, width float64) string {
 	if p.GetStringWidth(s) <= width {
 		return s
