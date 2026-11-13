@@ -27,6 +27,7 @@ type CardData struct {
 	ValidUntil, StateLabel, StateClass   string
 	Theme                                string
 	PhotoURL                             string // blank unless the viewer may see the photo and one is stored
+	TicketLabel, TicketClass             string // working ticket marker; blank unless the viewer is the worker or staff, and the permit is Valid
 	QR                                   template.HTML
 }
 
@@ -156,7 +157,8 @@ func (a *App) cardPage(w http.ResponseWriter, r *http.Request) {
 	}
 	state := card.StateOf(info.Status, info.ValidUntil, a.Clock.Today())
 	name, photoURL := card.MaskName(info.WorkerName), ""
-	if rel, owner, ok := a.cardPhotoOf(r, lep); ok {
+	rel, owner, ok := a.cardPhotoOf(r, lep)
+	if ok {
 		if owner {
 			name = info.WorkerName // a worker sees their own full name, as on the downloaded file
 		}
@@ -164,7 +166,18 @@ func (a *App) cardPage(w http.ResponseWriter, r *http.Request) {
 			photoURL = "/c/" + lep + "/photo"
 		}
 	}
+	ticketLabel, ticketClass := "", ""
+	// WHY only the worker and staff: the card page is open to anyone holding the number, and whether a
+	// person has a working schedule is not for strangers.
+	if state == card.Valid && (owner || a.currentUser(r) != nil) {
+		if text := a.liveTicketText(r, lep); text != "" {
+			ticketLabel, ticketClass = "Working ticket: "+text, "chip-ticket"
+		} else {
+			ticketLabel, ticketClass = "No working ticket yet", "chip-none"
+		}
+	}
 	d := CardData{
+		TicketLabel: ticketLabel, TicketClass: ticketClass,
 		LEP: lep, Name: name, Company: info.Company, PhotoURL: photoURL,
 		Parent: card.LowestParent(info.Parents), Position: info.Position,
 		ValidUntil: card.ShortDate(info.ValidUntil),

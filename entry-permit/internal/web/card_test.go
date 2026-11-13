@@ -1,6 +1,8 @@
 package web
 
 import (
+	"context"
+	"entry-permit/internal/ticketlog"
 	"net/http"
 	"os"
 	"strings"
@@ -256,5 +258,33 @@ func TestCardPhotoNeedsARealPermitWithAPhoto(t *testing.T) {
 	_, body := e.get(t, "/c/"+testLEP, owner)
 	if strings.Contains(body, `class="lepc-photo-img"`) || !strings.Contains(body, "lepc-photo-ph") {
 		t.Error("a card with no photo should show the placeholder")
+	}
+}
+
+func TestCardPageSaysWhetherThereIsAWorkingTicketToTheOwnerAndStaffOnly(t *testing.T) {
+	e := newEnv(t)
+	e.cardPermit(t)
+	owner := e.signedInWorker(t)
+	doctor := e.reviewer(t, "dina", staff.Doctor)
+
+	// The public never learns whether a person has a schedule.
+	_, body := e.get(t, "/c/"+testLEP, nil)
+	if strings.Contains(body, "working ticket") || strings.Contains(body, "Working ticket") {
+		t.Error("the public card carries the working ticket marker")
+	}
+	// The owner and staff see "No working ticket yet" while there is none.
+	for name, who := range map[string][]*http.Cookie{"owner": owner, "staff": doctor} {
+		if _, body := e.get(t, "/c/"+testLEP, who); !strings.Contains(body, "No working ticket yet") {
+			t.Errorf("%s: no 'No working ticket yet' marker", name)
+		}
+	}
+	// With an approved ticket they see its dates instead.
+	if err := (ticketlog.Store{DB: e.db}).Create(context.Background(), ticketlog.NewTicket{ID: "TKT-CARD1", LEP: testLEP, Work: true, Status: "Approved",
+		Arrival: "2026-11-20", Departure: "2026-11-27", Location: "Onshore", Pattern: "Normal", RotationNo: 1, SubmittedAt: "2026-11-13 08:00:00"}); err != nil {
+		t.Fatal(err)
+	}
+	_, body = e.get(t, "/c/"+testLEP, owner)
+	if !strings.Contains(body, "Working ticket: 2026-11-20 to 2026-11-27, Approved") || strings.Contains(body, "No working ticket yet") {
+		t.Error("the owner's card does not show the approved ticket")
 	}
 }
