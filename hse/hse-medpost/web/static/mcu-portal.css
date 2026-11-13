@@ -233,7 +233,7 @@ body.mp {
 }
 .mp-addform .field { margin: 0; }
 .mp-addform .field label { display: block; margin-bottom: 4px; }
-.mp-addform input, .mp-addform select { width: 100%; min-width: 0; box-sizing: border-box; }
+.mp-addform input, .mp-addform select:not(.mp-cb-native) { width: 100%; min-width: 0; box-sizing: border-box; }
 .mp-addform .mp-hint { margin: 4px 0 0; }
 .mp-addform .submit-row { margin: 0; }
 @media (max-width: 560px) { .mp-addform { grid-template-columns: 1fr; } }

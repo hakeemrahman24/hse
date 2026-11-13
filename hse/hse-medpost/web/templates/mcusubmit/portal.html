@@ -676,7 +676,7 @@
           <div class="field"><label for="n-name"><span>Full name</span></label><input id="n-name" name="name" type="text" maxlength="80" required /><p class="mp-hint">Written in Title Case, extra spaces removed.</p></div>
           <div class="field"><label for="n-email"><span>Email</span></label><input id="n-email" name="email" type="email" maxlength="120" required /><p class="mp-hint">The domain is checked before the account is made.</p></div>
           <div class="field"><label for="n-company"><span>Company</span></label>
-            <select id="n-company" name="company" required><option value="">Choose…</option>{{range .Companies}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></div>
+            <select id="n-company" name="company" required data-combobox><option value="">Choose a company</option>{{range .Companies}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select></div>
           <div class="field"><label for="n-position"><span>Position</span></label><input id="n-position" name="position" type="text" maxlength="80" required /></div>
           <div class="field"><label for="n-username"><span>Username</span></label><input id="n-username" name="username" type="text" maxlength="40" required autocapitalize="none" spellcheck="false" style="text-transform:lowercase" /><p class="mp-hint">Lower case letters, digits, dots or underscores. 3 to 40.</p></div>
           <div class="submit-row"><button type="submit" class="btn-primary">Add account</button></div>

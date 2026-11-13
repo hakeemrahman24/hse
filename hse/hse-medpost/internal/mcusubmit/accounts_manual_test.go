@@ -133,3 +133,14 @@ func TestAdminCreateRefusesBadInput(t *testing.T) {
 		}
 	}
 }
+
+// The company of the add-account form is the portal's searchable dropdown (arrows and Enter come
+// from mcu-portal-combobox.js, which upgrades every select marked data-combobox).
+func TestAdminAddAccountCompanyIsTheSearchableDropdown(t *testing.T) {
+	e := newEnv(t)
+	_, admin := e.signIn("admin", "pelican-orbit-77")
+	body := e.get("/mcu-submit/admin", admin).Body.String()
+	if !strings.Contains(body, `id="n-company" name="company" required data-combobox`) || !strings.Contains(body, "mcu-portal-combobox.js") {
+		t.Errorf("company is not a data-combobox select")
+	}
+}
