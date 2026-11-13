@@ -508,10 +508,8 @@ func (a *API) Home(w http.ResponseWriter, r *http.Request) {
 	// Shown whether or not reminder mails are on (plan section 8); the admin has no workers of
 	// their own, so the list is only for submitters.
 	if u.Role != RoleAdmin {
-		cfg, err := a.Store.ReminderSettings(r.Context())
-		if err == nil {
-			p.Expiring, err = a.Store.ExpiringFor(r.Context(), u.ID, cfg.DaysBefore, 0)
-		}
+		var err error
+		p.Expiring, err = a.Store.ExpiringForCompany(r.Context(), u.CompanyID, reminderWindowDays, 0)
 		if err != nil {
 			log.Printf("mcusubmit: expiring soon: %v", err)
 		}

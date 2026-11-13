@@ -1,13 +1,11 @@
 package mcusubmit
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 )
 
-// ReminderPage is the admin's Reminder settings: the master switch, the two windows, a preview of
+// ReminderPage is the admin's Reminder settings: the master switch, a preview of
 // who would be mailed now, and Send now. Admin only (others get the 404 of a missing path).
 func (a *API) ReminderPage(w http.ResponseWriter, r *http.Request) {
 	admin := a.requireAdmin(w, r)
@@ -30,11 +28,12 @@ func (a *API) reminderPage(w http.ResponseWriter, r *http.Request, status int, a
 	}
 	p := a.newPage("Reminders")
 	p.User, p.Reminder, p.Error, p.Notice = admin, cfg, errMsg, notice
-	p.Preview = fmt.Sprintf("%d submitters and %d workers would be mailed now.", subs, workers)
+	p.Preview = fmt.Sprintf("%d accounts and %d workers would be mailed now.", subs, workers)
 	a.render(w, status, "reminders.html", p)
 }
 
-// ReminderSave stores the switch and the two windows.
+// ReminderSave stores the master switch. The two day settings are no longer on the form (the mail has
+// fixed stages and sends once per stage), so their stored values are kept as they are.
 func (a *API) ReminderSave(w http.ResponseWriter, r *http.Request) {
 	admin := a.requireAdmin(w, r)
 	if admin == nil {
@@ -44,14 +43,13 @@ func (a *API) ReminderSave(w http.ResponseWriter, r *http.Request) {
 		a.reminderPage(w, r, http.StatusBadRequest, admin, "The form could not be read.", "")
 		return
 	}
-	days, _ := strconv.Atoi(r.PostFormValue("days_before")) // a non-number becomes 0, which the store refuses
-	repeat, _ := strconv.Atoi(r.PostFormValue("repeat_days"))
-	cfg := ReminderConfig{Enabled: r.PostFormValue("enabled") == "on", DaysBefore: days, RepeatDays: repeat}
+	cfg, err := a.Store.ReminderSettings(r.Context())
+	if err != nil {
+		a.serverError(w, "reminder settings", err)
+		return
+	}
+	cfg.Enabled = r.PostFormValue("enabled") == "on"
 	if err := a.Store.SaveReminderSettings(r.Context(), cfg, admin.ID); err != nil {
-		if errors.Is(err, ErrBadReminderSetting) {
-			a.reminderPage(w, r, http.StatusBadRequest, admin, "Enter whole days from 1 to 365.", "")
-			return
-		}
 		a.serverError(w, "save reminder settings", err)
 		return
 	}
@@ -79,5 +77,5 @@ func (a *API) ReminderSendNow(w http.ResponseWriter, r *http.Request) {
 		a.reminderPage(w, r, http.StatusBadGateway, admin, "Some mails could not be sent; they will be tried again.", "")
 		return
 	}
-	a.reminderPage(w, r, http.StatusOK, admin, "", fmt.Sprintf("Sent to %d submitters about %d workers.", subs, workers))
+	a.reminderPage(w, r, http.StatusOK, admin, "", fmt.Sprintf("Sent to %d accounts about %d workers.", subs, workers))
 }

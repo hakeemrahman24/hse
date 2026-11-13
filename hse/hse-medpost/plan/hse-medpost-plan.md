@@ -310,6 +310,12 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
+### 2026-11-13 — Expiry reminders: per company, once per stage, skip pending renewals
+
+- **What changed:** (1) The reminder mail goes **per company**: every active account of the company (reminders on, not bouncing, not erased) gets the same list, built from `Patient.FK_CompanyID` (the Employee checkups people, not only the workers that account submitted). (2) **Once per worker, per checkup, per stage:** new table `McuReminderSent (FK_PatientID, ValidUntil, Stage)`; the "do not mail again within N days" rule is gone (it could skip a stage). At most four mails per checkup: Within 60 days, Within 30 days, Within 2 weeks, Expired (31 days or fewer). A renewal has a new end date, so the stages start again. (3) A worker with a **Pending document** is left out (renewal on its way). (4) The two day fields are off the Reminders page (the mail is fixed at 60/30/14; Home and Employee checkups use the same 60); their stored values are kept untouched. A mail counts as sent only after at least one account accepted it, so a failed send is retried the next day.
+- **Deploy:** `migrations/mysql/049_mcu_reminder_sent.sql` must be run by hand BEFORE this build (until then the daily job logs an error and mails nothing). SQLite gets it from `migrations/sqlite/032` automatically.
+- **Open:** a worker with no company on their Patient record gets no reminder (same as Employee checkups). A Pending document that is never reviewed keeps that worker out of the mail.
+
 ### 2026-11-13 — Reminder mail: still-valid or lapsed less than 32 days ago only
 
 - **What changed:** the reminder mail (`ExpiringFor` with `lapsedGraceDays = 31`) lists a worker whose Fit checkup ends within the reminder window, or ended 31 days ago or less; a worker further past their date is skipped. Before, a lapsed worker was never listed. Mail wording and the admin Reminders hint say so. Home's "Expiring soon" table is unchanged (still-valid only).

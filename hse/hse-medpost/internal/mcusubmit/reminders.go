@@ -12,8 +12,8 @@ import (
 	"hse-medpost/internal/dates"
 )
 
-// Expiring-checkup reminders (plan section 8). Each active submitter is mailed one list of the
-// workers THEY submitted whose current checkup lapses soon. It is separate from the clinic's own
+// Expiring-checkup reminders (plan section 8). Each company's active accounts are mailed one list of
+// the company's workers whose checkup is in a reminder stage, once per worker and stage. It is separate from the clinic's own
 // monthly reminder in internal/entrymcu/emailnotify.go, which has its own settings and recipients.
 
 // ErrBadReminderSetting means a number outside what the settings page allows.
@@ -64,6 +64,7 @@ func (s *Store) SaveReminderSettings(ctx context.Context, c ReminderConfig, admi
 // Expiring is one worker whose checkup is about to lapse. It carries no ID number or birth date: it
 // goes into a mail.
 type Expiring struct {
+	PatientID                           int64
 	Name, Position, Company, ValidUntil string
 	DaysLeft                            int    // negative once lapsed
 	Stage                               string // one of the Stage* labels; "" when the worker is not in a reminder stage
@@ -102,32 +103,32 @@ func (s *Store) clinicToday() time.Time { return s.now().In(dates.ClinicLocation
 // less than 32 days ago (owner, 2026-11-13). Beyond that the worker is skipped.
 const lapsedGraceDays = 31
 
-// ExpiringFor lists the submitter's own workers (patients on one of their sent, not withdrawn or
-// rejected documents) whose current checkup was fit and lapses within the window, soonest first.
-// The rules match entrymcu's fetchExpiringSoon with activeOnly: a closed, archived, unfit or
-// superseded record is not chased. Only the submitter's own workers are listed, so one company's
-// HR never sees another company's staff.
-//
-// graceDays also keeps a checkup that lapsed up to that many days ago (owner, 2026-11-13): the mail
-// still chases a worker who has just expired, but stops once they are well past it, so it does not
-// nag about people who have left or are long overdue. Home passes 0 and lists only what is still valid.
-func (s *Store) ExpiringFor(ctx context.Context, submitterID int64, windowDays, graceDays int) ([]Expiring, error) {
+// ExpiringForCompany lists the workers of one company (Patient.FK_CompanyID, the same people as the
+// Employee checkups page) whose current checkup was fit and ends within the window or lapsed up to
+// graceDays ago, soonest first. The rules match entrymcu's fetchExpiringSoon with activeOnly: a closed,
+// archived, unfit or superseded record is not chased. A worker with a document already waiting for
+// review (Pending) is skipped too: the renewal is on its way, so a reminder would be noise (owner,
+// 2026-11-13). graceDays 0 is Home's list, which shows only what is still valid.
+func (s *Store) ExpiringForCompany(ctx context.Context, companyID int64, windowDays, graceDays int) ([]Expiring, error) {
+	if companyID == 0 {
+		return nil, nil
+	}
 	today := s.clinicToday()
 	from := today.AddDate(0, 0, -graceDays).Format("2006-01-02")
 	until := today.AddDate(0, 0, windowDays).Format("2006-01-02")
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT p.Name, COALESCE(MAX(m.WorkPosition), ''), COALESCE(MAX(co.Name), ''), MIN(m.ResultValidUntil)
+		`SELECT p.PatientID, p.Name, COALESCE(MAX(m.WorkPosition), ''), COALESCE(MAX(co.Name), ''), MIN(m.ResultValidUntil)
 		 FROM McuRecord m
 		 JOIN Patient p ON p.PatientID = m.FK_PatientID
-		 LEFT JOIN Company co ON co.CompanyID = m.FK_CompanyID
+		 LEFT JOIN Company co ON co.CompanyID = p.FK_CompanyID
 		 WHERE m.IsTerminal = 1 AND m.ResultCriteria IN ('Fit', 'FitWithNote') AND m.ResultValidUntil IS NOT NULL
 		   AND m.ResultValidUntil >= ? AND m.ResultValidUntil <= ?
 		   AND (m.CheckUpStatus IS NULL OR m.CheckUpStatus NOT IN ('Close', 'Archived / Exit'))
-		   AND m.FK_PatientID IN (SELECT FK_PatientID FROM McuSubmission
-		        WHERE FK_SubmitterID = ? AND FK_PatientID IS NOT NULL AND Status IN (?, ?, ?))
+		   AND p.FK_CompanyID = ?
+		   AND p.PatientID NOT IN (SELECT FK_PatientID FROM McuSubmission WHERE FK_PatientID IS NOT NULL AND Status = ?)
 		 GROUP BY p.PatientID, p.Name
 		 ORDER BY MIN(m.ResultValidUntil), p.Name`,
-		from, until, submitterID, SubPending, SubReviewed, SubClosed)
+		from, until, companyID, SubPending)
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +136,7 @@ func (s *Store) ExpiringFor(ctx context.Context, submitterID int64, windowDays, 
 	var out []Expiring
 	for rows.Next() {
 		var e Expiring
-		if err := rows.Scan(&e.Name, &e.Position, &e.Company, &e.ValidUntil); err != nil {
+		if err := rows.Scan(&e.PatientID, &e.Name, &e.Position, &e.Company, &e.ValidUntil); err != nil {
 			return nil, err
 		}
 		if end, perr := time.Parse(dateOnlyLayout, e.ValidUntil); perr == nil {
@@ -148,34 +149,78 @@ func (s *Store) ExpiringFor(ctx context.Context, submitterID int64, windowDays, 
 	return out, rows.Err()
 }
 
-// reminderTarget is one submitter due for a reminder.
-type reminderTarget struct {
-	id    int64
-	email string
-	lines []Expiring
+// alreadyMailed drops the workers whose (checkup, stage) was mailed before: each worker is mailed once
+// per stage, so a worker gets at most four mails per checkup. This replaces the old "do not mail the
+// same person again within N days" rule, which could skip a stage.
+func (s *Store) alreadyMailed(ctx context.Context, lines []Expiring) ([]Expiring, error) {
+	var fresh []Expiring
+	for _, l := range lines {
+		var n int
+		err := s.DB.QueryRowContext(ctx,
+			`SELECT COUNT(*) FROM McuReminderSent WHERE FK_PatientID = ? AND ValidUntil = ? AND Stage = ?`,
+			l.PatientID, l.ValidUntil, l.Stage).Scan(&n)
+		if err != nil {
+			return nil, err
+		}
+		if n == 0 {
+			fresh = append(fresh, l)
+		}
+	}
+	return fresh, nil
 }
 
-// dueReminders finds who would be mailed now under the same rules for the daily job, Send now and
-// the preview: active, not the built-in admin, reminders on, address not bounced, not erased, and
-// not mailed within the repeat period.
-func (s *Store) dueReminders(ctx context.Context, c ReminderConfig) ([]reminderTarget, error) {
-	notAfter := stampOf(s.now().AddDate(0, 0, -c.RepeatDays))
+func (s *Store) markMailed(ctx context.Context, lines []Expiring) error {
+	for _, l := range lines {
+		_, err := s.DB.ExecContext(ctx,
+			`INSERT INTO McuReminderSent (FK_PatientID, ValidUntil, Stage, SentAt) VALUES (?, ?, ?, ?)`,
+			l.PatientID, l.ValidUntil, l.Stage, s.stamp())
+		if err != nil && !isUniqueViolation(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+// reminderRecipient is one account that gets the company's mail.
+type reminderRecipient struct {
+	id    int64
+	email string
+}
+
+// reminderTarget is one company due for a reminder: who is mailed and the workers listed.
+type reminderTarget struct {
+	company    int64
+	recipients []reminderRecipient
+	lines      []Expiring
+}
+
+// dueReminders finds what would be mailed now, for the daily job, Send now and the preview. The mail is
+// per COMPANY (owner, 2026-11-13): every active account of the company that has reminders on, an
+// address that is not bouncing and is not erased gets the same list, so the second account is not
+// left out and a worker is not listed twice. Only workers not yet mailed at their current stage are
+// in it.
+func (s *Store) dueReminders(ctx context.Context) ([]reminderTarget, error) {
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT SubmitterID, Email FROM Submitter
+		`SELECT SubmitterID, Email, FK_CompanyID FROM Submitter
 		 WHERE Status = ? AND IsBuiltIn = 0 AND RemindersEnabled = 1 AND EmailBouncedAt IS NULL AND ErasedAt IS NULL
-		   AND (LastReminderAt IS NULL OR LastReminderAt <= ?)
-		 ORDER BY SubmitterID`, StatusActive, notAfter)
+		   AND FK_CompanyID IS NOT NULL
+		 ORDER BY FK_CompanyID, SubmitterID`, StatusActive)
 	if err != nil {
 		return nil, err
 	}
-	var all []reminderTarget
+	byCompany := map[int64][]reminderRecipient{}
+	var order []int64
 	for rows.Next() {
-		var t reminderTarget
-		if err := rows.Scan(&t.id, &t.email); err != nil {
+		var r reminderRecipient
+		var company int64
+		if err := rows.Scan(&r.id, &r.email, &company); err != nil {
 			rows.Close()
 			return nil, err
 		}
-		all = append(all, t)
+		if _, seen := byCompany[company]; !seen {
+			order = append(order, company)
+		}
+		byCompany[company] = append(byCompany[company], r)
 	}
 	if err := rows.Err(); err != nil {
 		rows.Close()
@@ -184,61 +229,71 @@ func (s *Store) dueReminders(ctx context.Context, c ReminderConfig) ([]reminderT
 	rows.Close()
 
 	var due []reminderTarget
-	for _, t := range all {
-		lines, err := s.ExpiringFor(ctx, t.id, reminderWindowDays, lapsedGraceDays)
+	for _, company := range order {
+		lines, err := s.ExpiringForCompany(ctx, company, reminderWindowDays, lapsedGraceDays)
 		if err != nil {
+			return nil, err
+		}
+		if lines, err = s.alreadyMailed(ctx, lines); err != nil {
 			return nil, err
 		}
 		if len(lines) == 0 {
 			continue
 		}
-		t.lines = lines
-		due = append(due, t)
+		due = append(due, reminderTarget{company: company, recipients: byCompany[company], lines: lines})
 	}
 	return due, nil
 }
 
-// ReminderPreview says how many submitters and workers a send would reach right now, whether or
-// not the master switch is on, so the admin can see the effect before turning it on.
+// ReminderPreview says how many accounts and workers a send would reach right now, whether or not the
+// master switch is on, so the admin can see the effect before turning it on.
 func (s *Store) ReminderPreview(ctx context.Context) (submitters, workers int, err error) {
-	c, err := s.ReminderSettings(ctx)
-	if err != nil {
-		return 0, 0, err
-	}
-	due, err := s.dueReminders(ctx, c)
+	due, err := s.dueReminders(ctx)
 	for _, t := range due {
+		submitters += len(t.recipients)
 		workers += len(t.lines)
 	}
-	return len(due), workers, err
+	return submitters, workers, err
 }
 
-// RunReminders mails everyone who is due and returns how many submitters and workers it reached.
-// With the master switch off it does nothing. LastReminderAt moves only after a mail was accepted,
-// so a failed send is tried again on the next run. The daily job and the admin's Send now button
-// both call this, so they follow the same rules.
+// RunReminders mails every company that is due and returns how many accounts and workers it reached.
+// With the master switch off it does nothing. A company's workers are marked as mailed only after at
+// least one of its accounts accepted the mail, so a failed send is tried again on the next run. The
+// daily job and the admin's Send now button both call this, so they follow the same rules.
 func (s *Store) RunReminders(ctx context.Context, m Mailer, portalURL string) (submitters, workers int, err error) {
 	c, err := s.ReminderSettings(ctx)
 	if err != nil || !c.Enabled {
 		return 0, 0, err
 	}
-	due, err := s.dueReminders(ctx, c)
+	due, err := s.dueReminders(ctx)
 	if err != nil {
 		return 0, 0, err
 	}
 	var failures []error
 	for _, t := range due {
-		if err := sendRich(ctx, m, t.email, "Medical checkups that expire soon", reminderBody(portalURL, t.lines), reminderHTML(portalURL, t.lines)); err != nil {
-			log.Printf("mcu reminders: mail to submitter %d failed: %v", t.id, err)
+		accepted := 0
+		for _, r := range t.recipients {
+			if err := sendRich(ctx, m, r.email, "Medical checkups that expire soon", reminderBody(portalURL, t.lines), reminderHTML(portalURL, t.lines)); err != nil {
+				log.Printf("mcu reminders: mail to submitter %d failed: %v", r.id, err)
+				failures = append(failures, err)
+				continue
+			}
+			accepted++
+			if _, err := s.DB.ExecContext(ctx, `UPDATE Submitter SET LastReminderAt = ? WHERE SubmitterID = ?`, s.stamp(), r.id); err != nil {
+				failures = append(failures, err)
+			}
+			// Count only, never a name (plan section 3).
+			_ = s.LogEvent(ctx, Event{ActorType: ActorSystem, EntityType: EntitySubmitter, EntityID: r.id,
+				Action: "ReminderSent", Detail: fmt.Sprintf("%d workers", len(t.lines))})
+		}
+		if accepted == 0 {
+			continue
+		}
+		if err := s.markMailed(ctx, t.lines); err != nil {
 			failures = append(failures, err)
 			continue
 		}
-		if _, err := s.DB.ExecContext(ctx, `UPDATE Submitter SET LastReminderAt = ? WHERE SubmitterID = ?`, s.stamp(), t.id); err != nil {
-			failures = append(failures, err)
-		}
-		// Count only, never a name (plan section 3).
-		_ = s.LogEvent(ctx, Event{ActorType: ActorSystem, EntityType: EntitySubmitter, EntityID: t.id,
-			Action: "ReminderSent", Detail: fmt.Sprintf("%d workers", len(t.lines))})
-		submitters++
+		submitters += accepted
 		workers += len(t.lines)
 	}
 	return submitters, workers, errors.Join(failures...)
@@ -251,7 +306,7 @@ func reminderHTML(portalURL string, lines []Expiring) string {
 		rows = append(rows, []string{l.Name, l.Position, l.Company, l.ValidUntil, l.Stage})
 	}
 	return htmlPage(
-		htmlPara("These medical checkups of the workers you submitted expire within 60 days, or expired less than a month ago:"),
+		htmlPara("These medical checkups of the workers of your company expire within 60 days, or expired less than a month ago:"),
 		htmlTable([]string{"Employee", "Position", "Company", "Valid until", "Status"}, rows),
 		htmlLink("Submit the renewed checkup here:", portalURL+basePath+"/batch"),
 		htmlLink("To stop these mails, switch them off in Settings:", portalURL+basePath+"/settings"),
@@ -262,7 +317,7 @@ func reminderHTML(portalURL string, lines []Expiring) string {
 
 func reminderBody(portalURL string, lines []Expiring) string {
 	var b strings.Builder
-	b.WriteString("These medical checkups of the workers you submitted expire within 60 days, or expired less than a month ago:\n\n")
+	b.WriteString("These medical checkups of the workers of your company expire within 60 days, or expired less than a month ago:\n\n")
 	for _, l := range lines {
 		fmt.Fprintf(&b, "- %s | %s | %s | valid until %s | %s\n", oneLine(l.Name), oneLine(l.Position), oneLine(l.Company), l.ValidUntil, l.Stage)
 	}

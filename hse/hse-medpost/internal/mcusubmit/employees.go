@@ -179,12 +179,7 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 		a.render(w, http.StatusBadRequest, "employees.html", p)
 		return
 	}
-	cfg, err := a.Store.ReminderSettings(r.Context())
-	if err != nil {
-		a.serverError(w, "reminder settings", err)
-		return
-	}
-	all, err := a.Store.CompanyEmployees(r.Context(), companies, cfg.DaysBefore)
+	all, err := a.Store.CompanyEmployees(r.Context(), companies, reminderWindowDays)
 	if err != nil {
 		a.serverError(w, "company employees", err)
 		return
