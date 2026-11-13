@@ -725,3 +725,35 @@ th { color: var(--muted); }
   .side-label { margin: var(--s3) var(--s4) var(--s1); padding: 3px var(--s2); }
   .side-details > ul { margin-left: calc(var(--s4) + var(--s3)); padding-left: var(--s2); border-left: 1px solid var(--line); }
 }
+
+/* ---- Graphite and lilac, with two-tone card titles like the medical portal ("Medical checkup <submission>") ----
+   The first words are the ink colour, the last words the accent. The lilac fill is for buttons and markers
+   (dark text on it); text and links use a deeper lilac that reads on white (6:1). */
+:root {
+  --bg: #f6f5f8;
+  --ink: #1f1d26;
+  --muted: #4d4a58;
+  --line: rgba(31, 29, 38, 0.16);
+  --brand: #c4b0f7;
+  --brand-dark: #d6c8fa;
+  --brand-ink: #1f1d26;
+  --accent-text: #6f42c1;
+  --hl: rgba(31, 29, 38, 0.06);
+  --current: rgba(31, 29, 38, 0.06);
+  --brand-tint: rgba(196, 176, 247, 0.22);
+  --select: rgba(196, 176, 247, 0.4);
+  --bar: #26242d;             /* top bar and menu group labels */
+}
+.topbar { background: var(--bar); border-bottom: 0; }
+.brand-name, .topbar nav a, .topbar .who, .topbar button.link { color: #f1eef8; }
+.brand-name span { color: var(--brand); }
+.topbar nav a:hover, .topbar nav a:focus-visible, .topbar button.link:hover { color: var(--brand); }
+.topbar nav a[aria-current="page"] { color: #fff; border-bottom-color: var(--brand); }
+.side-label { background: var(--bar); color: #f1eef8; }
+input[type="text"], input[type="search"], input[type="password"], input[type="email"], input[type="tel"], input[type="number"], input[type="url"], input[type="file"], select, textarea { border-color: rgba(31, 29, 38, 0.4); }
+.btn-small-quiet, .door-blue .btn-small, .door-green .btn-small, .door-navy .btn-small, .door-mcu .btn-small { border-color: rgba(31, 29, 38, 0.4) !important; }
+.door h2 { color: var(--ink); }
+.door h2 span { color: var(--accent-text); }
+.door-green h2 span { color: var(--accent2-dark); }
+.door-mcu h2 { color: var(--ink); }
+.door-mcu h2 span { color: #c4126b; }

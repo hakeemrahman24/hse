@@ -92,10 +92,10 @@ func TestHomeIsTheSingleLandingPage(t *testing.T) {
 	e.setMcuURL("https://medpost.example.com/mcu-submit")
 	r, body := e.get(t, "/", nil)
 	for _, want := range []string{
-		"Medical checkup (MCU) submission",
+		"Medical checkup (MCU) <span>submission</span>",
 		`href="https://medpost.example.com/mcu-submit/signin"`,
 		`href="https://medpost.example.com/mcu-submit/register"`,
-		"Layar Entry Permit",
+		"Layar <span>Entry Permit</span>",
 		`href="/request"`, "Request a permit",
 		`href="/my/signin"`, "Check my permit",
 		`href="/login"`, "Staff sign in",
@@ -120,7 +120,7 @@ func TestHomeHidesMedicalDoorLinksWhenPortalIsNotConfigured(t *testing.T) {
 	if strings.Contains(body, "/mcu-submit") || strings.Contains(body, "/register\"") {
 		t.Errorf("no portal address set, so the medical door must not link anywhere")
 	}
-	if !strings.Contains(body, "Medical checkup (MCU) submission") || !strings.Contains(body, "Ask the medical team for the portal address") {
+	if !strings.Contains(body, "Medical checkup (MCU) <span>submission</span>") || !strings.Contains(body, "Ask the medical team for the portal address") {
 		t.Errorf("the door itself should still be explained")
 	}
 }
@@ -393,7 +393,7 @@ func TestSignedInStaffSeeTheirOwnDoorOnTheLandingPage(t *testing.T) {
 	if strings.Contains(body, `href="/login"`) {
 		t.Errorf("signed in staff do not need the Staff sign in link")
 	}
-	if !strings.Contains(body, "Request a permit") || !strings.Contains(body, "Medical checkup (MCU) submission") {
+	if !strings.Contains(body, "Request a permit") || !strings.Contains(body, "Medical checkup (MCU) <span>submission</span>") {
 		t.Errorf("staff still see the two public doors")
 	}
 }
