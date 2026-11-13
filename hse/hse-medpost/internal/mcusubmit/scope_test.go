@@ -253,3 +253,28 @@ func TestNeedsActionListsRejectedAndFollowUpResultsOnly(t *testing.T) {
 		t.Errorf("needs action = %v, want the told Unfit one and the rejected one", got)
 	}
 }
+
+// A worker whose Fit certificate already exists on the MCU tab (sent by another route, for example
+// WhatsApp) has nothing left to upload, so their rejected document stops needing action.
+func TestNeedsActionSkipsWorkerWhoAlreadyHasAFitCertificate(t *testing.T) {
+	s, _, co := newTestStore(t)
+	ctx := context.Background()
+	sub := activeSubmitter(t, s, co, "hr.cert@example.com")
+	covered := sentDoc(t, s, sub, "Has Certificate")
+	addRecord(t, s, seedWorker(t, s, "Has Certificate", "1990-04-12", co), "MedC-ELSEWHERE", "Fit", "2027-01-01", "Close", 1)
+	bare := sentDoc(t, s, sub, "No Certificate")
+	for _, id := range []int64{covered, bare} {
+		if _, err := s.DB.Exec(`UPDATE McuSubmission SET Status = ? WHERE SubmissionID = ?`, SubRejected, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	me, _ := s.ByID(ctx, sub)
+	sc, _ := s.ScopeFor(ctx, &me)
+	page, err := s.SearchDocs(ctx, DocFilter{OwnerID: sub, Scope: &sc, Needs: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page.Rows) != 1 || page.Rows[0].PatName != "No Certificate" || page.Total != 1 {
+		t.Errorf("needs action = %+v, want only the worker without a certificate", page.Rows)
+	}
+}

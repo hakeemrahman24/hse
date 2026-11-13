@@ -481,12 +481,14 @@ func (a *API) Home(w http.ResponseWriter, r *http.Request) {
 	}
 	p := a.newPage("Home")
 	p.User, p.Counts = u, map[string]int{}
+	var looksNeeding []Submission
 	for _, d := range docs {
 		p.Counts[d.Status]++
 		if d.Status == SubRejected || d.ResultMessage() != "" {
-			p.Counts["Needs"]++ // shown as "Needs action" with a link to the filtered list
+			looksNeeding = append(looksNeeding, d)
 		}
 	}
+	p.Counts["Needs"] = len(a.Store.NeedingAction(r.Context(), looksNeeding)) // "Needs action", linked to the filtered list
 	// Shown whether or not reminder mails are on (plan section 8); the admin has no workers of
 	// their own, so the list is only for submitters.
 	if u.Role != RoleAdmin {

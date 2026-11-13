@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 	"strings"
 )
 
@@ -121,4 +122,24 @@ func (s *Store) latestCertificateRecord(ctx context.Context, id int64, status st
 		return 0, err
 	}
 	return l.RecordID, nil
+}
+
+// NeedingAction drops, from documents that look like they need the submitter to do something (a
+// rejected one, or a result to read), those that do not after all (owner, 2026-11-13): the worker already holds a Fit
+// certificate on the MCU tab, whichever way it got there (for example sent by WhatsApp and entered by
+// staff), so there is nothing left to upload or read. The caller decides what looks like it needs action. Unfit results always have a certificate, so only
+// Fit and Fit with note count, or the note for an unfit worker would be hidden.
+func (s *Store) NeedingAction(ctx context.Context, docs []Submission) []Submission {
+	var out []Submission
+	for _, d := range docs {
+		l, err := s.LatestRecord(ctx, d.ID)
+		if err != nil {
+			// Show the notice rather than hide something the submitter may have to act on.
+			log.Printf("mcusubmit: latest record of document %d: %v", d.ID, err)
+		} else if l != nil && l.HasCertificate() && (l.Result == "Fit" || l.Result == "FitWithNote") {
+			continue
+		}
+		out = append(out, d)
+	}
+	return out
 }

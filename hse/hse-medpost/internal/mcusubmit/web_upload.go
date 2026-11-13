@@ -128,11 +128,13 @@ func (a *API) Documents(w http.ResponseWriter, r *http.Request) {
 	// The "Needs action" chip carries the company's count, like Home, whatever filter is on.
 	p.Counts = map[string]int{}
 	if all, err := a.Store.ListScope(r.Context(), sc); err == nil {
+		var looksNeeding []Submission
 		for _, d := range all {
 			if d.Status == SubRejected || d.ResultMessage() != "" {
-				p.Counts["Needs"]++
+				looksNeeding = append(looksNeeding, d)
 			}
 		}
+		p.Counts["Needs"] = len(a.Store.NeedingAction(r.Context(), looksNeeding))
 	}
 	if a.certs != nil {
 		a.Store.AttachCertificates(r.Context(), result.Rows)

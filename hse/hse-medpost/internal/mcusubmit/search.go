@@ -120,6 +120,10 @@ func (s *Store) SearchDocs(ctx context.Context, f DocFilter) (DocPage, error) {
 		args = append(args, to)
 	}
 
+	if f.Needs && f.OwnerID != 0 {
+		return s.searchNeeding(ctx, where, args, f.Page)
+	}
+
 	var total int
 	if err := s.DB.QueryRowContext(ctx, `SELECT COUNT(*)`+submissionFrom+where, args...).Scan(&total); err != nil {
 		return DocPage{}, err
@@ -150,6 +154,33 @@ func (s *Store) SearchDocs(ctx context.Context, f DocFilter) (DocPage, error) {
 		return DocPage{}, err
 	}
 	return DocPage{Rows: rows, Total: total, PageSize: docPageSize, Page: page, Pages: pages}, nil
+}
+
+// searchNeeding is the "Needs action" list. Whether the worker already holds a certificate is decided
+// in Go (LatestRecord matches by name and birth date, which has no portable SQL), so the SQL narrows
+// to the candidates and the page is cut here, after the filter, or a page could come out short.
+func (s *Store) searchNeeding(ctx context.Context, where string, args []any, page int) (DocPage, error) {
+	rows, err := s.querySubmissions(ctx, where+` ORDER BY s.SubmissionID DESC`, args...)
+	if err != nil {
+		return DocPage{}, err
+	}
+	rows = s.NeedingAction(ctx, rows)
+	total := len(rows)
+	pages := (total + docPageSize - 1) / docPageSize
+	if pages < 1 {
+		pages = 1
+	}
+	if page < 1 {
+		page = 1
+	}
+	if page > pages {
+		page = pages
+	}
+	lo, hi := (page-1)*docPageSize, page*docPageSize
+	if hi > total {
+		hi = total
+	}
+	return DocPage{Rows: rows[lo:hi], Total: total, PageSize: docPageSize, Page: page, Pages: pages}, nil
 }
 
 // dayBounds turns two dates into the first and last stored timestamp of those days, or "" for none.
