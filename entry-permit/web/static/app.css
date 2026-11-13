@@ -24,10 +24,10 @@
   --error: #d93025;
   --ok: #15803d;
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px;
-  --fs-sm: 0.875rem;    /* 14px: labels, notes, table text */
-  --fs-md: 1rem;        /* 15px: body */
-  --fs-lg: 1.2rem;      /* 18px: section titles */
-  --fs-xl: 1.4667rem;   /* 22px: page title */
+  --fs-sm: 0.8125rem;   /* 13px: labels, notes, table text */
+  --fs-md: 0.875rem;    /* 14px: body */
+  --fs-lg: 1rem;        /* 16px: section titles */
+  --fs-xl: 1.25rem;     /* 20px: page title */
   color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -36,7 +36,7 @@ body {
   margin: 0;
   color: var(--ink);
   background: var(--bg);
-  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 a, button, input, select, .tile { transition: background-color 0.12s, border-color 0.12s, color 0.12s; }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -209,7 +209,7 @@ button:focus-visible, a:focus-visible { outline: 2px solid var(--brand); outline
 .check input { margin: 0; }
 .tablewrap { position: relative; overflow-x: auto; background: var(--card); border: 0; }
 table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
-th { text-align: left; padding: var(--s2) var(--s3); color: var(--muted); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; background: none; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { text-align: left; padding: var(--s2) var(--s3); color: var(--muted); font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; background: none; border-bottom: 1px solid var(--line); white-space: nowrap; }
 td { padding: 6px var(--s3); border-bottom: 1px solid var(--line); vertical-align: middle; }
 tbody tr:hover td { background: #f9faf5; }
 tr:last-child td { border-bottom: 0; }
@@ -436,7 +436,7 @@ main:has(> .tabs) > h1 { margin: 0 0 var(--s3); }
 /* Landing page: the doors come first, the three-step strip after them. Each door has a thick top edge
    in its own colour, one filled primary button and one outlined secondary button of the same height,
    and its actions sit on the bottom edge so both doors line up. */
-.landing h1 { margin-bottom: var(--s2); font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2rem); text-wrap: balance; }
+.landing h1 { margin-bottom: var(--s2); font-size: clamp(1.25rem, 1rem + 1vw, 1.5rem); text-wrap: balance; }
 .landing .sub, .landing .note, .door p { text-wrap: pretty; }
 .landing .sub { max-width: 60ch; margin-bottom: var(--s5); }
 .doors { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: var(--s4); }
@@ -475,7 +475,7 @@ input, textarea { caret-color: var(--brand); }
 
 /* Forms, end to end: readable labels, placeholders that pass contrast, answer buttons big enough for a
    thumb, a jump list for the long visitor form and a send bar that stays in reach on a phone. */
-.field > span:not(.date-field) { font-size: 0.9333rem; color: var(--muted); }
+.field > span:not(.date-field) { font-size: var(--fs-sm); color: var(--muted); }
 ::placeholder { color: #676d5e; opacity: 1; }
 .yn { gap: var(--s2); }
 .yn label { min-height: 44px; padding: 0 var(--s3); border: 1px solid var(--line); background: var(--field); font-weight: 500; }
@@ -613,4 +613,11 @@ th { padding: var(--s1) var(--s3); }
   /* Touch targets stay comfortable on a phone. */
   input[type="text"], input[type="search"], input[type="password"], input[type="email"], input[type="tel"], input[type="number"], select { min-height: 40px; }
   .btn { min-height: 40px; }
+}
+
+/* Smaller type: 14px body, 13px labels and tables, 20px page title. Phones keep 16px inside fields so iOS does not zoom on focus. */
+.side-label { font-size: 0.65rem; }
+.side-hint { font-size: 0.6875rem; }
+@media (max-width: 860px) {
+  input[type="text"], input[type="search"], input[type="password"], input[type="email"], input[type="tel"], input[type="number"], select, textarea { font-size: 16px; }
 }
