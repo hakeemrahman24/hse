@@ -35,7 +35,10 @@ type Config struct {
 	BaseURL       string
 
 	// hse-medpost directory API (loopback, bearer token).
-	MedpostURL   string
+	MedpostURL string
+	// McuPortalURL is the public address of the medical checkup submission portal (hse-medpost's
+	// /mcu-submit), linked from the landing page. Empty: the landing page explains it but links nowhere.
+	McuPortalURL string
 	MedpostToken string
 	RegionTSV    string // dev/offline fallback for the regency list; production uses the medpost API
 
@@ -86,6 +89,7 @@ func Load(env func(string) string) Config {
 		BaseURL:            get("BASE_URL", "http://127.0.0.1:"+get("PORT", defaultPort)),
 		MedpostURL:         get("MEDPOST_API_URL", ""),
 		MedpostToken:       get("MEDPOST_API_TOKEN", ""),
+		McuPortalURL:       absoluteHTTP(get("MCU_PORTAL_URL", "")),
 		RegionTSV:          get("REGION_TSV", ""),
 		TurnstileSiteKey:   get("TURNSTILE_SITEKEY", ""),
 		TurnstileSecret:    get("TURNSTILE_SECRET", ""),
@@ -155,4 +159,13 @@ func (c Config) DSN() string {
 	// only the rows whose value changed. Seed and the review and outbox updates rely on that.
 	return fmt.Sprintf("%s@tcp(%s:%s)/%s?charset=utf8mb4&collation=utf8mb4_unicode_ci&parseTime=false&timeout=10s&clientFoundRows=true",
 		user.String(), c.DBHost, c.DBPort, c.DBName)
+}
+
+// absoluteHTTP returns u without a trailing slash when it is an absolute http(s) address, else "".
+// WHY: the landing page links straight to it; a bare host name would become a relative link.
+func absoluteHTTP(u string) string {
+	if !strings.HasPrefix(u, "https://") && !strings.HasPrefix(u, "http://") {
+		return ""
+	}
+	return strings.TrimRight(u, "/")
 }

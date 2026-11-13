@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -84,13 +85,19 @@ func (e *testEnv) lookup(t *testing.T, name, dob, token string) (int, string) {
 	return e.postBody(t, "/my", nil, v)
 }
 
-// The home page is five tiles (owner decision 2026-11-12). Staff tiles go through /login?next=...
-func TestHomeShowsTheThreeTilesAndSettingsLink(t *testing.T) {
+// The home page is the single landing page (owner decision 2026-11-13): two doors, Medical checkup
+// submission and Layar Entry Permit, with staff sign in and settings as small links.
+func TestHomeIsTheSingleLandingPage(t *testing.T) {
 	e := newEnv(t)
+	e.app.McuPortalURL = "https://medpost.example.com/mcu-submit"
 	r, body := e.get(t, "/", nil)
 	for _, want := range []string{
-		`href="/request"`, "Request Entry Permit",
-		`href="/my/signin"`, "My Entry Permit",
+		"Medical checkup (MCU) submission",
+		`href="https://medpost.example.com/mcu-submit/signin"`,
+		`href="https://medpost.example.com/mcu-submit/register"`,
+		"Layar Entry Permit",
+		`href="/request"`, "Request a permit",
+		`href="/my/signin"`, "Check my permit",
 		`href="/login"`, "Staff sign in",
 		`href="/login?next=admin"`, "Settings",
 	} {
@@ -106,6 +113,17 @@ func TestHomeShowsTheThreeTilesAndSettingsLink(t *testing.T) {
 	}
 }
 
+func TestHomeHidesMedicalDoorLinksWhenPortalIsNotConfigured(t *testing.T) {
+	e := newEnv(t)
+	_, body := e.get(t, "/", nil)
+	if strings.Contains(body, "/mcu-submit") || strings.Contains(body, "/register\"") {
+		t.Errorf("no portal address set, so the medical door must not link anywhere")
+	}
+	if !strings.Contains(body, "Medical checkup (MCU) submission") || !strings.Contains(body, "Ask the medical team for the portal address") {
+		t.Errorf("the door itself should still be explained")
+	}
+}
+
 func TestReviewTileOpensTheUsersOwnReviewPage(t *testing.T) {
 	a := &App{}
 	for _, c := range []struct {
@@ -115,7 +133,7 @@ func TestReviewTileOpensTheUsersOwnReviewPage(t *testing.T) {
 		{[]staff.Role{staff.Doctor}, "/staff/doctor"},
 		{[]staff.Role{staff.Stage1, staff.Doctor}, "/staff/stage1"},
 		{[]staff.Role{staff.Final}, "/staff/final"},
-		{[]staff.Role{staff.Dashboard}, "/staff"},
+		{[]staff.Role{staff.Dashboard}, "/"},
 	} {
 		if got := a.loginTarget(staff.User{Roles: c.roles}, "review"); got != c.want {
 			t.Errorf("roles %v: got %q, want %q", c.roles, got, c.want)
@@ -124,7 +142,7 @@ func TestReviewTileOpensTheUsersOwnReviewPage(t *testing.T) {
 	if got := a.loginTarget(staff.User{Roles: []staff.Role{staff.Admin}}, "admin"); got != "/staff/admin" {
 		t.Errorf("admin tile opened %q", got)
 	}
-	if got := a.loginTarget(staff.User{Roles: []staff.Role{staff.Doctor}}, "admin"); got != "/staff" {
+	if got := a.loginTarget(staff.User{Roles: []staff.Role{staff.Doctor}}, "admin"); got != "/" {
 		t.Errorf("non-admin must not reach admin, got %q", got)
 	}
 }
@@ -308,13 +326,13 @@ func TestLoginNextGoesToTheRequestedPageOrLanding(t *testing.T) {
 	if loc := post("fina", "doctor"); loc != "/staff/doctor" {
 		t.Errorf("multi-role user asking for doctor: %q", loc)
 	}
-	if loc := post("ayu", "final"); loc != "/staff" { // no final role: ordinary landing
+	if loc := post("ayu", "final"); loc != "/" { // no final role: the shared landing page
 		t.Errorf("user without the role: %q", loc)
 	}
 	if loc := post("ayu", "dashboard"); loc != "/staff/dashboard" { // everyone may open the dashboard
 		t.Errorf("dashboard: %q", loc)
 	}
-	if loc := post("ayu", "//evil.example"); loc != "/staff" {
+	if loc := post("ayu", "//evil.example"); loc != "/" {
 		t.Errorf("hostile next: %q", loc)
 	}
 }
@@ -344,6 +362,95 @@ func TestRequestPageOffersWorkAndVisitorPermitWithoutSignIn(t *testing.T) {
 	for _, want := range []string{"Work Entry Permit", "Visitor Entry Permit", `href="/permit"`, `href="/waiver"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("request page lacks %q", want)
+		}
+	}
+}
+
+// Staff use the same landing page as everyone (owner decision 2026-11-13). Signed out, they see only
+// the small Staff sign in link. Signed in, a third door lists their own pages and a sign out button,
+// and the top bar carries their menu.
+func TestSignedInStaffSeeTheirOwnDoorOnTheLandingPage(t *testing.T) {
+	e := newEnv(t)
+	e.addUser(t, "ann", "Ann Lee", staff.Stage1, staff.Doctor)
+	_, out := e.get(t, "/", nil)
+	if strings.Contains(out, "Your work") || strings.Contains(out, "/staff/stage1") {
+		t.Fatalf("signed out landing page must not show staff pages")
+	}
+	if !strings.Contains(out, `href="/login"`) {
+		t.Errorf("signed out landing page keeps the Staff sign in link")
+	}
+	cookies := e.login(t, "ann", "1234").Cookies()
+	_, body := e.get(t, "/", cookies)
+	for _, want := range []string{"Ann Lee", "Your work", `href="/staff/stage1"`, `href="/staff/doctor"`, `href="/staff/dashboard"`, `action="/logout"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("signed in landing page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, `href="/staff/admin"`) || strings.Contains(body, `href="/staff/final"`) {
+		t.Errorf("landing page must list only the user's own roles")
+	}
+	if strings.Contains(body, `href="/login"`) {
+		t.Errorf("signed in staff do not need the Staff sign in link")
+	}
+	if !strings.Contains(body, "Request a permit") || !strings.Contains(body, "Medical checkup (MCU) submission") {
+		t.Errorf("staff still see the two public doors")
+	}
+}
+
+// The permit door comes first (workers are the main visitors), and each door has one clear primary
+// action. The MCU is spelled out and the page carries a short Indonesian line.
+func TestLandingLeadsWithThePermitDoorAndExplainsMCU(t *testing.T) {
+	e := newEnv(t)
+	e.app.McuPortalURL = "https://medpost.example.com/mcu-submit"
+	_, body := e.get(t, "/", nil)
+	permit, mcu := strings.Index(body, `id="h-door-lep"`), strings.Index(body, `id="h-door-mcu"`)
+	if permit < 0 || mcu < 0 || permit > mcu {
+		t.Fatalf("permit door must come before the medical checkup door (permit %d, mcu %d)", permit, mcu)
+	}
+	for _, want := range []string{"Request a permit", "Check my permit", "medical checkup (MCU)", `lang="id"`, "Fit with note"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("landing page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, "later step") {
+		t.Errorf("no internal build talk on the landing page")
+	}
+}
+
+func TestDonePagesPromiseOnlyWhatTheSystemDoes(t *testing.T) {
+	for _, name := range []string{"permit.html", "waiver.html"} {
+		b, err := os.ReadFile("../../web/templates/" + name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(b), "later step") {
+			t.Errorf("%s still talks about a mail service built in a later step", name)
+		}
+	}
+}
+
+// The chooser says what each permit needs before the requester starts, and where to get an MCU.
+func TestRequestChooserExplainsWhatEachPermitNeeds(t *testing.T) {
+	e := newEnv(t)
+	e.app.McuPortalURL = "https://medpost.example.com/mcu-submit"
+	_, body := e.get(t, "/request", nil)
+	for _, want := range []string{`href="/permit"`, `href="/waiver"`, "Work Entry Permit", "Visitor Entry Permit", "valid medical checkup (MCU)", "appointment letter", `href="https://medpost.example.com/mcu-submit"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("/request lacks %q", want)
+		}
+	}
+}
+
+// The long visitor form gets a jump list of its sections and keeps its send button in reach.
+func TestWaiverFormHasSectionNavAndStickySubmit(t *testing.T) {
+	e := newEnv(t)
+	_, body := e.get(t, "/waiver", nil)
+	if strings.Contains(body, "not available right now") {
+		t.Skip("visitor form is not available in this test environment")
+	}
+	for _, want := range []string{`aria-label="Sections of this form"`, `href="#sec-1"`, `href="#sec-8"`, `id="sec-1"`, `id="sec-8"`, `class="form-actions"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("/waiver lacks %q", want)
 		}
 	}
 }

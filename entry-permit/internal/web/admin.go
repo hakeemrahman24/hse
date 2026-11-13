@@ -152,7 +152,13 @@ func (a *App) adminView(r *http.Request, u *staff.User, title string, data Admin
 			}
 		}
 	}
-	return View{Title: title, User: u, Links: menu(*u, "admin"), CSRF: a.csrfToken(r), Admin: data}
+	// Only the overview marks "Administration" as current; every other admin page is marked in the
+	// left menu's own admin group, so exactly one item is current.
+	current := ""
+	if title == "Administration" {
+		current = "admin"
+	}
+	return View{Title: title, User: u, Links: menu(*u, current), CSRF: a.csrfToken(r), Admin: data}
 }
 
 func (a *App) adminHome(w http.ResponseWriter, r *http.Request) {

@@ -65,6 +65,7 @@
 <div class="tabpanel">
 <form method="get" action="/staff/dashboard" class="filterbar" data-autoform>
   <input type="hidden" name="tab" value="{{.Dash.Tab}}">
+  <div class="filter-main">
   <input type="search" name="q" value="{{.Dash.Q}}" maxlength="80" autocomplete="off" placeholder="Search name, company, number" aria-label="Search">
   {{if .Dash.Charted}}
   {{if .Dash.ShowKind}}<select name="kind" aria-label="Permit kind">
@@ -96,9 +97,12 @@
     {{if .Dash.NextDay}}<a class="btn-small-quiet" href="/staff/dashboard?tab=gate&amp;date={{.Dash.NextDay}}" title="Next day" aria-label="Next day">&#9654;</a>{{else}}<span class="btn-small-quiet off" aria-hidden="true">&#9654;</span>{{end}}
   </span>
   {{end}}
+  </div>
+  <div class="filter-actions">
   <button type="submit" class="btn-small">Apply</button>
   {{if .Dash.Filtered}}<a class="btn-small-quiet" href="/staff/dashboard?tab={{.Dash.Tab}}">Clear</a>{{end}}
   <a class="btn-small-quiet" href="{{.Dash.PDFHref}}">Download PDF</a>
+  </div>
 </form>
 
 {{if eq .Dash.Tab "gate"}}

@@ -43,7 +43,15 @@ func TestStaffWhoAreAlsoWorkersGetAMyPermitLink(t *testing.T) {
 		"gate admin": {e.reviewer(t, "gani", staff.GateAdmin), "dashboard", false},
 	} {
 		_, page := e.get(t, "/staff/"+c.page, c.cookies)
-		if got := strings.Contains(page, `href="/my/signin"`); got != c.want {
+		// Only the "Your work" group counts: the public group always offers "Check my permit".
+		work := page
+		if i := strings.Index(page, `Your work</p>`); i >= 0 {
+			work = page[i:]
+			if j := strings.Index(work, `Account</p>`); j >= 0 {
+				work = work[:j]
+			}
+		}
+		if got := strings.Contains(work, `href="/my/signin"`); got != c.want {
 			t.Errorf("%s: My permit link shown = %v, want %v", name, got, c.want)
 		}
 	}

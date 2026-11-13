@@ -66,6 +66,7 @@ type App struct {
 	Secret        string
 	Secure        bool         // set the cookie Secure flag (true when BASE_URL is https)
 	BaseURL       string       // public address, used inside QR codes and link previews
+	McuPortalURL  string       // medical checkup portal address for the landing page; empty hides its links
 	Jobs          JobControl   // the scheduler, for the status page; nil when none runs
 	Outbox        *mail.Outbox // every e-mail is stored here first; nil switches e-mail off
 	Mailer        mail.Mailer  // nil when no SMTP server is configured: mail waits in the outbox
@@ -119,6 +120,8 @@ type View struct {
 	Settings      SettingsData
 	Users         UsersData
 	My            MyData
+	McuURL        string // the medical checkup portal address, for the side menu and the landing page
+	Nav           string // which side menu item is current (see navKey); set by render
 	Permit        PermitData
 	Waiver        WaiverData
 	Ticket        TicketData
@@ -204,6 +207,10 @@ func sameOrigin(next http.Handler) http.Handler {
 }
 
 func (a *App) render(w http.ResponseWriter, name string, status int, v View) {
+	v.McuURL = a.McuPortalURL // every page may point to the medical checkup portal
+	if v.Nav == "" {
+		v.Nav = navKey(name)
+	}
 	var buf bytes.Buffer // render fully first so an error never leaves half a page
 	if err := a.tmpl.ExecuteTemplate(&buf, name, v); err != nil {
 		http.Error(w, "Something went wrong", http.StatusInternalServerError)
@@ -364,4 +371,22 @@ func menu(u staff.User, current string) []Link {
 		links = append(links, Link{Label: "My permit", Href: "/my/signin"})
 	}
 	return links
+}
+
+// navKey says which side menu item a template belongs to. Staff pages are marked through their own
+// Links (menu), so they return "".
+func navKey(template string) string {
+	switch template {
+	case "home":
+		return "home"
+	case "request", "permit", "permit_done", "waiver", "waiver_done":
+		return "request"
+	case "my", "my_photo", "my_signin", "ticket":
+		return "my"
+	case "signin":
+		return "login"
+	case "account":
+		return "account"
+	}
+	return ""
 }

@@ -21,17 +21,56 @@ file because html/template keeps all templates in one namespace. */}}
 <header class="topbar">
   <a class="brand" href="/"><img class="brand-logo" src="/static/logo-white.png" alt="PT Layar Nusantara Gas" width="162" height="42"><span class="brand-name">Layar Entry Permit</span></a>
   <nav aria-label="Main">
-    {{range .Links}}<a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}
-    {{if .My.SignedIn}}<form method="post" action="/my/logout" class="inline"><button type="submit" class="link">Sign out</button></form>{{end}}
-    {{if .User}}
-      <a href="/account">My account</a>
-      <form method="post" action="/logout" class="inline"><button type="submit" class="link">Sign out ({{.User.DisplayName}})</button></form>
-    {{end}}
+    {{if .User}}<span class="who">{{.User.DisplayName}}</span>
+      <form method="post" action="/logout" class="inline"><button type="submit" class="link">Sign out</button></form>
+    {{else if .My.SignedIn}}<form method="post" action="/my/logout" class="inline"><button type="submit" class="link">Sign out</button></form>{{end}}
   </nav>
 </header>
 <div class="shell">
+{{template "side" .}}
 <main>
 {{end}}
+
+{{/* The left menu, the same idea as the medical checkup portal's: grouped links, the current page marked.
+Public visitors see the permit pages and the portal; staff also get their own pages and account. */}}
+{{define "side"}}<aside class="side" aria-label="Site menu">
+<details class="side-details" open>
+  <summary class="side-summary"><span>Menu</span><span class="side-current"></span></summary>
+  <p class="side-label">Entry permit</p>
+  <ul role="list">
+    <li><a href="/"{{if eq .Nav "home"}} aria-current="page"{{end}}>Home</a></li>
+    <li><a href="/request"{{if eq .Nav "request"}} aria-current="page"{{end}}>Request a permit</a></li>
+    {{if .My.SignedIn}}<li><a href="/my"{{if eq .Nav "my"}} aria-current="page"{{end}}>My permit</a></li>
+    {{else}}<li><a href="/my/signin"{{if eq .Nav "my"}} aria-current="page"{{end}}>Check my permit</a></li>{{end}}
+  </ul>
+  {{if .McuURL}}<p class="side-label">Medical checkup</p>
+  <ul role="list"><li><a class="side-mcu" href="{{.McuURL}}">Submit results<span class="side-hint">opens the portal</span></a></li></ul>{{end}}
+  {{if and (eq .Nav "my") .Links}}<p class="side-label">On this page</p>
+  <ul role="list">{{range .Links}}<li><a href="{{.Href}}">{{.Label}}</a></li>{{end}}</ul>{{end}}
+  {{if .User}}<p class="side-label">Your work</p>
+  <ul role="list">{{if ne .Nav "my"}}{{range .Links}}<li><a href="{{.Href}}"{{if .Current}} aria-current="page"{{end}}>{{.Label}}</a></li>{{end}}{{end}}</ul>
+  {{if .Admin.Defs}}<p class="side-label">Lists the forms use</p>
+  <ul role="list">
+    <li><a href="/staff/admin/gate-officers"{{if eq .Title "Gate officers"}} aria-current="page"{{end}}>Gate officers</a></li>
+    {{range .Admin.Defs}}<li><a href="{{.Path}}"{{if eq .Key $.Admin.Def.Key}} aria-current="page"{{end}}>{{.Label}}</a></li>{{end}}
+  </ul>
+  {{if .Admin.Super}}<p class="side-label">System</p>
+  <ul role="list">
+    <li><a href="/staff/admin/status"{{if eq .Title "System status"}} aria-current="page"{{end}}>Status</a></li>
+    <li><a href="/staff/admin/companies"{{if eq .Title "Companies"}} aria-current="page"{{end}}>Companies</a></li>
+    <li><a href="/staff/admin/users"{{if eq .Title "Users"}} aria-current="page"{{end}}>Users</a></li>
+    <li><a href="/staff/admin/settings"{{if eq .Title "Settings"}} aria-current="page"{{end}}>Settings</a></li>
+    <li><a href="/staff/admin/audit"{{if eq .Title "Audit log"}} aria-current="page"{{end}}>Audit log</a></li>
+  </ul>{{end}}{{end}}
+  <p class="side-label">Account</p>
+  <ul role="list"><li><a href="/account"{{if eq .Nav "account"}} aria-current="page"{{end}}>My account</a></li>
+    <li><form method="post" action="/logout" class="inline"><button type="submit" class="side-link">Sign out</button></form></li></ul>
+  {{else}}<p class="side-label">Staff</p>
+  <ul role="list"><li><a href="/login"{{if eq .Nav "login"}} aria-current="page"{{end}}>Staff sign in</a></li></ul>{{end}}
+  {{if .My.SignedIn}}<p class="side-label">Account</p>
+  <ul role="list"><li><form method="post" action="/my/logout" class="inline"><button type="submit" class="side-link">Sign out</button></form></li></ul>{{end}}
+</details>
+</aside>{{end}}
 
 {{define "foot"}}
 </main>
@@ -46,29 +85,54 @@ file because html/template keeps all templates in one namespace. */}}
 <p class="note">Development build: the security check is skipped.</p>{{else}}<div class="cf-turnstile" data-sitekey="{{.My.SiteKey}}"></div>
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{{end}}{{end}}
 
-{{/* The home page is four tiles and a gear (owner decision 2026-11-12, replacing the sign-in-only
-home of 2026-11-08). Staff tiles go to /login?next=..., which signs in and then opens the right
-page. The gear is the administrator sign in. */}}
+{{/* The home page is the single landing page (owner decision 2026-11-13, replacing the three tiles of
+2026-11-12). Two public doors, the permit first (workers are the main visitors) and the medical checkup submission portal (a separate app, linked by MCU_PORTAL_URL); signed-in staff also get a third door with their own pages. WHY a flow strip: a Work Entry Permit needs a valid MCU, so
+the page shows the order once instead of asking people to guess it. Staff sign in and Settings are
+small links at the bottom, because most visitors are companies and workers. */}}
+{{/* Signed-in staff see their own door first on purpose: it is what they came to do. */}}
 {{define "home"}}{{template "head" .}}
-<h1>Entry Permit</h1>
-<p class="sub">Choose what you need.</p>
-<div class="tiles home-tiles">
-  <a class="tile tile-blue" href="/request">
-    <strong>Request Entry Permit</strong>
-    <span>Work permit or visitor permit. No sign in needed.</span>
-  </a>
-  <a class="tile tile-green" href="/my/signin">
-    <strong>My Entry Permit</strong>
-    <span>Working ticket, change my photo, download my card.</span>
-  </a>
-  <a class="tile tile-orange" href="/login">
-    <strong>Staff sign in</strong>
-    <span>Reviewers and security personnel. Username and PIN.</span>
-  </a>
-</div>
-<p class="note"><a href="/login?next=admin">Settings</a> (administrators)</p>
-{{if .User}}<p class="note">You are signed in. <a href="/staff">Go to your page</a>.</p>{{end}}
 {{if .My.SignedIn}}<p class="note">You are signed in as a worker. <a href="/my">Go to my page</a>.</p>{{end}}
+<section class="landing">
+  <h1>Site entry for PT Layar Nusantara Gas</h1>
+  <p class="sub">Request a permit to enter the site, check your own permit, or send a worker's medical checkup result.</p>
+  <div class="doors">
+    {{if .User}}<section class="door door-navy" aria-labelledby="h-door-staff">
+      <h2 id="h-door-staff">Your work</h2>
+      <p>Signed in as {{.User.DisplayName}}.</p>
+      {{if .Links}}<ul class="door-links" role="list">{{range .Links}}<li><a href="{{.Href}}">{{.Label}}</a></li>{{end}}</ul>
+      {{else}}<p class="note">Your account has no role yet. Ask an administrator.</p>{{end}}
+      <div class="door-actions">
+        <form method="post" action="/logout" class="inline"><button type="submit" class="btn-small">Sign out</button></form>
+      </div>
+    </section>{{end}}
+    <section class="door door-blue" aria-labelledby="h-door-lep">
+      <h2 id="h-door-lep">Layar Entry Permit</h2>
+      <p>Request a permit for a worker or a visitor, or check a permit you already have. You do not need an account.</p>
+      <p class="door-need">For a Work Entry Permit the worker needs a valid medical checkup (MCU) result of Fit or Fit with note.</p>
+      <div class="door-actions">
+        <a class="btn" href="/request">Request a permit</a>
+        <a class="btn-small" href="/my/signin">Check my permit</a>
+      </div>
+    </section>
+    <section class="door door-mcu" aria-labelledby="h-door-mcu">
+      <h2 id="h-door-mcu">Medical checkup (MCU) submission</h2>
+      <p>For companies. Send each worker's medical checkup result as a PDF, then follow its status.</p>
+      <p class="door-need">The medical team approves new company accounts. You get an email to choose your login.</p>
+      {{if .McuURL}}<div class="door-actions">
+        <a class="btn" href="{{.McuURL}}/signin">Sign in</a>
+        <a class="btn-small" href="{{.McuURL}}/register">Request an account</a>
+      </div>{{else}}<p class="note">Ask the medical team for the portal address.</p>{{end}}
+    </section>
+  </div>
+  <h2 class="flow-title">How it works</h2>
+  <ol class="flow" role="list">
+    <li><strong>The company sends the medical checkup (MCU)</strong><span>One PDF per worker. The medical team checks it.</span></li>
+    <li><strong>Request the permit</strong><span>Only for a worker whose MCU is Fit or Fit with note.</span></li>
+    <li><strong>Show your card at the gate</strong><span>Approved workers get a permit card with a QR code.</span></li>
+  </ol>
+  <p class="note" lang="id">Dalam bahasa Indonesia: perusahaan mengirim hasil MCU pekerja. Setelah itu, ajukan izin masuk (Request a permit) dan tunjukkan kartu izin di gerbang. Untuk melihat izin Anda, pilih Check my permit.</p>
+  {{if not .User}}<p class="note landing-foot"><a href="/login?next=admin">Settings</a> (administrators)</p>{{end}}
+</section>
 {{template "foot" .}}{{end}}
 
 {{/* Worker sign in: searchable name, date of birth and the Cloudflare Turnstile check in one form. */}}
@@ -97,20 +161,25 @@ page. The gear is the administrator sign in. */}}
 {{template "foot" .}}{{end}}
 
 {{define "request"}}{{template "head" .}}
-<section class="card narrow">
-  <h1>Request Entry Permit</h1>
-  <p class="sub">Choose the kind you need. You do not need to sign in.</p>
-  <div class="tiles">
-    <a class="tile" href="/permit">
-      <strong>Work Entry Permit</strong>
-      <span>For workers who will work on site. Needs a valid MCU.</span>
-    </a>
-    <a class="tile" href="/waiver">
-      <strong>Visitor Entry Permit</strong>
-      <span>For a short visit.</span>
-    </a>
+<section class="landing">
+  <h1>Request an entry permit</h1>
+  <p class="sub">Choose the kind of permit. You do not need to sign in. Have the documents ready first, so you can finish in one go.</p>
+  <div class="doors">
+    <section class="door door-blue" aria-labelledby="h-req-work">
+      <h2 id="h-req-work">Work Entry Permit</h2>
+      <p>For a worker who will work on site.</p>
+      <p class="door-need">You need: the worker's name and date of birth, a valid medical checkup (MCU) result of Fit or Fit with note, the ID card (KTP) or passport, an ID photo, the contract and the certificate of competence.</p>
+      <div class="door-actions"><a class="btn" href="/permit">Request a Work Entry Permit</a></div>
+    </section>
+    <section class="door door-green" aria-labelledby="h-req-visit">
+      <h2 id="h-req-visit">Visitor Entry Permit</h2>
+      <p>For a short visit. The visitor does not need an MCU, but answers a health declaration.</p>
+      <p class="door-need">You need: the visitor's details, the ID card (KTP) or passport, an ID photo and the appointment letter.</p>
+      <div class="door-actions"><a class="btn" href="/waiver">Request a Visitor Entry Permit</a></div>
+    </section>
   </div>
-  <p class="note"><a href="/">Back to home</a></p>
+  {{if .McuURL}}<p class="note callout-line">The worker has no valid MCU yet? The company sends it first through the <a href="{{.McuURL}}">medical checkup portal</a>.</p>{{end}}
+  <p class="note landing-foot"><a href="/">Back to home</a></p>
 </section>
 {{template "foot" .}}{{end}}
 

@@ -293,6 +293,20 @@
     each(doc, 'table.sortable', setupSort);
     each(doc, 'form[data-autoform]', setupAutoForm);
     each(doc, 'input[data-autosubmit]', setupAutoSubmit);
+    // On a phone the left menu folds behind a "Menu" bar that names the current page; on a wide screen
+    // it stays open. Without this script it simply stays open.
+    var win = doc.defaultView;
+    var menu = doc.querySelector && doc.querySelector('.side-details');
+    if (menu && win && win.matchMedia) {
+      var cur = menu.querySelector('a[aria-current="page"]');
+      var shown = menu.querySelector('.side-current');
+      // The current page's name; on a page with no menu item (an error page) fall back to its title.
+      if (shown) shown.textContent = cur ? (cur.firstChild ? cur.firstChild.textContent : '').trim() : String(doc.title || '').split(' \u00b7 ')[0];
+      var narrow = win.matchMedia('(max-width: 860px)');
+      var fit = function () { menu.open = !narrow.matches; };
+      fit();
+      if (narrow.addEventListener) narrow.addEventListener('change', fit);
+    }
     each(doc, 'input[data-id-by]', setupId);
     each(doc, 'input[data-date]', setupDate);
     each(doc, 'input[type="tel"]', function (el) { onBlur(el, cleanPhone); });

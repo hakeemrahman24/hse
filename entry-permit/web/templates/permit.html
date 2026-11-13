@@ -59,6 +59,7 @@
   </dl>
   {{if .Blocked}}
     {{if not $.Permit.Err}}<p class="error" role="alert">{{.BlockedText}}</p>{{end}}
+    {{if $.McuURL}}<p><a class="btn-small" href="{{$.McuURL}}">Open the medical checkup portal</a></p>{{end}}
   {{else}}
     {{if .Foreign}}<p class="note">This worker is a foreign national. The date can be earlier once the visa and passport dates are entered in the next step.</p>{{end}}
     {{if .Reuse}}<p class="note">This worker had a permit before. {{if .McuRenewal}}Their MCU has been renewed, so a new request is allowed. {{end}}Their earlier phone, address and emergency contact will be offered again.</p>{{end}}
@@ -178,7 +179,7 @@
     <dt>Request number</dt><dd><strong>{{.RequestID}}</strong></dd>
     <dt>Permit could be valid until</dt><dd>{{.ValidUntil}} ({{.Reason}})</dd>
   </dl>
-  <p class="note">Keep the request number. A confirmation email to {{.Email}} cannot be sent yet (the email service is built in a later step), so nothing has been mailed.</p>
+  <p class="note">Keep the request number. We will email {{.Email}} when the request is approved or rejected. Use the request number if you need to ask about it.</p>
   <p><a class="btn-small-quiet" href="/permit">Make another request</a> <a class="btn-small-quiet" href="/">Back to home</a></p>
 </section>
 {{end}}

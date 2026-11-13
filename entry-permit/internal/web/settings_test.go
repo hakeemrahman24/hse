@@ -70,7 +70,7 @@ func TestSettingsChangeLoginLockoutLive(t *testing.T) {
 	e.addUser(t, "ayu", "Ayu", staff.Doctor)
 	e.post(t, "/staff/admin/settings", cookies, url.Values{"_csrf": {tok}, "key": {"staff_login_max_tries"}, "value": {"1"}, "action": {"save"}})
 	e.login(t, "ayu", "9999") // one wrong PIN now locks the account
-	if r := e.login(t, "ayu", "1234"); r.StatusCode == 303 && r.Header.Get("Location") == "/staff" {
+	if r := e.login(t, "ayu", "1234"); r.StatusCode == 303 && r.Header.Get("Location") == "/" {
 		t.Fatal("account not locked after 1 wrong PIN with max tries = 1")
 	}
 }

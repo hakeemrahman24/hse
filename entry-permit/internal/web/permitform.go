@@ -218,7 +218,7 @@ func (a *App) checkPermit(r *http.Request, e worker.Employee, visaExpiry dates.D
 	// medpost only lists Fit / Fit with note with a date still ahead; checked
 	// again here because a permit must never rest on one trusted answer.
 	if res := strings.ToLower(strings.TrimSpace(e.McuResult)); (res != "fit" && res != "fit with note") || mcu == "" || mcu < today {
-		c.Blocked, c.BlockedText = true, "This worker has no valid MCU (Fit or Fit with note, not expired). A permit cannot be requested until medpost has one."
+		c.Blocked, c.BlockedText = true, "This worker has no valid MCU (a medical checkup result of Fit or Fit with note that has not expired). A permit cannot be requested yet. The worker's company must first send the result through the medical checkup portal (ask the medical team for its address if you do not have it); then come back and check again."
 		return c, 0, ""
 	}
 	pol := a.policy()

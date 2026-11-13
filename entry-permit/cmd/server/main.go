@@ -116,6 +116,7 @@ func run() error {
 		Secret:        cfg.SessionSecret,
 		Secure:        strings.HasPrefix(cfg.BaseURL, "https://"),
 		BaseURL:       cfg.BaseURL,
+		McuPortalURL:  cfg.McuPortalURL,
 		Outbox:        &mail.Outbox{DB: database},
 		Mailer:        mailSender,
 		Jobs:          scheduler,

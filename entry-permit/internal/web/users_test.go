@@ -37,7 +37,7 @@ func TestAdminAddResetAndNoPINChoice(t *testing.T) {
 		t.Fatalf("add: %s", loc)
 	}
 	// The posted "pin" is ignored: the default is the only PIN.
-	if r := e.login(t, "budi", "123456"); r.Header.Get("Location") != "/staff" {
+	if r := e.login(t, "budi", "123456"); r.Header.Get("Location") != "/" {
 		t.Fatalf("default PIN login: %s", r.Header.Get("Location"))
 	}
 	if loc := e.post(t, "/staff/admin/users", cookies, url.Values{"_csrf": {tok}, "username": {"x y"}, "display": {"X"}, "role": {"doctor"}}).Header.Get("Location"); !strings.Contains(loc, "err=") {
@@ -47,16 +47,16 @@ func TestAdminAddResetAndNoPINChoice(t *testing.T) {
 	_, acc := e.get(t, "/account", bud)
 	btok := csrfRe.FindStringSubmatch(acc)[1]
 	e.post(t, "/account/pin", bud, url.Values{"_csrf": {btok}, "current": {"123456"}, "new": {"mine77"}, "again": {"mine77"}})
-	if r := e.login(t, "budi", "123456"); r.Header.Get("Location") == "/staff" {
+	if r := e.login(t, "budi", "123456"); r.Header.Get("Location") == "/" {
 		t.Fatal("old PIN still works")
 	}
 	if loc := e.post(t, "/staff/admin/users/budi", cookies, url.Values{"_csrf": {tok}, "action": {"reset_pin"}, "pin": {"evil1"}}).Header.Get("Location"); !strings.Contains(loc, "ok=") {
 		t.Fatalf("reset: %s", loc)
 	}
-	if r := e.login(t, "budi", "123456"); r.Header.Get("Location") != "/staff" {
+	if r := e.login(t, "budi", "123456"); r.Header.Get("Location") != "/" {
 		t.Fatal("reset did not restore the default PIN")
 	}
-	if r := e.login(t, "budi", "evil1"); r.Header.Get("Location") == "/staff" {
+	if r := e.login(t, "budi", "evil1"); r.Header.Get("Location") == "/" {
 		t.Fatal("admin managed to choose a PIN")
 	}
 }
@@ -96,7 +96,7 @@ func TestAccountSelfService(t *testing.T) {
 	if r, _ := e.get(t, "/account", c); r.StatusCode != 200 {
 		t.Fatalf("session lost after rename: %d", r.StatusCode)
 	}
-	if r := e.login(t, "ayu.d", "1234"); r.Header.Get("Location") != "/staff" {
+	if r := e.login(t, "ayu.d", "1234"); r.Header.Get("Location") != "/" {
 		t.Fatal("new username does not sign in")
 	}
 	for name, v := range map[string]url.Values{

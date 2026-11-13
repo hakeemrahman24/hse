@@ -152,6 +152,21 @@ func TestPermitStartRechecksTheMCU(t *testing.T) {
 	}
 }
 
+// A worker with no valid MCU is told what to do next, and the way to the medical checkup portal is
+// one click away (design critique 2026-11-13: the old red message was a dead end).
+func TestBlockedPermitSaysWhatToDoNextAndLinksThePortal(t *testing.T) {
+	e := newEnv(t)
+	e.app.McuPortalURL = "https://medpost.example.com/mcu-submit"
+	e.workers.people = []worker.Person{budi}
+	e.workers.employees = map[string]worker.Employee{"Budi Santoso": {PatientID: 1, Name: "Budi Santoso", DOB: "1988-03-05", Nationality: "Indonesia", Company: "PT Maju", McuResult: "Fit", McuValidUntil: "2026-11-01"}}
+	_, body := e.permitPost(t, nil)
+	for _, want := range []string{"no valid MCU", "medical checkup portal", `href="https://medpost.example.com/mcu-submit"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("blocked page lacks %q", want)
+		}
+	}
+}
+
 func TestPermitStartForeignWorkerGetsTheVisaNote(t *testing.T) {
 	e := newEnv(t)
 	e.workers.people = []worker.Person{budi}

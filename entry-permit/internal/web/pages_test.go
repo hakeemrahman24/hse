@@ -218,11 +218,11 @@ func TestHomeHasRequestAndSignInLinks(t *testing.T) {
 // The old "staff dropdown lists names only" test is replaced by signin_test.go
 // (TestLoginPageIsTheNameStepAndListsNoStaffNames): the page no longer lists any staff name.
 
-func TestLoginLandsOnOwnPage(t *testing.T) {
+func TestLoginLandsOnTheSharedLandingPage(t *testing.T) {
 	e := newEnv(t)
 	e.addUser(t, "ann", "Ann Lee", staff.Stage1, staff.Doctor)
 	resp := e.login(t, "ann", "1234")
-	if resp.StatusCode != 303 || resp.Header.Get("Location") != "/staff" {
+	if resp.StatusCode != 303 || resp.Header.Get("Location") != "/" {
 		t.Fatalf("%d %s", resp.StatusCode, resp.Header.Get("Location"))
 	}
 	cookies := resp.Cookies()

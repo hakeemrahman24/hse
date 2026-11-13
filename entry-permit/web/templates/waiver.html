@@ -6,7 +6,8 @@
   {{if .Waiver.Available}}{{with .Waiver}}
   <form method="post" action="/waiver" enctype="multipart/form-data" autocomplete="off">
   {{$w := .}}
-  <section class="fcard">
+  <nav class="stepnav" aria-label="Sections of this form"><ol role="list"><li><a href="#sec-1"><span class="step">1</span>Who is asking</a></li><li><a href="#sec-2"><span class="step">2</span>The visit</a></li><li><a href="#sec-3"><span class="step">3</span>The visitor</a></li><li><a href="#sec-4"><span class="step">4</span>Reason of deviation</a></li><li><a href="#sec-5"><span class="step">5</span>Medicines and supplements</a></li><li><a href="#sec-6"><span class="step">6</span>Risk exposure</a></li><li><a href="#sec-7"><span class="step">7</span>Health declaration</a></li><li><a href="#sec-8"><span class="step">8</span>Documents and declaration</a></li></ol></nav>
+    <section class="fcard" id="sec-1">
     <h2 class="fcard-title"><span class="step">1</span>Who is asking</h2>
     <div class="form-grid">
     <label class="field" for="w-rname"><span>Your name (the person making this request)</span>
@@ -15,12 +16,9 @@
       <input id="w-rmail" name="requester_email" type="email" value="{{index .Vals "requester_email"}}" maxlength="160" required autocomplete="email"></label>
     <label class="field" for="w-smail"><span>Spare email (optional, a second address that gets the decision too)</span>
       <input id="w-smail" name="spare_email" type="email" value="{{index .Vals "spare_email"}}" maxlength="160" autocomplete="off"></label>
-    <label class="field" for="w-phone"><span>Visitor's phone number</span>
-      <input id="w-phone" name="phone" type="tel" value="{{index .Vals "phone"}}" maxlength="20" required placeholder="081234567890"></label>
-
     </div>
   </section>
-  <section class="fcard">
+  <section class="fcard" id="sec-2">
     <h2 class="fcard-title"><span class="step">2</span>The visit</h2>
     <div class="form-grid">
     <label class="field" for="w-type"><span>Visitor from</span>
@@ -44,7 +42,7 @@
 
     </div>
   </section>
-  <section class="fcard">
+  <section class="fcard" id="sec-3">
     <h2 class="fcard-title"><span class="step">3</span>The visitor</h2>
     <div class="form-grid">
     <label class="field" for="w-name"><span>Visitor's full name</span>
@@ -56,6 +54,8 @@
       </select></label>
     <label class="field" for="w-dob"><span>Date of birth, dd/mm/yyyy</span>
       <input data-date="dob" id="w-dob" name="dob" type="text" value="{{index .Vals "dob"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
+    <label class="field" for="w-phone"><span>Visitor's phone number</span>
+      <input id="w-phone" name="phone" type="tel" value="{{index .Vals "phone"}}" maxlength="20" required placeholder="e.g. 081234567890"></label>
     {{if .Nationalities}}
     <label class="field" for="w-nat"><span>Nationality</span>
       <select id="w-nat" name="nationality" required>
@@ -75,7 +75,7 @@
 
     </div>
   </section>
-  <section class="fcard">
+  <section class="fcard" id="sec-4">
     <h2 class="fcard-title"><span class="step">4</span>Reason of deviation</h2>
     <div class="form-grid">
     <div class="field field-wide callout"><span>Type of non-conformance</span><p>{{.Nonconformance}}</p></div>
@@ -87,7 +87,7 @@
       <textarea id="w-prev" name="prevent" rows="2" maxlength="500" required>{{index .Vals "prevent"}}</textarea></label>
     </div>
   </section>
-  <section class="fcard">
+  <section class="fcard" id="sec-5">
     <h2 class="fcard-title"><span class="step">5</span>Medicines and supplements</h2>
     <div class="form-grid">
     <label class="field field-wide check"><input type="checkbox" name="takes_medicine"{{if index .Vals "takes_medicine"}} checked{{end}}> The visitor will take medicines or supplements during this visit (then fill in at least the first line)</label>
@@ -101,7 +101,7 @@
       <textarea id="w-mnotes" name="medicine_notes" rows="2" maxlength="500">{{index .Vals "medicine_notes"}}</textarea></label>
     </div>
   </section>
-  <section class="fcard">
+  <section class="fcard" id="sec-6">
     <h2 class="fcard-title"><span class="step">6</span>Risk exposure</h2>
     <p class="sub">Answer each item honestly: No, N/A or Yes.</p>
     <div class="form-grid">
@@ -115,7 +115,7 @@
       {{end}}
     </div>
   </section>
-  <section class="fcard">
+  <section class="fcard" id="sec-7">
     <h2 class="fcard-title"><span class="step">7</span>Health declaration</h2>
     <p class="sub">To make sure you are in an acceptable physical and mental state for the visit, declare your health by answering each item.</p>
     <div class="form-grid">
@@ -129,7 +129,7 @@
       {{end}}
     </div>
   </section>
-  <section class="fcard">
+  <section class="fcard" id="sec-8">
     <h2 class="fcard-title"><span class="step">8</span>Documents and declaration</h2>
     <p class="sub">PDF, JPG or PNG files.</p>
     <div class="form-grid">
@@ -152,7 +152,7 @@
     <div class="field field-wide">{{template "turnstile" $}}</div>
     </div>
   </section>
-  <button type="submit" class="btn">Send the request</button>
+  <div class="form-actions"><button type="submit" class="btn">Send the request</button><span class="note">Check the details, then send. The clinic doctor reviews it first.</span></div>
   </form>
   {{end}}{{else}}<p class="note">This form is not available right now. Please try again later.</p>{{end}}
 </div>
@@ -168,7 +168,7 @@
     <dt>Request number</dt><dd><strong>{{.RequestID}}</strong></dd>
     <dt>Visit</dt><dd>{{.From}} to {{.To}} ({{.Days}} day{{if ne .Days 1}}s{{end}})</dd>
   </dl>
-  <p class="note">Keep the request number. A confirmation email to {{.Email}} cannot be sent yet (the email service is built in a later step), so nothing has been mailed.</p>
+  <p class="note">Keep the request number. We will email {{.Email}} when the request is approved or rejected. Use the request number if you need to ask about it.</p>
   <p><a class="btn-small-quiet" href="/waiver">Make another request</a> <a class="btn-small-quiet" href="/">Back to home</a></p>
 </section>
 {{end}}

@@ -1,17 +1,6 @@
-{{define "admin_nav"}}
-<nav class="subnav" aria-label="Administration">
-  <a href="/staff/admin">Overview</a>
-  <a href="/staff/admin/gate-officers"{{if eq .Title "Gate officers"}} aria-current="page"{{end}}>Gate officers</a>
-  {{range .Admin.Defs}}<a href="{{.Path}}"{{if eq .Key $.Admin.Def.Key}} aria-current="page"{{end}}>{{.Label}}</a>{{end}}
-  {{if .Admin.Super}}
-  <a href="/staff/admin/status"{{if eq .Title "System status"}} aria-current="page"{{end}}>Status</a>
-  <a href="/staff/admin/companies"{{if eq .Title "Companies"}} aria-current="page"{{end}}>Companies</a>
-  <a href="/staff/admin/users"{{if eq .Title "Users"}} aria-current="page"{{end}}>Users</a>
-  <a href="/staff/admin/settings"{{if eq .Title "Settings"}} aria-current="page"{{end}}>Settings</a>
-  <a href="/staff/admin/audit">Audit log</a>
-  {{end}}
-</nav>
-{{end}}
+{{/* The admin pages are listed in the left menu (template "side"), so this prints nothing; the pages
+still call it where their old tab bar used to be. */}}
+{{define "admin_nav"}}{{end}}
 
 {{define "admin_home"}}{{template "head" .}}
 <h1>{{if .Admin.Super}}Administration{{else}}Gate administration{{end}}</h1>

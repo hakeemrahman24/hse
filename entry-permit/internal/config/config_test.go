@@ -97,3 +97,18 @@ func TestTurnstileSettingsAndProductionGuard(t *testing.T) {
 		t.Fatalf("production without dev: %v", err)
 	}
 }
+
+// The portal address is linked as-is, so a value without a scheme would become a broken relative link.
+func TestMcuPortalURLMustBeAbsoluteHTTP(t *testing.T) {
+	for in, want := range map[string]string{
+		"https://medpost.example.com/mcu-submit/": "https://medpost.example.com/mcu-submit",
+		"http://127.0.0.1:8113/mcu-submit":        "http://127.0.0.1:8113/mcu-submit",
+		"medpost.example.com/mcu-submit":          "",
+		"javascript:alert(1)":                     "",
+		"":                                        "",
+	} {
+		if got := Load(env(map[string]string{"MCU_PORTAL_URL": in})).McuPortalURL; got != want {
+			t.Errorf("MCU_PORTAL_URL=%q: got %q, want %q", in, got, want)
+		}
+	}
+}

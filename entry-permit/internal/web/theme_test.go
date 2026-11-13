@@ -1,12 +1,14 @@
 package web
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
+	"entry-permit/internal/staff"
 	"entry-permit/internal/worker"
 )
 
@@ -52,15 +54,16 @@ func TestWorkerPageHasASidebarWithMyPermitMyWorkingTicketsAndPhotos(t *testing.T
 			t.Errorf("worker page lacks %q", want)
 		}
 	}
-	// The options live in the blue column (owner request 2026-11-08), never in the white panel.
-	shell := strings.Index(body, `<div class="shell">`)
-	if shell < 0 || strings.Contains(body, `class="sidebar"`) || strings.Contains(body, `class="with-sidebar"`) {
-		t.Fatal("the worker options must not have a white-panel sidebar of their own")
+	// The options live in the site's left menu (owner decision 2026-11-13, replacing the blue top
+	// bar of 2026-11-08), never in a sidebar of their own inside the white panel.
+	i, j := strings.Index(body, `<aside class="side"`), strings.Index(body, `</aside>`)
+	if i < 0 || j < i || strings.Contains(body, `class="sidebar"`) || strings.Contains(body, `class="with-sidebar"`) {
+		t.Fatal("the worker options belong in the site's left menu, not a sidebar of their own")
 	}
-	blue := body[:shell]
+	blue := body[i:j]
 	for _, want := range []string{`href="#my-permit"`, `href="/ticket?lep=LEP-AAAAA"`, `href="#my-photos"`, `action="/my/logout"`} {
 		if !strings.Contains(blue, want) {
-			t.Errorf("the blue column lacks %q", want)
+			t.Errorf("the left menu lacks %q", want)
 		}
 	}
 	// The working tickets option is itself the link (no second button); the permit download and the
@@ -260,5 +263,114 @@ func TestButtonsShareTwoHeights(t *testing.T) {
 				t.Errorf("%s lacks %q", class, want)
 			}
 		}
+	}
+}
+
+// Every page has a left menu, like the medical checkup portal (owner decision 2026-11-13). Public
+// visitors see the permit pages and the portal; staff also get their own pages; the current page is
+// marked. The top bar keeps only the brand and the account.
+func TestEveryPageHasASideMenuWithTheCurrentPageMarked(t *testing.T) {
+	e := newEnv(t)
+	e.app.McuPortalURL = "https://medpost.example.com/mcu-submit"
+	for path, current := range map[string]string{"/": "/", "/request": "/request", "/permit": "/request", "/waiver": "/request", "/my/signin": "/my/signin"} {
+		_, body := e.get(t, path, nil)
+		if !strings.Contains(body, `<aside class="side" aria-label="Site menu">`) {
+			t.Errorf("%s lacks the side menu", path)
+			continue
+		}
+		for _, want := range []string{`href="/request"`, `href="/my/signin"`, `href="https://medpost.example.com/mcu-submit"`, `href="/login"`} {
+			if !strings.Contains(body, want) {
+				t.Errorf("%s: side menu lacks %q", path, want)
+			}
+		}
+		if !strings.Contains(body, `href="`+current+`" aria-current="page"`) {
+			t.Errorf("%s: current item %q is not marked", path, current)
+		}
+		if strings.Count(body, `aria-current="page"`) != 1 {
+			t.Errorf("%s: exactly one item may be current", path)
+		}
+	}
+}
+
+func TestStaffSideMenuListsOwnPagesAndAccount(t *testing.T) {
+	e := newEnv(t)
+	e.addUser(t, "ann", "Ann Lee", staff.Stage1, staff.Doctor)
+	cookies := e.login(t, "ann", "1234").Cookies()
+	_, body := e.get(t, "/staff/stage1", cookies)
+	i := strings.Index(body, `<aside class="side"`)
+	j := strings.Index(body, `</aside>`)
+	if i < 0 || j < i {
+		t.Fatal("no side menu")
+	}
+	side := body[i:j]
+	for _, want := range []string{`href="/staff/stage1" aria-current="page"`, `href="/staff/doctor"`, `href="/staff/dashboard"`, `href="/account"`, `action="/logout"`} {
+		if !strings.Contains(side, want) {
+			t.Errorf("staff side menu lacks %q", want)
+		}
+	}
+	if strings.Contains(side, `href="/login"`) {
+		t.Errorf("a signed-in user does not need the staff sign in link")
+	}
+}
+
+// On a phone the left menu folds behind one "Menu" bar so a staff member's many pages never take
+// half the screen. Without scripts it stays open, so it still works. The markup is a details
+// element that starts open; inputs.js folds it on narrow screens.
+func TestSideMenuIsAFoldableDetailsElementThatStartsOpen(t *testing.T) {
+	e := newEnv(t)
+	e.addUser(t, "ann", "Ann Lee", staff.Stage1, staff.Doctor)
+	cookies := e.login(t, "ann", "1234").Cookies()
+	for name, ck := range map[string][]*http.Cookie{"public": nil, "staff": cookies} {
+		_, body := e.get(t, "/staff/stage1", ck)
+		if name == "public" {
+			_, body = e.get(t, "/", nil)
+		}
+		i, j := strings.Index(body, `<aside class="side"`), strings.Index(body, `</aside>`)
+		if i < 0 || j < i {
+			t.Fatalf("%s: no side menu", name)
+		}
+		side := body[i:j]
+		for _, want := range []string{`<details class="side-details" open>`, `<summary class="side-summary">`, `class="side-current"`, `</details>`} {
+			if !strings.Contains(side, want) {
+				t.Errorf("%s: side menu lacks %q", name, want)
+			}
+		}
+	}
+}
+
+// The admin pages no longer carry a wrapping tab bar of fourteen links. Their pages sit in the left
+// menu in two labelled groups, with the current page marked (design review 2026-11-13).
+func TestAdminPagesListTheirPagesInTheLeftMenu(t *testing.T) {
+	e := newEnv(t)
+	cookies, _ := e.adminSession(t)
+	for page, current := range map[string]string{"/staff/admin/settings": "/staff/admin/settings", "/staff/admin/users": "/staff/admin/users", "/staff/admin/audit": "/staff/admin/audit", "/staff/admin/gate-officers": "/staff/admin/gate-officers", "/staff/admin": "/staff/admin"} {
+		_, body := e.get(t, page, cookies)
+		i, j := strings.Index(body, `<aside class="side"`), strings.Index(body, `</aside>`)
+		if i < 0 || j < i {
+			t.Fatalf("%s: no side menu", page)
+		}
+		side := body[i:j]
+		for _, want := range []string{`Lists the forms use</p>`, `System</p>`, `href="/staff/admin/users"`, `href="/staff/admin/settings"`, `href="/staff/admin/audit"`, `href="/staff/admin/gate-officers"`, `href="` + current + `" aria-current="page"`} {
+			if !strings.Contains(side, want) {
+				t.Errorf("%s: left menu lacks %q", page, want)
+			}
+		}
+		if strings.Count(side, `aria-current="page"`) != 1 {
+			t.Errorf("%s: exactly one item may be current", page)
+		}
+		if strings.Contains(body, `class="subnav"`) {
+			t.Errorf("%s: the wrapping tab bar is gone", page)
+		}
+	}
+}
+
+func TestGateAdminLeftMenuHasNoSystemGroup(t *testing.T) {
+	e := newEnv(t)
+	cookies := e.reviewer(t, "gani", staff.GateAdmin)
+	_, body := e.get(t, "/staff/admin", cookies)
+	i, j := strings.Index(body, `<aside class="side"`), strings.Index(body, `</aside>`)
+	side := body[i:j]
+	if !strings.Contains(side, `href="/staff/admin/gate-officers"`) || strings.Contains(side, `System</p>`) || strings.Contains(side, `href="/staff/admin/users"`) {
+		t.Errorf("a gate admin sees the gate pages only")
 	}
 }

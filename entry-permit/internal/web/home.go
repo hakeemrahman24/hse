@@ -101,7 +101,11 @@ func (a *App) home(w http.ResponseWriter, r *http.Request) {
 	}
 	d := a.myData()
 	_, _, d.SignedIn = a.workerFromCookie(r)
-	a.render(w, "home", http.StatusOK, View{Title: "Home", User: a.currentUser(r), My: d})
+	v := View{Title: "Home", User: a.currentUser(r), My: d}
+	if v.User != nil {
+		v.Links = menu(*v.User, "")
+	}
+	a.render(w, "home", http.StatusOK, v)
 }
 
 // mySignIn is the worker sign in: name, date of birth and the Turnstile check in one form.
@@ -329,8 +333,9 @@ func (a *App) verifyWorker(r *http.Request, name, dob string, includeExpired boo
 	return e, 0, ""
 }
 
-// loginTarget turns the requested page into the path to open after sign-in:
-// the page itself when this person may open it, else their own landing page.
+// loginTarget turns the requested page into the path to open after sign-in: the page itself when this
+// person may open it, else the shared landing page "/" (owner decision 2026-11-13: staff use the same
+// landing page as everyone, where a door lists their own pages).
 func (a *App) loginTarget(u staff.User, next string) string {
 	if next == "review" {
 		for _, r := range reviewTileRoles {
@@ -338,14 +343,14 @@ func (a *App) loginTarget(u staff.User, next string) string {
 				return "/staff/" + r.Slug()
 			}
 		}
-		return "/staff"
+		return "/"
 	}
 	if loginTargets[next] {
 		if role, ok := roleForSlug(next); ok && (role == staff.Dashboard || u.HasRole(role)) {
 			return "/staff/" + role.Slug()
 		}
 	}
-	return "/staff"
+	return "/"
 }
 
 // cleanNext returns next only when it is a known page name.
