@@ -20,6 +20,9 @@ type Policy struct {
 	McuLepGraceValue int
 	McuLepGraceUnit  string // "weeks" or "days"
 
+	// McuPortalURL is the address of the medical checkup submission portal; empty hides its links.
+	McuPortalURL string
+
 	FatigueWeeksBeforeCap int
 	BlockGateAtCap        bool
 	ProposalWindowDays    int

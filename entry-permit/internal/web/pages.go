@@ -207,7 +207,12 @@ func sameOrigin(next http.Handler) http.Handler {
 }
 
 func (a *App) render(w http.ResponseWriter, name string, status int, v View) {
-	v.McuURL = a.McuPortalURL // every page may point to the medical checkup portal
+	// WHY: the address is an admin Setting (mcu_portal_url); the MCU_PORTAL_URL environment value is only the fallback
+	// for a Settings row that does not exist yet.
+	v.McuURL = a.policy().McuPortalURL
+	if v.McuURL == "" {
+		v.McuURL = a.McuPortalURL
+	}
 	if v.Nav == "" {
 		v.Nav = navKey(name)
 	}

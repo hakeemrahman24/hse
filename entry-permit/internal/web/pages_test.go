@@ -371,3 +371,17 @@ func TestNewAppMissingTemplates(t *testing.T) {
 		t.Error("missing templates should fail")
 	}
 }
+
+// setMcuURL sets the medical checkup portal address the way production does: through the live policy
+// (the mcu_portal_url Setting), which wins over the environment fallback.
+func (e *testEnv) setMcuURL(u string) {
+	base, fixed := e.app.PolicyFn, e.app.Pol // captured now: policy() would call the new func again
+	e.app.PolicyFn = func() policy.Policy {
+		p := fixed
+		if base != nil {
+			p = base()
+		}
+		p.McuPortalURL = u
+		return p
+	}
+}

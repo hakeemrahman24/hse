@@ -89,7 +89,7 @@ func (e *testEnv) lookup(t *testing.T, name, dob, token string) (int, string) {
 // submission and Layar Entry Permit, with staff sign in and settings as small links.
 func TestHomeIsTheSingleLandingPage(t *testing.T) {
 	e := newEnv(t)
-	e.app.McuPortalURL = "https://medpost.example.com/mcu-submit"
+	e.setMcuURL("https://medpost.example.com/mcu-submit")
 	r, body := e.get(t, "/", nil)
 	for _, want := range []string{
 		"Medical checkup (MCU) submission",
@@ -115,6 +115,7 @@ func TestHomeIsTheSingleLandingPage(t *testing.T) {
 
 func TestHomeHidesMedicalDoorLinksWhenPortalIsNotConfigured(t *testing.T) {
 	e := newEnv(t)
+	e.setMcuURL("") // an admin cleared the Setting
 	_, body := e.get(t, "/", nil)
 	if strings.Contains(body, "/mcu-submit") || strings.Contains(body, "/register\"") {
 		t.Errorf("no portal address set, so the medical door must not link anywhere")
@@ -401,7 +402,7 @@ func TestSignedInStaffSeeTheirOwnDoorOnTheLandingPage(t *testing.T) {
 // action. The MCU is spelled out and the page carries a short Indonesian line.
 func TestLandingLeadsWithThePermitDoorAndExplainsMCU(t *testing.T) {
 	e := newEnv(t)
-	e.app.McuPortalURL = "https://medpost.example.com/mcu-submit"
+	e.setMcuURL("https://medpost.example.com/mcu-submit")
 	_, body := e.get(t, "/", nil)
 	permit, mcu := strings.Index(body, `id="h-door-lep"`), strings.Index(body, `id="h-door-mcu"`)
 	if permit < 0 || mcu < 0 || permit > mcu {
@@ -432,7 +433,7 @@ func TestDonePagesPromiseOnlyWhatTheSystemDoes(t *testing.T) {
 // The chooser says what each permit needs before the requester starts, and where to get an MCU.
 func TestRequestChooserExplainsWhatEachPermitNeeds(t *testing.T) {
 	e := newEnv(t)
-	e.app.McuPortalURL = "https://medpost.example.com/mcu-submit"
+	e.setMcuURL("https://medpost.example.com/mcu-submit")
 	_, body := e.get(t, "/request", nil)
 	for _, want := range []string{`href="/permit"`, `href="/waiver"`, "Work Entry Permit", "Visitor Entry Permit", "valid medical checkup (MCU)", "appointment letter", `href="https://medpost.example.com/mcu-submit"`} {
 		if !strings.Contains(body, want) {

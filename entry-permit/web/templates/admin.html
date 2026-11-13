@@ -192,6 +192,7 @@ still call it where their old tab bar used to be. */}}
         {{if eq .Type "choice"}}<select id="s-{{.Key}}" name="value" form="f-{{.Key}}">{{$v := .Value}}{{range .Options}}<option{{if eq . $v}} selected{{end}}>{{.}}</option>{{end}}</select>
         {{else if eq .Type "bool"}}<select id="s-{{.Key}}" name="value" form="f-{{.Key}}"><option value="on"{{if eq .Value "on"}} selected{{end}}>On</option><option value="off"{{if eq .Value "off"}} selected{{end}}>Off</option></select>
         {{else if eq .Type "int"}}<input id="s-{{.Key}}" type="number" name="value" form="f-{{.Key}}" value="{{.Value}}" min="{{.Min}}" max="{{.Max}}" step="1" required>{{if .Unit}} {{.Unit}}{{end}}
+        {{else if eq .Type "url"}}<input id="s-{{.Key}}" type="url" name="value" form="f-{{.Key}}" value="{{.Value}}" maxlength="250" placeholder="https://…"{{if not .AllowEmpty}} required{{end}}>
         {{else}}<input id="s-{{.Key}}" type="text" name="value" form="f-{{.Key}}" value="{{.Value}}" maxlength="250" required>{{end}}
         {{if not .IsDefault}}<br><small>Default: {{.Default}}</small>{{end}}
       </td>

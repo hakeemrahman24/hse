@@ -156,7 +156,7 @@ func TestPermitStartRechecksTheMCU(t *testing.T) {
 // one click away (design critique 2026-11-13: the old red message was a dead end).
 func TestBlockedPermitSaysWhatToDoNextAndLinksThePortal(t *testing.T) {
 	e := newEnv(t)
-	e.app.McuPortalURL = "https://medpost.example.com/mcu-submit"
+	e.setMcuURL("https://medpost.example.com/mcu-submit")
 	e.workers.people = []worker.Person{budi}
 	e.workers.employees = map[string]worker.Employee{"Budi Santoso": {PatientID: 1, Name: "Budi Santoso", DOB: "1988-03-05", Nationality: "Indonesia", Company: "PT Maju", McuResult: "Fit", McuValidUntil: "2026-11-01"}}
 	_, body := e.permitPost(t, nil)

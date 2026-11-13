@@ -80,6 +80,9 @@ func TestSetValidates(t *testing.T) {
 		{"block_gate_at_cap", "yes"}, // not on/off
 		{"perpetual_cert_positions", "  "},
 		{"no_such_key", "1"},
+		{"mcu_portal_url", "medical-activities.example.com"}, // no scheme
+		{"mcu_portal_url", "ftp://example.com/x"},
+		{"mcu_portal_url", "https://exa mple.com"},
 	}
 	for _, c := range cases {
 		err := s.Set(ctx, "arif", c.key, c.val)
@@ -259,5 +262,23 @@ func TestReminderDigestAndDrainSettingsKeepTheLegacySchedule(t *testing.T) {
 		if err := s.Set(ctx, "arif", c[0], c[1]); err == nil {
 			t.Errorf("%s=%s was accepted", c[0], c[1])
 		}
+	}
+}
+
+func TestMcuPortalAddressIsASettingAndCanBeEmptied(t *testing.T) {
+	s, _, _ := newSvc(t)
+	ctx := context.Background()
+	const url = "https://medical-activities.ayahaif.my.id/mcu-submit/signin"
+	if err := s.Set(ctx, "arif", "mcu_portal_url", " "+url+" "); err != nil {
+		t.Fatalf("Set url: %v", err)
+	}
+	if got := s.Policy().McuPortalURL; got != url {
+		t.Fatalf("McuPortalURL = %q, want %q", got, url)
+	}
+	if err := s.Set(ctx, "arif", "mcu_portal_url", ""); err != nil {
+		t.Fatalf("an empty address must be allowed (it hides the links): %v", err)
+	}
+	if got := s.Policy().McuPortalURL; got != "" {
+		t.Fatalf("McuPortalURL = %q after clearing, want empty", got)
 	}
 }

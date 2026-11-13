@@ -8,6 +8,7 @@ const (
 	TypeBool   = "bool"   // stored as "on" / "off"
 	TypeChoice = "choice" // one of Options
 	TypeList   = "list"   // comma-separated text, at least one entry
+	TypeURL    = "url"    // an absolute http(s) address; empty only when AllowEmpty
 )
 
 // Group names, in the order the page shows them.
@@ -22,6 +23,7 @@ const (
 	GroupMail     = "E-mail"
 	GroupGate     = "Gate"
 	GroupJobs     = "Scheduled jobs"
+	GroupMcu      = "Medical checkup portal"
 )
 
 // Def describes one adjustable value. The code holds only the default; the
@@ -30,6 +32,7 @@ type Def struct {
 	Key, Group, Label, Type, Unit, Default string
 	Min, Max                               int // TypeInt only
 	Options                                []string
+	AllowEmpty                             bool // TypeURL: an empty value is allowed (it hides the links)
 	Description                            string
 }
 
@@ -54,6 +57,8 @@ var Defs = []Def{
 	intDef(GroupRotation, "short_ticket_days", "Short ticket length", "days", "7", 1, 60, "Tickets shorter than this use the short reminder."),
 	intDef(GroupRotation, "short_ticket_reminder_days", "Short ticket reminder", "days", "2", 0, 60, "Days before departure for a short ticket."),
 	intDef(GroupRotation, "cap_warning_weeks_before", "Week cap warning", "weeks", "1", 0, 8, "Warn this many weeks before the cap."),
+
+	{Key: "mcu_portal_url", Group: GroupMcu, Label: "Medical checkup submission address", Type: TypeURL, AllowEmpty: true, Default: "https://medical-activities.ayahaif.my.id/mcu-submit/signin", Description: "Where companies send medical checkup results. The Entry Permit home page and menu link to it; leave empty to hide those links."},
 
 	intDef(GroupPermit, "mcu_lep_grace_value", "LEP grace after MCU expiry", "", "2", 0, 104, "The LEP is valid until the MCU valid-until minus this."),
 	{Key: "mcu_lep_grace_unit", Group: GroupPermit, Label: "Grace unit", Type: TypeChoice, Options: []string{"weeks", "days"}, Default: "weeks", Description: "Weeks or days."},

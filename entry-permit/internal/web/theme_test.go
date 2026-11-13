@@ -271,7 +271,7 @@ func TestButtonsShareTwoHeights(t *testing.T) {
 // marked. The top bar keeps only the brand and the account.
 func TestEveryPageHasASideMenuWithTheCurrentPageMarked(t *testing.T) {
 	e := newEnv(t)
-	e.app.McuPortalURL = "https://medpost.example.com/mcu-submit"
+	e.setMcuURL("https://medpost.example.com/mcu-submit")
 	for path, current := range map[string]string{"/": "/", "/request": "/request", "/permit": "/request", "/waiver": "/request", "/my/signin": "/my/signin"} {
 		_, body := e.get(t, path, nil)
 		if !strings.Contains(body, `<aside class="side" aria-label="Site menu">`) {

@@ -12,6 +12,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -155,6 +156,8 @@ func Build(vals map[string]string) (policy.Policy, []string) {
 		case fm[d.Key] != nil:
 			n, _ := strconv.Atoi(norm)
 			*fm[d.Key] = n
+		case d.Key == "mcu_portal_url":
+			p.McuPortalURL = norm
 		case d.Key == "mcu_lep_grace_unit":
 			p.McuLepGraceUnit = norm
 		case bm[d.Key] != nil:
@@ -203,6 +206,15 @@ func normalise(d Def, v string) (string, error) {
 			}
 		}
 		return "", invalid("%s must be one of: %s.", d.Label, strings.Join(d.Options, ", "))
+	case TypeURL:
+		if v == "" && d.AllowEmpty {
+			return "", nil
+		}
+		u, err := url.Parse(v)
+		if err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || strings.ContainsAny(v, " \t\r\n") {
+			return "", invalid("%s must be a full web address starting with https:// (or http://).", d.Label)
+		}
+		return v, nil
 	case TypeList:
 		items := splitList(v)
 		if len(items) == 0 {
