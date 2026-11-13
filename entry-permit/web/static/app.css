@@ -772,3 +772,6 @@ input[type="text"], input[type="search"], input[type="password"], input[type="em
 /* Working schedule page: the ticket list and the apply form are two panels, the list scrolls sideways on a phone. */
 .side-content > .card .tablewrap table { min-width: 560px; }
 .side-content > .card .form-grid > .field-wide { margin-bottom: var(--s2); }
+/* Worker page: opening or downloading a permit is secondary; "Apply for working ticket" is the one filled button. */
+.my-permits .permit-row > a.btn-small, .my-permits .permit-row > form .btn-small, .my-permits .ticket-line .btn-small { background: #fff; color: var(--ink) !important; border: 1px solid rgba(31, 29, 38, 0.4) !important; font-weight: 400; }
+.my-permits .permit-row > a.btn-small:hover, .my-permits .permit-row > form .btn-small:hover, .my-permits .ticket-line .btn-small:hover { background: #fff; border-color: var(--accent-text) !important; color: var(--accent-text) !important; }
