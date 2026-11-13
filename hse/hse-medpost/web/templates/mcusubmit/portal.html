@@ -62,6 +62,7 @@
       <div class="app-program-list mp-side">
         <a class="app-program-item{{if eq .Nav "batch"}} active{{end}}" href="/mcu-submit/batch"{{if eq .Nav "batch"}} aria-current="page"{{end}}><span class="app-program-item-title">New batch</span></a>
         <a class="app-program-item{{if eq .Nav "documents"}} active{{end}}" href="/mcu-submit/documents"{{if eq .Nav "documents"}} aria-current="page"{{end}}><span class="app-program-item-title">My documents</span></a>
+        <a class="app-program-item{{if eq .Nav "employees"}} active{{end}}" href="/mcu-submit/employees"{{if eq .Nav "employees"}} aria-current="page"{{end}}><span class="app-program-item-title">Employee checkups</span></a>
       </div>
       {{end}}
       <div class="app-sidebar-label">Account</div>
@@ -593,6 +594,37 @@
         {{if .PrevURL}}<a class="btn-ghost" href="{{.PrevURL}}" rel="prev">Previous</a>{{end}}
         {{if .NextURL}}<a class="btn-ghost" href="{{.NextURL}}" rel="next">Next</a>{{end}}</p>{{end}}
       {{else if not .Error}}<p class="mp-hint">{{if or .Form.worker .Form.needs}}No document matches this filter.{{else if .Form.company}}No document matches this filter.{{else if .Form.status}}No document matches this filter.{{else if .Form.from}}No document matches this filter.{{else if .Form.to}}No document matches this filter.{{else}}Nothing has been uploaded yet.{{end}}</p>{{end}}
+    </section>
+{{template "foot" .}}{{end}}
+
+{{define "employees.html"}}{{template "head" .}}
+    <section class="mp-section">
+      <div class="mp-titlebar">
+        <h1>Employee <span>checkups</span></h1>
+      </div>
+      <p class="mp-hint">The latest medical checkup of each worker of your company and how long it stays valid.</p>
+      {{template "error" .}}
+      <p class="mp-chips">{{range .Statuses}}{{if index $.Counts .}}<a class="mp-chip{{if eq . $.Form.status}} on{{end}}" href="/mcu-submit/employees?status={{.}}"{{if eq . $.Form.status}} aria-current="true"{{end}}><span>{{.}}</span> <b>{{index $.Counts .}}</b></a> {{end}}{{end}}</p>
+      <form method="get" action="/mcu-submit/employees" class="mp-filter" aria-label="Filter your employees">
+        <div class="field"><label for="f-worker"><span>Employee</span></label>
+          <input id="f-worker" name="worker" type="text" maxlength="60" value="{{.Form.worker}}" /></div>
+        <div class="field"><label for="f-status"><span>Validity</span></label>
+          <select id="f-status" name="status"><option value="">All</option>
+            {{range .Statuses}}<option value="{{.}}"{{if eq . $.Form.status}} selected{{end}}>{{.}}</option>{{end}}
+          </select></div>
+        <div class="submit-row"><button type="submit" class="btn-primary">Filter</button> <a class="btn-ghost" href="/mcu-submit/employees">Clear</a></div>
+      </form>
+      {{if .Employees}}
+      <p class="mp-hint" role="status">{{.Result.Total}} {{if eq .Result.Total 1}}employee{{else}}employees{{end}}, page {{.Result.Page}} of {{.Result.Pages}}</p>
+      <div class="mp-scroll"><table class="mp-table">
+        <caption>{{.Caption}}</caption>
+        <thead><tr><th scope="col">Employee</th><th scope="col">Position</th><th scope="col">Last checkup</th><th scope="col">Valid until</th><th scope="col">Validity</th></tr></thead>
+        <tbody>{{range .Employees}}<tr><td>{{.Name}}</td><td>{{.Position}}</td><td>{{.CheckUpDate}}</td><td>{{if .HasValidity}}{{.ValidUntil}}{{else}}-{{end}}</td>
+          <td><strong>{{.Status}}</strong>{{if .HasValidity}}{{if lt .DaysLeft 0}} <span class="mp-hint">expired</span>{{else}} <span class="mp-hint">{{.DaysLeft}} days left</span>{{end}}{{end}}</td></tr>{{end}}</tbody></table></div>
+      {{if or .PrevURL .NextURL}}<p class="mp-actions">
+        {{if .PrevURL}}<a class="btn-ghost" href="{{.PrevURL}}" rel="prev">Previous</a>{{end}}
+        {{if .NextURL}}<a class="btn-ghost" href="{{.NextURL}}" rel="next">Next</a>{{end}}</p>{{end}}
+      {{else if not .Error}}<p class="mp-hint">{{if or .Form.worker .Form.status}}No employee matches this filter.{{else}}No employee of your company is on record yet.{{end}}</p>{{end}}
     </section>
 {{template "foot" .}}{{end}}
 

@@ -157,6 +157,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("POST "+basePath+"/batch/send", a.SendBatchSubmit)
 	in.HandleFunc("GET "+basePath+"/workers", a.WorkerSearch)
 	in.HandleFunc("GET "+basePath+"/documents", a.Documents)
+	in.HandleFunc("GET "+basePath+"/employees", a.Employees)
 	in.HandleFunc("GET "+basePath+"/documents/{id}/review", a.ReviewPage)
 	in.HandleFunc("POST "+basePath+"/documents/{id}/confirm", a.ConfirmDocument)
 	in.HandleFunc("GET "+basePath+"/documents/{id}/file", a.DocumentFile)
@@ -251,7 +252,8 @@ type page struct {
 
 	// Upload pages.
 	Docs          []Submission
-	BatchID       int64 // the open batch; 0 when it has no documents
+	Employees     []Employee // the My employees list on screen
+	BatchID       int64      // the open batch; 0 when it has no documents
 	Nationalities []string
 	Caption       string   // table caption
 	Notice        string   // a success message on a form page

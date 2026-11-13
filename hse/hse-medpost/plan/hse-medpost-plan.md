@@ -310,6 +310,12 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
+### 2026-11-13 — "Employee checkups": the company's workers and how long their latest checkup stays valid
+
+- **What changed:** new submitter page `/mcu-submit/employees` (sidebar "Employee checkups", `internal/mcusubmit/employees.go`). It lists every worker with `Patient.FK_CompanyID` = the account's own company, with the latest checkup (newest by date, same order as `LatestRecord`), its valid-until date and a label: Valid, Expiring soon (same window as the reminder mails), Expired, Unfit, Temporarily unfit, Needs follow-up, Checkup in progress, No checkup on record. Chips with counts, name and status filters, 25 per page. Workers whose latest checkup is Archived / Exit are left out. Indonesian and Chinese texts added.
+- **Why own company only:** a subcontractor's staff list is not handed to the main contractor (documents already are readable by it, a staff list is a different thing). Easy to widen to `Scope.CompanyIDs` if the owner wants it.
+- **Open:** depends on `Patient.FK_CompanyID` being filled; workers with no company on their record do not appear. Admin has no page. No schema change, nothing to run on MariaDB.
+
 ### 2026-11-13 — "Needs action" skips workers who already hold a Fit certificate
 
 - **What changed:** a document no longer counts as needing the submitter's action (Home notice, My documents chip and count, `?needs=1` list) when the worker's newest checkup on the MCU tab is Fit or Fit with note with a certificate offered, e.g. a certificate that came by WhatsApp and was entered by staff. `Store.NeedingAction` (latest.go) does the check; the filtered list is now filtered in Go and paged afterwards (`searchNeeding`).
