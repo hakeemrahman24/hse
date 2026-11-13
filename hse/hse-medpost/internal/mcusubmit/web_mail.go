@@ -32,6 +32,21 @@ If you did not try to register, you can ignore this email.
 `, baseURL)
 }
 
+// alreadyHasAccountMail goes to an address the admin tried to add as a new account while it already
+// has one: the person learns the account exists and where to sign in or reset the password.
+func alreadyHasAccountMail(baseURL string) string {
+	return fmt.Sprintf(`Hello,
+
+The medpost administrator tried to create an account for this email address on the medical checkup submission portal, but it already has one.
+
+Sign in here:
+
+%s/mcu-submit/signin
+
+If you forgot your password, choose "Forgot password" on that page to get a link for a new one.
+`, baseURL)
+}
+
 func approvedMail(baseURL, token string) string {
 	return fmt.Sprintf(`Hello,
 

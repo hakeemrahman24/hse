@@ -9,20 +9,6 @@ import (
 	"testing"
 )
 
-func TestNewTempPasswordIsRandomAndReadable(t *testing.T) {
-	a, err := NewTempPassword()
-	b, _ := NewTempPassword()
-	if err != nil || a == b || len(a) != tempPasswordLen {
-		t.Fatalf("got %q and %q, %v", a, b, err)
-	}
-	if strings.ContainsAny(a, "0O1lI") {
-		t.Errorf("%q has look-alike characters", a)
-	}
-	if err := ValidatePassword(a, "someone", "a@b.co"); err != nil {
-		t.Errorf("the portal's own rules refuse %q: %v", a, err)
-	}
-}
-
 // Admin adds an account; the person must replace the temporary password before anything else opens.
 func TestAdminAddedAccountMustChangeItsTemporaryPassword(t *testing.T) {
 	e := newEnv(t)
@@ -34,16 +20,23 @@ func TestAdminAddedAccountMustChangeItsTemporaryPassword(t *testing.T) {
 		t.Fatalf("anonymous create answered 200")
 	}
 	rec := e.post("/mcu-submit/admin/create", form, admin)
-	if rec.Code != http.StatusOK || rec.Header().Get("Cache-Control") != "no-store" {
-		t.Fatalf("create = %d, cache %q", rec.Code, rec.Header().Get("Cache-Control"))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("create = %d", rec.Code)
 	}
-	m := regexp.MustCompile(`Temporary password: (\S+)`).FindStringSubmatch(rec.Body.String())
-	if m == nil {
-		t.Fatalf("no temporary password on the page:\n%s", rec.Body)
+	temp := DefaultPassword
+	if !strings.Contains(rec.Body.String(), temp) {
+		t.Fatalf("the page does not show the default password:\n%s", rec.Body)
 	}
-	temp := m[1]
+	mail := e.mail.last(t)
+	link := regexp.MustCompile(`/mcu-submit/reset\?token=([0-9a-f]{64})`).FindStringSubmatch(mail.Body)
+	if mail.To != "budi@example.com" || link == nil || !strings.Contains(mail.Body, "budi.s") || !strings.Contains(mail.Body, "Welder") {
+		t.Fatalf("welcome mail = %+v", mail)
+	}
 	if rec := e.post("/mcu-submit/admin/create", form, admin); rec.Code != http.StatusConflict {
 		t.Errorf("same email again = %d, want 409", rec.Code)
+	}
+	if m := e.mail.last(t); m.To != "budi@example.com" || m.Subject != "You already have an account" {
+		t.Errorf("the existing address was not told: %+v", m)
 	}
 
 	// Sign in with the temporary password: every page sends the person to choose a new one.
@@ -83,6 +76,28 @@ func TestAdminAddedAccountMustChangeItsTemporaryPassword(t *testing.T) {
 	}
 	if _, fresh := e.signIn("budi.s", "brand-new-secret-9"); fresh == nil {
 		t.Fatal("the new password does not sign in")
+	}
+}
+
+// The welcome mail's link is the normal way in: it sets the password and clears the must-change flag.
+func TestWelcomeLinkChoosesThePasswordAndClearsTheFlag(t *testing.T) {
+	e := newEnv(t)
+	_, admin := e.signIn("admin", "pelican-orbit-77")
+	form := url.Values{"name": {"Siti Aminah"}, "email": {"siti@example.com"}, "company": {itoa(e.companyID)}, "position": {"Nurse"}, "username": {"siti.a"}}
+	if rec := e.post("/mcu-submit/admin/create", form, admin); rec.Code != http.StatusOK {
+		t.Fatalf("create = %d", rec.Code)
+	}
+	token := regexp.MustCompile(`token=([0-9a-f]{64})`).FindStringSubmatch(e.mail.last(t).Body)[1]
+	done := e.post("/mcu-submit/reset", url.Values{"token": {token}, "password": {"my-own-secret-5"}, "confirm": {"my-own-secret-5"}})
+	if done.Code != http.StatusOK {
+		t.Fatalf("reset = %d\n%s", done.Code, done.Body)
+	}
+	_, cookie := e.signIn("siti.a", "my-own-secret-5")
+	if cookie == nil {
+		t.Fatal("new password does not sign in")
+	}
+	if got := e.get("/mcu-submit/home", cookie); got.Code == http.StatusSeeOther && got.Header().Get("Location") == "/mcu-submit/password" {
+		t.Error("still sent to the change-password page")
 	}
 }
 

@@ -2,41 +2,48 @@ package mcusubmit
 
 import (
 	"context"
-	"crypto/rand"
 	"database/sql"
 	"errors"
 	"fmt"
 	"log"
-	"math/big"
 	"net/http"
 	"strings"
 )
 
-// Accounts the admin adds by hand (owner, 2026-11-13). The admin types who the person is, the system
-// makes a random temporary password and shows it to the admin once, and the person must replace it
-// before they can use anything else. No fixed "default" password exists: a password every new
-// account shares would be the first one anybody tries. The password is not mailed (mail is not a
-// safe place for a password); the admin hands it over the way they already reach the person.
-
-// tempPasswordAlphabet leaves out look-alikes (0 O 1 l I) so it can be read over a phone or typed
-// from a WhatsApp message without mistakes.
+// Accounts the admin adds by hand (owner, 2026-11-13). Every such account starts with the same
+// default password, DefaultPassword, and must replace it before anything else opens (the portal
+// minimum is 6 characters, so the owner chose a simple six-digit one). The person gets a welcome
+// email with their account details and a link to choose a new password straight away, so in the
+// normal case the default password is never needed.
+//
+// The default is known to everyone, so the account is only as safe as how soon the person changes
+// it: the welcome link works for welcomeTTL, and the admin page says who still has not.
 const (
-	tempPasswordAlphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
-	tempPasswordLen      = 12
+	DefaultPassword = "123456"
+	welcomeTTL      = setupTTL // the same 3 days as the link a approved request gets
 )
 
-// NewTempPassword returns a random temporary password from crypto/rand.
-func NewTempPassword() (string, error) {
-	out := make([]byte, tempPasswordLen)
-	max := big.NewInt(int64(len(tempPasswordAlphabet)))
-	for i := range out {
-		n, err := rand.Int(rand.Reader, max)
-		if err != nil {
-			return "", fmt.Errorf("temporary password: %w", err)
-		}
-		out[i] = tempPasswordAlphabet[n.Int64()]
-	}
-	return string(out), nil
+// welcomeMail tells a person their account was made and how to get in. It carries the default
+// password because the person needs it if they sign in without using the link.
+func welcomeMail(baseURL, name, username, company, position, token string) string {
+	return fmt.Sprintf(`Hello %s,
+
+An account was created for you on the medical checkup submission portal.
+
+Name:      %s
+Company:   %s
+Position:  %s
+Username:  %s
+Password:  %s (temporary, you must change it at your first sign-in)
+
+To choose your own password now, open this link (it works for 3 days and only once):
+
+%s/mcu-submit/reset?token=%s
+
+Or sign in at %s/mcu-submit/signin with the username and temporary password above; you will be asked for a new password straight away.
+
+If you did not expect this account, contact the medpost administrator.
+`, name, name, company, position, username, DefaultPassword, baseURL, token, baseURL)
 }
 
 // EnsureMustChangePasswordColumn adds Submitter.MustChangePassword to an older SQLite database;
@@ -134,20 +141,17 @@ func (a *API) AdminCreate(w http.ResponseWriter, r *http.Request) {
 		a.message(w, http.StatusBadRequest, "Check the form", ValidUsername(username).Error()+".", admin)
 		return
 	}
-	temp, err := NewTempPassword()
+	hash, err := HashPassword(DefaultPassword)
 	if err != nil {
-		a.serverError(w, "temporary password", err)
-		return
-	}
-	hash, err := HashPassword(temp)
-	if err != nil {
-		a.serverError(w, "hash temporary password", err)
+		a.serverError(w, "hash default password", err)
 		return
 	}
 	id, err := a.Store.CreateByAdmin(r.Context(), admin.ID, email, name, companyID, position, username, hash)
 	switch {
 	case errors.Is(err, ErrEmailTaken):
-		a.message(w, http.StatusConflict, "Already used", "An account with that email already exists.", admin)
+		// Tell the person too (owner, 2026-11-13), same as the request form does for an existing address.
+		a.sendMail(r.Context(), email, "You already have an account", alreadyHasAccountMail(a.baseURL))
+		a.message(w, http.StatusConflict, "Already used", "An account with that email already exists. A note was sent to "+email+" telling them where to sign in.", admin)
 		return
 	case errors.Is(err, ErrUsernameTaken):
 		a.message(w, http.StatusConflict, "Already used", "That username is taken. Choose another.", admin)
@@ -156,12 +160,17 @@ func (a *API) AdminCreate(w http.ResponseWriter, r *http.Request) {
 		a.adminFailed(w, admin, err)
 		return
 	}
-	a.audit(r, ActorSubmitter, admin.ID, EntitySubmitter, id, "CreatedByAdmin") // never the password
-	log.Printf("mcusubmit: admin %d created account %d", admin.ID, id)
-	// The password is on this one response only. no-store keeps it out of the browser's cache.
-	w.Header().Set("Cache-Control", "no-store")
+	a.audit(r, ActorSubmitter, admin.ID, EntitySubmitter, id, "CreatedByAdmin")
+	// The welcome mail is best effort, like every mail here: sendMail only logs a failure. The account
+	// works either way, so the admin is told to pass the details on if the mail does not arrive.
+	if token, err := a.Store.IssueToken(r.Context(), id, PurposeReset, "", welcomeTTL); err != nil {
+		log.Printf("mcusubmit: account %d created but no welcome link: %v", id, err)
+	} else {
+		company := a.allCompanies(r.Context())[companyID].Name
+		a.sendMail(r.Context(), email, "Your medical checkup portal account", welcomeMail(a.baseURL, name, username, company, position, token))
+	}
 	a.message(w, http.StatusOK, "Account created",
-		"Username: "+username+" - Temporary password: "+temp+" - Give both to "+name+". This is the only time the password is shown. They must choose their own password at the first sign-in.", admin)
+		"The account for "+name+" is active. Username: "+username+", default password: "+DefaultPassword+". A welcome email with the details and a link to choose a password was sent to "+email+"; if it does not arrive, give them the username and default password yourself. They must choose their own password at the first sign-in.", admin)
 }
 
 // PasswordChangePage and PasswordChangeSubmit are the first stop of an account that still has its
