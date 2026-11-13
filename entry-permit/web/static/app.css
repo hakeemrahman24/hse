@@ -720,3 +720,8 @@ th { color: var(--muted); }
 .side::-webkit-scrollbar, .tablewrap::-webkit-scrollbar, .ms-panel::-webkit-scrollbar, .cb-list::-webkit-scrollbar { width: 4px; height: 4px; }
 .side::-webkit-scrollbar-track, .tablewrap::-webkit-scrollbar-track, .ms-panel::-webkit-scrollbar-track, .cb-list::-webkit-scrollbar-track { background: transparent; }
 .side::-webkit-scrollbar-thumb, .tablewrap::-webkit-scrollbar-thumb, .ms-panel::-webkit-scrollbar-thumb, .cb-list::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--ink) 45%, transparent); border-radius: 0; }
+@media (max-width: 860px) {
+  /* Opened phone menu: the links sit indented under their group label, with the same hairline guide as on a wide screen. */
+  .side-label { margin: var(--s3) var(--s4) var(--s1); padding: 3px var(--s2); }
+  .side-details > ul { margin-left: calc(var(--s4) + var(--s3)); padding-left: var(--s2); border-left: 1px solid var(--line); }
+}
