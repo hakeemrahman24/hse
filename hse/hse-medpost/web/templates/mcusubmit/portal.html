@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=44" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=45" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
   <script src="/static/mcu-portal-name.js?v=3" defer></script>
   <script src="/static/mcu-portal-cards.js?v=5" defer></script>
@@ -635,6 +635,10 @@
           <select id="f-status" name="status"><option value="">All</option>
             {{range .Statuses}}<option value="{{.}}"{{if eq . $.Form.status}} selected{{end}}>{{.}}</option>{{end}}
           </select></div>
+        {{if .Nationalities}}<div class="field"><label for="f-nat"><span>Nationality</span></label>
+          <select id="f-nat" name="nationality"><option value="">All</option>
+            {{range .Nationalities}}<option value="{{.}}"{{if eq . $.Form.nationality}} selected{{end}}>{{.}}</option>{{end}}
+          </select></div>{{end}}
         {{/* The two sort boxes are shown only where the table headings are not (phone cards); on a wide screen they stay hidden but still send the order now in use, so Filter keeps it. */}}
         <div class="field mp-sort-field"><label for="f-sort"><span>Sort by</span></label>
           <select id="f-sort" name="sort">
@@ -650,10 +654,20 @@
             <option value="desc"{{if eq .SortDir "desc"}} selected{{end}}>Descending</option>
           </select></div>
         {{if .CanSubs}}<div class="field"><label for="f-subs"><input id="f-subs" name="subs" type="checkbox" value="1"{{if .Form.subs}} checked{{end}} /> <span>Include subcontractors</span></label></div>{{end}}
-        <div class="submit-row"><button type="submit" class="btn-primary">Filter</button> <a class="btn-ghost" href="/mcu-submit/employees">Clear</a></div>
+        <div class="submit-row"><button type="submit" class="btn-primary">Filter</button> <a class="btn-ghost" href="/mcu-submit/employees">Reset</a></div>
       </form>
       {{if .Employees}}
-      <p class="mp-listbar"><span class="mp-hint" role="status">{{.Result.Total}} {{if eq .Result.Total 1}}employee{{else}}employees{{end}}</span> <a class="btn-ghost" href="{{.ExportURL}}">Export to Excel</a></p>
+      {{/* Export to Excel opens a small panel (a <details>, so it works without JavaScript) with the three choices. The hidden fields repeat the filters and order now on screen, which "Displayed records" uses; the other two choices ignore the filters. */}}
+      <div class="mp-listbar"><span class="mp-hint" role="status">{{.Result.Total}} {{if eq .Result.Total 1}}employee{{else}}employees{{end}}</span>
+        <details class="mp-export"><summary class="btn-ghost">Export to Excel</summary>
+          <form method="get" action="/mcu-submit/employees/export.xlsx" class="mp-export-form">
+            {{range $k, $v := .Form}}{{if $v}}<input type="hidden" name="{{$k}}" value="{{$v}}" />{{end}}{{end}}
+            <label class="mp-check"><input type="radio" name="scope" value="displayed" checked /> <span>Displayed records</span> <span class="mp-hint">{{.Result.Total}}</span></label>
+            <label class="mp-check"><input type="radio" name="scope" value="all" /> <span>All records</span> <span class="mp-hint">{{.AllTotal}}</span></label>
+            <label class="mp-check"><input type="radio" name="scope" value="latest" /> <span>Latest</span> <input class="mp-n" type="number" name="n" value="100" min="1" max="10000" inputmode="numeric" aria-label="Number of records" /> <span>records</span></label>
+            <button type="submit" class="btn-primary">Download</button>
+          </form>
+        </details></div>
       <div class="mp-scroll mp-emp-scroll"><table class="mp-table mp-emp">
         <caption>{{.Caption}}</caption>
         <thead><tr>
@@ -664,28 +678,28 @@
           <th scope="col"{{with index .SortAria "validity"}} aria-sort="{{.}}"{{end}}><a class="mp-sort" href="{{index .SortURLs "validity"}}">Validity</a></th>
           <th scope="col">Certificate</th><th scope="col">More</th></tr></thead>
         <tbody>{{range .Employees}}<tr class="tone-{{.StatusSlug}}"><td class="c-name" title="{{.Name}}">{{.Name}}</td>{{if or $.Form.subs $.ShowCompany}}<td class="c-company" title="{{.Company}}">{{.Company}}</td>{{end}}<td class="c-last">{{.CheckUpDate}}</td><td class="c-until">{{if .HasValidity}}{{.ValidUntil}}{{else}}-{{end}}</td>
-          <td class="c-valid"><span class="mp-dot" aria-hidden="true"></span><strong>{{.Status}}</strong>{{if .HasValidity}}{{if lt .DaysLeft 0}} <span class="mp-hint">expired</span>{{else}} <span class="mp-hint">{{.DaysLeft}} days left</span>{{end}}{{end}}</td>
+          <td class="c-valid"><span class="mp-dot" aria-hidden="true"></span><strong>{{.Status}}</strong>{{if .HasValidity}}{{if lt .DaysLeft 0}} <span class="mp-hint">{{if eq .DaysExpired 1}}for 1 day{{else}}for {{.DaysExpired}} days{{end}}</span>{{else}} <span class="mp-hint">{{.DaysLeft}} days left</span>{{end}}{{end}}</td>
           <td class="c-cert">{{if .HasCertificate}}<a class="mp-cert" href="/mcu-submit/employees/{{.PatientID}}/certificate?view=1" target="_blank" rel="noopener" data-name="{{.Name}}">Certificate</a>{{else}}<span class="mp-hint">-</span>{{end}}</td>
-          <td class="c-more"><button type="button" class="mp-more-btn" data-name="{{.Name}}" data-company="{{.Company}}" data-position="{{.Position}}" data-nationality="{{.Nationality}}" data-note-label="{{.NoteLabel}}" data-note="{{.Note}}">More</button></td></tr>{{end}}</tbody></table></div>
-      {{/* One shared popup for every row (a list of a thousand workers must not carry a thousand copies). mcu-portal-employees.js fills it from the clicked row's data-* words; without JavaScript the Certificate link simply opens the PDF. */}}
+          <td class="c-more"><button type="button" class="mp-more-btn" aria-expanded="false" data-company="{{if or $.Form.subs $.ShowCompany}}{{else}}{{.Company}}{{end}}" data-position="{{.Position}}" data-nationality="{{.Nationality}}" data-note-label="{{.NoteLabel}}" data-note="{{.Note}}">More</button></td></tr>{{end}}</tbody></table></div>
+      {{/* Two shared pieces serve every row (a list of a thousand workers must not carry a thousand copies); mcu-portal-employees.js uses both. The dialog is the Open / Download choice behind Certificate (without JavaScript the link simply opens the PDF). The template is the detail list that More opens under its row; it is a template so the page translates its labels once and the script fills a copy per click. */}}
       <dialog id="mp-emp-dialog" class="mp-dialog" aria-labelledby="mp-dlg-title">
         <div class="mp-dlg-body">
           <h2 id="mp-dlg-title" class="mp-dlg-title"></h2>
-          <div class="mp-dlg-cert" hidden>
-            <p class="mp-dlg-sub">Medical checkup certificate</p>
-            <div class="mp-dlg-actions"><a class="btn-primary" data-act="open" target="_blank" rel="noopener">Open</a> <a class="btn-ghost" data-act="download">Download</a></div>
-          </div>
-          <dl class="mp-dlg-more" hidden>
-            <div data-row="company"><dt>Company</dt><dd></dd></div>
-            <div data-row="position"><dt>Position</dt><dd></dd></div>
-            <div data-row="nationality"><dt>Nationality</dt><dd></dd></div>
-            <div data-row="note-Recommendation"><dt>Recommendation</dt><dd></dd></div>
-            <div data-row="note-Notes"><dt>Notes</dt><dd></dd></div>
-          </dl>
+          <p class="mp-dlg-sub">Medical checkup certificate</p>
+          <div class="mp-dlg-actions"><a class="btn-primary" data-act="open" target="_blank" rel="noopener">Open</a> <a class="btn-ghost" data-act="download">Download</a></div>
           <form method="dialog" class="mp-dlg-close"><button class="btn-ghost" type="submit">Close</button></form>
         </div>
       </dialog>
-      <script src="/static/mcu-portal-employees.js?v=1" defer></script>
+      <template id="mp-more-template">
+        <dl class="mp-detail-list">
+          <div data-row="company"><dt>Company</dt><dd></dd></div>
+          <div data-row="position"><dt>Position</dt><dd></dd></div>
+          <div data-row="nationality"><dt>Nationality</dt><dd></dd></div>
+          <div data-row="note-Recommendation"><dt>Recommendation</dt><dd></dd></div>
+          <div data-row="note-Notes"><dt>Notes</dt><dd></dd></div>
+        </dl>
+      </template>
+      <script src="/static/mcu-portal-employees.js?v=2" defer></script>
       {{else if not .Error}}<p class="mp-hint">{{if or .Form.worker .Form.status}}No employee matches this filter.{{else if .ShowCompany}}No employee is on record yet.{{else}}No employee of your company is on record yet.{{end}}</p>{{end}}
     </section>
 {{template "foot" .}}{{end}}

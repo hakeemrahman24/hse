@@ -1,8 +1,13 @@
 package mcusubmit
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -32,7 +37,49 @@ func employeeExportRows(list []Employee) [][]any {
 	return rows
 }
 
-// EmployeesExport downloads the filtered employee list as an .xlsx file.
+// What the file holds (owner, 2026-11-14). "displayed" is the list as the page shows it now, with its
+// filters and order, and is what a link without a scope gives, so old links keep working. "all" is every
+// worker the account may see, whatever the filters. "latest" is the N most recent checkups, newest first.
+const (
+	exportDisplayed = "displayed"
+	exportAll       = "all"
+	exportLatest    = "latest"
+
+	defaultLatest = 100
+	maxLatest     = 10000
+)
+
+// exportSelection picks and orders the rows of the file. The scope and the count come from the request
+// but are only ever words and a bounded number: the companies still come from the session's Scope.
+func exportSelection(all []Employee, q url.Values) ([]Employee, error) {
+	sortKey, sortDir, _ := parseSort(q) // the file is in the order the page showed
+	switch scope := q.Get("scope"); scope {
+	case "", exportDisplayed:
+		return sortEmployees(filterEmployees(all, q.Get("worker"), q.Get("status"), q.Get("nationality")), sortKey, sortDir), nil
+	case exportAll:
+		return sortEmployees(all, sortKey, sortDir), nil
+	case exportLatest:
+		n, err := strconv.Atoi(strings.TrimSpace(q.Get("n")))
+		if err != nil || n < 1 || n > maxLatest {
+			return nil, fmt.Errorf("Enter how many records, from 1 to %d.", maxLatest)
+		}
+		// A worker with no checkup has no record to be "latest", so they are left out.
+		var dated []Employee
+		for _, e := range sortEmployees(all, sortCheckup, dirDesc) {
+			if e.CheckUpDate != "" {
+				dated = append(dated, e)
+			}
+		}
+		if len(dated) > n {
+			dated = dated[:n]
+		}
+		return dated, nil
+	default:
+		return nil, errors.New("Choose what to export.")
+	}
+}
+
+// EmployeesExport downloads the chosen employees (see exportSelection) as an .xlsx file.
 func (a *API) EmployeesExport(w http.ResponseWriter, r *http.Request) {
 	u := a.requireUser(w, r)
 	if u == nil {
@@ -53,9 +100,11 @@ func (a *API) EmployeesExport(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, "company employees", err)
 		return
 	}
-	// The file is in the order the page showed, so what HR sees is what they download.
-	sortKey, sortDir, _ := parseSort(q)
-	rows := sortEmployees(filterEmployees(all, q.Get("worker"), status), sortKey, sortDir)
+	rows, err := exportSelection(all, q)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	f := excelize.NewFile()
 	defer f.Close()

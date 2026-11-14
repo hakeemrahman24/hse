@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
@@ -66,6 +65,15 @@ func (e Employee) StatusSlug() string {
 		return "progress"
 	}
 	return "none"
+}
+
+// DaysExpired is how many days ago the validity ran out, for the "Expired for 12 days" text; zero for
+// anyone still valid. DaysLeft is negative once expired, so this is its absolute value.
+func (e Employee) DaysExpired() int {
+	if e.DaysLeft < 0 {
+		return -e.DaysLeft
+	}
+	return 0
 }
 
 // validityOf turns a checkup's result and validity date into the label HR reads. It is pure so the
@@ -183,11 +191,14 @@ func noteFor(result, notes, recommendation string) (label, text string) {
 
 // filterEmployees keeps the workers whose name has every typed word (any order, like the document
 // search) and, when status is not empty, that validity label.
-func filterEmployees(all []Employee, worker, status string) []Employee {
+func filterEmployees(all []Employee, worker, status, nationality string) []Employee {
 	words := splitWords(worker)
 	var out []Employee
 	for _, e := range all {
 		if status != "" && e.Status != status {
+			continue
+		}
+		if nationality != "" && e.Nationality != nationality {
 			continue
 		}
 		name := strings.ToUpper(e.Name)
@@ -220,7 +231,7 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 	p := a.newPage("Employee checkups")
 	p.User, p.Caption = u, "Latest medical checkup of every worker of your company"
 	p.Statuses = employeeStatuses
-	p.Form = map[string]string{"worker": q.Get("worker"), "status": status}
+	p.Form = map[string]string{"worker": q.Get("worker"), "status": status, "nationality": q.Get("nationality")}
 	// The admin sees every company, so the Company column is always on for them.
 	p.ShowCompany = u.Role == RoleAdmin
 	if p.ShowCompany {
@@ -260,9 +271,12 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 	p.SortURLs, p.SortAria = sortLinks(p.Form, sortKey, sortDir)
 	p.Tiles = statusTiles(p.Counts, p.Form, status)
 	// Every matching worker is sent: the list scrolls inside the page instead of paging.
-	p.Employees = sortEmployees(filterEmployees(all, p.Form["worker"], status), sortKey, sortDir)
+	// The nationality choices are the ones that exist in this list, so the box never offers a country
+	// with nobody in it. The export panel shows both totals: what is on screen and everything.
+	p.Nationalities = employeeNationalities(all)
+	p.AllTotal = len(all)
+	p.Employees = sortEmployees(filterEmployees(all, p.Form["worker"], status, p.Form["nationality"]), sortKey, sortDir)
 	p.Result = DocPage{Total: len(p.Employees)}
-	p.ExportURL = exportLink(p.Form)
 	a.render(w, http.StatusOK, "employees.html", p)
 }
 
@@ -345,18 +359,4 @@ func (a *API) EmployeeCertificate(w http.ResponseWriter, r *http.Request) {
 	}
 	// The audit row is about the account that downloaded; Detail holds the checkup record id, never a name.
 	a.serveCertificate(w, r, u, record, EntitySubmitter, u.ID)
-}
-
-// exportLink is the Excel download for the filters now on the page (every page of the result).
-func exportLink(filter map[string]string) string {
-	q := url.Values{}
-	for k, v := range filter {
-		if v != "" {
-			q.Set(k, v)
-		}
-	}
-	if len(q) == 0 {
-		return basePath + "/employees/export.xlsx"
-	}
-	return basePath + "/employees/export.xlsx?" + q.Encode()
 }

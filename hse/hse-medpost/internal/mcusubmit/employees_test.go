@@ -75,13 +75,13 @@ func TestCompanyEmployeesListsOnlyTheCompanyWithTheirLatestCheckup(t *testing.T)
 
 func TestFilterEmployees(t *testing.T) {
 	all := []Employee{{Name: "Budi Santoso", Status: ValValid}, {Name: "Santoso Adi", Status: ValExpired}, {Name: "Rina", Status: ValValid}}
-	if got := filterEmployees(all, "santoso", ""); len(got) != 2 {
+	if got := filterEmployees(all, "santoso", "", ""); len(got) != 2 {
 		t.Errorf("name filter kept %d, want 2", len(got))
 	}
-	if got := filterEmployees(all, "", ValValid); len(got) != 2 {
+	if got := filterEmployees(all, "", ValValid, ""); len(got) != 2 {
 		t.Errorf("status filter kept %d, want 2", len(got))
 	}
-	if got := filterEmployees(all, "adi santoso", ValExpired); len(got) != 1 {
+	if got := filterEmployees(all, "adi santoso", ValExpired, ""); len(got) != 1 {
 		t.Errorf("combined filter kept %d, want 1", len(got))
 	}
 }
@@ -261,8 +261,9 @@ func TestEmployeesExportIsFilteredScopedAndAnXlsx(t *testing.T) {
 	if code := e.get("/mcu-submit/employees/export.xlsx").Code; code == 200 {
 		t.Errorf("export open without sign-in")
 	}
-	if !strings.Contains(e.get("/mcu-submit/employees?status=Valid", cookie).Body.String(), `employees/export.xlsx?status=Valid`) {
-		t.Errorf("page button does not carry the filter")
+	// The page's export panel repeats the filter in hidden fields, which "Displayed records" uses.
+	if !strings.Contains(e.get("/mcu-submit/employees?status=Valid", cookie).Body.String(), `<input type="hidden" name="status" value="Valid" />`) {
+		t.Errorf("page export panel does not carry the filter")
 	}
 }
 
@@ -526,5 +527,175 @@ func TestEmployeeCheckupsDialogAndPopupWordsAreTranslated(t *testing.T) {
 		if !strings.Contains(body, lang.want) || strings.Contains(body, ">Download<") {
 			t.Errorf("%s: the popup's Download is not translated", lang.code)
 		}
+	}
+}
+
+// ---- days expired, nationality filter, Reset, export choices, expanding More (owner, 2026-11-14) ----
+
+func TestDaysExpiredIsHowLongAgoTheValidityRanOut(t *testing.T) {
+	if got := (Employee{DaysLeft: -5}).DaysExpired(); got != 5 {
+		t.Errorf("DaysExpired = %d, want 5", got)
+	}
+	if got := (Employee{DaysLeft: 12}).DaysExpired(); got != 0 {
+		t.Errorf("a valid worker has DaysExpired = %d, want 0", got)
+	}
+}
+
+func TestExpiredRowSaysForHowManyDays(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	id := seedWorker(t, e.store, "Late Renewal", "1990-01-01", e.companyID)
+	addRecord(t, e.store, id, "X-1", "Fit", e.store.clinicToday().AddDate(0, 0, -5).Format("2006-01-02"), "Close", 1)
+	body := e.get("/mcu-submit/employees", cookie).Body.String()
+	// Five days ago by the store's own clock (the one the page uses), so the count is exact.
+	if !regexp.MustCompile(`<strong>Expired</strong> <span class="mp-hint">for 5 days</span>`).MatchString(body) {
+		i := strings.Index(body, "Late Renewal")
+		t.Errorf("an expired row should read \"Expired for N days\"; the row is: %.700s", body[i:])
+	}
+	if strings.Contains(body, `<span class="mp-hint">expired</span>`) {
+		t.Errorf("the old bare \"expired\" hint is still there")
+	}
+	if id := e.get("/mcu-submit/employees", cookie, &http.Cookie{Name: langCookie, Value: "id"}).Body.String(); !strings.Contains(id, "selama") {
+		t.Errorf("\"for N days\" is not translated")
+	}
+}
+
+func seedNational(t *testing.T, e *env, name, nationality string) {
+	t.Helper()
+	var nat int64
+	if err := e.store.DB.QueryRow(`SELECT NationalityID FROM NationalityTable WHERE Name = ?`, nationality).Scan(&nat); err != nil {
+		res, err := e.store.DB.Exec(`INSERT INTO NationalityTable (Name) VALUES (?)`, nationality)
+		if err != nil {
+			t.Fatal(err)
+		}
+		nat, _ = res.LastInsertId()
+	}
+	id := seedWorker(t, e.store, name, "1990-01-01", e.companyID)
+	if _, err := e.store.DB.Exec(`UPDATE Patient SET FK_NationalityID = ? WHERE PatientID = ?`, nat, id); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestEmployeeCheckupsNationalityFilterAndReset(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	seedNational(t, e, "Maria Filipina", "Filipino")
+	seedNational(t, e, "Li Chinese", "Chinese")
+	seedNational(t, e, "Jose Filipino", "Filipino")
+
+	all := e.get("/mcu-submit/employees", cookie).Body.String()
+	for _, want := range []string{`<option value="Filipino"`, `<option value="Chinese"`, "Maria Filipina", "Li Chinese", `>Reset</a>`} {
+		if !strings.Contains(all, want) {
+			t.Errorf("page lacks %q", want)
+		}
+	}
+	if strings.Count(all, `<option value="Filipino"`) != 1 {
+		t.Errorf("each nationality should be offered once")
+	}
+	one := e.get("/mcu-submit/employees?nationality=Filipino", cookie).Body.String()
+	if !strings.Contains(one, "Maria Filipina") || !strings.Contains(one, "Jose Filipino") || strings.Contains(one, "Li Chinese") {
+		t.Errorf("nationality filter kept the wrong workers")
+	}
+	if !strings.Contains(one, `<option value="Filipino" selected>`) || !strings.Contains(one, ">2 employees<") {
+		t.Errorf("the chosen nationality should stay selected and the count follow it")
+	}
+	// Reset goes to the bare page address, which drops every filter, the order and the subcontractor tick.
+	if !strings.Contains(one, `<a class="btn-ghost" href="/mcu-submit/employees">Reset</a>`) {
+		t.Errorf("Reset should link to the plain page")
+	}
+	// The sort and tile links keep the nationality.
+	if !strings.Contains(one, "nationality=Filipino") {
+		t.Errorf("links should carry the nationality filter")
+	}
+}
+
+func exportRows(t *testing.T, e *env, cookie *http.Cookie, query string) ([][]string, int) {
+	t.Helper()
+	resp := e.get("/mcu-submit/employees/export.xlsx"+query, cookie)
+	if resp.Code != 200 {
+		return nil, resp.Code
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(resp.Body.Bytes()))
+	if err != nil {
+		t.Fatalf("not a workbook: %v", err)
+	}
+	rows, _ := f.GetRows("Employees")
+	return rows, 200
+}
+
+func TestEmployeesExportChoicesAllDisplayedAndLatest(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	for _, w := range []struct{ name, id, result, until, date string }{
+		{"A Old", "L-1", "Fit", "2099-01-01", "2025-01-01"},
+		{"B Newest", "L-2", "Fit", "2099-01-01", "2026-06-01"},
+		{"C Mid", "L-3", "Fit", "2099-01-01", "2025-09-01"},
+		{"D Unfit", "L-4", "Unfit", "", "2026-01-01"},
+	} {
+		id := seedWorker(t, e.store, w.name, "1990-01-01", e.companyID)
+		addRecord(t, e.store, id, w.id, w.result, w.until, "Close", 1)
+		setCheckupDate(t, e.store, w.id, w.date)
+	}
+	seedWorker(t, e.store, "E Never Checked", "1990-01-01", e.companyID)
+	names := func(rows [][]string) string {
+		var out []string
+		for _, r := range rows[1:] {
+			out = append(out, r[0])
+		}
+		return strings.Join(out, ",")
+	}
+
+	for _, c := range []struct{ query, want string }{
+		{"", "B Newest,D Unfit,C Mid,A Old,E Never Checked"},                                   // no scope: the displayed list, default order
+		{"?status=Valid", "B Newest,C Mid,A Old"},                                              // an old link still works
+		{"?scope=displayed&status=Valid&sort=name&dir=desc", "C Mid,B Newest,A Old"},           // the page's filters and order
+		{"?scope=all&status=Valid&worker=zzz", "B Newest,D Unfit,C Mid,A Old,E Never Checked"}, // all ignores the filters
+		{"?scope=latest&n=2", "B Newest,D Unfit"},                                              // the two newest checkups
+		{"?scope=latest&n=10&status=Valid", "B Newest,D Unfit,C Mid,A Old"},                    // filters ignored; nobody without a checkup
+	} {
+		rows, code := exportRows(t, e, cookie, c.query)
+		if code != 200 {
+			t.Errorf("%s gave %d", c.query, code)
+			continue
+		}
+		if got := names(rows); got != c.want {
+			t.Errorf("%s = %s, want %s", c.query, got, c.want)
+		}
+	}
+	for _, bad := range []string{"?scope=latest&n=0", "?scope=latest&n=abc", "?scope=latest&n=", "?scope=latest&n=99999", "?scope=bogus"} {
+		if _, code := exportRows(t, e, cookie, bad); code != http.StatusBadRequest {
+			t.Errorf("%s gave %d, want 400", bad, code)
+		}
+	}
+}
+
+// The export panel offers the three choices with the two totals, repeats the filters now on screen, and
+// More is a toggle whose detail list lives in one shared template.
+func TestEmployeeCheckupsExportPanelAndExpandingMore(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	for _, n := range []string{"One", "Two", "Three"} {
+		id := seedWorker(t, e.store, "Worker "+n, "1990-01-01", e.companyID)
+		addRecord(t, e.store, id, "P-"+n, "Fit", "2099-01-01", "Close", 1)
+	}
+	body := e.get("/mcu-submit/employees?status=Valid&worker=worker&sort=name&dir=asc", cookie).Body.String()
+	for _, want := range []string{
+		`action="/mcu-submit/employees/export.xlsx"`,
+		`name="scope" value="displayed" checked`, `name="scope" value="all"`, `name="scope" value="latest"`,
+		`name="n" value="100"`,
+		`<input type="hidden" name="status" value="Valid" />`, `<input type="hidden" name="sort" value="name" />`, `<input type="hidden" name="worker" value="worker" />`,
+		`<span>All records</span> <span class="mp-hint">3</span>`,
+		`aria-expanded="false"`, `<template id="mp-more-template">`, `mcu-portal-employees.js?v=2`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, "mp-dlg-more") {
+		t.Errorf("More must no longer live in the popup")
 	}
 }

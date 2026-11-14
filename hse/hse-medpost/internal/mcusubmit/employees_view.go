@@ -151,6 +151,21 @@ func sortLinks(filter map[string]string, activeKey, activeDir string) (urls, ari
 	return urls, aria
 }
 
+// employeeNationalities lists each nationality that appears in the list once, A to Z, for the filter
+// box. A worker with none on record adds nothing, so the box never has an empty choice.
+func employeeNationalities(list []Employee) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, e := range list {
+		if e.Nationality != "" && !seen[e.Nationality] {
+			seen[e.Nationality] = true
+			out = append(out, e.Nationality)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
 // StatusTile is one clickable validity label with its count. Clicking the one in use clears the
 // filter, so the same tile turns it on and off.
 type StatusTile struct {

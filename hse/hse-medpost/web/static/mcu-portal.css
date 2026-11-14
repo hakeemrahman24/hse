@@ -615,18 +615,34 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
 .mp .mp-cert:hover, .mp .mp-more-btn:hover { color: var(--text-1); }
 
 /* The shared popup behind Certificate (Open / Download) and More (the extra details). */
-.mp-dialog { width: 100%; max-width: min(92vw, 26rem); padding: 0; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-2); color: var(--text-1); box-shadow: 0 8px 28px rgba(42, 19, 32, 0.25); }
+/* Centred on the screen. The clearwave reset sets margin: 0 on everything, which cancels the dialog's
+   built-in auto margin and left the popup in the top-left corner, so the centring is spelled out here. */
+.mp-dialog { position: fixed; inset: 0; margin: auto; height: fit-content; max-height: calc(100dvh - 2rem); width: 100%; max-width: min(92vw, 26rem); padding: 0; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-2); color: var(--text-1); box-shadow: 0 8px 28px rgba(42, 19, 32, 0.25); }
 .mp-dialog::backdrop { background: rgba(42, 19, 32, 0.35); }
 .mp-dlg-body { display: grid; gap: 10px; padding: 16px 18px; }
 .mp-dlg-title { margin: 0; font-size: 1rem; line-height: 1.3; overflow-wrap: anywhere; }
 .mp-dlg-sub { margin: 0 0 6px; font-size: 0.75rem; color: var(--text-2); }
 .mp-dlg-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.mp-dlg-more { display: grid; gap: 6px; margin: 0; }
-.mp-dlg-more > div { display: grid; grid-template-columns: 7.5rem 1fr; gap: 8px; font-size: 0.8125rem; }
-.mp-dlg-more dt { font-weight: 700; color: var(--text-2); }
-.mp-dlg-more dd { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.mp-dlg-cert[hidden], .mp-dlg-more[hidden], .mp-dlg-more > div[hidden] { display: none; }
 .mp-dlg-close { display: flex; justify-content: flex-end; margin: 0; }
+
+/* More opens a detail row under its row (mcu-portal-employees.js), in the row's status colour. */
+.mp-table.mp-emp tr.mp-detail td { padding: 6px 12px 8px 20px; white-space: normal; background: var(--hl); }
+.mp-detail-list { display: flex; flex-wrap: wrap; gap: 4px 28px; margin: 0; font-size: 0.75rem; }
+.mp-detail-list > div { display: flex; gap: 6px; min-width: 0; }
+.mp-detail-list > div[hidden] { display: none; }
+.mp-detail-list dt { font-weight: 700; color: var(--text-2); }
+.mp-detail-list dd { margin: 0; max-width: 70ch; white-space: pre-wrap; overflow-wrap: anywhere; }
+.mp .mp-more-btn::after { content: " \25BE"; display: inline-block; text-decoration: none; }
+.mp .mp-more-btn[aria-expanded="true"]::after { content: " \25B4"; }
+
+/* Export to Excel: a small panel with the three choices opens under the button. */
+.mp-export { position: relative; }
+.mp-export > summary { display: inline-block; list-style: none; cursor: pointer; }
+.mp-export > summary::-webkit-details-marker { display: none; }
+.mp-export-form { position: absolute; right: 0; z-index: 5; display: grid; gap: 8px; min-width: 16rem; max-width: calc(100vw - 2rem); margin-top: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface-2); box-shadow: 0 6px 20px rgba(42, 19, 32, 0.18); }
+.mp-export-form .mp-check { display: flex; align-items: center; gap: 6px; font-size: 0.8125rem; }
+.mp-export-form .mp-hint { margin: 0; }
+.mp-export-form .mp-n { width: 5.5rem; min-width: 0; }
 
 /* Phones and tablets: the table becomes cards (mcu-portal-cards.js adds the labels). The card is a
    two-column grid: name, company and validity across the top, then the two dates, then Certificate
@@ -646,7 +662,10 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
   .mp-table.mp-emp.mp-stack td.c-until { order: 5; }
   .mp-table.mp-emp.mp-stack td.c-cert { order: 6; padding-top: 4px; }
   .mp-table.mp-emp.mp-stack td.c-more { order: 7; padding-top: 4px; text-align: right; }
-  .mp-table.mp-emp.mp-stack td.c-name::before, .mp-table.mp-emp.mp-stack td.c-company::before, .mp-table.mp-emp.mp-stack td.c-valid::before,
+  .mp-table.mp-emp.mp-stack tr.mp-detail { display: block; grid-column: 1 / -1; padding: 6px 10px; background: var(--hl); }
+  .mp-table.mp-emp.mp-stack tr.mp-detail td { padding: 0; background: transparent; }
+  .mp-table.mp-emp.mp-stack tr.mp-detail td::before { content: none; }
+  .mp-table.mp-emp.mp-stack td.c-name::before,.mp-table.mp-emp.mp-stack td.c-company::before, .mp-table.mp-emp.mp-stack td.c-valid::before,
   .mp-table.mp-emp.mp-stack td.c-cert::before, .mp-table.mp-emp.mp-stack td.c-more::before { content: none; }
 }
 

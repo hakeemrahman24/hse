@@ -262,12 +262,12 @@ type page struct {
 	CanSubs       bool       // Employee checkups offers "Include subcontractors"
 	BatchID       int64      // the open batch; 0 when it has no documents
 	Nationalities []string
-	Caption       string   // table caption
-	Notice        string   // a success message on a form page
-	Unconfirmed   int      // documents of the open batch still in Review
-	Statuses      []string // choices of the status filter
-	Result        DocPage  // paging numbers of the list on screen
-	ExportURL     string
+	Caption       string            // table caption
+	Notice        string            // a success message on a form page
+	Unconfirmed   int               // documents of the open batch still in Review
+	Statuses      []string          // choices of the status filter
+	Result        DocPage           // paging numbers of the list on screen
+	AllTotal      int               // Employee checkups: every worker the account may see, whatever the filter (shown in the export panel)
 	Tiles         []StatusTile      // Employee checkups: the clickable validity labels with their counts
 	SortKey       string            // Employee checkups: the column the list is ordered by
 	SortDir       string            // "asc" or "desc"
