@@ -30,6 +30,9 @@
     if (sections.length < 2 || !actions || !submit) return;
     var doc = form.ownerDocument;
     var current = 0, furthest = 0;
+    // After the server sent the form back with a message, every step may be opened at once: the message may be
+    // about a field on any of them, and the person must be able to go and fix it.
+    var reach = doc.querySelector('.error[role="alert"]') ? sections.length - 1 : 0;
     form.classList.add('wizard-on');
 
     var bar = doc.createElement('div');
@@ -61,7 +64,7 @@
       sections.forEach(function (s, k) { s.classList.toggle('is-current', k === current); });
       links.forEach(function (a, k) {
         a.classList.toggle('is-current', k === current);
-        a.classList.toggle('is-done', k < current || (k <= furthest && k !== current));
+        a.classList.toggle('is-done', k !== current && k <= furthest);
         if (k === current) a.setAttribute('aria-current', 'step'); else a.removeAttribute('aria-current');
       });
       fill.style.width = (((current + 1) / sections.length) * 100) + '%';
@@ -91,7 +94,7 @@
       a.addEventListener('click', function (e) {
         e.preventDefault();
         // Going back, or to a step already reached, is free; going forward is only by Next so each step is checked.
-        if (k <= furthest) show(k, true);
+        if (k <= Math.max(furthest, reach)) show(k, true);
       });
     });
     // Enter in a text box moves on instead of sending half a form.

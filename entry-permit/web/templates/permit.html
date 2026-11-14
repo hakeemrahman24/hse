@@ -82,8 +82,19 @@
 
 {{define "permit_part2"}}
 <h3>Step 2: details and documents</h3>
-<form method="post" action="/permit/submit" enctype="multipart/form-data" autocomplete="off" class="form-grid">
+<form method="post" action="/permit/submit" enctype="multipart/form-data" autocomplete="off" data-wizard data-steps>
   <input type="hidden" name="token" value="{{.Token}}">
+  <nav class="stepnav" aria-label="Sections of this form"><ol role="list">
+    <li><a href="#sec-contact"><span class="step"></span>Contact and address</a></li>
+    {{if or .Sec.ContractShown .Sec.BpjsKesShown .Sec.BpjsTkShown}}<li><a href="#sec-contract"><span class="step"></span>Contract and insurance</a></li>{{end}}
+    {{if .Sec.CertNeeded}}<li><a href="#sec-cert"><span class="step"></span>Certificate</a></li>{{end}}
+    <li><a href="#sec-docs"><span class="step"></span>Documents</a></li>
+    {{if .Foreign}}<li><a href="#sec-foreign"><span class="step"></span>Foreign worker documents</a></li>{{end}}
+    <li><a href="#sec-send"><span class="step"></span>Declaration</a></li>
+  </ol></nav>
+  <section class="fcard" id="sec-contact">
+    <h2 class="fcard-title"><span class="step"></span>Contact and address</h2>
+    <div class="form-grid">
   <label class="field" for="p-phone"><span>Worker's phone number</span>
     <input id="p-phone" name="phone" type="tel" value="{{index .Vals "phone"}}" maxlength="20" required placeholder="081234567890"></label>
   <label class="field" for="p-ename"><span>Emergency contact name</span>
@@ -101,8 +112,11 @@
     <input id="p-village" name="village" type="text" value="{{index .Vals "village"}}" maxlength="120"></label>
   <label class="field field-wide" for="p-street"><span>Street address</span>
     <input id="p-street" name="street" type="text" value="{{index .Vals "street"}}" maxlength="240" required></label>
-
-  {{if or .Sec.ContractShown .Sec.BpjsKesShown .Sec.BpjsTkShown}}<h4>Contract and insurance</h4>{{end}}
+    </div>
+  </section>
+  {{if or .Sec.ContractShown .Sec.BpjsKesShown .Sec.BpjsTkShown}}<section class="fcard" id="sec-contract">
+    <h2 class="fcard-title"><span class="step"></span>Contract and insurance</h2>
+    <div class="form-grid">
   {{if .Sec.ContractShown}}
   <label class="field" for="p-cdoc"><span>Contract document{{if not .Sec.ContractRequired}} (optional){{end}}</span>
     <input id="p-cdoc" name="contract_doc" type="file" accept="application/pdf,image/jpeg,image/png"{{if .Sec.ContractRequired}} required{{end}}></label>
@@ -121,24 +135,32 @@
   <label class="field" for="p-btkdoc"><span>BPJS Ketenagakerjaan card (optional)</span>
     <input id="p-btkdoc" name="bpjs_tk_doc" type="file" accept="application/pdf,image/jpeg,image/png"></label>
   {{end}}
-  {{if .Sec.CertNeeded}}
-  <h4>Certificate of competence</h4>
+    </div>
+  </section>{{end}}
+  {{if .Sec.CertNeeded}}<section class="fcard" id="sec-cert">
+    <h2 class="fcard-title"><span class="step"></span>Certificate of competence</h2>
+    <div class="form-grid">
   <p class="note">{{.Sec.Position.Canonical}} needs a certificate{{if .Sec.CertName}}: {{.Sec.CertName}}{{end}}.</p>
   <label class="field" for="p-certdoc"><span>Certificate of competence</span>
     <input id="p-certdoc" name="cert_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
   {{if .Sec.CertFixedUntil}}<p class="note">This certificate does not expire, so no date is needed.</p>{{else}}
   <label class="field" for="p-certuntil"><span>Certificate valid until, dd/mm/yyyy</span>
     <input data-date id="p-certuntil" name="cert_until" type="text" value="{{index .Vals "cert_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>{{end}}
-  {{end}}
-
-  <h4>Documents (PDF, JPG or PNG)</h4>
+    </div>
+  </section>{{end}}
+  <section class="fcard" id="sec-docs">
+    <h2 class="fcard-title"><span class="step"></span>Documents</h2>
+    <p class="sub">PDF, JPG or PNG files.</p>
+    <div class="form-grid">
   <label class="field" for="p-iddoc"><span>{{if .Foreign}}Passport copy{{else}}ID card (KTP){{end}}</span>
     <input id="p-iddoc" name="id_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
   <label class="field" for="p-idphoto"><span>ID photo</span>
     <input id="p-idphoto" name="id_photo" type="file" accept="image/jpeg,image/png" required></label>
-
-  {{if .Foreign}}
-  <h4>Foreign worker documents</h4>
+    </div>
+  </section>
+  {{if .Foreign}}<section class="fcard" id="sec-foreign">
+    <h2 class="fcard-title"><span class="step"></span>Foreign worker documents</h2>
+    <div class="form-grid">
   <label class="field" for="p-vtype"><span>Work visa type</span>
     <select id="p-vtype" name="visa_type" required>
       {{$vt := index .Vals "visa_type"}}<option value="">Choose…</option>
@@ -174,11 +196,17 @@
     <input id="p-pdoc" name="police_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
   <label class="field" for="p-ppuntil"><span>Passport valid until, dd/mm/yyyy</span>
     <input data-date id="p-ppuntil" name="passport_until" type="text" value="{{index .Vals "passport_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>
-  {{end}}
-
-  <label class="field field-wide"><span><input type="checkbox" name="declaration" required> I declare that the details and documents I am sending are true and belong to this worker.</span></label>
-  <button type="submit" class="btn">Send the request</button>
+    </div>
+  </section>{{end}}
+  <section class="fcard" id="sec-send">
+    <h2 class="fcard-title"><span class="step"></span>Declaration</h2>
+    <div class="form-grid">
+      <label class="field field-wide check"><input type="checkbox" name="declaration" required> I declare that the details and documents I am sending are true and belong to this worker.</label>
+    </div>
+  </section>
+  <div class="form-actions"><button type="submit" class="btn">Send the request</button><span class="note">Check the details, then send.</span></div>
 </form>
+<script src="/static/wizard.js" defer></script>
 {{end}}
 
 {{define "permit_done"}}{{template "head" .}}

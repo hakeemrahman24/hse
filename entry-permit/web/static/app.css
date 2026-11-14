@@ -859,3 +859,12 @@ main:has(> .lepc) .lepc { text-align: left; }
 }
 .wizard-on .form-actions .wizard-back { margin-left: auto; }
 .wizard-on .form-actions .wizard-back[hidden] + .wizard-next { margin-left: auto; }
+
+/* Forms whose section count depends on the worker (form[data-steps]): the step numbers are counted by CSS, so the
+   template never has to number conditional sections, and they are right with or without the script. */
+form[data-steps] { counter-reset: sec; }
+form[data-steps] section.fcard { counter-increment: sec; }
+form[data-steps] .fcard-title .step::before { content: counter(sec); }
+form[data-steps] .stepnav ol { counter-reset: nav; }
+form[data-steps] .stepnav li { counter-increment: nav; }
+form[data-steps] .stepnav .step::before { content: counter(nav); }

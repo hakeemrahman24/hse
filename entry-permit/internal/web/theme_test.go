@@ -147,8 +147,15 @@ func TestPermitStepTwoIsATwoColumnGrid(t *testing.T) {
 	if code != 200 || !strings.Contains(body, `action="/permit/submit"`) {
 		t.Fatalf("status %d: step 2 is not shown", code)
 	}
-	if !strings.Contains(body, `enctype="multipart/form-data" autocomplete="off" class="form-grid">`) {
-		t.Error("step 2 is not a form-grid")
+	// Step 2 is a step-by-step form of numbered cards, each a two-column form-grid.
+	if !strings.Contains(body, `action="/permit/submit" enctype="multipart/form-data" autocomplete="off" data-wizard data-steps>`) ||
+		!strings.Contains(body, `class="form-grid"`) || !strings.Contains(body, `src="/static/wizard.js"`) {
+		t.Error("step 2 is not a step-by-step form of form-grids")
+	}
+	for _, id := range []string{"sec-contact", "sec-docs", "sec-send"} {
+		if !strings.Contains(body, `id="`+id+`"`) || !strings.Contains(body, `href="#`+id+`"`) {
+			t.Errorf("step 2 lacks the %s section or its link in the section list", id)
+		}
 	}
 	if strings.Contains(body, `<section class="card narrow">`) {
 		t.Error("step 2 is still squeezed into a narrow card")
