@@ -457,6 +457,7 @@ func malariaError(err error) string {
 // SettingsData is what the settings page template receives.
 type SettingsData struct {
 	Groups     []settings.Group
+	Fields     []settings.FieldRuleItem // the Show / Mandatory table of optional form fields
 	Flash, Err string
 }
 
@@ -476,7 +477,8 @@ func (a *App) adminSettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	v := a.adminView(r, u, "Settings", AdminData{})
-	v.Settings = SettingsData{Groups: groups, Flash: flash(r, "ok"), Err: flash(r, "err")}
+	groups, fields := settings.SplitFieldRules(groups)
+	v.Settings = SettingsData{Groups: groups, Fields: fields, Flash: flash(r, "ok"), Err: flash(r, "err")}
 	a.render(w, "admin_settings", http.StatusOK, v)
 }
 
@@ -499,6 +501,10 @@ func (a *App) adminSettingsSave(w http.ResponseWriter, r *http.Request) {
 		err, done = a.Settings.Set(r.Context(), u.Username, key, r.PostFormValue("value")), "Saved."
 	case "reset":
 		err, done = a.Settings.Reset(r.Context(), u.Username, key), "Reset to the default."
+	case "save-field":
+		err, done = a.Settings.SetFieldRule(r.Context(), u.Username, r.PostFormValue("field"), r.PostFormValue("shown") != "", r.PostFormValue("required") != ""), "Saved."
+	case "reset-field":
+		err, done = a.Settings.ResetFieldRule(r.Context(), u.Username, r.PostFormValue("field")), "Reset to the default."
 	default:
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return

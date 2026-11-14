@@ -80,8 +80,9 @@ type Policy struct {
 	BpjsKesShown, BpjsKesRequired   bool
 	BpjsTkShown, BpjsTkRequired     bool
 	ContractShown, ContractRequired bool
-	// CertificateRequired: a position that needs a certificate must send it.
-	CertificateRequired bool
+	// CertificateShown: a position that needs a certificate gets the certificate section; off hides it for everyone.
+	// CertificateRequired: with the section shown, the certificate must be sent (otherwise it is optional).
+	CertificateShown, CertificateRequired bool
 
 	// PerpetualCertPositions never expire their certificate (valid to 2090-12-31).
 	PerpetualCertPositions []string
@@ -110,7 +111,7 @@ func Default() Policy {
 		OutboxDrainMinutes: 60,
 		DigestWeeks:        2, DigestWeekday: 1, DigestExpiryDays: 30, DigestUrgentDays: 7, DigestGraceUrgentDays: 3,
 		CompletingReasons: []string{"Sesuai jadwal keluar", "Selesai awal"},
-		BpjsKesShown:      true, BpjsTkShown: true, ContractShown: true, CertificateRequired: true,
+		BpjsKesShown:      true, BpjsTkShown: true, ContractShown: true, CertificateShown: true, CertificateRequired: true,
 		PerpetualCertPositions: []string{"Paramedic", "Nurse", "Doctor / Site Physician"},
 	}
 }

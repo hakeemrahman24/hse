@@ -225,7 +225,7 @@ func TestValidateFormBpjs(t *testing.T) {
 
 func TestValidateFormCertificate(t *testing.T) {
 	f := goodWNI()
-	f.CertNeeded = true
+	f.CertNeeded, f.CertRequired = true, true
 	if err := ValidateForm(f, today); err == nil || !strings.Contains(strings.ToLower(err.Error()), "certificate") {
 		t.Errorf("certificate not asked for: %v", err)
 	}
@@ -243,7 +243,7 @@ func TestValidateFormCertificate(t *testing.T) {
 	}
 	// Paramedic, Nurse, Doctor: the date is fixed, only the file is needed.
 	p := goodWNI()
-	p.CertNeeded, p.CertFixedUntil, p.HasCertDoc = true, "2090-12-31", true
+	p.CertNeeded, p.CertRequired, p.CertFixedUntil, p.HasCertDoc = true, true, "2090-12-31", true
 	if err := ValidateForm(p, today); err != nil {
 		t.Errorf("perpetual certificate: %v", err)
 	}
@@ -268,5 +268,27 @@ func TestFormValidityInputUsesTheContractDate(t *testing.T) {
 	day, reason, _ = ResolveValidity(policy.Default(), f.ValidityInput("2027-06-30"))
 	if day != "2027-06-16" || reason != ReasonMCU {
 		t.Errorf("a hidden contract capped the permit: %s %s", day, reason)
+	}
+}
+
+// Shown but not mandatory: the certificate may be left out completely, but one that is sent must still be complete.
+func TestValidateFormOptionalCertificate(t *testing.T) {
+	f := goodWNI()
+	f.CertNeeded, f.CertRequired = true, false
+	if err := ValidateForm(f, today); err != nil {
+		t.Errorf("an optional certificate left empty was refused: %v", err)
+	}
+	f.HasCertDoc = true
+	if err := ValidateForm(f, today); err == nil {
+		t.Error("a certificate file without its validity date was accepted")
+	}
+	f.CertUntil = "2027-05-01"
+	if err := ValidateForm(f, today); err != nil {
+		t.Errorf("a complete optional certificate: %v", err)
+	}
+	g := goodWNI()
+	g.CertNeeded, g.CertUntil = true, "2027-05-01"
+	if err := ValidateForm(g, today); err == nil {
+		t.Error("a certificate date without its file was accepted")
 	}
 }

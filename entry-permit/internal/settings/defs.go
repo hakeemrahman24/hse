@@ -103,7 +103,8 @@ var Defs = []Def{
 	{Key: "bpjs_tk_required", Group: GroupForms, Label: "Require the BPJS Ketenagakerjaan number", Type: TypeBool, Default: "off", Description: "Only counts while the box is shown."},
 	{Key: "contract_shown", Group: GroupForms, Label: "Show the contract document and date", Type: TypeBool, Default: "on", Description: ""},
 	{Key: "contract_required", Group: GroupForms, Label: "Require the contract document and date", Type: TypeBool, Default: "off", Description: "Only counts while the contract is shown."},
-	{Key: "certificate_required", Group: GroupForms, Label: "Require the certificate of competence", Type: TypeBool, Default: "on", Description: "For positions whose list entry says a certificate is needed."},
+	{Key: "certificate_shown", Group: GroupForms, Label: "Show the certificate of competence", Type: TypeBool, Default: "on", Description: "For positions whose list entry says a certificate is needed."},
+	{Key: "certificate_required", Group: GroupForms, Label: "Require the certificate of competence", Type: TypeBool, Default: "on", Description: "Only counts while the certificate is shown."},
 	{Key: "waiver_visitor_company_enabled", Group: GroupForms, Label: "Allow visitor-company waivers", Type: TypeBool, Default: "on", Description: "When off, only Government visitors can request a waiver."},
 	{Key: "perpetual_cert_positions", Group: GroupCerts, Label: "Positions whose certificate never expires", Type: TypeList, Default: "Paramedic, Nurse, Doctor / Site Physician", Description: "Comma-separated position names."},
 }
@@ -152,6 +153,6 @@ func boolFields(p *policy.Policy) map[string]*bool {
 		"bpjs_kes_shown": &p.BpjsKesShown, "bpjs_kes_required": &p.BpjsKesRequired,
 		"bpjs_tk_shown": &p.BpjsTkShown, "bpjs_tk_required": &p.BpjsTkRequired,
 		"contract_shown": &p.ContractShown, "contract_required": &p.ContractRequired,
-		"certificate_required": &p.CertificateRequired, "waiver_visitor_company_enabled": &p.WaiverVisitorEnabled,
+		"certificate_shown": &p.CertificateShown, "certificate_required": &p.CertificateRequired, "waiver_visitor_company_enabled": &p.WaiverVisitorEnabled,
 	}
 }

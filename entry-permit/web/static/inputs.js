@@ -352,6 +352,17 @@
     input.addEventListener('input', function () { if (note.hidden === false) show(''); });
   }
 
+  // setupRulePair keeps the Show and Mandatory ticks of one form field consistent (the server enforces it too):
+  // ticking Mandatory ticks Show, and unticking Show unticks Mandatory.
+  function setupRulePair(form) {
+    var root = form.ownerDocument;
+    var shown = root.querySelector('input[data-rule-shown][form="' + form.id + '"]');
+    var required = root.querySelector('input[data-rule-required][form="' + form.id + '"]');
+    if (!shown || !required) return;
+    required.addEventListener('change', function () { if (required.checked) shown.checked = true; });
+    shown.addEventListener('change', function () { if (!shown.checked) required.checked = false; });
+  }
+
   // setupSort lets a click on any header of a table.sortable order its rows, ascending first and
   // descending on the next click. Numbers sort as numbers, dates and text as text.
   function setupSort(table) {
@@ -406,6 +417,7 @@
     each(doc, 'input[type="tel"]', function (el) { onBlur(el, cleanPhone); });
     each(doc, 'input[type="email"]', function (el) { onBlur(el, tidyEmail); });
     each(doc, 'input[data-mxcheck]', setupMxCheck);
+    each(doc, 'form[data-rule-pair]', setupRulePair);
     each(doc, 'input[data-digits]', function (el) {
       el.addEventListener('input', function () {
         var v = digitsOnly(el.value);

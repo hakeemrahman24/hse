@@ -178,6 +178,34 @@ still call it where their old tab bar used to be. */}}
 <p class="sub">Rule numbers the app uses. A change applies to the next request. Every change is written to the audit log.</p>
 {{if .Settings.Flash}}<p class="ok" role="status">{{.Settings.Flash}}</p>{{end}}
 {{if .Settings.Err}}<p class="error" role="alert">{{.Settings.Err}}</p>{{end}}
+{{if .Settings.Fields}}
+<section class="card">
+  <h2>Optional fields on the work-permit form</h2>
+  <p class="sub">For each field choose what the requester sees. <strong>Show</strong> only: the box is on the form and may be left empty. <strong>Show and Mandatory</strong>: it must be filled in. Neither ticked: the box is hidden completely. Mandatory needs Show.</p>
+  <div class="tablewrap">
+  <table>
+    <thead><tr><th scope="col">Field</th><th scope="col">Show</th><th scope="col">Mandatory</th><th scope="col"><span class="sr">Actions</span></th></tr></thead>
+    <tbody>
+    {{range .Settings.Fields}}
+    <tr>
+      <td><label for="fr-{{.Field}}-shown">{{.Label}}</label><br><small>{{.Note}}</small></td>
+      <td><input id="fr-{{.Field}}-shown" type="checkbox" name="shown" value="1" form="fr-{{.Field}}" data-rule-shown{{if .Shown}} checked{{end}}></td>
+      <td><input id="fr-{{.Field}}-required" type="checkbox" name="required" value="1" form="fr-{{.Field}}" data-rule-required aria-label="{{.Label}}: mandatory"{{if .Required}} checked{{end}}></td>
+      <td class="actions">
+        <form id="fr-{{.Field}}" class="inline" method="post" action="/staff/admin/settings" data-rule-pair>
+          <input type="hidden" name="_csrf" value="{{$.CSRF}}">
+          <input type="hidden" name="field" value="{{.Field}}">
+          <button class="btn-small-solid" type="submit" name="action" value="save-field">Save</button>
+          {{if not .IsDefault}}<button class="btn-small-quiet" type="submit" name="action" value="reset-field" formnovalidate>Reset</button>{{end}}
+        </form>
+      </td>
+    </tr>
+    {{end}}
+    </tbody>
+  </table>
+  </div>
+</section>
+{{end}}
 {{range .Settings.Groups}}
 <section class="card">
   <h2>{{.Name}}</h2>

@@ -344,10 +344,16 @@ func TestPartTwoAsksForACertificateOnlyWhenThePositionNeedsOne(t *testing.T) {
 	if strings.Contains(body, `name="cert_doc"`) {
 		t.Error("a position that needs no certificate was asked for one")
 	}
-	e.setSetting(t, "certificate_required", "off")
+	e.setSetting(t, "certificate_required", "off") // shown but not mandatory: the boxes stay, without "required"
+	e.setPosition("Op Crane")
+	_, body = e.permitPost(t, nil)
+	if !strings.Contains(body, `name="cert_doc"`) || strings.Contains(body, `name="cert_doc" type="file" accept="application/pdf,image/jpeg,image/png" required`) {
+		t.Error("an optional certificate should be shown, and not mandatory")
+	}
+	e.setSetting(t, "certificate_shown", "off")
 	e.setPosition("Op Crane")
 	if _, body = e.permitPost(t, nil); strings.Contains(body, `name="cert_doc"`) {
-		t.Error("the certificate was asked for although the setting is off")
+		t.Error("the certificate was asked for although the setting hides it")
 	}
 }
 

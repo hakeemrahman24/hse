@@ -41,10 +41,11 @@ type Form struct {
 	BpjsTkShown, BpjsTkRequired   bool
 	BpjsKes, BpjsTk               string // digits, spaces allowed
 
-	// CertNeeded: the position needs a certificate and the setting requires it.
+	// CertNeeded: the position needs a certificate and the setting shows the section.
 	// CertFixedUntil is set for positions whose certificate never expires, so no
 	// date is asked.
 	CertNeeded     bool
+	CertRequired   bool // the setting makes it mandatory; otherwise the section is optional
 	CertFixedUntil dates.Day
 	CertUntil      dates.Day
 	HasCertDoc     bool
@@ -287,6 +288,9 @@ func bpjsProblem(f Form) error {
 func certProblem(f Form, today dates.Day) error {
 	if !f.CertNeeded {
 		return nil
+	}
+	if !f.CertRequired && !f.HasCertDoc && f.CertUntil == "" {
+		return nil // shown but optional, and left empty
 	}
 	switch {
 	case !f.HasCertDoc:

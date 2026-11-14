@@ -141,11 +141,11 @@
     <h2 class="fcard-title"><span class="step"></span>Certificate of competence</h2>
     <div class="form-grid">
   <p class="note">{{.Sec.Position.Canonical}} needs a certificate{{if .Sec.CertName}}: {{.Sec.CertName}}{{end}}.</p>
-  <label class="field" for="p-certdoc"><span>Certificate of competence</span>
-    <input id="p-certdoc" name="cert_doc" type="file" accept="application/pdf,image/jpeg,image/png" required></label>
+  <label class="field" for="p-certdoc"><span>Certificate of competence{{if not .Sec.CertRequired}} (optional){{end}}</span>
+    <input id="p-certdoc" name="cert_doc" type="file" accept="application/pdf,image/jpeg,image/png"{{if .Sec.CertRequired}} required{{end}}></label>
   {{if .Sec.CertFixedUntil}}<p class="note">This certificate does not expire, so no date is needed.</p>{{else}}
-  <label class="field" for="p-certuntil"><span>Certificate valid until, dd/mm/yyyy</span>
-    <input data-date id="p-certuntil" name="cert_until" type="text" value="{{index .Vals "cert_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>{{end}}
+  <label class="field" for="p-certuntil"><span>Certificate valid until, dd/mm/yyyy{{if not .Sec.CertRequired}} (optional){{end}}</span>
+    <input data-date id="p-certuntil" name="cert_until" type="text" value="{{index .Vals "cert_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10"{{if .Sec.CertRequired}} required{{end}}></label>{{end}}
     </div>
   </section>{{end}}
   <section class="fcard" id="sec-docs">

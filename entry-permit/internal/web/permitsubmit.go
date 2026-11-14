@@ -147,7 +147,7 @@ type Sections struct {
 	ContractShown, ContractRequired bool
 	BpjsKesShown, BpjsKesRequired   bool
 	BpjsTkShown, BpjsTkRequired     bool
-	CertNeeded                      bool
+	CertNeeded, CertRequired        bool
 	CertName                        string
 	CertFixedUntil                  dates.Day
 	Position                        position.Result
@@ -170,7 +170,8 @@ func (a *App) sections(ctx context.Context, e worker.Employee, pol policy.Policy
 	if sec.Position.Canonical == "" {
 		sec.Position.Canonical = e.Position
 	}
-	if pol.CertificateRequired && sec.Position.CertRequired == "Y" {
+	if pol.CertificateShown && sec.Position.CertRequired == "Y" {
+		sec.CertRequired = pol.CertificateRequired
 		sec.CertNeeded, sec.CertName, sec.CertFixedUntil = true, sec.Position.Certificate, sec.Position.CertValidUntilFixed
 	}
 	return sec
@@ -312,7 +313,7 @@ func (a *App) readForm(r *http.Request, e worker.Employee, v map[string]string, 
 		ContractShown: sec.ContractShown, ContractRequired: sec.ContractRequired, HasContractDoc: uploaded(r, "contract_doc") != nil,
 		BpjsKesShown: sec.BpjsKesShown, BpjsKesRequired: sec.BpjsKesRequired, BpjsKes: v["bpjs_kes"],
 		BpjsTkShown: sec.BpjsTkShown, BpjsTkRequired: sec.BpjsTkRequired, BpjsTk: v["bpjs_tk"],
-		CertNeeded: sec.CertNeeded, CertFixedUntil: sec.CertFixedUntil, HasCertDoc: uploaded(r, "cert_doc") != nil,
+		CertNeeded: sec.CertNeeded, CertRequired: sec.CertRequired, CertFixedUntil: sec.CertFixedUntil, HasCertDoc: uploaded(r, "cert_doc") != nil,
 	}
 	if rg, ok := findRegency(a.regencies(r.Context()), v["regency"]); ok {
 		f.Province, f.Regency = rg.Province, rg.Name

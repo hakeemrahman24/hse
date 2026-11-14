@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"entry-permit/internal/policy"
 	"entry-permit/internal/staff"
 )
 
@@ -74,3 +75,46 @@ func TestSettingsChangeLoginLockoutLive(t *testing.T) {
 		t.Fatal("account not locked after 1 wrong PIN with max tries = 1")
 	}
 }
+
+// The optional form fields are one table: a Show box and a Mandatory box per field.
+func TestSettingsPageHasTheShowAndMandatoryTable(t *testing.T) {
+	e := newEnv(t)
+	cookies, tok := e.adminSession(t)
+	_, body := e.get(t, "/staff/admin/settings", cookies)
+	for _, want := range []string{"Optional fields on the work-permit form", `id="fr-bpjs_kes-shown"`, `id="fr-bpjs_tk-required"`,
+		`id="fr-contract-shown"`, `id="fr-certificate-required"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("settings page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, "Show the BPJS Kesehatan box") {
+		t.Error("the BPJS switch is still listed as a separate on/off row")
+	}
+	post := func(v url.Values) string {
+		v.Set("_csrf", tok)
+		loc := e.post(t, "/staff/admin/settings", cookies, v).Header.Get("Location")
+		e.clock.now = e.clock.now.AddMinutes(2) // past the one-minute policy cache
+		return loc
+	}
+	// Show and Mandatory ticked.
+	if loc := post(url.Values{"action": {"save-field"}, "field": {"bpjs_tk"}, "shown": {"1"}, "required": {"1"}}); !strings.Contains(loc, "ok=Saved") {
+		t.Fatalf("save field: %s", loc)
+	}
+	if p := e.livePolicy(); !p.BpjsTkShown || !p.BpjsTkRequired {
+		t.Fatalf("show and mandatory not saved: %+v", p)
+	}
+	// Nothing ticked: hidden completely.
+	post(url.Values{"action": {"save-field"}, "field": {"bpjs_tk"}})
+	if p := e.livePolicy(); p.BpjsTkShown || p.BpjsTkRequired {
+		t.Fatalf("hidden not saved: %+v", p)
+	}
+	if loc := post(url.Values{"action": {"save-field"}, "field": {"nonsense"}, "shown": {"1"}}); !strings.Contains(loc, "err=") {
+		t.Fatalf("unknown field accepted: %s", loc)
+	}
+	post(url.Values{"action": {"reset-field"}, "field": {"bpjs_tk"}})
+	if p := e.livePolicy(); !p.BpjsTkShown || p.BpjsTkRequired {
+		t.Fatalf("reset not applied: %+v", p)
+	}
+}
+
+func (e *testEnv) livePolicy() policy.Policy { return e.app.policy() }
