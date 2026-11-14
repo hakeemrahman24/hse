@@ -631,13 +631,15 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
 
 /* More opens a detail row under its row (mcu-portal-employees.js), in the row's status colour. */
 .mp-table.mp-emp tr.mp-detail td { padding: 6px 12px 8px 20px; white-space: normal; background: var(--hl); }
-.mp-detail-list { display: flex; flex-wrap: wrap; gap: 4px 28px; margin: 0; font-size: 0.75rem; }
-.mp-detail-list > div { display: flex; gap: 6px; min-width: 0; }
+/* One detail per row: the label on the left, the value beside it. */
+.mp-detail-list { display: grid; gap: 3px 0; margin: 0; font-size: 0.75rem; }
+.mp-detail-list > div { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 12px; }
 .mp-detail-list > div[hidden] { display: none; }
 .mp-detail-list dt { font-weight: 700; color: var(--text-2); }
 .mp-detail-list dd { margin: 0; max-width: 70ch; white-space: pre-wrap; overflow-wrap: anywhere; }
-.mp .mp-more-btn::after { content: " \25BE"; display: inline-block; text-decoration: none; }
-.mp .mp-more-btn[aria-expanded="true"]::after { content: " \25B4"; }
+/* The arrow sits a clear gap after the word (a margin, so the underline does not run under it). */
+.mp .mp-more-btn::after { content: "\25BE"; display: inline-block; margin-left: 0.7em; text-decoration: none; }
+.mp .mp-more-btn[aria-expanded="true"]::after { content: "\25B4"; }
 
 /* Export to Excel: a small panel with the three choices opens under the button. */
 .mp-export { position: relative; }

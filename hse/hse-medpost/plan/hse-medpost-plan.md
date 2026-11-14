@@ -310,6 +310,12 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
+### 2026-11-14 — Employee checkups: More arrow gap, details one per row
+
+- **What:** the ▾/▴ after More has a clear gap (a margin on the arrow, not a space, so the underline stops at the word); the expanded More row lists each detail on its own row (label column + value) instead of side by side. CSS only (`mcu-portal.css`, cache version 47).
+- **Why:** the owner asked for more room after the arrow and for the details to read as rows.
+- **Open:** still not looked at in a browser. No migration.
+
 ### 2026-11-14 — Employee checkups: Needs action tile, Download certificates (latest N zip)
 
 - **What:** (1) A full-width **Needs action** tile (Expired + Expiring soon, combined count) above the eight status tiles, and the same choice first in the Validity box. Turning it on also sets the order to *Valid until, oldest first* (longest overdue on top); turning it off clears both. The export accepts it. (2) **Download certificates**: a panel next to Export with "Latest [20] certificates"; `GET /mcu-submit/employees/certificates.zip?n=N` sends one zip of the N newest checkups' certificates among the workers the account may see (own company, plus subcontractors when ticked; the admin gets everybody), newest first, only where `Employee.HasCertificate` (Unfit always, Fit once Close). N is 1 to 100 (`maxZipCertificates`, same cap as the documents zip). It ignores the on-screen filters, like "Latest N records" in the export (owner, 2026-11-14). Each file is one `CertificateDownloaded` audit row, `Detail` = `zip record <id>`, no name. The button is hidden when no `CertificateSource` is wired in.
