@@ -39,6 +39,7 @@ type Employee struct {
 	Status                          string // one of the Val* labels
 	DaysLeft                        int    // days until ValidUntil; negative once expired; only meaningful for the three fit statuses
 	HasValidity                     bool   // Status is Valid, Expiring soon or Expired (DaysLeft means something)
+	NoteLabel, Note                 string // "Recommendation" or "Notes" and the reviewer's words; empty when there is none to show
 	HasCertificate                  bool   // the latest checkup has a certificate the page may offer (see LatestRecord.HasCertificate)
 }
 
@@ -89,7 +90,8 @@ func (s *Store) CompanyEmployees(ctx context.Context, companyIDs []int64, window
 	}
 	rows, err := s.DB.QueryContext(ctx,
 		`SELECT p.PatientID, p.Name, COALESCE(p.WorkPosition, ''), COALESCE(c.Name, ''), COALESCE(m.McuRecordID, 0),
-		        COALESCE(m.DateCheckUp, ''), COALESCE(m.ResultCriteria, ''), COALESCE(m.ResultValidUntil, ''), COALESCE(m.CheckUpStatus, '')
+		        COALESCE(m.DateCheckUp, ''), COALESCE(m.ResultCriteria, ''), COALESCE(m.ResultValidUntil, ''), COALESCE(m.CheckUpStatus, ''),
+		        COALESCE(m.ResultNotes, ''), COALESCE(m.Recommendation, '')
 		 FROM Patient p
 		 LEFT JOIN Company c ON c.CompanyID = p.FK_CompanyID
 		 LEFT JOIN McuRecord m ON m.McuRecordID = (
@@ -106,8 +108,8 @@ func (s *Store) CompanyEmployees(ctx context.Context, companyIDs []int64, window
 	for rows.Next() {
 		var e Employee
 		var record int64
-		var checkUpStatus string
-		if err := rows.Scan(&e.PatientID, &e.Name, &e.Position, &e.Company, &record, &e.CheckUpDate, &e.Result, &e.ValidUntil, &checkUpStatus); err != nil {
+		var checkUpStatus, notes, recommendation string
+		if err := rows.Scan(&e.PatientID, &e.Name, &e.Position, &e.Company, &record, &e.CheckUpDate, &e.Result, &e.ValidUntil, &checkUpStatus, &notes, &recommendation); err != nil {
 			return nil, err
 		}
 		if checkUpStatus == "Archived / Exit" {
@@ -119,10 +121,25 @@ func (s *Store) CompanyEmployees(ctx context.Context, companyIDs []int64, window
 			e.Status, e.DaysLeft, e.HasValidity = validityOf(e.Result, e.ValidUntil, today, windowDays)
 			// The same rule as the document list and the MCU tab: Unfit always, Fit only once Close.
 			e.HasCertificate = LatestRecord{Result: e.Result, Status: checkUpStatus}.HasCertificate()
+			e.NoteLabel, e.Note = noteFor(e.Result, notes, recommendation)
 		}
 		out = append(out, e)
 	}
 	return out, rows.Err()
+}
+
+// noteFor is what the More button shows, by the portal's existing rule (owner, 2026-10-31, see
+// Submission.ResultMessage): an incomplete or follow-up result shows the Recommendation, a temporarily
+// unfit or unfit one the notes, exactly as the reviewer wrote them. The notes of a Fit result are
+// not shown: reviewers do not write those for the submitter to read.
+func noteFor(result, notes, recommendation string) (label, text string) {
+	switch result {
+	case "NeedFollowUp", "IncompleteResult":
+		return "Recommendation", strings.TrimSpace(recommendation)
+	case "TemporaryUnfit", "Unfit":
+		return "Notes", strings.TrimSpace(notes)
+	}
+	return "", ""
 }
 
 // filterEmployees keeps the workers whose name has every typed word (any order, like the document

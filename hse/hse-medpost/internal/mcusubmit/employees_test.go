@@ -189,3 +189,37 @@ func TestEmployeeCheckupsCertificateLinkAndDownload(t *testing.T) {
 		t.Errorf("signed out = 200")
 	}
 }
+
+// The More button shows the Recommendation of an incomplete/follow-up result and the notes of an unfit
+// one, as written; the notes of a Fit result stay hidden, and a worker with nothing to show has no button.
+func TestEmployeeCheckupsMoreShowsTheReviewersWordsByResult(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	for _, w := range []struct{ name, result, notes, rec string }{
+		{"Follow Up Worker", "NeedFollowUp", "private notes A", "See a cardiologist"},
+		{"Unfit Worker", "Unfit", "Avoid heights <b>", "private rec B"},
+		{"Fit Worker", "Fit", "private notes C", "private rec C"},
+		{"Unfit Silent", "TemporaryUnfit", "", ""},
+	} {
+		id := seedWorker(t, e.store, w.name, "1990-01-01", e.companyID)
+		addRecord(t, e.store, id, "N-"+w.name, w.result, "2099-01-01", "Open", 1)
+		if _, err := e.store.DB.Exec(`UPDATE McuRecord SET ResultNotes = ?, Recommendation = ? WHERE CheckUpID = ?`, w.notes, w.rec, "N-"+w.name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	body := e.get("/mcu-submit/employees", cookie).Body.String()
+	for _, want := range []string{"See a cardiologist", "Recommendation", "Avoid heights &lt;b&gt;", "Notes"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page lacks %q", want)
+		}
+	}
+	for _, hidden := range []string{"private notes A", "private rec B", "private notes C", "private rec C", "heights <b>"} {
+		if strings.Contains(body, hidden) {
+			t.Errorf("page shows %q", hidden)
+		}
+	}
+	if n := strings.Count(body, `<summary class="btn-ghost">More</summary>`); n != 2 {
+		t.Errorf("%d More buttons, want 2 (follow-up and unfit with words)", n)
+	}
+}

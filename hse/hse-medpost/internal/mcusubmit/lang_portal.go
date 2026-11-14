@@ -63,6 +63,10 @@ var portalText = map[string][2]string{
 	"Choose a password different from the temporary one.": {"Pilih kata sandi yang berbeda dari yang sementara.", "请选择与临时密码不同的密码。"},
 
 	// Employee checkups
+	"More":                   {"Selengkapnya", "更多"},
+	"Recommendation":         {"Rekomendasi", "建议"},
+	"Notes":                  {"Catatan", "备注"},
+	"Certificate":            {"Sertifikat", "证书"},
 	"Employee checkups":      {"Check-up karyawan", "员工体检"},
 	"Employee":               {"Karyawan", "员工"},
 	"Include subcontractors": {"Sertakan subkontraktor", "包括分包商"},

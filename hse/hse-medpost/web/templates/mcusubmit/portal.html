@@ -637,10 +637,11 @@
       <p class="mp-hint" role="status">{{.Result.Total}} {{if eq .Result.Total 1}}employee{{else}}employees{{end}}, page {{.Result.Page}} of {{.Result.Pages}}</p>
       <div class="mp-scroll"><table class="mp-table">
         <caption>{{.Caption}}</caption>
-        <thead><tr><th scope="col">Employee</th>{{if .Form.subs}}<th scope="col">Company</th>{{end}}<th scope="col">Position</th><th scope="col">Last checkup</th><th scope="col">Valid until</th><th scope="col">Validity</th><th scope="col">Certificate</th></tr></thead>
+        <thead><tr><th scope="col">Employee</th>{{if .Form.subs}}<th scope="col">Company</th>{{end}}<th scope="col">Position</th><th scope="col">Last checkup</th><th scope="col">Valid until</th><th scope="col">Validity</th><th scope="col">Certificate</th><th scope="col">More</th></tr></thead>
         <tbody>{{range .Employees}}<tr><td>{{.Name}}</td>{{if $.Form.subs}}<td>{{.Company}}</td>{{end}}<td>{{.Position}}</td><td>{{.CheckUpDate}}</td><td>{{if .HasValidity}}{{.ValidUntil}}{{else}}-{{end}}</td>
           <td><strong>{{.Status}}</strong>{{if .HasValidity}}{{if lt .DaysLeft 0}} <span class="mp-hint">expired</span>{{else}} <span class="mp-hint">{{.DaysLeft}} days left</span>{{end}}{{end}}</td>
-          <td>{{if .HasCertificate}}<a class="btn-ghost" href="/mcu-submit/employees/{{.PatientID}}/certificate?view=1" target="_blank" rel="noopener">View</a> <a class="btn-ghost" href="/mcu-submit/employees/{{.PatientID}}/certificate">Download</a>{{else}}<span class="mp-hint">-</span>{{end}}</td></tr>{{end}}</tbody></table></div>
+          <td>{{if .HasCertificate}}<a class="btn-ghost" href="/mcu-submit/employees/{{.PatientID}}/certificate?view=1" target="_blank" rel="noopener">View</a> <a class="btn-ghost" href="/mcu-submit/employees/{{.PatientID}}/certificate">Download</a>{{else}}<span class="mp-hint">-</span>{{end}}</td>
+          <td>{{if .Note}}<details class="mp-more"><summary class="btn-ghost">More</summary><p class="mp-sub"><strong>{{.NoteLabel}}</strong></p><p class="mp-note">{{.Note}}</p></details>{{else}}<span class="mp-hint">-</span>{{end}}</td></tr>{{end}}</tbody></table></div>
       {{if or .PrevURL .NextURL}}<p class="mp-actions">
         {{if .PrevURL}}<a class="btn-ghost" href="{{.PrevURL}}" rel="prev">Previous</a>{{end}}
         {{if .NextURL}}<a class="btn-ghost" href="{{.NextURL}}" rel="next">Next</a>{{end}}</p>{{end}}

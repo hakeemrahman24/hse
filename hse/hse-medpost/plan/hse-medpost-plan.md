@@ -310,6 +310,11 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
+### 2026-11-14 — Employee checkups: More button for the reviewer's recommendation or notes
+
+- **What changed:** a More column with a button that opens the reviewer's words under it: the Recommendation for Need follow-up / Incomplete, the notes for Temporarily Unfit / Unfit, exactly as written (the portal's existing rule, `Submission.ResultMessage`). A worker with nothing to show has no button. Notes and recommendation of a Fit or Fit-with-note result are NOT shown.
+- **Open (owner):** the document list only shows these once the reviewer closed/told the submitter (`Notified`); this page reads the worker's latest checkup record directly, so a result saved but not yet "told" would show too. Say if it should wait for that.
+
 ### 2026-11-14 — Employee checkups: certificate View / Download column
 
 - **What changed:** the Employee checkups table has a Certificate column with View (opens in a tab) and Download for a worker whose latest checkup has a certificate: the same rule as the MCU tab and the document list (`LatestRecord.HasCertificate`: Unfit / Temporarily Unfit always, Fit and Fit with note only once the checkup is Close). Route `/mcu-submit/employees/{patientId}/certificate`; the worker must belong to a company in the account's scope (own company or a subcontractor, even when the page is not showing subcontractors), otherwise the same 404 as an unknown worker. It shares `serveCertificate` with the document link (same headers, same "no certificate available" page, audit event `CertificateDownloaded` with the record id in Detail, no name).
