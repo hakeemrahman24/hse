@@ -947,3 +947,6 @@ small { font-size: var(--fs-xs); }
 
 /* Checkboxes and radios follow the theme everywhere (they were the browser's blue, or the pale lilac fill). */
 input[type="checkbox"], input[type="radio"], progress { accent-color: var(--accent-text); }
+
+/* An email box whose domain cannot receive mail gets the same red outline as a field the server refused. */
+input[aria-invalid="true"] { border-color: var(--error); outline: 1px solid var(--error); outline-offset: 0; }
