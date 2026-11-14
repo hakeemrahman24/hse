@@ -868,3 +868,5 @@ form[data-steps] .fcard-title .step::before { content: counter(sec); }
 form[data-steps] .stepnav ol { counter-reset: nav; }
 form[data-steps] .stepnav li { counter-increment: nav; }
 form[data-steps] .stepnav .step::before { content: counter(nav); }
+/* The field the server's message is about (wizard.js marks it). */
+input.is-bad, select.is-bad, textarea.is-bad { border-color: var(--error); outline: 2px solid var(--error); outline-offset: 0; }

@@ -58,7 +58,7 @@
 
 {{define "permit_check"}}{{with .Permit.Result}}
 <section class="card">
-  {{if $.Permit.Err}}<p class="error" role="alert">{{$.Permit.Err}}</p>{{end}}
+  {{if $.Permit.Err}}<p class="error" role="alert"{{if $.Permit.ErrField}} data-field="{{$.Permit.ErrField}}"{{end}}>{{$.Permit.Err}}</p>{{end}}
   <h2>{{.Worker.Name}}</h2>
   <dl class="facts">
     <dt>Company</dt><dd>{{if .Worker.Company}}{{.Worker.Company}}{{else}}Not recorded{{end}}{{if .Worker.Entity}} ({{.Worker.Entity}}){{end}}</dd>

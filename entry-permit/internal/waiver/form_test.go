@@ -141,3 +141,26 @@ func TestCapUsedCountsRequestedDaysOfLiveWaivers(t *testing.T) {
 		t.Errorf("used = %d, want 7 (5 approved + 2 pending)", got)
 	}
 }
+
+func TestValidationErrorsNameTheirField(t *testing.T) {
+	cases := []struct {
+		name  string
+		edit  func(*Form)
+		field string
+	}{
+		{"email", func(f *Form) { f.RequesterEmail = "nope" }, "requester_email"},
+		{"gender", func(f *Form) { f.Gender = "" }, "gender"},
+		{"nik", func(f *Form) { f.NIK = "12" }, "nik"},
+		{"dates", func(f *Form) { f.To = "" }, "from"},
+		{"precaution", func(f *Form) { f.Precaution = "" }, "precaution"},
+		{"declaration", func(f *Form) { f.Declaration = false }, "declaration"},
+		{"photo", func(f *Form) { f.HasPhoto = false }, "id_photo"},
+	}
+	for _, c := range cases {
+		f := goodForm()
+		c.edit(&f)
+		if _, err := ValidateForm(pol, f, today); FieldOf(err) != c.field {
+			t.Errorf("%s: field %q, want %q (err %v)", c.name, FieldOf(err), c.field, err)
+		}
+	}
+}

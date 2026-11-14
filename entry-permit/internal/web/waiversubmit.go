@@ -47,6 +47,7 @@ var waiverFileKinds = []struct{ field, label string }{
 type WaiverData struct {
 	Available      bool
 	Err            string
+	ErrField       string            // the input the message is about (its name), so the step-by-step form opens that step
 	Vals           map[string]string // what the boxes hold after a refused try
 	Companies      []company.Company
 	Nationalities  []string // empty when the admin list has no entries: the box is then free text
@@ -71,6 +72,7 @@ type waiverInput struct {
 	DOB      dates.Day
 	From, To dates.Day
 	Spare    string // optional second email, cleaned; joined to the main one once both are checked
+	ErrField string // set by readWaiver when it refuses the form: the input the message is about
 }
 
 func (a *App) waiverAvailable() bool {
@@ -136,9 +138,13 @@ func (a *App) waiverSubmit(w http.ResponseWriter, r *http.Request) {
 	pol := a.policy()
 	maxBytes := pol.UploadMaxKB * 1024
 	vals := map[string]string{}
-	fail := func(status int, msg string) {
-		a.render(w, "waiver", status, View{Title: waiverTitle, User: a.currentUser(r), My: a.myData(),
-			Waiver: a.waiverData(r.Context(), pol, vals, msg)})
+	// fail shows the form again with a message; the optional field is the input the message is about.
+	fail := func(status int, msg string, field ...string) {
+		d := a.waiverData(r.Context(), pol, vals, msg)
+		if len(field) > 0 {
+			d.ErrField = field[0]
+		}
+		a.render(w, "waiver", status, View{Title: waiverTitle, User: a.currentUser(r), My: a.myData(), Waiver: d})
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, int64(waiverFiles*maxBytes+1<<20))
 	if err := r.ParseMultipartForm(multipartMemKB << 10); err != nil {
@@ -181,12 +187,12 @@ func (a *App) waiverSubmit(w http.ResponseWriter, r *http.Request) {
 
 	in, status, msg := a.readWaiver(r, vals)
 	if status != 0 {
-		fail(status, msg)
+		fail(status, msg, in.ErrField)
 		return
 	}
 	checked, err := waiver.ValidateForm(pol, in.Form, a.Clock.Today())
 	if err != nil {
-		fail(http.StatusBadRequest, err.Error())
+		fail(http.StatusBadRequest, err.Error(), waiver.FieldOf(err))
 		return
 	}
 	// The spare email is optional: the same address twice is one address, a bad one is refused,
@@ -196,10 +202,10 @@ func (a *App) waiverSubmit(w http.ResponseWriter, r *http.Request) {
 	}
 	switch {
 	case in.Spare != "" && !validEmail(in.Spare):
-		fail(http.StatusBadRequest, "The spare email address is not valid. Fix it or leave it empty.")
+		fail(http.StatusBadRequest, "The spare email address is not valid. Fix it or leave it empty.", "spare_email")
 		return
 	case len(joinEmails(in.Form.RequesterEmail, in.Spare)) > maxEmailLength:
-		fail(http.StatusBadRequest, "The two email addresses are too long together (at most 160 characters). Use shorter addresses.")
+		fail(http.StatusBadRequest, "The two email addresses are too long together (at most 160 characters). Use shorter addresses.", "requester_email")
 		return
 	}
 	if msg := a.checkMailDomains(pol, in.Form.RequesterEmail, in.Spare); msg != "" {
@@ -233,6 +239,7 @@ func (a *App) readWaiver(r *http.Request, v map[string]string) (waiverInput, int
 	for field, out := range days {
 		d, err := parseFormDay(v[field])
 		if err != nil {
+			in.ErrField = field
 			return in, http.StatusBadRequest, err.Error()
 		}
 		*out = d
@@ -240,10 +247,15 @@ func (a *App) readWaiver(r *http.Request, v map[string]string) (waiverInput, int
 	passport, err1 := parseFormDay(v["passport_until"])
 	visa, err2 := parseFormDay(v["visa_until"])
 	if err := firstErr(err1, err2); err != nil {
+		in.ErrField = "passport_until"
+		if err1 == nil {
+			in.ErrField = "visa_until"
+		}
 		return in, http.StatusBadRequest, err.Error()
 	}
 	nat, msg := a.pickNationality(r.Context(), v["nationality"])
 	if msg != "" {
+		in.ErrField = "nationality"
 		return in, http.StatusBadRequest, msg
 	}
 	foreign := nat != "" && worker.Employee{Nationality: nat}.IsForeign()
@@ -253,6 +265,10 @@ func (a *App) readWaiver(r *http.Request, v map[string]string) (waiverInput, int
 	risk, rerr := waiver.ParseAnswers("risk", waiver.RiskQuestions, func(f string) string { return v[f] })
 	health, herr := waiver.ParseAnswers("health", waiver.HealthQuestions, func(f string) string { return v[f] })
 	if err := firstErr(rerr, herr); err != nil {
+		in.ErrField = "risk_" + waiver.RiskQuestions[0].Key
+		if rerr == nil {
+			in.ErrField = "health_" + waiver.HealthQuestions[0].Key
+		}
 		return in, http.StatusBadRequest, err.Error()
 	}
 	in.Form = waiver.Form{
@@ -333,7 +349,7 @@ func (a *App) waiverRulesNeedingStorage(ctx context.Context, pol policy.Policy, 
 
 // storeWaiver saves the files and then the row. A failure after the files are
 // written removes them again, so a refused request leaves nothing on disk.
-func (a *App) storeWaiver(w http.ResponseWriter, r *http.Request, in waiverInput, c waiver.Checked, pol policy.Policy, fail func(int, string)) {
+func (a *App) storeWaiver(w http.ResponseWriter, r *http.Request, in waiverInput, c waiver.Checked, pol policy.Policy, fail func(int, string, ...string)) {
 	maxBytes := pol.UploadMaxKB * 1024
 	id, err := permit.UniqueID("WVR-", idAttempts, func(id string) (bool, error) { return a.Waivers.Exists(r.Context(), id) })
 	if err != nil {

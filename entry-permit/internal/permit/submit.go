@@ -63,6 +63,24 @@ type Form struct {
 	HasImmigrationDoc, HasPoliceDoc              bool
 }
 
+// FieldError is a validation message that also names the form field it is about (the input's name attribute),
+// so the page can open the right step of the step-by-step form and put the cursor on that field.
+// Error() is the message alone, so everything that only prints the error is unchanged.
+type FieldError struct{ Field, Msg string }
+
+func (e FieldError) Error() string { return e.Msg }
+
+// FieldOf returns the field name an error carries, or "" for an error that is not about one field.
+func FieldOf(err error) string {
+	var fe FieldError
+	if errors.As(err, &fe) {
+		return fe.Field
+	}
+	return ""
+}
+
+func bad(field, msg string) error { return FieldError{Field: field, Msg: msg} }
+
 func clean(s string) string { return strings.ToLower(strings.Join(strings.Fields(s), " ")) }
 
 // expiredOrBlank reports a missing or malformed date, or one before today (Jakarta day).
@@ -80,29 +98,37 @@ func expiredOrBlank(d, today dates.Day) bool {
 // order and returns the first problem as a message fit for the requester.
 // Contract, BPJS and certificate checks wait for their Settings toggles.
 func ValidateForm(f Form, today dates.Day) error {
-	fail := func(msg string) error { return errors.New(msg) }
-	switch {
-	case !f.Declaration:
-		return fail("Tick the declaration to confirm the details are true.")
-	case strings.TrimSpace(f.Province) == "" || strings.TrimSpace(f.Regency) == "" || strings.TrimSpace(f.Street) == "":
-		return fail("Enter the home address: province and regency from the list, and the street address.")
-	case contractProblem(f, today) != "":
-		return fail(contractProblem(f, today))
-	case bpjsProblem(f) != "":
-		return fail(bpjsProblem(f))
-	case strings.TrimSpace(f.EmergencyName) == "" || strings.TrimSpace(f.EmergencyPhone) == "":
-		return fail("Enter the emergency contact's name and phone number.")
-	case clean(f.EmergencyName) == clean(f.WorkerName):
-		return fail("The emergency contact must be a different person from the worker.")
-	case !phone.Valid(phone.Normalize(f.Phone)):
-		return fail("Enter a valid phone number for the worker (for example 081234567890).")
-	case !phone.Valid(phone.Normalize(f.EmergencyPhone)):
-		return fail("Enter a valid phone number for the emergency contact.")
-	case phone.Normalize(f.Phone) == phone.Normalize(f.EmergencyPhone):
-		return fail("The emergency phone number must be different from the worker's own.")
+	if !f.Declaration {
+		return bad("declaration", "Tick the declaration to confirm the details are true.")
 	}
-	if msg := certProblem(f, today); msg != "" {
-		return fail(msg)
+	if strings.TrimSpace(f.Province) == "" || strings.TrimSpace(f.Regency) == "" {
+		return bad("regency", "Enter the home address: province and regency from the list, and the street address.")
+	}
+	if strings.TrimSpace(f.Street) == "" {
+		return bad("street", "Enter the home address: province and regency from the list, and the street address.")
+	}
+	if err := contractProblem(f, today); err != nil {
+		return err
+	}
+	if err := bpjsProblem(f); err != nil {
+		return err
+	}
+	switch {
+	case strings.TrimSpace(f.EmergencyName) == "":
+		return bad("emergency_name", "Enter the emergency contact's name and phone number.")
+	case strings.TrimSpace(f.EmergencyPhone) == "":
+		return bad("emergency_phone", "Enter the emergency contact's name and phone number.")
+	case clean(f.EmergencyName) == clean(f.WorkerName):
+		return bad("emergency_name", "The emergency contact must be a different person from the worker.")
+	case !phone.Valid(phone.Normalize(f.Phone)):
+		return bad("phone", "Enter a valid phone number for the worker (for example 081234567890).")
+	case !phone.Valid(phone.Normalize(f.EmergencyPhone)):
+		return bad("emergency_phone", "Enter a valid phone number for the emergency contact.")
+	case phone.Normalize(f.Phone) == phone.Normalize(f.EmergencyPhone):
+		return bad("emergency_phone", "The emergency phone number must be different from the worker's own.")
+	}
+	if err := certProblem(f, today); err != nil {
+		return err
 	}
 	if f.Foreign {
 		if err := validateForeign(f, today); err != nil {
@@ -111,55 +137,54 @@ func ValidateForm(f Form, today dates.Day) error {
 	}
 	switch {
 	case !f.HasIDDoc:
-		return fail("Upload the ID document (KTP, or the passport for a foreign worker).")
+		return bad("id_doc", "Upload the ID document (KTP, or the passport for a foreign worker).")
 	case !f.HasIDPhoto:
-		return fail("Upload the ID photo.")
+		return bad("id_photo", "Upload the ID photo.")
 	}
 	return nil
 }
 
 func validateForeign(f Form, today dates.Day) error {
-	fail := func(msg string) error { return errors.New(msg) }
 	switch f.VisaType {
 	case VisaKindVisa:
 		if f.VisaIssued == "" {
-			return fail("Enter the visa issue date.")
+			return bad("visa_issued", "Enter the visa issue date.")
 		}
 	case VisaKindItas:
 		if strings.TrimSpace(f.VisaCode) == "" {
-			return fail("Enter the ITAS code.")
+			return bad("visa_code", "Enter the ITAS code.")
 		}
 	case VisaKindItap:
 		if strings.TrimSpace(f.VisaCode) == "" {
-			return fail("Enter the ITAP code.")
+			return bad("visa_code", "Enter the ITAP code.")
 		}
 		if strings.TrimSpace(f.VisaIssuedBy) == "" {
-			return fail("Enter the office that issued the ITAP.")
+			return bad("visa_issued_by", "Enter the office that issued the ITAP.")
 		}
 	default:
-		return fail("Choose the work visa type: Visa, ITAS or ITAP.")
+		return bad("visa_type", "Choose the work visa type: Visa, ITAS or ITAP.")
 	}
 	switch {
 	case expiredOrBlank(f.VisaExpiry, today):
-		return fail("The work visa expiry date is missing or already passed.")
+		return bad("visa_expiry", "The work visa expiry date is missing or already passed.")
 	case !f.HasVisaDoc:
-		return fail("Upload the work visa document.")
+		return bad("visa_doc", "Upload the work visa document.")
 	case f.RptkaDays <= 0 || f.RptkaIssued == "":
-		return fail("Enter the RPTKA issue date and duration in days.")
+		return bad("rptka_issued", "Enter the RPTKA issue date and duration in days.")
 	case expiredOrBlank(f.RptkaExpiry, today):
-		return fail("The RPTKA expiry date is missing or already passed.")
+		return bad("rptka_expiry", "The RPTKA expiry date is missing or already passed.")
 	case !f.HasRptkaDoc:
-		return fail("Upload the RPTKA document.")
+		return bad("rptka_doc", "Upload the RPTKA document.")
 	case expiredOrBlank(f.ImmigrationUntil, today):
-		return fail("The immigration reporting letter's valid-until date is missing or already passed.")
+		return bad("immigration_until", "The immigration reporting letter's valid-until date is missing or already passed.")
 	case !f.HasImmigrationDoc:
-		return fail("Upload the immigration reporting letter.")
+		return bad("immigration_doc", "Upload the immigration reporting letter.")
 	case expiredOrBlank(f.PoliceUntil, today):
-		return fail("The police letter's valid-until date is missing or already passed.")
+		return bad("police_until", "The police letter's valid-until date is missing or already passed.")
 	case !f.HasPoliceDoc:
-		return fail("Upload the police letter.")
+		return bad("police_doc", "Upload the police letter.")
 	case expiredOrBlank(f.PassportUntil, today):
-		return fail("The passport valid-until date is missing or already passed.")
+		return bad("passport_until", "The passport valid-until date is missing or already passed.")
 	}
 	return nil
 }
@@ -189,22 +214,22 @@ func (f Form) ValidityInput(mcuValidUntil dates.Day) ValidityInput {
 
 // contractProblem: business-rules-permits.md section 7.6. Required only while the
 // section is shown and required; a date that is given must not be in the past.
-func contractProblem(f Form, today dates.Day) string {
+func contractProblem(f Form, today dates.Day) error {
 	if !f.ContractShown {
-		return ""
+		return nil
 	}
 	if f.ContractRequired {
 		switch {
 		case !f.HasContractDoc:
-			return "Upload the contract document."
+			return bad("contract_doc", "Upload the contract document.")
 		case f.ContractUntil == "":
-			return "Enter the contract validity date."
+			return bad("contract_until", "Enter the contract validity date.")
 		}
 	}
 	if f.ContractUntil != "" && expiredOrBlank(f.ContractUntil, today) {
-		return "The contract validity date is invalid or already passed."
+		return bad("contract_until", "The contract validity date is invalid or already passed.")
 	}
-	return ""
+	return nil
 }
 
 // bpjsDigits keeps what a BPJS number may hold: digits, typed with or without spaces.
@@ -229,48 +254,49 @@ const (
 )
 
 // bpjsProblem: section 7.7. Indonesians only, and only when the toggle says so.
-func bpjsProblem(f Form) string {
+func bpjsProblem(f Form) error {
 	if f.Foreign {
-		return ""
+		return nil
 	}
 	for _, c := range []struct {
 		shown, required bool
 		value, label    string
+		field           string
 	}{
-		{f.BpjsKesShown, f.BpjsKesRequired, f.BpjsKes, "BPJS Kesehatan"},
-		{f.BpjsTkShown, f.BpjsTkRequired, f.BpjsTk, "BPJS Ketenagakerjaan"},
+		{f.BpjsKesShown, f.BpjsKesRequired, f.BpjsKes, "BPJS Kesehatan", "bpjs_kes"},
+		{f.BpjsTkShown, f.BpjsTkRequired, f.BpjsTk, "BPJS Ketenagakerjaan", "bpjs_tk"},
 	} {
 		if !c.shown {
 			continue
 		}
 		if strings.TrimSpace(c.value) == "" {
 			if c.required {
-				return "Enter the " + c.label + " number."
+				return bad(c.field, "Enter the "+c.label+" number.")
 			}
 			continue
 		}
 		if _, ok := bpjsDigits(c.value); !ok {
-			return "The " + c.label + " number must be digits only (8 to 20 digits)."
+			return bad(c.field, "The "+c.label+" number must be digits only (8 to 20 digits).")
 		}
 	}
-	return ""
+	return nil
 }
 
 // certProblem: section 7.9. The file is always needed; the date is typed unless
 // the position's certificate never expires.
-func certProblem(f Form, today dates.Day) string {
+func certProblem(f Form, today dates.Day) error {
 	if !f.CertNeeded {
-		return ""
+		return nil
 	}
 	switch {
 	case !f.HasCertDoc:
-		return "Upload the certificate of competence."
+		return bad("cert_doc", "Upload the certificate of competence.")
 	case f.CertFixedUntil != "":
-		return ""
+		return nil
 	case f.CertUntil == "":
-		return "Enter the certificate validity date."
+		return bad("cert_until", "Enter the certificate validity date.")
 	case expiredOrBlank(f.CertUntil, today):
-		return "The certificate validity date is invalid or already passed."
+		return bad("cert_until", "The certificate validity date is invalid or already passed.")
 	}
-	return ""
+	return nil
 }

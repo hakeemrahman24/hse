@@ -80,79 +80,105 @@ func notADay(s string) bool {
 // their documented order and returns the first problem as a message fit for
 // the requester. It does not do the two checks that need stored waivers: the
 // blocking waiver and the yearly company cap (Blocking, CheckCompanyCap).
+// FieldError is a validation message that also names the form field it is about (the input's name attribute),
+// so the page can open the right step of the step-by-step form and put the cursor on that field.
+// Error() is the message alone, so anything that only prints the error is unchanged.
+type FieldError struct {
+	Field, Msg string
+	Err        error // the original error when one was wrapped, so errors.Is still finds it
+}
+
+func (e FieldError) Error() string { return e.Msg }
+
+func (e FieldError) Unwrap() error { return e.Err }
+
+// FieldOf returns the field name an error carries, or "" for an error that is not about one field.
+func FieldOf(err error) string {
+	var fe FieldError
+	if errors.As(err, &fe) {
+		return fe.Field
+	}
+	return ""
+}
+
+func bad(field, msg string) error { return FieldError{Field: field, Msg: msg} }
+
+// wrap names the field an existing error is about without changing the error.
+func wrap(field string, err error) error { return FieldError{Field: field, Msg: err.Error(), Err: err} }
+
 func ValidateForm(p policy.Policy, f Form, today dates.Day) (Checked, error) {
-	fail := func(msg string) (Checked, error) { return Checked{}, errors.New(msg) }
+	fail := func(field, msg string) (Checked, error) { return Checked{}, bad(field, msg) }
 
 	if !f.CompanyChosen {
-		return fail("Pick the visitor's company from the list.")
+		return fail("company_id", "Pick the visitor's company from the list.")
 	}
 	if err := CheckApplicant(f.ApplicantType, p.WaiverVisitorEnabled, f.CompanyIsGov); err != nil {
-		return Checked{}, err
+		return Checked{}, wrap("applicant_type", err)
 	}
 	switch {
 	case blank(f.RequesterName):
-		return fail("Enter your name (the person making this request).")
+		return fail("requester_name", "Enter your name (the person making this request).")
 	case !validEmail(strings.TrimSpace(f.RequesterEmail)):
-		return fail("Enter a valid email address. The decision will be sent there.")
+		return fail("requester_email", "Enter a valid email address. The decision will be sent there.")
 	case !phone.Valid(phone.Normalize(f.Phone)):
-		return fail("Enter a valid phone number for the visitor (for example 081234567890).")
+		return fail("phone", "Enter a valid phone number for the visitor (for example 081234567890).")
 	case blank(f.Name):
-		return fail("Enter the visitor's name.")
+		return fail("name", "Enter the visitor's name.")
 	case blank(f.Gender):
-		return fail("Choose the visitor's gender.")
+		return fail("gender", "Choose the visitor's gender.")
 	case notADay(f.DOB):
-		return fail("Enter the visitor's date of birth.")
+		return fail("dob", "Enter the visitor's date of birth.")
 	case blank(f.Nationality):
-		return fail("Choose the visitor's nationality.")
+		return fail("nationality", "Choose the visitor's nationality.")
 	case blank(f.Position):
-		return fail("Enter the visitor's position.")
+		return fail("position", "Enter the visitor's position.")
 	case blank(f.Department):
-		return fail("Enter the visitor's department.")
+		return fail("department", "Enter the visitor's department.")
 	case blank(f.VisitLocation):
-		return fail("Enter the visit location.")
+		return fail("visit_location", "Enter the visit location.")
 	case blank(f.Purpose):
-		return fail("Enter the purpose of the visit.")
+		return fail("purpose", "Enter the purpose of the visit.")
 	}
 	nik, err := CleanID(f.NIK, f.Nationality)
 	if err != nil {
-		return Checked{}, err
+		return Checked{}, wrap("nik", err)
 	}
 	days, err := CheckDates(p, f.From, f.To, 0, today)
 	if err != nil {
-		return Checked{}, err
+		return Checked{}, wrap("from", err)
 	}
 	switch {
 	case blank(f.Risk):
-		return fail("Describe the identified risk.")
+		return fail("risk", "Describe the identified risk.")
 	case blank(f.Precaution):
-		return fail("Describe the precaution taken.")
+		return fail("precaution", "Describe the precaution taken.")
 	case blank(f.Prevent):
-		return fail("Describe how this will be prevented.")
+		return fail("prevent", "Describe how this will be prevented.")
 	case f.TakesMedicine && blank(f.Medicine1):
-		return fail("Enter the name of the medicine.")
+		return fail("medicine1", "Enter the name of the medicine.")
 	case f.TakesMedicine && blank(f.Dosage1):
-		return fail("Enter the medicine dosage.")
+		return fail("dosage1", "Enter the medicine dosage.")
 	case !ValidAnswers(f.RiskAnswers, RiskQuestions):
-		return fail("Answer every Risk Exposure question.")
+		return fail("risk_"+RiskQuestions[0].Key, "Answer every Risk Exposure question.")
 	case !ValidAnswers(f.HealthAnswers, HealthQuestions):
-		return fail("Answer every Health Declaration question.")
+		return fail("health_"+HealthQuestions[0].Key, "Answer every Health Declaration question.")
 	case !f.Declaration:
-		return fail("Tick the declaration to confirm the details are true.")
+		return fail("declaration", "Tick the declaration to confirm the details are true.")
 	case !f.HasID:
-		return fail("Upload the ID document (KTP, or the passport for a foreign visitor).")
+		return fail("id_doc", "Upload the ID document (KTP, or the passport for a foreign visitor).")
 	case !f.HasPhoto:
-		return fail("Upload the ID photo.")
+		return fail("id_photo", "Upload the ID photo.")
 	case !f.HasLetter:
-		return fail("Upload the appointment letter.")
+		return fail("letter_doc", "Upload the appointment letter.")
 	}
 	if f.Foreign {
 		switch {
 		case pastOrBlank(f.PassportUntil, today):
-			return fail("The passport valid-until date is missing or already passed.")
+			return fail("passport_until", "The passport valid-until date is missing or already passed.")
 		case pastOrBlank(f.VisaUntil, today):
-			return fail("The visa valid-until date is missing or already passed.")
+			return fail("visa_until", "The visa valid-until date is missing or already passed.")
 		case !f.HasVisa:
-			return fail("Upload the ITAS or e-visa.")
+			return fail("visa_doc", "Upload the ITAS or e-visa.")
 		}
 	}
 	return Checked{NIK: nik, Days: days}, nil

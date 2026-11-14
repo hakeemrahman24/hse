@@ -30,6 +30,7 @@ var workLocations = []string{"Onshore", "Offshore"}
 type PermitData struct {
 	Available                    bool
 	Err                          string
+	ErrField                     string // the input the message is about (its name), so the step-by-step form opens that step
 	RequesterName, RequesterMail string // kept so a failed try does not retype everything
 	SpareMail                    string // optional second address, kept the same way
 	WorkLocation, Name, DOB      string

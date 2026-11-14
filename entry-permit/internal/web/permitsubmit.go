@@ -252,9 +252,15 @@ func (a *App) permitSubmit(w http.ResponseWriter, r *http.Request) {
 	sec := a.sections(r.Context(), e, pol)
 	check.Sec = sec
 
-	fail := func(status int, msg string) {
+	// fail shows the form again with a message. The optional field is the input the message is about, so the
+	// step-by-step form can open the step that holds it.
+	fail := func(status int, msg string, field ...string) {
+		f := ""
+		if len(field) > 0 {
+			f = field[0]
+		}
 		a.render(w, "permit", status, View{Title: "Work Entry Permit", User: a.currentUser(r), My: a.myData(),
-			Permit: PermitData{Available: true, Err: msg, Result: &check}})
+			Permit: PermitData{Available: true, Err: msg, ErrField: f, Result: &check}})
 	}
 	if check.Blocked {
 		fail(http.StatusConflict, check.BlockedText)
@@ -265,13 +271,13 @@ func (a *App) permitSubmit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	form, perr := a.readForm(r, e, vals, sec)
+	form, perr, perrField := a.readForm(r, e, vals, sec)
 	if perr != "" {
-		fail(http.StatusBadRequest, perr)
+		fail(http.StatusBadRequest, perr, perrField)
 		return
 	}
 	if err := permit.ValidateForm(form, a.Clock.Today()); err != nil {
-		fail(http.StatusBadRequest, err.Error())
+		fail(http.StatusBadRequest, err.Error(), permit.FieldOf(err))
 		return
 	}
 	if check.Foreign { // the duplicate gate again, now that the new visa date is known
@@ -293,7 +299,7 @@ func (a *App) permitSubmit(w http.ResponseWriter, r *http.Request) {
 
 // readForm turns the posted values into the rules' Form. The second result is a
 // message when a date cannot be read.
-func (a *App) readForm(r *http.Request, e worker.Employee, v map[string]string, sec Sections) (permit.Form, string) {
+func (a *App) readForm(r *http.Request, e worker.Employee, v map[string]string, sec Sections) (permit.Form, string, string) {
 	f := permit.Form{
 		WorkerName: e.Name, Foreign: e.IsForeign(), Declaration: r.PostFormValue("declaration") != "",
 		Phone: v["phone"], EmergencyName: v["emergency_name"], EmergencyPhone: v["emergency_phone"],
@@ -313,16 +319,16 @@ func (a *App) readForm(r *http.Request, e worker.Employee, v map[string]string, 
 	var err error
 	if sec.ContractShown {
 		if f.ContractUntil, err = parseFormDay(v["contract_until"]); err != nil {
-			return f, err.Error()
+			return f, err.Error(), "contract_until"
 		}
 	}
 	if sec.CertNeeded && sec.CertFixedUntil == "" {
 		if f.CertUntil, err = parseFormDay(v["cert_until"]); err != nil {
-			return f, err.Error()
+			return f, err.Error(), "cert_until"
 		}
 	}
 	if !f.Foreign {
-		return f, "" // an Indonesian's foreign fields are never read
+		return f, "", "" // an Indonesian's foreign fields are never read
 	}
 	targets := []struct {
 		in  string
@@ -332,18 +338,18 @@ func (a *App) readForm(r *http.Request, e worker.Employee, v map[string]string, 
 	for _, t := range targets {
 		d, err := parseFormDay(v[t.in])
 		if err != nil {
-			return f, err.Error()
+			return f, err.Error(), t.in
 		}
 		*t.out = d
 	}
 	f.RptkaDays = atoi(v["rptka_days"])
-	return f, ""
+	return f, "", ""
 }
 
 // storePermit saves the files and then the row. A failure after the files are
 // written removes them again, so a refused request leaves nothing on disk.
 func (a *App) storePermit(w http.ResponseWriter, r *http.Request, e worker.Employee, f permit.Form, sec Sections, c stepClaims,
-	valid dates.Day, reason permit.Reason, maxBytes int, fail func(int, string)) {
+	valid dates.Day, reason permit.Reason, maxBytes int, fail func(int, string, ...string)) {
 	id, err := permit.UniqueID("WEP-", idAttempts, func(id string) (bool, error) { return a.Permits.Exists(r.Context(), id) })
 	if err != nil {
 		log.Printf("request id: %v", err)
@@ -362,7 +368,7 @@ func (a *App) storePermit(w http.ResponseWriter, r *http.Request, e worker.Emplo
 		}
 		if err != nil {
 			_ = a.Uploads.Remove(id)
-			fail(http.StatusBadRequest, uploadMessage(k.label, err, maxBytes))
+			fail(http.StatusBadRequest, uploadMessage(k.label, err, maxBytes), k.field)
 			return
 		}
 	}

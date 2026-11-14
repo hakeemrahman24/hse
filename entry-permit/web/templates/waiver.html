@@ -2,7 +2,7 @@
 <h1>Visitor Entry Permit</h1>
 <p class="sub">For a short visit, also called a visiting waiver. Fill in the visitor's details and documents. The request goes to the clinic doctor first, then to the reviewers.</p>
 <div class="card wide-cards">
-  {{if .Waiver.Err}}<p class="error" role="alert">{{.Waiver.Err}}</p>{{end}}
+  {{if .Waiver.Err}}<p class="error" role="alert"{{if .Waiver.ErrField}} data-field="{{.Waiver.ErrField}}"{{end}}>{{.Waiver.Err}}</p>{{end}}
   {{if .Waiver.Available}}{{with .Waiver}}
   <form method="post" action="/waiver" enctype="multipart/form-data" autocomplete="off" data-wizard>
   {{$w := .}}

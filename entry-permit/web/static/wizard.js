@@ -111,6 +111,24 @@
       if (k >= 0 && k !== current) show(k, false);
     }, true);
     show(0, false);
+
+    // When the server sent the form back with a message that names a field, open the step that holds it, put the
+    // cursor there and mark it. The field name travels as data-field on the message.
+    var msg = doc.querySelector('.error[role="alert"][data-field]');
+    if (msg) {
+      var named = form.elements.namedItem(msg.getAttribute('data-field'));
+      var target = named && named.length !== undefined && !named.tagName ? named[0] : named; // a radio group: its first button
+      var holder = target && target.closest && target.closest('section.fcard');
+      var k = sections.indexOf(holder);
+      if (k >= 0) {
+        show(k, false);
+        target.classList.add('is-bad');
+        target.setAttribute('aria-invalid', 'true');
+        target.addEventListener('input', function () { target.classList.remove('is-bad'); target.removeAttribute('aria-invalid'); });
+        if (target.focus) target.focus({ preventScroll: true });
+        if (target.scrollIntoView) target.scrollIntoView({ block: 'center' });
+      }
+    }
   };
 
   api.start = function (doc) {

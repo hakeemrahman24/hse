@@ -530,3 +530,33 @@ func TestSpareEmailIsCleanedCheckedAndStoredWithTheMainAddress(t *testing.T) {
 		t.Errorf("stored %q, %v", stored, err)
 	}
 }
+
+// The message names the input it is about (data-field), so the step-by-step form can open the right step.
+func TestSubmitRefusalNamesTheFieldItIsAbout(t *testing.T) {
+	cases := []struct {
+		name   string
+		fields func(map[string]string)
+		files  func(map[string][]byte)
+		field  string
+	}{
+		{"no declaration", func(f map[string]string) { delete(f, "declaration") }, nil, "declaration"},
+		{"same phones", func(f map[string]string) { f["emergency_phone"] = "081234567890" }, nil, "emergency_phone"},
+		{"unknown regency", func(f map[string]string) { f["regency"] = "99.99" }, nil, "regency"},
+		{"no photo", nil, func(m map[string][]byte) { delete(m, "id_photo") }, "id_photo"},
+		{"text as id", nil, func(m map[string][]byte) { m["id_doc"] = []byte("not a document at all") }, "id_doc"},
+	}
+	for _, c := range cases {
+		e := newEnv(t)
+		f, files := goodFields(e.stepOne(t)), goodFiles()
+		if c.fields != nil {
+			c.fields(f)
+		}
+		if c.files != nil {
+			c.files(files)
+		}
+		_, body := e.submit(t, f, files)
+		if want := `role="alert" data-field="` + c.field + `"`; !strings.Contains(body, want) {
+			t.Errorf("%s: the message does not name the field %q", c.name, c.field)
+		}
+	}
+}
