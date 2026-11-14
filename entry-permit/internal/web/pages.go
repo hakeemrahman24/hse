@@ -171,7 +171,13 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("GET /ticket", a.ticketPage)
 	mux.HandleFunc("POST /ticket", a.ticketAccess)
 	mux.HandleFunc("POST /ticket/propose", a.ticketPropose)
-	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir(a.StaticDir))))
+	// WHY no-cache: without a cache header browsers guess a lifetime from Last-Modified and keep showing the old
+	// stylesheet and scripts after a deploy. no-cache still allows a 304, so unchanged files cost almost nothing.
+	static := http.StripPrefix("/static/", http.FileServer(http.Dir(a.StaticDir)))
+	mux.HandleFunc("GET /static/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+		static.ServeHTTP(w, r)
+	})
 	return secure(sameOrigin(mux))
 }
 
