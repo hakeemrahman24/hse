@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -88,6 +90,19 @@ func (s *Store) CompanyEmployees(ctx context.Context, companyIDs []int64, window
 	for i, id := range companyIDs {
 		args[i] = id
 	}
+	return s.listEmployees(ctx, `p.FK_CompanyID IN (`+marks+`)`, args, windowDays)
+}
+
+// AllEmployees is the admin's view (owner, 2026-11-14): every worker of every company, with the same
+// latest-checkup rule as CompanyEmployees. There is deliberately no company filter here, so only the
+// admin handlers may call it; a company account always goes through CompanyEmployees and its Scope.
+func (s *Store) AllEmployees(ctx context.Context, windowDays int) ([]Employee, error) {
+	return s.listEmployees(ctx, `1 = 1`, nil, windowDays)
+}
+
+// listEmployees runs the shared query. where is built by the two callers above from constants and
+// "?" marks only, never from request text, so the values travel as args.
+func (s *Store) listEmployees(ctx context.Context, where string, args []any, windowDays int) ([]Employee, error) {
 	rows, err := s.DB.QueryContext(ctx,
 		`SELECT p.PatientID, p.Name, COALESCE(p.WorkPosition, ''), COALESCE(c.Name, ''), COALESCE(m.McuRecordID, 0),
 		        COALESCE(m.DateCheckUp, ''), COALESCE(m.ResultCriteria, ''), COALESCE(m.ResultValidUntil, ''), COALESCE(m.CheckUpStatus, ''),
@@ -97,7 +112,7 @@ func (s *Store) CompanyEmployees(ctx context.Context, companyIDs []int64, window
 		 LEFT JOIN McuRecord m ON m.McuRecordID = (
 		       SELECT m2.McuRecordID FROM McuRecord m2 WHERE m2.FK_PatientID = p.PatientID
 		       ORDER BY COALESCE(m2.DateCheckUp, '') DESC, m2.McuRecordID DESC LIMIT 1)
-		 WHERE p.FK_CompanyID IN (`+marks+`)
+		 WHERE `+where+`
 		 ORDER BY p.Name, p.PatientID`, args...)
 	if err != nil {
 		return nil, err
@@ -172,10 +187,6 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 	if u == nil {
 		return
 	}
-	if u.Role == RoleAdmin { // the admin has no company and no workers of their own
-		a.notFound(w, u)
-		return
-	}
 	q := r.URL.Query()
 	status := q.Get("status")
 	known := status == ""
@@ -186,25 +197,23 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 	p.User, p.Caption = u, "Latest medical checkup of every worker of your company"
 	p.Statuses = employeeStatuses
 	p.Form = map[string]string{"worker": q.Get("worker"), "status": status}
-	sc, err := a.Store.ScopeFor(r.Context(), u)
+	// The admin sees every company, so the Company column is always on for them.
+	p.ShowCompany = u.Role == RoleAdmin
+	if p.ShowCompany {
+		p.Caption = "Latest medical checkup of every worker of every company"
+	}
+	all, subs, canSubs, err := a.employeeSource(r.Context(), u, q.Get("subs") == "1")
 	if err != nil {
-		a.serverError(w, "scope", err)
+		a.serverError(w, "company employees", err)
 		return
 	}
-	// The option only exists for an account that has subcontractors; without any, the tick is ignored.
-	companies := []int64{u.CompanyID}
-	p.CanSubs = len(sc.CompanyIDs) > 1
-	if p.CanSubs && q.Get("subs") == "1" {
-		p.Form["subs"], companies = "1", sc.CompanyIDs
+	p.CanSubs = canSubs
+	if subs {
+		p.Form["subs"] = "1"
 	}
 	if !known {
 		p.Error = "Check the status you chose."
 		a.render(w, http.StatusBadRequest, "employees.html", p)
-		return
-	}
-	all, err := a.Store.CompanyEmployees(r.Context(), companies, reminderWindowDays)
-	if err != nil {
-		a.serverError(w, "company employees", err)
 		return
 	}
 	// The chips count the whole company whatever the filter, like the Needs action chip.
@@ -221,7 +230,31 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 	page, _ := parseID(q.Get("page"))
 	p.Employees, p.Result = pageOf(rows, int(page))
 	p.PrevURL, p.NextURL = pagerLinks(basePath+"/employees", p.Form, p.Result)
+	p.ExportURL = exportLink(p.Form)
 	a.render(w, http.StatusOK, "employees.html", p)
+}
+
+// employeeSource is the one place that decides which workers an account may list, so the page and
+// the Excel export cannot drift apart. The admin gets everybody. Anyone else gets their own company,
+// plus the subcontractors when wantSubs is asked and they have any; the companies come from the
+// session's Scope, never from the request. It returns whether subcontractors ended up included and
+// whether the option exists for this account at all.
+func (a *API) employeeSource(ctx context.Context, u *Submitter, wantSubs bool) (list []Employee, subs, canSubs bool, err error) {
+	if u.Role == RoleAdmin {
+		list, err = a.Store.AllEmployees(ctx, reminderWindowDays)
+		return list, false, false, err
+	}
+	sc, err := a.Store.ScopeFor(ctx, u)
+	if err != nil {
+		return nil, false, false, fmt.Errorf("scope: %w", err)
+	}
+	companies := []int64{u.CompanyID}
+	canSubs = len(sc.CompanyIDs) > 1 // without subcontractors the tick is ignored
+	if canSubs && wantSubs {
+		subs, companies = true, sc.CompanyIDs
+	}
+	list, err = a.Store.CompanyEmployees(ctx, companies, reminderWindowDays)
+	return list, subs, canSubs, err
 }
 
 // pageOf cuts one page out of an already filtered list and returns the paging numbers.
@@ -248,7 +281,7 @@ func pageOf(rows []Employee, page int) ([]Employee, DocPage) {
 // in the account's scope (own company or a subcontractor) and that checkup has a certificate, else
 // ErrNotFound. The worker id comes from the link, so the company check is what stops one company
 // from opening another's certificate, and a missing worker and a forbidden one look the same.
-func (s *Store) EmployeeCertificateRecord(ctx context.Context, sc Scope, patientID int64) (int64, error) {
+func (s *Store) EmployeeCertificateRecord(ctx context.Context, sc Scope, patientID int64, isAdmin bool) (int64, error) {
 	var company sql.NullInt64
 	if err := s.DB.QueryRowContext(ctx, `SELECT FK_CompanyID FROM Patient WHERE PatientID = ?`, patientID).Scan(&company); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -256,7 +289,9 @@ func (s *Store) EmployeeCertificateRecord(ctx context.Context, sc Scope, patient
 		}
 		return 0, err
 	}
-	if !company.Valid || !sc.Covers(company.Int64) {
+	// The admin sees every company's workers on the list, so their certificates open too. Everyone
+	// else stays inside their scope.
+	if !isAdmin && (!company.Valid || !sc.Covers(company.Int64)) {
 		return 0, ErrNotFound
 	}
 	var l LatestRecord
@@ -276,16 +311,19 @@ func (a *API) EmployeeCertificate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	id, ok := parseID(r.PathValue("id"))
-	if !ok || a.certs == nil || u.Role == RoleAdmin {
+	if !ok || a.certs == nil {
 		a.notFound(w, u)
 		return
 	}
-	sc, err := a.Store.ScopeFor(r.Context(), u)
-	if err != nil {
-		a.serverError(w, "scope", err)
-		return
+	var sc Scope // the admin has no company, so no scope; EmployeeCertificateRecord skips it for them
+	if u.Role != RoleAdmin {
+		var err error
+		if sc, err = a.Store.ScopeFor(r.Context(), u); err != nil {
+			a.serverError(w, "scope", err)
+			return
+		}
 	}
-	record, err := a.Store.EmployeeCertificateRecord(r.Context(), sc, id)
+	record, err := a.Store.EmployeeCertificateRecord(r.Context(), sc, id, u.Role == RoleAdmin)
 	if err != nil {
 		if !errors.Is(err, ErrNotFound) {
 			log.Printf("mcusubmit: employee certificate record: %v", err)
@@ -295,4 +333,18 @@ func (a *API) EmployeeCertificate(w http.ResponseWriter, r *http.Request) {
 	}
 	// The audit row is about the account that downloaded; Detail holds the checkup record id, never a name.
 	a.serveCertificate(w, r, u, record, EntitySubmitter, u.ID)
+}
+
+// exportLink is the Excel download for the filters now on the page (every page of the result).
+func exportLink(filter map[string]string) string {
+	q := url.Values{}
+	for k, v := range filter {
+		if v != "" {
+			q.Set(k, v)
+		}
+	}
+	if len(q) == 0 {
+		return basePath + "/employees/export.xlsx"
+	}
+	return basePath + "/employees/export.xlsx?" + q.Encode()
 }

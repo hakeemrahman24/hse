@@ -310,6 +310,18 @@ Real production seed data now exists for `Company` (54 rows) and `CompanyRelatio
 
 _Convention: every session that changes code or makes a design decision appends one entry here, newest on top, before ending — what changed, why, and what's still open. New/changed code also gets WHY-comments (not just what), since this plan and the codebase double as how the user is learning the system. `_reference/` (`entry-mcu`, `activity-log`) is legacy source material only — read for porting, never edited, never treated as live._
 
+### 2026-11-14 — Employee checkups: the admin sees every company's employees
+
+- **What:** the admin has an **Employee checkups** link in the sidebar and the page lists the workers of **every company** (Company column always on, no "Include subcontractors" tick). The Excel export and the certificate View/Download work for the admin too. Before, the admin got a 404 on all three.
+- **Why:** the admin has no company of their own, so the company-scoped query returned nothing. `Store.AllEmployees` is the unscoped list; both the page and the export pick their source through one helper, `API.employeeSource`, so they cannot disagree. A company account still goes through its Scope, so it cannot see another company's workers. `EmployeeCertificateRecord` skips the scope check only when the caller is the admin.
+- **Open:** no migration. Tests: `TestAllEmployeesListsEveryCompany`, `TestAdminSeesEveryCompanyOnEmployeeCheckupsPageAndExport`, `TestCompanyAccountStillSeesOnlyItsOwnEmployees`, `TestEmployeeCertificateRecordAdminBypassesScope`. Not opened in a browser.
+
+### 2026-11-14 — Employee checkups: Export to Excel
+
+- **What:** an **Export to Excel** button under the employee count downloads `employee-checkups-<date>.xlsx` (sheet "Employees": Employee, Company, Position, Last checkup, Valid until, Days left, Validity, Result, Recommendation / notes). It carries the page's filters (employee name, validity, include subcontractors) but covers every page, not just the one on screen. Route `GET /mcu-submit/employees/export.xlsx` in `employees_export.go`.
+- **Why:** HR plans renewals in a spreadsheet. The company list comes from the session Scope like the page does, so nobody can export another company's workers; an unknown status gives 400; cells are written as plain values so a name starting with "=" is not run as a formula.
+- **Open:** not deployed yet. No migration. Test: `TestEmployeesExportIsFilteredScopedAndAnXlsx`.
+
 ### 2026-11-14 — Employee checkups: More button for the reviewer's recommendation or notes
 
 - **What changed:** a More column with a button that opens the reviewer's words under it: the Recommendation for Need follow-up / Incomplete, the notes for Temporarily Unfit / Unfit, exactly as written (the portal's existing rule, `Submission.ResultMessage`). A worker with nothing to show has no button. Notes and recommendation of a Fit or Fit-with-note result are NOT shown.

@@ -160,6 +160,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("GET "+basePath+"/workers", a.WorkerSearch)
 	in.HandleFunc("GET "+basePath+"/documents", a.Documents)
 	in.HandleFunc("GET "+basePath+"/employees", a.Employees)
+	in.HandleFunc("GET "+basePath+"/employees/export.xlsx", a.EmployeesExport)
 	in.HandleFunc("GET "+basePath+"/employees/{id}/certificate", a.EmployeeCertificate)
 	in.HandleFunc("GET "+basePath+"/documents/{id}/review", a.ReviewPage)
 	in.HandleFunc("POST "+basePath+"/documents/{id}/confirm", a.ConfirmDocument)
@@ -266,6 +267,8 @@ type page struct {
 	Unconfirmed   int      // documents of the open batch still in Review
 	Statuses      []string // choices of the status filter
 	Result        DocPage  // paging numbers of the list on screen
+	ExportURL     string
+	ShowCompany   bool // Employee checkups shows the Company column even without "Include subcontractors" (the admin's list spans every company)
 	PrevURL       string
 	NextURL       string
 

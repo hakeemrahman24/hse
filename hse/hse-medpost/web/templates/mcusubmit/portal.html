@@ -50,6 +50,7 @@
       <div class="app-sidebar-label">Review</div>
       <div class="app-program-list mp-side">
         <a class="app-program-item{{if eq .Nav "admin"}} active{{end}}" href="/mcu-submit/admin"{{if eq .Nav "admin"}} aria-current="page"{{end}}><span class="app-program-item-title">Accounts</span></a>
+        <a class="app-program-item{{if eq .Nav "employees"}} active{{end}}" href="/mcu-submit/employees"{{if eq .Nav "employees"}} aria-current="page"{{end}}><span class="app-program-item-title">Employee checkups</span></a>
       </div>
       <div class="app-sidebar-label">Mail</div>
       <div class="app-program-list mp-side">
@@ -620,7 +621,7 @@
       <div class="mp-titlebar">
         <h1>Employee <span>checkups</span></h1>
       </div>
-      <p class="mp-hint">The latest medical checkup of each worker of your company and how long it stays valid.</p>
+      <p class="mp-hint">{{if .ShowCompany}}The latest medical checkup of each worker of every company and how long it stays valid.{{else}}The latest medical checkup of each worker of your company and how long it stays valid.{{end}}</p>
       {{template "error" .}}
       <p class="mp-chips">{{range .Statuses}}{{if index $.Counts .}}<a class="mp-chip{{if eq . $.Form.status}} on{{end}}" href="/mcu-submit/employees?status={{.}}{{if $.Form.subs}}&amp;subs=1{{end}}"{{if eq . $.Form.status}} aria-current="true"{{end}}><span>{{.}}</span> <b>{{index $.Counts .}}</b></a> {{end}}{{end}}</p>
       <form method="get" action="/mcu-submit/employees" class="mp-filter" aria-label="Filter your employees">
@@ -635,17 +636,18 @@
       </form>
       {{if .Employees}}
       <p class="mp-hint" role="status">{{.Result.Total}} {{if eq .Result.Total 1}}employee{{else}}employees{{end}}, page {{.Result.Page}} of {{.Result.Pages}}</p>
+      <p><a class="btn-ghost" href="{{.ExportURL}}">Export to Excel</a></p>
       <div class="mp-scroll"><table class="mp-table">
         <caption>{{.Caption}}</caption>
-        <thead><tr><th scope="col">Employee</th>{{if .Form.subs}}<th scope="col">Company</th>{{end}}<th scope="col">Position</th><th scope="col">Last checkup</th><th scope="col">Valid until</th><th scope="col">Validity</th><th scope="col">Certificate</th><th scope="col">More</th></tr></thead>
-        <tbody>{{range .Employees}}<tr><td>{{.Name}}</td>{{if $.Form.subs}}<td>{{.Company}}</td>{{end}}<td>{{.Position}}</td><td>{{.CheckUpDate}}</td><td>{{if .HasValidity}}{{.ValidUntil}}{{else}}-{{end}}</td>
+        <thead><tr><th scope="col">Employee</th>{{if or .Form.subs .ShowCompany}}<th scope="col">Company</th>{{end}}<th scope="col">Position</th><th scope="col">Last checkup</th><th scope="col">Valid until</th><th scope="col">Validity</th><th scope="col">Certificate</th><th scope="col">More</th></tr></thead>
+        <tbody>{{range .Employees}}<tr><td>{{.Name}}</td>{{if or $.Form.subs $.ShowCompany}}<td>{{.Company}}</td>{{end}}<td>{{.Position}}</td><td>{{.CheckUpDate}}</td><td>{{if .HasValidity}}{{.ValidUntil}}{{else}}-{{end}}</td>
           <td><strong>{{.Status}}</strong>{{if .HasValidity}}{{if lt .DaysLeft 0}} <span class="mp-hint">expired</span>{{else}} <span class="mp-hint">{{.DaysLeft}} days left</span>{{end}}{{end}}</td>
           <td>{{if .HasCertificate}}<a class="btn-ghost" href="/mcu-submit/employees/{{.PatientID}}/certificate?view=1" target="_blank" rel="noopener">View</a> <a class="btn-ghost" href="/mcu-submit/employees/{{.PatientID}}/certificate">Download</a>{{else}}<span class="mp-hint">-</span>{{end}}</td>
           <td>{{if .Note}}<details class="mp-more"><summary class="btn-ghost">More</summary><p class="mp-sub"><strong>{{.NoteLabel}}</strong></p><p class="mp-note">{{.Note}}</p></details>{{else}}<span class="mp-hint">-</span>{{end}}</td></tr>{{end}}</tbody></table></div>
       {{if or .PrevURL .NextURL}}<p class="mp-actions">
         {{if .PrevURL}}<a class="btn-ghost" href="{{.PrevURL}}" rel="prev">Previous</a>{{end}}
         {{if .NextURL}}<a class="btn-ghost" href="{{.NextURL}}" rel="next">Next</a>{{end}}</p>{{end}}
-      {{else if not .Error}}<p class="mp-hint">{{if or .Form.worker .Form.status}}No employee matches this filter.{{else}}No employee of your company is on record yet.{{end}}</p>{{end}}
+      {{else if not .Error}}<p class="mp-hint">{{if or .Form.worker .Form.status}}No employee matches this filter.{{else if .ShowCompany}}No employee is on record yet.{{else}}No employee of your company is on record yet.{{end}}</p>{{end}}
     </section>
 {{template "foot" .}}{{end}}
 

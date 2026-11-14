@@ -1,12 +1,16 @@
 package mcusubmit
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/xuri/excelize/v2"
 )
 
 func TestValidityOf(t *testing.T) {
@@ -221,5 +225,123 @@ func TestEmployeeCheckupsMoreShowsTheReviewersWordsByResult(t *testing.T) {
 	}
 	if n := strings.Count(body, `<summary class="btn-ghost">More</summary>`); n != 2 {
 		t.Errorf("%d More buttons, want 2 (follow-up and unfit with words)", n)
+	}
+}
+
+func TestEmployeesExportIsFilteredScopedAndAnXlsx(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	mine := seedWorker(t, e.store, "Budi Santoso", "1990-01-01", e.companyID)
+	addRecord(t, e.store, mine, "MedC-9", "Fit", "2099-01-01", "Open", 1)
+	seedWorker(t, e.store, "Nobody Yet", "1991-01-01", e.companyID)
+
+	resp := e.get("/mcu-submit/employees/export.xlsx?status=Valid", cookie)
+	if resp.Code != 200 || !strings.Contains(resp.Header().Get("Content-Type"), "spreadsheetml") {
+		t.Fatalf("export gave %d %q", resp.Code, resp.Header().Get("Content-Type"))
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(resp.Body.Bytes()))
+	if err != nil {
+		t.Fatalf("not a workbook: %v", err)
+	}
+	rows, _ := f.GetRows("Employees")
+	if len(rows) != 2 || rows[1][0] != "Budi Santoso" || rows[1][6] != "Valid" {
+		t.Errorf("rows = %v, want header + Budi only (status filter applies)", rows)
+	}
+	if code := e.get("/mcu-submit/employees/export.xlsx?status=Bogus", cookie).Code; code != 400 {
+		t.Errorf("unknown status gave %d, want 400", code)
+	}
+	if code := e.get("/mcu-submit/employees/export.xlsx").Code; code == 200 {
+		t.Errorf("export open without sign-in")
+	}
+	if !strings.Contains(e.get("/mcu-submit/employees?status=Valid", cookie).Body.String(), `employees/export.xlsx?status=Valid`) {
+		t.Errorf("page button does not carry the filter")
+	}
+}
+
+// The admin has no company, so Employee checkups lists the workers of every company (owner,
+// 2026-11-14) with the Company column on, and the company accounts keep seeing only their own tree.
+func TestAllEmployeesListsEveryCompany(t *testing.T) {
+	s, _, co := newTestStore(t)
+	other := company(t, s, "PT Other", 0)
+	seedWorker(t, s, "Mine", "1990-01-01", co)
+	seedWorker(t, s, "Theirs", "1991-01-01", other)
+
+	got, err := s.AllEmployees(context.Background(), 30)
+	if err != nil {
+		t.Fatal(err)
+	}
+	names := map[string]string{}
+	for _, e := range got {
+		names[e.Name] = e.Company
+	}
+	if len(names) != 2 || names["Theirs"] != "PT Other" || names["Mine"] == "" {
+		t.Errorf("all employees = %v, want both companies with their names", names)
+	}
+}
+
+func TestAdminSeesEveryCompanyOnEmployeeCheckupsPageAndExport(t *testing.T) {
+	e := newEnv(t)
+	other := company(t, e.store, "PT Other", 0)
+	seedWorker(t, e.store, "Mine Worker", "1990-01-01", e.companyID)
+	seedWorker(t, e.store, "Other Worker", "1991-01-01", other)
+	_, admin := e.signIn("admin", "pelican-orbit-77")
+
+	page := e.get("/mcu-submit/employees", admin)
+	body := page.Body.String()
+	if page.Code != 200 {
+		t.Fatalf("admin page = %d, want 200", page.Code)
+	}
+	for _, want := range []string{"Mine Worker", "Other Worker", "PT Other", `<th scope="col">Company</th>`, "2 employees, page 1 of 1", "every company"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("admin page lacks %q", want)
+		}
+	}
+	// The link is in the admin's sidebar on another admin page too, not only on this one.
+	if side := e.get("/mcu-submit/admin", admin).Body.String(); !strings.Contains(side, `href="/mcu-submit/employees"`) {
+		t.Errorf("admin sidebar has no Employee checkups link")
+	}
+
+	resp := e.get("/mcu-submit/employees/export.xlsx", admin)
+	if resp.Code != 200 {
+		t.Fatalf("admin export = %d, want 200", resp.Code)
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(resp.Body.Bytes()))
+	if err != nil {
+		t.Fatalf("not a workbook: %v", err)
+	}
+	if rows, _ := f.GetRows("Employees"); len(rows) != 3 {
+		t.Errorf("rows = %v, want header + both workers", rows)
+	}
+}
+
+// A company account must still not see another company's workers, now that an admin can.
+func TestCompanyAccountStillSeesOnlyItsOwnEmployees(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	other := company(t, e.store, "PT Other", 0)
+	seedWorker(t, e.store, "Mine Worker", "1990-01-01", e.companyID)
+	seedWorker(t, e.store, "Other Worker", "1991-01-01", other)
+
+	body := e.get("/mcu-submit/employees", cookie).Body.String()
+	if !strings.Contains(body, "Mine Worker") || strings.Contains(body, "Other Worker") || strings.Contains(body, `<th scope="col">Company</th>`) {
+		t.Errorf("company account list wrong: must hold only its own workers and no Company column")
+	}
+}
+
+// The admin may open any company's certificate; a company account may not (see the scoped test above).
+func TestEmployeeCertificateRecordAdminBypassesScope(t *testing.T) {
+	s, _, co := newTestStore(t)
+	other := company(t, s, "PT Other", 0)
+	w := seedWorker(t, s, "Stranger", "1990-01-01", other)
+	addRecord(t, s, w, "A-1", "Fit", "2099-01-01", "Close", 1)
+	ctx, mine := context.Background(), Scope{CompanyIDs: []int64{co}}
+
+	if _, err := s.EmployeeCertificateRecord(ctx, mine, w, false); !errors.Is(err, ErrNotFound) {
+		t.Errorf("company account got %v, want ErrNotFound for another company's worker", err)
+	}
+	if id, err := s.EmployeeCertificateRecord(ctx, Scope{}, w, true); err != nil || id == 0 {
+		t.Errorf("admin got id=%d err=%v, want the record", id, err)
 	}
 }
