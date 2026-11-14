@@ -394,3 +394,19 @@ func TestAssetsCarryAVersion(t *testing.T) {
 		t.Error("the stylesheet address has no version on the end")
 	}
 }
+
+// The home page already has the two big buttons, so its menu lists only Home; other pages keep the full menu.
+func TestHomeMenuListsOnlyHome(t *testing.T) {
+	e := newEnv(t)
+	_, home := e.get(t, "/", nil)
+	if strings.Contains(home, `>Request a permit</a></li>`) || strings.Contains(home, `>Check my permit</a></li>`) {
+		t.Error("the home page menu repeats the two buttons")
+	}
+	if !strings.Contains(home, `aria-current="page">Home</a>`) {
+		t.Error("the home page menu lost Home")
+	}
+	_, req := e.get(t, "/request", nil)
+	if !strings.Contains(req, `>Request a permit</a></li>`) || !strings.Contains(req, `>Check my permit</a></li>`) {
+		t.Error("the other pages lost the full menu")
+	}
+}

@@ -39,9 +39,10 @@ Public visitors see the permit pages and the portal; staff also get their own pa
   <p class="side-label">Entry permit</p>
   <ul role="list">
     <li><a href="/"{{if eq .Nav "home"}} aria-current="page"{{end}}>Home</a></li>
-    <li><a href="/request"{{if eq .Nav "request"}} aria-current="page"{{end}}>Request a permit</a></li>
+    {{/* On the home page the two big buttons already offer these, so the menu lists only Home there. */}}
+    {{if ne .Nav "home"}}<li><a href="/request"{{if eq .Nav "request"}} aria-current="page"{{end}}>Request a permit</a></li>
     {{if .My.SignedIn}}<li><a href="/my"{{if eq .Nav "my"}} aria-current="page"{{end}}>My permit</a></li>
-    {{else}}<li><a href="/my/signin"{{if eq .Nav "my"}} aria-current="page"{{end}}>Check my permit</a></li>{{end}}
+    {{else}}<li><a href="/my/signin"{{if eq .Nav "my"}} aria-current="page"{{end}}>Check my permit</a></li>{{end}}{{end}}
   </ul>
   {{if and (eq .Nav "my") .Links}}<p class="side-label">On this page</p>
   <ul role="list">{{range .Links}}<li><a href="{{.Href}}">{{.Label}}</a></li>{{end}}</ul>{{end}}
