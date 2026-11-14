@@ -269,3 +269,28 @@ func prefillValues(p permitlog.Prefill, list []region.Regency) map[string]string
 	}
 	return v
 }
+
+// emailChecksPerMinute limits the check-as-you-leave-the-box lookups, which cost a DNS query each.
+const emailChecksPerMinute = 30
+
+// checkEmailAPI answers "can this address receive mail?" while the person fills in the form, as soon as they
+// leave the email box, so a typo is caught there and not after the whole form is sent. It uses the same rule as
+// the submit (checkMailDomains), so the two can never disagree. It says nothing about whether the mailbox exists.
+func (a *App) checkEmailAPI(w http.ResponseWriter, r *http.Request) {
+	key := "mx:" + a.clientIP(r)
+	if a.Limit.Count(key, searchWindow) >= emailChecksPerMinute {
+		writeJSON(w, http.StatusTooManyRequests, map[string]any{"ok": true}) // never block the person because of the limit
+		return
+	}
+	a.Limit.Add(key)
+	email := cleanEmail(r.URL.Query().Get("email"))
+	if len(email) > 160 || !validEmail(email) {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "Enter a valid email address, like name@company.com."})
+		return
+	}
+	if msg := a.checkMailDomains(a.policy(), email); msg != "" {
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": msg})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}

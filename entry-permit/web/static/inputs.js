@@ -258,6 +258,41 @@
     });
   }
 
+  // setupMxCheck asks the server whether an address can receive mail as soon as the person leaves the box
+  // (not only when the form is sent). A bad domain is written under the box and also set as the box's own
+  // validity message, so Next and Send stop there until it is fixed. A failed or slow lookup says nothing:
+  // the server checks again on submit.
+  function setupMxCheck(input) {
+    var url = input.getAttribute('data-mxcheck');
+    var note = document.createElement('small');
+    note.className = 'field-error';
+    note.setAttribute('role', 'alert');
+    note.hidden = true;
+    input.insertAdjacentElement('afterend', note);
+    var known = {};
+    var last = '';
+    function show(msg) {
+      note.textContent = msg || '';
+      note.hidden = !msg;
+      input.setCustomValidity(msg || '');
+      if (msg) input.setAttribute('aria-invalid', 'true'); else input.removeAttribute('aria-invalid');
+    }
+    function apply(v, res) { if (input.value.trim().toLowerCase() === v) show(res && !res.ok ? res.message : ''); }
+    function check() {
+      var v = input.value.trim().toLowerCase();
+      last = v;
+      if (!v || input.validity.typeMismatch) { show(''); return; } // empty, or the browser already complains
+      if (known[v]) { apply(v, known[v]); return; }
+      if (typeof fetch !== 'function') return;
+      fetch(url + '?email=' + encodeURIComponent(v), { credentials: 'same-origin' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (res) { if (res) { known[v] = res; if (last === v) apply(v, res); } })
+        .catch(function () {});
+    }
+    input.addEventListener('blur', check);
+    input.addEventListener('input', function () { if (note.hidden === false) show(''); });
+  }
+
   // setupSort lets a click on any header of a table.sortable order its rows, ascending first and
   // descending on the next click. Numbers sort as numbers, dates and text as text.
   function setupSort(table) {
@@ -311,6 +346,7 @@
     each(doc, 'input[data-date]', setupDate);
     each(doc, 'input[type="tel"]', function (el) { onBlur(el, cleanPhone); });
     each(doc, 'input[type="email"]', function (el) { onBlur(el, tidyEmail); });
+    each(doc, 'input[data-mxcheck]', setupMxCheck);
     each(doc, 'input[data-digits]', function (el) {
       el.addEventListener('input', function () {
         var v = digitsOnly(el.value);

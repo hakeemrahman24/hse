@@ -13,9 +13,9 @@
     <label class="field" for="w-rname"><span>Your name (the person making this request)</span>
       <input id="w-rname" name="requester_name" type="text" value="{{index .Vals "requester_name"}}" maxlength="120" required autocomplete="name"></label>
     <label class="field" for="w-rmail"><span>Your email (the decision is sent here)</span>
-      <input id="w-rmail" name="requester_email" type="email" value="{{index .Vals "requester_email"}}" maxlength="160" required autocomplete="email"></label>
+      <input id="w-rmail" name="requester_email" type="email" data-mxcheck="/api/check-email" value="{{index .Vals "requester_email"}}" maxlength="160" required autocomplete="email"></label>
     <label class="field" for="w-smail"><span>Spare email (optional, a second address that gets the decision too)</span>
-      <input id="w-smail" name="spare_email" type="email" value="{{index .Vals "spare_email"}}" maxlength="160" autocomplete="off"></label>
+      <input id="w-smail" name="spare_email" type="email" data-mxcheck="/api/check-email" value="{{index .Vals "spare_email"}}" maxlength="160" autocomplete="off"></label>
     </div>
   </section>
   <section class="fcard" id="sec-2">

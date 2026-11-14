@@ -150,6 +150,7 @@ func (a *App) Routes() http.Handler {
 	mux.HandleFunc("POST /my/ticket", a.myTicket)
 	mux.HandleFunc("POST /my/permit.pdf", a.myPermitPDF)
 	mux.HandleFunc("GET /api/worker-names", a.workerNames)
+	mux.HandleFunc("GET /api/check-email", a.checkEmailAPI)
 	mux.HandleFunc("GET /login", a.loginPage)
 	mux.HandleFunc("POST /login", a.loginSubmit)
 	mux.HandleFunc("POST /logout", a.logout)

@@ -15,11 +15,11 @@
       </label>
       <label class="field" for="p-rmail">
         <span>Your email (the decision is sent here)</span>
-        <input id="p-rmail" name="requester_email" type="email" value="{{.Permit.RequesterMail}}" maxlength="160" required autocomplete="email">
+        <input id="p-rmail" name="requester_email" type="email" data-mxcheck="/api/check-email" value="{{.Permit.RequesterMail}}" maxlength="160" required autocomplete="email">
       </label>
       <label class="field" for="p-smail">
         <span>Spare email (optional, a second address that gets the decision too)</span>
-        <input id="p-smail" name="spare_email" type="email" value="{{.Permit.SpareMail}}" maxlength="160" autocomplete="off">
+        <input id="p-smail" name="spare_email" type="email" data-mxcheck="/api/check-email" value="{{.Permit.SpareMail}}" maxlength="160" autocomplete="off">
       </label>
       <p class="note">Check the addresses: the decision is sent only to them. If nothing arrives, look in Spam or Junk. We are not responsible for mail lost because an address is wrong or an inbox is full.</p>
     </section>

@@ -870,3 +870,7 @@ form[data-steps] .stepnav li { counter-increment: nav; }
 form[data-steps] .stepnav .step::before { content: counter(nav); }
 /* The field the server's message is about (wizard.js marks it). */
 input.is-bad, select.is-bad, textarea.is-bad { border-color: var(--error); outline: 2px solid var(--error); outline-offset: 0; }
+
+/* The message under an email box when its domain cannot receive mail (inputs.js). */
+.field-error { display: block; margin-top: 2px; font-size: var(--fs-sm); font-weight: 600; color: var(--error); }
+input[aria-invalid="true"] { border-color: var(--error); }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -557,6 +558,55 @@ func TestSubmitRefusalNamesTheFieldItIsAbout(t *testing.T) {
 		_, body := e.submit(t, f, files)
 		if want := `role="alert" data-field="` + c.field + `"`; !strings.Contains(body, want) {
 			t.Errorf("%s: the message does not name the field %q", c.name, c.field)
+		}
+	}
+}
+
+func TestCheckEmailAPIAnswersWhenTheDomainCanReceiveMail(t *testing.T) {
+	e := newEnv(t)
+	ask := func(addr string) string {
+		_, body := e.get(t, "/api/check-email?email="+url.QueryEscape(addr), nil)
+		return body
+	}
+	if body := ask("siti@example.com"); !strings.Contains(body, `"ok":true`) {
+		t.Errorf("a good domain was refused: %s", body)
+	}
+	e.mx.err = errors.New("no mx")
+	if body := ask("test@dasfsd.com"); !strings.Contains(body, `"ok":false`) || !strings.Contains(body, "cannot receive mail") {
+		t.Errorf("a domain without mail was accepted: %s", body)
+	}
+	if body := ask("not an address"); !strings.Contains(body, `"ok":false`) || !strings.Contains(body, "valid email") {
+		t.Errorf("a malformed address was accepted: %s", body)
+	}
+	// The same switch as the submit: off means the check is skipped.
+	if _, err := e.db.Exec(`UPDATE setting SET value = 'off' WHERE setting_key = 'email_mx_check'`); err != nil {
+		t.Fatal(err)
+	}
+	e.clock.now = "2026-11-06 08:10:00"
+	if body := ask("test@dasfsd.com"); !strings.Contains(body, `"ok":true`) {
+		t.Errorf("the switch did not skip the check: %s", body)
+	}
+}
+
+func TestCheckEmailAPIIsRateLimitedWithoutBlockingAnyone(t *testing.T) {
+	e := newEnv(t)
+	e.mx.err = errors.New("no mx")
+	for i := 0; i < emailChecksPerMinute; i++ {
+		e.get(t, "/api/check-email?email=a@b.com", nil)
+	}
+	r, body := e.get(t, "/api/check-email?email=a@b.com", nil)
+	if r.StatusCode != 429 || !strings.Contains(body, `"ok":true`) {
+		t.Errorf("over the limit: %d %s (the answer must stay ok, so nobody is blocked by the limit)", r.StatusCode, body)
+	}
+}
+
+func TestEmailBoxesAskTheServerWhenLeft(t *testing.T) {
+	e := newEnv(t)
+	for _, path := range []string{"/permit", "/waiver"} {
+		e.seedCompanies(t)
+		_, body := e.get(t, path, nil)
+		if n := strings.Count(body, `type="email" data-mxcheck="/api/check-email"`); n != 2 {
+			t.Errorf("%s: %d email boxes check the domain, want 2 (your email and the spare)", path, n)
 		}
 	}
 }
