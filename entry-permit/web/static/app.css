@@ -912,3 +912,11 @@ input[aria-invalid="true"] { border-color: var(--error); }
   .flow li { flex: 1 1 0; padding-right: 28px; }
   .flow li:not(:last-child)::after { content: ""; position: absolute; right: 8px; top: 6px; width: 8px; height: 8px; border-top: 2px solid var(--muted); border-right: 2px solid var(--muted); transform: rotate(45deg); }
 }
+
+/* Step-by-step forms: the arrows carry the number only, on the arrow's own colour. The step's name is in the
+   progress line below (wizard.js), and stays in the markup for screen readers. */
+.wizard-on .stepnav a { justify-content: center; gap: 0; padding: 0 12px 0 14px; font-size: 0; }
+.wizard-on .stepnav li:first-child a { padding-left: 8px; }
+.wizard-on .stepnav a .step, .wizard-on .stepnav a.is-done .step, .wizard-on .stepnav a.is-current .step {
+  width: auto; height: auto; background: transparent; color: inherit; font-size: var(--fs-md); font-weight: 700;
+}
