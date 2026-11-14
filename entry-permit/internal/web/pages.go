@@ -8,6 +8,7 @@ import (
 	"html/template"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -81,13 +82,26 @@ type App struct {
 
 // NewApp parses the templates in webDir/templates once, at start.
 func NewApp(webDir string, a App) (*App, error) {
-	t, err := template.ParseGlob(filepath.Join(webDir, "templates", "*.html"))
+	staticDir := filepath.Join(webDir, "static")
+	t, err := template.New("").Funcs(template.FuncMap{"asset": func(name string) string { return assetURL(staticDir, name) }}).
+		ParseGlob(filepath.Join(webDir, "templates", "*.html"))
 	if err != nil {
 		return nil, fmt.Errorf("parse templates: %w", err)
 	}
 	a.tmpl = t
-	a.StaticDir = filepath.Join(webDir, "static")
+	a.StaticDir = staticDir
 	return &a, nil
+}
+
+// assetURL is the address of a stylesheet or script with its change time on the end ("/static/app.css?v=6a1f..."),
+// so each deploy gives the file a new address.
+// WHY: Cloudflare rewrites the cache header of static files to hours, and a browser keeps the old stylesheet for
+// that long however the server answers; a new address cannot be served from that old copy.
+func assetURL(dir, name string) string {
+	if st, err := os.Stat(filepath.Join(dir, name)); err == nil {
+		return fmt.Sprintf("/static/%s?v=%x", name, st.ModTime().Unix())
+	}
+	return "/static/" + name
 }
 
 // policy is the current Policy: live from Settings when wired, else the fixed one.

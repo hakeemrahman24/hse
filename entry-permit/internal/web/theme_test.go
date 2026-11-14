@@ -129,7 +129,7 @@ func TestTheWaiverFormIsNumberedCardsOfTwoColumns(t *testing.T) {
 		strings.Count(body, `class="fcard"`) != 8 || !strings.Contains(body, `class="form-grid"`) {
 		t.Error("the waiver form is not eight cards of form-grids")
 	}
-	if !strings.Contains(body, `src="/static/wizard.js"`) {
+	if !strings.Contains(body, `src="/static/wizard.js?v=`) {
 		t.Error("the waiver form does not load the step-by-step script")
 	}
 	if strings.Contains(body, `class="card narrow"`) {
@@ -149,7 +149,7 @@ func TestPermitStepTwoIsATwoColumnGrid(t *testing.T) {
 	}
 	// Step 2 is a step-by-step form of numbered cards, each a two-column form-grid.
 	if !strings.Contains(body, `action="/permit/submit" enctype="multipart/form-data" autocomplete="off" data-wizard data-steps>`) ||
-		!strings.Contains(body, `class="form-grid"`) || !strings.Contains(body, `src="/static/wizard.js"`) {
+		!strings.Contains(body, `class="form-grid"`) || !strings.Contains(body, `src="/static/wizard.js?v=`) {
 		t.Error("step 2 is not a step-by-step form of form-grids")
 	}
 	for _, id := range []string{"sec-contact", "sec-docs", "sec-send"} {
@@ -171,7 +171,7 @@ func TestEveryPageLoadsTheFormHelpers(t *testing.T) {
 	e := newEnv(t)
 	for _, path := range []string{"/", "/request", "/permit", "/waiver", "/login"} {
 		_, body := e.get(t, path, nil)
-		if !strings.Contains(body, `<script src="/static/inputs.js" defer></script>`) {
+		if !strings.Contains(body, `<script src="/static/inputs.js?v=`) {
 			t.Errorf("%s does not load the form helpers", path)
 		}
 	}
@@ -382,5 +382,15 @@ func TestGateAdminLeftMenuHasNoSystemGroup(t *testing.T) {
 	side := body[i:j]
 	if !strings.Contains(side, `href="/staff/admin/gate-officers"`) || strings.Contains(side, `System</p>`) || strings.Contains(side, `href="/staff/admin/users"`) {
 		t.Errorf("a gate admin sees the gate pages only")
+	}
+}
+
+// A page names its stylesheet with the file's change time, so a deploy cannot be hidden by a copy a browser or
+// Cloudflare kept for hours.
+func TestAssetsCarryAVersion(t *testing.T) {
+	e := newEnv(t)
+	_, body := e.get(t, "/", nil)
+	if !strings.Contains(body, `href="/static/app.css?v=`) {
+		t.Error("the stylesheet address has no version on the end")
 	}
 }

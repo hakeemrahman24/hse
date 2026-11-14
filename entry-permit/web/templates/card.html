@@ -23,7 +23,7 @@
     <div class="lepc-qr">{{.Card.QR}}</div>
   </div>
 </article>
-<script src="/static/cardfit.js" defer></script>
+<script src="{{asset "cardfit.js"}}" defer></script>
 <p class="note">Names are shortened on this page. The worker can open the working schedule with the permit number and date of birth.</p>
 <p><a class="btn" href="/ticket?lep={{.Card.LEP}}">Open working schedule</a></p>
 {{template "foot" .}}{{end}}

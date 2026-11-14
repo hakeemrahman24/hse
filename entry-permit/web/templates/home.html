@@ -8,7 +8,7 @@ file because html/template keeps all templates in one namespace. */}}
 <title>{{.Title}} · Entry Permit</title>
 <link rel="icon" type="image/png" href="/static/fire_lng.png">
 <link rel="apple-touch-icon" href="/static/fire_lng.png">
-<link rel="stylesheet" href="/static/app.css">
+<link rel="stylesheet" href="{{asset "app.css"}}">
 {{if .OG.Title}}<meta property="og:type" content="website">
 <meta property="og:title" content="{{.OG.Title}}">
 <meta property="og:description" content="{{.OG.Description}}">
@@ -74,7 +74,7 @@ Public visitors see the permit pages and the portal; staff also get their own pa
 </main>
 </div>
 </div>
-<script src="/static/inputs.js" defer></script>
+<script src="{{asset "inputs.js"}}" defer></script>
 </body>
 </html>
 {{end}}
@@ -155,7 +155,7 @@ small links at the bottom, because most visitors are companies and workers. */}}
   {{else}}<p class="note">This lookup is not available right now. Please try again later.</p>{{end}}
   <p class="note"><a href="/">Back to home</a></p>
 </section>
-<script src="/static/namesearch.js"></script>
+<script src="{{asset "namesearch.js"}}"></script>
 {{template "foot" .}}{{end}}
 
 {{define "request"}}{{template "head" .}}

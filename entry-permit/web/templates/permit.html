@@ -49,7 +49,7 @@
       <button type="submit" class="btn">Check the worker</button>
     </div>
   </form>
-  <script src="/static/namesearch.js"></script>
+  <script src="{{asset "namesearch.js"}}"></script>
   {{else}}<p class="note">This form is not available right now. Please try again later.</p>{{end}}
 </div>
 <p><a href="/">Back to home</a></p>
@@ -206,7 +206,7 @@
   </section>
   <div class="form-actions"><button type="submit" class="btn">Send the request</button><span class="note">Check the details, then send.</span></div>
 </form>
-<script src="/static/wizard.js" defer></script>
+<script src="{{asset "wizard.js"}}" defer></script>
 {{end}}
 
 {{define "permit_done"}}{{template "head" .}}
