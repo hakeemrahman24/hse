@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"html/template"
 	"log"
 	"net/http"
@@ -10,7 +11,9 @@ import (
 	"time"
 
 	"entry-permit/internal/card"
+	"entry-permit/internal/dates"
 	"entry-permit/internal/staff"
+	"entry-permit/internal/ticket"
 )
 
 // cardPattern is the shape of a work-permit number. Only these have a card.
@@ -174,7 +177,7 @@ func (a *App) cardPage(w http.ResponseWriter, r *http.Request) {
 		t, sched := a.scheduleOf(r, lep)
 		switch sched {
 		case scheduleActive:
-			ticketTitle, ticketDates, ticketClass = "Working ticket", shortDM(string(t.Arrival))+" to "+shortDM(string(t.Departure)), "has"
+			ticketTitle, ticketDates, ticketClass = "Working ticket", scheduleLine(t, a.Clock.Today()), "has"
 		case scheduleEnded:
 			ticketTitle, ticketDates, ticketClass = "No valid working schedule", "Ended "+shortDM(string(t.Departure)), "none"
 		default:
@@ -225,4 +228,35 @@ func shortDM(day string) string {
 		return t.Format("2 Jan")
 	}
 	return day
+}
+
+// soonDays is how close a departure must be for the card to say "Ends in N days" instead of the dates.
+const soonDays = 3
+
+// whenPhrase says how the valid schedule stands today: "Starts in 5 days", "Ends today", "Ends in 2 days", or
+// "" when it is under way with more than soonDays left (the dates tell the rest).
+func whenPhrase(t ticket.Ticket, today dates.Day) string {
+	if t.Arrival > today {
+		if n := dates.DaysBetween(today, t.Arrival); n > 1 {
+			return fmt.Sprintf("Starts in %d days", n)
+		}
+		return "Starts tomorrow"
+	}
+	switch left := dates.DaysBetween(today, t.Departure); {
+	case left == 0:
+		return "Ends today"
+	case left == 1:
+		return "Ends tomorrow"
+	case left <= soonDays:
+		return fmt.Sprintf("Ends in %d days", left)
+	}
+	return ""
+}
+
+// scheduleLine is the line under "Working ticket" on the card: the phrase when there is one, else the dates.
+func scheduleLine(t ticket.Ticket, today dates.Day) string {
+	if p := whenPhrase(t, today); p != "" {
+		return p
+	}
+	return shortDM(string(t.Arrival)) + " to " + shortDM(string(t.Departure))
 }

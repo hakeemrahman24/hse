@@ -274,7 +274,11 @@ func (a *App) scheduleText(r *http.Request, lep string) (live, ended string) {
 	t, state := a.scheduleOf(r, lep)
 	switch state {
 	case scheduleActive:
-		return fmt.Sprintf("%s to %s, Approved", t.Arrival, t.Departure), ""
+		text := fmt.Sprintf("%s to %s, Approved", t.Arrival, t.Departure)
+		if p := whenPhrase(t, a.Clock.Today()); p != "" {
+			text += " (" + strings.ToLower(p[:1]) + p[1:] + ")"
+		}
+		return text, ""
 	case scheduleEnded:
 		return "", fmt.Sprintf("The last one ended on %s.", t.Departure)
 	}

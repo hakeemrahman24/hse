@@ -2,6 +2,8 @@ package web
 
 import (
 	"context"
+	"entry-permit/internal/dates"
+	"entry-permit/internal/ticket"
 	"entry-permit/internal/ticketlog"
 	"net/http"
 	"os"
@@ -284,7 +286,7 @@ func TestCardPageSaysWhetherThereIsAWorkingTicketToTheOwnerAndStaffOnly(t *testi
 		t.Fatal(err)
 	}
 	_, body = e.get(t, "/c/"+testLEP, owner)
-	if !strings.Contains(body, "<b>Working ticket</b><span>20 Nov to 27 Nov</span>") || strings.Contains(body, "No valid working schedule") {
+	if !strings.Contains(body, "<b>Working ticket</b><span>Starts in 14 days</span>") || strings.Contains(body, "No valid working schedule") {
 		t.Error("the owner's card does not show the approved ticket")
 	}
 }
@@ -307,7 +309,26 @@ func TestAWorkingTicketThatHasDepartedIsNotAValidSchedule(t *testing.T) {
 		t.Fatal(err)
 	}
 	_, body = e.get(t, "/c/"+testLEP, owner)
-	if !strings.Contains(body, "<b>Working ticket</b><span>1 Nov to 6 Nov</span>") {
-		t.Error("a ticket departing today is still valid")
+	if !strings.Contains(body, "<b>Working ticket</b><span>Ends today</span>") {
+		t.Error("a ticket departing today is still valid, and says so")
+	}
+}
+
+func TestWhenPhraseSaysHowTheValidScheduleStandsToday(t *testing.T) {
+	today := dates.Day("2026-11-06")
+	for _, c := range []struct{ arr, dep, want string }{
+		{"2026-11-20", "2026-11-27", "Starts in 14 days"},
+		{"2026-11-07", "2026-11-14", "Starts tomorrow"},
+		{"2026-10-30", "2026-11-06", "Ends today"},
+		{"2026-10-30", "2026-11-07", "Ends tomorrow"},
+		{"2026-10-30", "2026-11-09", "Ends in 3 days"},
+		{"2026-10-30", "2026-11-10", ""}, // more than three days left: the dates tell the rest
+	} {
+		if got := whenPhrase(ticket.Ticket{Arrival: dates.Day(c.arr), Departure: dates.Day(c.dep)}, today); got != c.want {
+			t.Errorf("%s to %s: %q, want %q", c.arr, c.dep, got, c.want)
+		}
+	}
+	if got := scheduleLine(ticket.Ticket{Arrival: "2026-10-30", Departure: "2026-11-20"}, today); got != "30 Oct to 20 Nov" {
+		t.Errorf("under way with time left shows the dates: %q", got)
 	}
 }
