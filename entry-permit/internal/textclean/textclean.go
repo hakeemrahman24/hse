@@ -68,6 +68,11 @@ func ValidEmail(s string) bool {
 // popular are the mail domains most mistyped, used only to offer "Did you mean ...?".
 var popular = []string{"gmail.com", "yahoo.com", "yahoo.co.id", "hotmail.com", "outlook.com", "icloud.com", "live.com", "proton.me", "protonmail.com"}
 
+// realOthers are genuine mail providers that sit one letter from a popular one (mail.com and gmail.com, live.com and
+// love.com), so they are never called typos.
+var realOthers = []string{"mail.com", "email.com", "gmx.com", "gmx.net", "aol.com", "msn.com", "ymail.com", "rocketmail.com", "me.com", "mac.com",
+	"zoho.com", "yandex.com", "hey.com", "fastmail.com", "tutanota.com", "pm.me", "hotmail.co.uk", "yahoo.co.uk", "outlook.co.id", "yahoo.com.sg"}
+
 // EmailSuggestion returns a corrected address when the domain is one letter away from a popular one
 // (gmial.com, gmail.co, hotmial.com), or "" when there is nothing to suggest. It is a hint, never a rule:
 // the person decides.
@@ -77,7 +82,7 @@ func EmailSuggestion(clean string) string {
 		return ""
 	}
 	domain := clean[at+1:]
-	for _, p := range popular {
+	for _, p := range append(append([]string{}, popular...), realOthers...) {
 		if domain == p {
 			return ""
 		}

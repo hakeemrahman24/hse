@@ -925,3 +925,6 @@ input[aria-invalid="true"] { border-color: var(--error); }
 .field-error.field-ok { color: var(--ok); font-weight: 400; }
 input.is-ok { border-color: var(--ok); outline: 1px solid var(--ok); outline-offset: 0; }
 .field-error .linklike { font-weight: 600; font-style: normal; }
+
+/* A suggestion is not an error: muted, not red. */
+.field-error.field-hint { color: var(--muted); }

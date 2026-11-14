@@ -310,7 +310,7 @@
     function show(msg, suggest, ok) {
       var good = ok && !msg && !suggest;
       note.textContent = msg || (good ? 'This domain can receive email.' : '');
-      note.className = good ? 'field-error field-ok' : 'field-error';
+      note.className = good ? 'field-error field-ok' : (msg ? 'field-error' : 'field-error field-hint');
       note.setAttribute('role', msg ? 'alert' : 'status');
       input.classList.toggle('is-ok', !!good);
       if (suggest) {

@@ -58,6 +58,7 @@ func TestEmailSuggestionCatchesTypedDomains(t *testing.T) {
 		"a@gmail.com":     "", // already right
 		"a@example.com":   "", // not near a popular domain
 		"a@company.co.id": "",
+		"a@mail.com":      "", // a real provider one letter from gmail.com
 		"a@yahoo.co.id":   "", // a real Indonesian domain, not a typo of yahoo.com
 	}
 	for in, want := range cases {
