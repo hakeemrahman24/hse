@@ -268,7 +268,12 @@ type page struct {
 	Statuses      []string // choices of the status filter
 	Result        DocPage  // paging numbers of the list on screen
 	ExportURL     string
-	ShowCompany   bool // Employee checkups shows the Company column even without "Include subcontractors" (the admin's list spans every company)
+	Tiles         []StatusTile      // Employee checkups: the clickable validity labels with their counts
+	SortKey       string            // Employee checkups: the column the list is ordered by
+	SortDir       string            // "asc" or "desc"
+	SortURLs      map[string]string // column key -> address a click on its heading goes to
+	SortAria      map[string]string // column key -> aria-sort word, only for the column in use
+	ShowCompany   bool              // Employee checkups shows the Company column even without "Include subcontractors" (the admin's list spans every company)
 	PrevURL       string
 	NextURL       string
 

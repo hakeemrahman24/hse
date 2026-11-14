@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -94,13 +96,13 @@ func TestMyEmployeesPage(t *testing.T) {
 	seedWorker(t, e.store, "Nobody Yet", "1991-01-01", e.companyID)
 
 	body := e.get("/mcu-submit/employees", cookie).Body.String()
-	for _, want := range []string{"Budi Santoso", "2099-01-01", ">Valid<", "2 employees, page 1 of 1", `href="/mcu-submit/employees"`, "No checkup on record"} {
+	for _, want := range []string{"Budi Santoso", "2099-01-01", ">Valid<", "2 employees", `href="/mcu-submit/employees"`, "No checkup on record"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q", want)
 		}
 	}
 	one := e.get("/mcu-submit/employees?status=Valid", cookie).Body.String()
-	if !strings.Contains(one, "1 employee, page 1 of 1") || strings.Contains(one, "Nobody Yet") {
+	if !strings.Contains(one, ">1 employee<") || strings.Contains(one, "Nobody Yet") {
 		t.Errorf("status filter wrong")
 	}
 	if code := e.get("/mcu-submit/employees?status=Bogus", cookie).Code; code != 400 {
@@ -223,8 +225,13 @@ func TestEmployeeCheckupsMoreShowsTheReviewersWordsByResult(t *testing.T) {
 			t.Errorf("page shows %q", hidden)
 		}
 	}
-	if n := strings.Count(body, `<summary class="btn-ghost">More</summary>`); n != 2 {
-		t.Errorf("%d More buttons, want 2 (follow-up and unfit with words)", n)
+	// Every worker has a More button now (it also holds position and nationality), but only the
+	// follow-up and the unfit worker with words carry a note in it.
+	if n := strings.Count(body, `class="mp-more-btn"`); n != 4 {
+		t.Errorf("%d More buttons, want 4 (one per worker)", n)
+	}
+	if n := len(regexp.MustCompile(`data-note="[^"]+"`).FindAllString(body, -1)); n != 2 {
+		t.Errorf("%d rows carry a note, want 2 (follow-up and unfit with words)", n)
 	}
 }
 
@@ -245,7 +252,7 @@ func TestEmployeesExportIsFilteredScopedAndAnXlsx(t *testing.T) {
 		t.Fatalf("not a workbook: %v", err)
 	}
 	rows, _ := f.GetRows("Employees")
-	if len(rows) != 2 || rows[1][0] != "Budi Santoso" || rows[1][6] != "Valid" {
+	if len(rows) != 2 || rows[1][0] != "Budi Santoso" || rows[1][7] != "Valid" {
 		t.Errorf("rows = %v, want header + Budi only (status filter applies)", rows)
 	}
 	if code := e.get("/mcu-submit/employees/export.xlsx?status=Bogus", cookie).Code; code != 400 {
@@ -292,7 +299,7 @@ func TestAdminSeesEveryCompanyOnEmployeeCheckupsPageAndExport(t *testing.T) {
 	if page.Code != 200 {
 		t.Fatalf("admin page = %d, want 200", page.Code)
 	}
-	for _, want := range []string{"Mine Worker", "Other Worker", "PT Other", `<th scope="col">Company</th>`, "2 employees, page 1 of 1", "every company"} {
+	for _, want := range []string{"Mine Worker", "Other Worker", "PT Other", `>Company</a></th>`, "2 employees", "every company"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("admin page lacks %q", want)
 		}
@@ -325,7 +332,7 @@ func TestCompanyAccountStillSeesOnlyItsOwnEmployees(t *testing.T) {
 	seedWorker(t, e.store, "Other Worker", "1991-01-01", other)
 
 	body := e.get("/mcu-submit/employees", cookie).Body.String()
-	if !strings.Contains(body, "Mine Worker") || strings.Contains(body, "Other Worker") || strings.Contains(body, `<th scope="col">Company</th>`) {
+	if !strings.Contains(body, "Mine Worker") || strings.Contains(body, "Other Worker") || strings.Contains(body, `>Company</a></th>`) {
 		t.Errorf("company account list wrong: must hold only its own workers and no Company column")
 	}
 }
@@ -343,5 +350,181 @@ func TestEmployeeCertificateRecordAdminBypassesScope(t *testing.T) {
 	}
 	if id, err := s.EmployeeCertificateRecord(ctx, Scope{}, w, true); err != nil || id == 0 {
 		t.Errorf("admin got id=%d err=%v, want the record", id, err)
+	}
+}
+
+// ---- order, tiles, nationality and the credit bar (owner, 2026-11-14) ----
+
+func TestSortEmployeesDefaultOrderIsLatestCheckupAndBlanksGoLast(t *testing.T) {
+	list := []Employee{
+		{PatientID: 1, Name: "Old", CheckUpDate: "2025-01-01"},
+		{PatientID: 2, Name: "None"}, // no checkup at all
+		{PatientID: 3, Name: "New", CheckUpDate: "2026-06-01"},
+	}
+	names := func(l []Employee) string {
+		var out []string
+		for _, e := range l {
+			out = append(out, e.Name)
+		}
+		return strings.Join(out, ",")
+	}
+	key, dir, explicit := parseSort(nil)
+	if key != sortCheckup || dir != dirDesc || explicit {
+		t.Fatalf("default = %s %s explicit=%v, want checkup desc, not explicit", key, dir, explicit)
+	}
+	if got := names(sortEmployees(list, key, dir)); got != "New,Old,None" {
+		t.Errorf("latest first = %s, want New,Old,None", got)
+	}
+	// Ascending flips the dated rows but the row with no date still goes last.
+	if got := names(sortEmployees(list, sortCheckup, dirAsc)); got != "Old,New,None" {
+		t.Errorf("oldest first = %s, want Old,New,None", got)
+	}
+	if list[0].Name != "Old" {
+		t.Errorf("sortEmployees changed the caller's list")
+	}
+}
+
+func TestParseSortIgnoresUnknownWords(t *testing.T) {
+	for _, q := range []string{"sort=password", "sort=name;drop", "dir=asc", "sort=&dir=up"} {
+		vals, _ := url.ParseQuery(q)
+		if key, dir, explicit := parseSort(vals); key != defaultSortKey || dir != defaultSortDir || explicit {
+			t.Errorf("%q gave %s %s explicit=%v, want the default", q, key, dir, explicit)
+		}
+	}
+	vals, _ := url.ParseQuery("sort=name&dir=sideways")
+	if key, dir, _ := parseSort(vals); key != sortName || dir != dirAsc {
+		t.Errorf("a bad dir should fall back to the column's first direction, got %s %s", key, dir)
+	}
+}
+
+func setCheckupDate(t *testing.T, s *Store, checkUpID, date string) {
+	t.Helper()
+	if _, err := s.DB.Exec(`UPDATE McuRecord SET DateCheckUp = ? WHERE CheckUpID = ?`, date, checkUpID); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// The headings are links that sort; the column in use says which way (aria-sort) and links to the opposite.
+func TestEmployeeCheckupsHeadingsSortAndShowTheArrow(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	for _, w := range []struct{ name, id, date string }{
+		{"Alpha Old", "S-1", "2025-01-01"}, {"Charlie New", "S-2", "2026-06-01"}, {"Bravo Mid", "S-3", "2025-09-01"},
+	} {
+		id := seedWorker(t, e.store, w.name, "1990-01-01", e.companyID)
+		addRecord(t, e.store, id, w.id, "Fit", "2099-01-01", "Close", 1)
+		setCheckupDate(t, e.store, w.id, w.date)
+	}
+	order := func(body string) []string {
+		var got []string
+		for _, m := range regexp.MustCompile(`class="c-name"[^>]*>([^<]+)<`).FindAllStringSubmatch(body, -1) {
+			got = append(got, m[1])
+		}
+		return got
+	}
+
+	def := e.get("/mcu-submit/employees", cookie).Body.String()
+	if got := strings.Join(order(def), ","); got != "Charlie New,Bravo Mid,Alpha Old" {
+		t.Errorf("default order = %s, want latest checkup first", got)
+	}
+	if !strings.Contains(def, `<th scope="col" aria-sort="descending"><a class="mp-sort" href="/mcu-submit/employees?dir=asc&amp;sort=checkup">Last checkup`) {
+		t.Errorf("Last checkup heading should show descending and link to ascending")
+	}
+
+	byName := e.get("/mcu-submit/employees?sort=name&dir=asc", cookie).Body.String()
+	if got := strings.Join(order(byName), ","); got != "Alpha Old,Bravo Mid,Charlie New" {
+		t.Errorf("name A-Z = %s", got)
+	}
+	if !strings.Contains(byName, `aria-sort="ascending"><a class="mp-sort" href="/mcu-submit/employees?dir=desc&amp;sort=name">Employee`) {
+		t.Errorf("Employee heading should show ascending and link to descending")
+	}
+	if strings.Count(byName, "aria-sort=") != 1 {
+		t.Errorf("only the column in use may carry aria-sort")
+	}
+	if got := strings.Join(order(e.get("/mcu-submit/employees?sort=name&dir=desc", cookie).Body.String()), ","); got != "Charlie New,Bravo Mid,Alpha Old" {
+		t.Errorf("name Z-A = %s", got)
+	}
+	if got := strings.Join(order(e.get("/mcu-submit/employees?sort=bogus", cookie).Body.String()), ","); got != "Charlie New,Bravo Mid,Alpha Old" {
+		t.Errorf("an unknown sort must fall back to the default, got %s", got)
+	}
+}
+
+func TestEmployeeCheckupsTilesToggleTheirFilter(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	id := seedWorker(t, e.store, "Budi Santoso", "1990-01-01", e.companyID)
+	addRecord(t, e.store, id, "T-1", "Fit", "2099-01-01", "Close", 1)
+
+	off := e.get("/mcu-submit/employees", cookie).Body.String()
+	if !strings.Contains(off, `class="mp-tile tone-valid" href="/mcu-submit/employees?status=Valid"`) {
+		t.Errorf("an unused tile should link to the filter that turns it on")
+	}
+	on := e.get("/mcu-submit/employees?status=Valid", cookie).Body.String()
+	if !strings.Contains(on, `class="mp-tile tone-valid on" href="/mcu-submit/employees"`) || !strings.Contains(on, `aria-current="true"`) {
+		t.Errorf("the tile in use should link back to the unfiltered list")
+	}
+}
+
+func TestEmployeeCheckupsShowNationalityInMoreAndExport(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	res, err := e.store.DB.Exec(`INSERT INTO NationalityTable (Name) VALUES ('Filipino')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nat, _ := res.LastInsertId()
+	id := seedWorker(t, e.store, "Budi Santoso", "1990-01-01", e.companyID)
+	if _, err := e.store.DB.Exec(`UPDATE Patient SET FK_NationalityID = ? WHERE PatientID = ?`, nat, id); err != nil {
+		t.Fatal(err)
+	}
+	if body := e.get("/mcu-submit/employees", cookie).Body.String(); !strings.Contains(body, `data-nationality="Filipino"`) || !strings.Contains(body, `data-position="Welder"`) {
+		t.Errorf("More should carry the nationality and the position")
+	}
+	f, err := excelize.OpenReader(bytes.NewReader(e.get("/mcu-submit/employees/export.xlsx", cookie).Body.Bytes()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rows, _ := f.GetRows("Employees"); len(rows) != 2 || rows[0][3] != "Nationality" || rows[1][3] != "Filipino" {
+		t.Errorf("export rows = %v, want a Nationality column holding Filipino", rows)
+	}
+}
+
+// The credit bar is the staff pages' one-line "Developed by", on every portal page, and the list no
+// longer pages: there is no Previous/Next, every worker is in the page.
+func TestPortalShowsDeveloperCreditAndListHasNoPager(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	for i := 0; i < docPageSize+5; i++ {
+		seedWorker(t, e.store, fmt.Sprintf("Worker %02d", i), "1990-01-01", e.companyID)
+	}
+	body := e.get("/mcu-submit/employees", cookie).Body.String()
+	if !strings.Contains(body, `class="app-dev-credit"`) || !strings.Contains(body, "Developed by dr. Arif Rahman Hakim.") {
+		t.Errorf("the developer credit is missing")
+	}
+	if n := strings.Count(body, `class="c-name"`); n != docPageSize+5 {
+		t.Errorf("%d rows, want all %d in one scrollable list", n, docPageSize+5)
+	}
+	if strings.Contains(body, `rel="next"`) || strings.Contains(body, `rel="prev"`) {
+		t.Errorf("the employee list must not page")
+	}
+	if home := e.get("/mcu-submit/home", cookie).Body.String(); !strings.Contains(home, "app-dev-credit") {
+		t.Errorf("the credit should be on every portal page, not only this one")
+	}
+}
+
+func TestEmployeeCheckupsDialogAndPopupWordsAreTranslated(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	seedWorker(t, e.store, "Budi Santoso", "1990-01-01", e.companyID)
+	for _, lang := range []struct{ code, want string }{{"id", "Unduh"}, {"zh", "下载"}} {
+		body := e.get("/mcu-submit/employees", cookie, &http.Cookie{Name: langCookie, Value: lang.code}).Body.String()
+		if !strings.Contains(body, lang.want) || strings.Contains(body, ">Download<") {
+			t.Errorf("%s: the popup's Download is not translated", lang.code)
+		}
 	}
 }

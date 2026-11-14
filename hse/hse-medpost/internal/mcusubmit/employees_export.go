@@ -12,7 +12,7 @@ import (
 // shows for the chosen filters (employee, status, include subcontractors), all pages instead of one.
 // The companies come from the session's Scope exactly like the page, never from the request.
 
-var employeeExportHeaders = []string{"Employee", "Company", "Position", "Last checkup", "Valid until", "Days left", "Validity", "Result", "Recommendation / notes"}
+var employeeExportHeaders = []string{"Employee", "Company", "Position", "Nationality", "Last checkup", "Valid until", "Days left", "Validity", "Result", "Recommendation / notes"}
 
 // employeeExportRows turns the employees into sheet rows. Cells are plain values (never formulas),
 // so a name that starts with "=" is shown as text and is not run by Excel.
@@ -27,7 +27,7 @@ func employeeExportRows(list []Employee) [][]any {
 		if e.NoteLabel != "" && note != "" {
 			note = e.NoteLabel + ": " + note
 		}
-		rows = append(rows, []any{e.Name, e.Company, e.Position, e.CheckUpDate, validUntil, daysLeft, e.Status, e.Result, note})
+		rows = append(rows, []any{e.Name, e.Company, e.Position, e.Nationality, e.CheckUpDate, validUntil, daysLeft, e.Status, e.Result, note})
 	}
 	return rows
 }
@@ -53,7 +53,9 @@ func (a *API) EmployeesExport(w http.ResponseWriter, r *http.Request) {
 		a.serverError(w, "company employees", err)
 		return
 	}
-	rows := filterEmployees(all, q.Get("worker"), status)
+	// The file is in the order the page showed, so what HR sees is what they download.
+	sortKey, sortDir, _ := parseSort(q)
+	rows := sortEmployees(filterEmployees(all, q.Get("worker"), status), sortKey, sortDir)
 
 	f := excelize.NewFile()
 	defer f.Close()
@@ -69,7 +71,7 @@ func (a *API) EmployeesExport(w http.ResponseWriter, r *http.Request) {
 			_ = f.SetCellValue(sheet, cell, v)
 		}
 	}
-	widths := []float64{28, 28, 24, 14, 14, 10, 22, 16, 50}
+	widths := []float64{28, 28, 24, 16, 14, 14, 10, 22, 16, 50}
 	for i, wd := range widths {
 		col, _ := excelize.ColumnNumberToName(i + 1)
 		_ = f.SetColWidth(sheet, col, col, wd)

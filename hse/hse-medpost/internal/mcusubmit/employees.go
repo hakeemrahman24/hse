@@ -37,12 +37,35 @@ var employeeStatuses = []string{ValValid, ValExpiring, ValExpired, ValUnfit, Val
 type Employee struct {
 	PatientID                       int64
 	Name, Position, Company         string
+	Nationality                     string // from NationalityTable; empty when the worker has none on record
 	CheckUpDate, Result, ValidUntil string
 	Status                          string // one of the Val* labels
 	DaysLeft                        int    // days until ValidUntil; negative once expired; only meaningful for the three fit statuses
 	HasValidity                     bool   // Status is Valid, Expiring soon or Expired (DaysLeft means something)
 	NoteLabel, Note                 string // "Recommendation" or "Notes" and the reviewer's words; empty when there is none to show
 	HasCertificate                  bool   // the latest checkup has a certificate the page may offer (see LatestRecord.HasCertificate)
+}
+
+// StatusSlug is the status as a CSS word ("tone-expiring" colours the tile, the dot and the card edge).
+// It is a method so the template can ask the row, and a switch so a new status has to be named here.
+func (e Employee) StatusSlug() string {
+	switch e.Status {
+	case ValValid:
+		return "valid"
+	case ValExpiring:
+		return "expiring"
+	case ValExpired:
+		return "expired"
+	case ValUnfit:
+		return "unfit"
+	case ValTempUnfit:
+		return "tempunfit"
+	case ValFollowUp:
+		return "followup"
+	case ValInProgress:
+		return "progress"
+	}
+	return "none"
 }
 
 // validityOf turns a checkup's result and validity date into the label HR reads. It is pure so the
@@ -104,11 +127,12 @@ func (s *Store) AllEmployees(ctx context.Context, windowDays int) ([]Employee, e
 // "?" marks only, never from request text, so the values travel as args.
 func (s *Store) listEmployees(ctx context.Context, where string, args []any, windowDays int) ([]Employee, error) {
 	rows, err := s.DB.QueryContext(ctx,
-		`SELECT p.PatientID, p.Name, COALESCE(p.WorkPosition, ''), COALESCE(c.Name, ''), COALESCE(m.McuRecordID, 0),
+		`SELECT p.PatientID, p.Name, COALESCE(p.WorkPosition, ''), COALESCE(c.Name, ''), COALESCE(nt.Name, ''), COALESCE(m.McuRecordID, 0),
 		        COALESCE(m.DateCheckUp, ''), COALESCE(m.ResultCriteria, ''), COALESCE(m.ResultValidUntil, ''), COALESCE(m.CheckUpStatus, ''),
 		        COALESCE(m.ResultNotes, ''), COALESCE(m.Recommendation, '')
 		 FROM Patient p
 		 LEFT JOIN Company c ON c.CompanyID = p.FK_CompanyID
+		 LEFT JOIN NationalityTable nt ON nt.NationalityID = p.FK_NationalityID
 		 LEFT JOIN McuRecord m ON m.McuRecordID = (
 		       SELECT m2.McuRecordID FROM McuRecord m2 WHERE m2.FK_PatientID = p.PatientID
 		       ORDER BY COALESCE(m2.DateCheckUp, '') DESC, m2.McuRecordID DESC LIMIT 1)
@@ -124,7 +148,7 @@ func (s *Store) listEmployees(ctx context.Context, where string, args []any, win
 		var e Employee
 		var record int64
 		var checkUpStatus, notes, recommendation string
-		if err := rows.Scan(&e.PatientID, &e.Name, &e.Position, &e.Company, &record, &e.CheckUpDate, &e.Result, &e.ValidUntil, &checkUpStatus, &notes, &recommendation); err != nil {
+		if err := rows.Scan(&e.PatientID, &e.Name, &e.Position, &e.Company, &e.Nationality, &record, &e.CheckUpDate, &e.Result, &e.ValidUntil, &checkUpStatus, &notes, &recommendation); err != nil {
 			return nil, err
 		}
 		if checkUpStatus == "Archived / Exit" {
@@ -216,7 +240,7 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 		a.render(w, http.StatusBadRequest, "employees.html", p)
 		return
 	}
-	// The chips count the whole company whatever the filter, like the Needs action chip.
+	// The tiles count the whole company whatever the filter, like the Needs action chip.
 	p.Counts = map[string]int{}
 	for _, e := range all {
 		p.Counts[e.Status]++
@@ -226,10 +250,18 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 			all[i].HasCertificate = false
 		}
 	}
-	rows := filterEmployees(all, p.Form["worker"], status)
-	page, _ := parseID(q.Get("page"))
-	p.Employees, p.Result = pageOf(rows, int(page))
-	p.PrevURL, p.NextURL = pagerLinks(basePath+"/employees", p.Form, p.Result)
+	// The order is part of the address only when the person picked one; the default (latest checkup
+	// first) needs no words, so the plain page address stays plain.
+	sortKey, sortDir, explicit := parseSort(q)
+	if explicit {
+		p.Form["sort"], p.Form["dir"] = sortKey, sortDir
+	}
+	p.SortKey, p.SortDir = sortKey, sortDir
+	p.SortURLs, p.SortAria = sortLinks(p.Form, sortKey, sortDir)
+	p.Tiles = statusTiles(p.Counts, p.Form, status)
+	// Every matching worker is sent: the list scrolls inside the page instead of paging.
+	p.Employees = sortEmployees(filterEmployees(all, p.Form["worker"], status), sortKey, sortDir)
+	p.Result = DocPage{Total: len(p.Employees)}
 	p.ExportURL = exportLink(p.Form)
 	a.render(w, http.StatusOK, "employees.html", p)
 }
@@ -255,26 +287,6 @@ func (a *API) employeeSource(ctx context.Context, u *Submitter, wantSubs bool) (
 	}
 	list, err = a.Store.CompanyEmployees(ctx, companies, reminderWindowDays)
 	return list, subs, canSubs, err
-}
-
-// pageOf cuts one page out of an already filtered list and returns the paging numbers.
-func pageOf(rows []Employee, page int) ([]Employee, DocPage) {
-	total := len(rows)
-	pages := (total + docPageSize - 1) / docPageSize
-	if pages < 1 {
-		pages = 1
-	}
-	if page < 1 {
-		page = 1
-	}
-	if page > pages {
-		page = pages
-	}
-	lo, hi := (page-1)*docPageSize, page*docPageSize
-	if hi > total {
-		hi = total
-	}
-	return rows[lo:hi], DocPage{Total: total, PageSize: docPageSize, Page: page, Pages: pages}
 }
 
 // EmployeeCertificateRecord returns the newest checkup of a worker when the worker belongs to a company
