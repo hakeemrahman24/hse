@@ -922,6 +922,6 @@ input[aria-invalid="true"] { border-color: var(--error); }
 }
 
 /* An email box whose domain passed the check: green outline and a small green line under it. */
-.field-error.field-ok { color: var(--ok); }
-input.is-ok { border-color: var(--ok); outline: 2px solid var(--ok); outline-offset: 0; }
+.field-error.field-ok { color: var(--ok); font-weight: 400; }
+input.is-ok { border-color: var(--ok); outline: 1px solid var(--ok); outline-offset: 0; }
 .field-error .linklike { font-weight: 600; font-style: normal; }
