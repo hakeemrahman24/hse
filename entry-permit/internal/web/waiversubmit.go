@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"entry-permit/internal/textclean"
 	"fmt"
 	"log"
 	"net/http"
@@ -273,10 +274,10 @@ func (a *App) readWaiver(r *http.Request, v map[string]string) (waiverInput, int
 	}
 	in.Form = waiver.Form{
 		ApplicantType: v["applicant_type"], CompanyChosen: in.Company.ID != 0, CompanyIsGov: in.Company.Gov,
-		Name: v["name"], Gender: pickOne(v["gender"], waiverGenders), DOB: string(in.DOB), Nationality: nat, NIK: v["nik"],
+		Name: textclean.Name(v["name"]), Gender: pickOne(v["gender"], waiverGenders), DOB: string(in.DOB), Nationality: nat, NIK: v["nik"],
 		Position: v["position"], Department: v["department"], VisitLocation: v["visit_location"], Purpose: v["purpose"],
 		From: string(in.From), To: string(in.To),
-		RequesterName: v["requester_name"], RequesterEmail: cleanEmail(v["requester_email"]), Phone: v["phone"],
+		RequesterName: textclean.Name(v["requester_name"]), RequesterEmail: cleanEmail(v["requester_email"]), Phone: v["phone"],
 		Risk: v["risk"], Precaution: v["precaution"], Prevent: v["prevent"],
 		TakesMedicine: v["takes_medicine"] != "", Medicine1: v["medicine1"], Dosage1: v["dosage1"],
 		Medicine2: v["medicine2"], Dosage2: v["dosage2"], Medicine3: v["medicine3"], Dosage3: v["dosage3"],

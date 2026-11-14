@@ -92,7 +92,41 @@
 
   function digitsOnly(raw) { return String(raw).replace(/\D/g, ''); }
   function tidyText(raw) { return String(raw).replace(/\s+/g, ' ').trim(); }
-  function tidyEmail(raw) { return String(raw).trim().toLowerCase(); }
+  // tidyEmail mirrors internal/textclean Email: invisible characters and every space out, lower case,
+  // full-width @ and dots made plain, and "mailto:", brackets, quotes and trailing punctuation dropped.
+  function tidyEmail(raw) {
+    var s = String(raw).replace(/[\u200b\u200c\u200d\ufeff\u00ad\u2060\s]/g, '')
+      .replace(/\uff20/g, '@').replace(/[\u3002\uff0e]/g, '.').toLowerCase();
+    return s.replace(/^mailto:/, '').replace(/^[<"'`(\[]+/, '').replace(/[>"'`)\].,;:]+$/, '');
+  }
+
+  var PARTICLES = /^(bin|binti|bte|binte|van|von|de|del|della|da|dos|das|di|du|la|le|ter|ten|al|el)$/;
+  var ROMAN = /^(ii|iii|iv|vi|vii|viii|ix)$/;
+  function titleWord(w, first) {
+    var lower = w.toLowerCase();
+    var core = lower.replace(/^[.,]+|[.,]+$/g, '');
+    if (!first && PARTICLES.test(core)) return lower;
+    if (ROMAN.test(core)) return w.toUpperCase();
+    if (/^\p{Lu}/u.test(w) && /\p{Ll}\p{Lu}/u.test(w.slice(1)) && w.length >= 3) return w; // McDonald, DeShawn: as typed
+    var up = true;
+    return Array.from(lower).map(function (ch) {
+      var out = up && /\p{L}/u.test(ch) ? ch.toUpperCase() : ch;
+      if (up && /\p{L}/u.test(ch)) up = false;
+      if (ch === '-' || ch === "'" || ch === '.') up = true;
+      return out;
+    }).join('');
+  }
+  // tidyName mirrors internal/textclean Name: letters, spaces ' - . , only; curly quotes and long dashes made
+  // plain; repeated spaces and punctuation collapsed; Title Case with small particles, initials and numerals kept.
+  function tidyName(raw) {
+    var s = String(raw).replace(/[\u200b\u200c\u200d\ufeff\u00ad\u2060]/g, '')
+      .replace(/[\u2018\u2019`´]/g, "'").replace(/[\u2013\u2014]/g, '-')
+      .replace(/[^\p{L}\p{Mn}\s'.,-]/gu, ' ');
+    ['..', ',,', '--', "''"].forEach(function (p) { while (s.indexOf(p) >= 0) s = s.split(p).join(p.charAt(0)); });
+    s = s.replace(/\s+/g, ' ').replace(/ ,/g, ',').replace(/^[ .,'-]+|[ .,'-]+$/g, '');
+    if (!s) return '';
+    return s.split(' ').map(function (w, i) { return titleWord(w, i === 0); }).join(' ');
+  }
 
   // idRule mirrors the server (internal/waiver CleanID): an Indonesian gives the 16-digit NIK, anyone
   // else a passport number. Before a nationality is chosen nothing is enforced; the server decides.
@@ -113,7 +147,7 @@
 
   var api = {
     formatDate: formatDate, maskRest: maskRest, tidyDate: tidyDate, toISO: toISO, fromISO: fromISO, isFuture: isFuture,
-    cleanPhone: cleanPhone, digitsOnly: digitsOnly, tidyText: tidyText, tidyEmail: tidyEmail,
+    cleanPhone: cleanPhone, digitsOnly: digitsOnly, tidyText: tidyText, tidyEmail: tidyEmail, tidyName: tidyName,
     idRule: idRule, cleanId: cleanId,
   };
 
@@ -271,15 +305,34 @@
     input.insertAdjacentElement('afterend', note);
     var known = {};
     var last = '';
-    function show(msg) {
+    function show(msg, suggest) {
       note.textContent = msg || '';
-      note.hidden = !msg;
+      if (suggest) {
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'linklike';
+        btn.textContent = 'Use ' + suggest;
+        btn.addEventListener('click', function () {
+          input.value = suggest;
+          show('');
+          check();
+        });
+        note.appendChild(document.createTextNode(msg ? ' Did you mean ' : 'Did you mean '));
+        note.appendChild(btn);
+        note.appendChild(document.createTextNode('?'));
+      }
+      note.hidden = !msg && !suggest;
       input.setCustomValidity(msg || '');
       if (msg) input.setAttribute('aria-invalid', 'true'); else input.removeAttribute('aria-invalid');
     }
-    function apply(v, res) { if (input.value.trim().toLowerCase() === v) show(res && !res.ok ? res.message : ''); }
+    function apply(v, res) {
+      if (tidyEmail(input.value) !== v) return;
+      var bad = res && !res.ok;
+      show(bad ? res.message : '', res && res.suggest);
+      if (!bad) input.setCustomValidity('');
+    }
     function check() {
-      var v = input.value.trim().toLowerCase();
+      var v = tidyEmail(input.value);
       last = v;
       if (!v || input.validity.typeMismatch) { show(''); return; } // empty, or the browser already complains
       if (known[v]) { apply(v, known[v]); return; }
@@ -353,7 +406,8 @@
         if (v !== el.value) el.value = v;
       });
     });
-    each(doc, 'input[type="text"]:not([data-date]):not([data-digits]):not([data-id-by])', function (el) { onBlur(el, tidyText); });
+    each(doc, 'input[data-name]', function (el) { onBlur(el, tidyName); });
+    each(doc, 'input[type="text"]:not([data-date]):not([data-digits]):not([data-id-by]):not([data-name])', function (el) { onBlur(el, tidyText); });
   };
 
   return api;

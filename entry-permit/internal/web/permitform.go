@@ -1,11 +1,10 @@
 package web
 
 import (
+	"entry-permit/internal/textclean"
 	"fmt"
 	"log"
 	"net/http"
-	"net/mail"
-	"regexp"
 	"strings"
 
 	"entry-permit/internal/dates"
@@ -88,7 +87,7 @@ func (a *App) permitStart(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad request", http.StatusBadRequest)
 		return
 	}
-	d.RequesterName = strings.Join(strings.Fields(r.PostFormValue("requester_name")), " ")
+	d.RequesterName = textclean.Name(r.PostFormValue("requester_name"))
 	d.RequesterMail = cleanEmail(r.PostFormValue("requester_email"))
 	d.SpareMail = cleanEmail(r.PostFormValue("spare_email"))
 	if d.SpareMail == d.RequesterMail {
@@ -160,14 +159,9 @@ func checkRequester(name, email, spare, location string) string {
 	return ""
 }
 
-// emailShape is the old system's rule: something@something.xx (a dot and at least two letters
-// after it, no spaces).
-var emailShape = regexp.MustCompile(`^[^\s@]+@[^\s@]+\.[^\s@]{2,}$`)
-
-// cleanEmail is the old system's clean-up: every space removed, lower case.
-func cleanEmail(s string) string {
-	return strings.ToLower(strings.Join(strings.Fields(s), ""))
-}
+// cleanEmail is the shared clean-up (internal/textclean): spaces and invisible characters removed, lower case,
+// mailto:, brackets and trailing punctuation dropped.
+func cleanEmail(s string) string { return textclean.Email(s) }
 
 // joinEmails makes the stored "primary,spare" list; an empty spare leaves just the primary.
 func joinEmails(primary, spare string) string {
@@ -177,11 +171,8 @@ func joinEmails(primary, spare string) string {
 	return primary + "," + spare
 }
 
-// validEmail accepts a plain address only: "Name <a@b.c>" and lists are refused.
-func validEmail(s string) bool {
-	addr, err := mail.ParseAddress(s)
-	return err == nil && addr.Address == s && addr.Name == "" && emailShape.MatchString(s)
-}
+// validEmail is the common-format rule for an already cleaned address (internal/textclean).
+func validEmail(s string) bool { return textclean.ValidEmail(s) }
 
 // checkMailDomains asks, for each address, whether its domain can receive mail (an MX record).
 // It returns the message for the first address that cannot, or "". A lookup that fails is
@@ -285,12 +276,13 @@ func (a *App) checkEmailAPI(w http.ResponseWriter, r *http.Request) {
 	a.Limit.Add(key)
 	email := cleanEmail(r.URL.Query().Get("email"))
 	if len(email) > 160 || !validEmail(email) {
-		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "Enter a valid email address, like name@company.com."})
+		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": "Enter a valid email address, like name@company.com.", "suggest": textclean.EmailSuggestion(email)})
 		return
 	}
 	if msg := a.checkMailDomains(a.policy(), email); msg != "" {
 		writeJSON(w, http.StatusOK, map[string]any{"ok": false, "message": msg})
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+	// A valid address on a domain one letter off a popular one (gmial.com) still goes through; the page only offers the fix.
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "suggest": textclean.EmailSuggestion(email)})
 }

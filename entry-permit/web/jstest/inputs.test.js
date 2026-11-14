@@ -88,3 +88,19 @@ test('digitsOnly and tidyText', () => {
   assert.equal(I.tidyText('a\tb\n c'), 'a b c');
   assert.equal(I.tidyEmail('  Rina@Example.COM '), 'rina@example.com');
 });
+
+test('tidyEmail cleans what was pasted', () => {
+  assert.equal(I.tidyEmail('mailto:Rina @ Example.com.'), 'rina@example.com');
+  assert.equal(I.tidyEmail('<rina@example.com>'), 'rina@example.com');
+  assert.equal(I.tidyEmail('rina​＠example。com'), 'rina@example.com');
+});
+
+test('tidyName cleans and title-styles a person name', () => {
+  assert.equal(I.tidyName('  BUDI   santoso '), 'Budi Santoso');
+  assert.equal(I.tidyName('Budi123 Santoso!'), 'Budi Santoso');
+  assert.equal(I.tidyName('abdul rahman BIN ahmad'), 'Abdul Rahman bin Ahmad');
+  assert.equal(I.tidyName('anne-marie o’neil'), "Anne-Marie O'Neil");
+  assert.equal(I.tidyName('john a. smith iii'), 'John A. Smith III');
+  assert.equal(I.tidyName('McDonald'), 'McDonald');
+  assert.equal(I.tidyName('1234'), '');
+});

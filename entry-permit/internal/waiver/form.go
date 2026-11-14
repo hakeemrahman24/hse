@@ -1,8 +1,8 @@
 package waiver
 
 import (
+	"entry-permit/internal/textclean"
 	"errors"
-	"net/mail"
 	"strings"
 
 	"entry-permit/internal/dates"
@@ -56,8 +56,7 @@ type Checked struct {
 }
 
 func validEmail(s string) bool {
-	addr, err := mail.ParseAddress(s)
-	return err == nil && addr.Address == s && addr.Name == ""
+	return textclean.ValidEmail(textclean.Email(s))
 }
 
 func blank(s string) bool { return strings.TrimSpace(s) == "" }
@@ -118,7 +117,7 @@ func ValidateForm(p policy.Policy, f Form, today dates.Day) (Checked, error) {
 	switch {
 	case blank(f.RequesterName):
 		return fail("requester_name", "Enter your name (the person making this request).")
-	case !validEmail(strings.TrimSpace(f.RequesterEmail)):
+	case !validEmail(f.RequesterEmail):
 		return fail("requester_email", "Enter a valid email address. The decision will be sent there.")
 	case !phone.Valid(phone.Normalize(f.Phone)):
 		return fail("phone", "Enter a valid phone number for the visitor (for example 081234567890).")

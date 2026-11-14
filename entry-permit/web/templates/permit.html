@@ -11,7 +11,7 @@
       <h2 class="fcard-title" id="h-p-who"><span class="step">1</span>Who is asking</h2>
       <label class="field" for="p-rname">
         <span>Your name (the person making this request)</span>
-        <input id="p-rname" name="requester_name" type="text" value="{{.Permit.RequesterName}}" maxlength="120" required autocomplete="name">
+        <input id="p-rname" data-name name="requester_name" type="text" value="{{.Permit.RequesterName}}" maxlength="120" required autocomplete="name">
       </label>
       <label class="field" for="p-rmail">
         <span>Your email (the decision is sent here)</span>
@@ -98,7 +98,7 @@
   <label class="field" for="p-phone"><span>Worker's phone number</span>
     <input id="p-phone" name="phone" type="tel" value="{{index .Vals "phone"}}" maxlength="20" required placeholder="081234567890"></label>
   <label class="field" for="p-ename"><span>Emergency contact name</span>
-    <input id="p-ename" name="emergency_name" type="text" value="{{index .Vals "emergency_name"}}" maxlength="120" required></label>
+    <input id="p-ename" data-name name="emergency_name" type="text" value="{{index .Vals "emergency_name"}}" maxlength="120" required></label>
   <label class="field" for="p-ephone"><span>Emergency contact phone number (not the worker's own)</span>
     <input id="p-ephone" name="emergency_phone" type="tel" value="{{index .Vals "emergency_phone"}}" maxlength="20" required></label>
   <label class="field" for="p-regency"><span>Home regency or city</span>

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"entry-permit/internal/textclean"
 	"errors"
 	"fmt"
 	"io"
@@ -302,7 +303,7 @@ func (a *App) permitSubmit(w http.ResponseWriter, r *http.Request) {
 func (a *App) readForm(r *http.Request, e worker.Employee, v map[string]string, sec Sections) (permit.Form, string, string) {
 	f := permit.Form{
 		WorkerName: e.Name, Foreign: e.IsForeign(), Declaration: r.PostFormValue("declaration") != "",
-		Phone: v["phone"], EmergencyName: v["emergency_name"], EmergencyPhone: v["emergency_phone"],
+		Phone: v["phone"], EmergencyName: textclean.Name(v["emergency_name"]), EmergencyPhone: v["emergency_phone"],
 		District: v["district"], Village: v["village"], Street: v["street"],
 		VisaType: v["visa_type"], VisaCode: v["visa_code"], VisaIssuedBy: v["visa_issued_by"],
 		HasIDDoc: uploaded(r, "id_doc") != nil, HasIDPhoto: uploaded(r, "id_photo") != nil,

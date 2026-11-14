@@ -11,7 +11,7 @@
     <h2 class="fcard-title"><span class="step">1</span>Who is asking</h2>
     <div class="form-grid">
     <label class="field" for="w-rname"><span>Your name (the person making this request)</span>
-      <input id="w-rname" name="requester_name" type="text" value="{{index .Vals "requester_name"}}" maxlength="120" required autocomplete="name"></label>
+      <input id="w-rname" data-name name="requester_name" type="text" value="{{index .Vals "requester_name"}}" maxlength="120" required autocomplete="name"></label>
     <label class="field" for="w-rmail"><span>Your email (the decision is sent here)</span>
       <input id="w-rmail" name="requester_email" type="email" data-mxcheck="/api/check-email" value="{{index .Vals "requester_email"}}" maxlength="160" required autocomplete="email"></label>
     <label class="field" for="w-smail"><span>Spare email (optional, a second address that gets the decision too)</span>
@@ -46,7 +46,7 @@
     <h2 class="fcard-title"><span class="step">3</span>The visitor</h2>
     <div class="form-grid">
     <label class="field" for="w-name"><span>Visitor's full name</span>
-      <input id="w-name" name="name" type="text" value="{{index .Vals "name"}}" maxlength="120" required></label>
+      <input id="w-name" data-name name="name" type="text" value="{{index .Vals "name"}}" maxlength="120" required></label>
     <label class="field" for="w-gender"><span>Gender</span>
       <select id="w-gender" name="gender" required>
         {{$g := index .Vals "gender"}}<option value="">Choose…</option>
