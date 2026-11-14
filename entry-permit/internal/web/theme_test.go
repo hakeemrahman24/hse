@@ -125,9 +125,12 @@ func TestTheWaiverFormIsNumberedCardsOfTwoColumns(t *testing.T) {
 	e := newEnv(t)
 	e.seedCompanies(t)
 	_, body := e.get(t, "/waiver", nil)
-	if !strings.Contains(body, `<form method="post" action="/waiver" enctype="multipart/form-data" autocomplete="off">`) ||
+	if !strings.Contains(body, `<form method="post" action="/waiver" enctype="multipart/form-data" autocomplete="off" data-wizard>`) ||
 		strings.Count(body, `class="fcard"`) != 8 || !strings.Contains(body, `class="form-grid"`) {
 		t.Error("the waiver form is not eight cards of form-grids")
+	}
+	if !strings.Contains(body, `src="/static/wizard.js"`) {
+		t.Error("the waiver form does not load the step-by-step script")
 	}
 	if strings.Contains(body, `class="card narrow"`) {
 		t.Error("the waiver form is still squeezed into a narrow card")

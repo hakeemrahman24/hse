@@ -834,3 +834,28 @@ main:has(> .lepc) .lepc { text-align: left; }
   .form-grid > .qrow { grid-column: auto; }
   .form-grid > .qrow:nth-last-child(2):nth-child(odd) { border-bottom: 0; }
 }
+
+/* ---- Step-by-step form (wizard.js): one section at a time, progress on top, Back / Next at the bottom ---- */
+[hidden] { display: none !important; }
+.wizard-on .fcard { display: none; }
+.wizard-on .fcard.is-current { display: block; }
+.wizard-on .stepnav { position: static; margin-bottom: var(--s3); border: 1px solid var(--line); padding: 0 var(--s3); }
+.wizard-on .stepnav ol { counter-reset: none; }
+.wizard-on .stepnav a { color: var(--muted); }
+.wizard-on .stepnav a .step { color: var(--muted); background: transparent; border: 1px solid rgba(31, 29, 38, 0.4); }
+.wizard-on .stepnav a.is-done .step { color: var(--brand-ink); background: var(--brand); border-color: var(--brand); }
+.wizard-on .stepnav a.is-current { color: var(--ink); font-weight: 700; border-bottom-color: var(--brand); }
+.wizard-on .stepnav a.is-current .step { color: #fff; background: var(--bar); border-color: var(--bar); }
+.wizard-bar { height: 3px; margin: 0 calc(-1 * var(--s3)); background: var(--hl); }
+.wizard-bar i { display: block; height: 100%; width: 0; background: var(--brand); transition: width 0.2s; }
+.wizard-count { margin-right: auto; font-weight: 600; color: var(--muted); font-size: var(--fs-sm); }
+.wizard-on .form-actions { position: static; margin: 0; padding: var(--s3) 0 0; border-top: 0; background: transparent; }
+.wizard-on .form-actions .note { display: none; }
+@media (max-width: 720px) {
+  /* On a phone the section list shows only the numbers; the progress line below names the current step. */
+  .wizard-on .stepnav { padding: 0 var(--s2); }
+  .wizard-on .form-actions { position: sticky; bottom: 0; padding: var(--s3) var(--s4); margin: 0 calc(-1 * var(--s4)); background: var(--card); border-top: 1px solid var(--line); }
+  .wizard-count { flex: 1 1 100%; }
+}
+.wizard-on .form-actions .wizard-back { margin-left: auto; }
+.wizard-on .form-actions .wizard-back[hidden] + .wizard-next { margin-left: auto; }

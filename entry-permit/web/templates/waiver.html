@@ -4,7 +4,7 @@
 <div class="card wide-cards">
   {{if .Waiver.Err}}<p class="error" role="alert">{{.Waiver.Err}}</p>{{end}}
   {{if .Waiver.Available}}{{with .Waiver}}
-  <form method="post" action="/waiver" enctype="multipart/form-data" autocomplete="off">
+  <form method="post" action="/waiver" enctype="multipart/form-data" autocomplete="off" data-wizard>
   {{$w := .}}
   <nav class="stepnav" aria-label="Sections of this form"><ol role="list"><li><a href="#sec-1"><span class="step">1</span>Who is asking</a></li><li><a href="#sec-2"><span class="step">2</span>The visit</a></li><li><a href="#sec-3"><span class="step">3</span>The visitor</a></li><li><a href="#sec-4"><span class="step">4</span>Reason of deviation</a></li><li><a href="#sec-5"><span class="step">5</span>Medicines and supplements</a></li><li><a href="#sec-6"><span class="step">6</span>Risk exposure</a></li><li><a href="#sec-7"><span class="step">7</span>Health declaration</a></li><li><a href="#sec-8"><span class="step">8</span>Documents and declaration</a></li></ol></nav>
     <section class="fcard" id="sec-1">
@@ -154,6 +154,7 @@
   </section>
   <div class="form-actions"><button type="submit" class="btn">Send the request</button><span class="note">Check the details, then send. The clinic doctor reviews it first.</span></div>
   </form>
+  <script src="/static/wizard.js" defer></script>
   {{end}}{{else}}<p class="note">This form is not available right now. Please try again later.</p>{{end}}
 </div>
 <p><a href="/">Back to home</a></p>
