@@ -305,8 +305,14 @@
     input.insertAdjacentElement('afterend', note);
     var known = {};
     var last = '';
-    function show(msg, suggest) {
-      note.textContent = msg || '';
+    // show writes the note under the box: a red message for a bad domain, a green "can receive email" when the
+    // domain passed (ok), or just the did-you-mean hint.
+    function show(msg, suggest, ok) {
+      var good = ok && !msg && !suggest;
+      note.textContent = msg || (good ? 'This domain can receive email.' : '');
+      note.className = good ? 'field-error field-ok' : 'field-error';
+      note.setAttribute('role', msg ? 'alert' : 'status');
+      input.classList.toggle('is-ok', !!good);
       if (suggest) {
         var btn = document.createElement('button');
         btn.type = 'button';
@@ -321,14 +327,14 @@
         note.appendChild(btn);
         note.appendChild(document.createTextNode('?'));
       }
-      note.hidden = !msg && !suggest;
+      note.hidden = !msg && !suggest && !good;
       input.setCustomValidity(msg || '');
       if (msg) input.setAttribute('aria-invalid', 'true'); else input.removeAttribute('aria-invalid');
     }
     function apply(v, res) {
       if (tidyEmail(input.value) !== v) return;
       var bad = res && !res.ok;
-      show(bad ? res.message : '', res && res.suggest);
+      show(bad ? res.message : '', res && res.suggest, res && res.ok);
       if (!bad) input.setCustomValidity('');
     }
     function check() {
