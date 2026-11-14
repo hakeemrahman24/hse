@@ -1,42 +1,53 @@
 {{define "permit"}}{{template "head" .}}
 <h1>Work Entry Permit</h1>
 {{if .Permit.Result}}{{template "permit_check" .}}{{else}}
-<p class="sub">Step 1 of the request: who is the permit for? Pick the worker and type their date of birth. Their company, position and MCU come from the clinic record and cannot be changed here.</p>
-<div class="card narrow">
+<p class="sub">Step 1 of the request: who is the permit for? Pick the worker and type their date of birth.</p>
+<div class="card wide-cards">
   {{if .Permit.Err}}<p class="error" role="alert">{{.Permit.Err}}</p>{{end}}
   {{if .Permit.Available}}
   <form method="post" action="/permit" autocomplete="off">
-    <label class="field" for="p-rname">
-      <span>Your name (the person making this request)</span>
-      <input id="p-rname" name="requester_name" type="text" value="{{.Permit.RequesterName}}" maxlength="120" required autocomplete="name">
-    </label>
-    <label class="field" for="p-rmail">
-      <span>Your email (the decision is sent here)</span>
-      <input id="p-rmail" name="requester_email" type="email" value="{{.Permit.RequesterMail}}" maxlength="160" required autocomplete="email">
-    </label>
-    <label class="field" for="p-smail">
-      <span>Spare email (optional, a second address that gets the decision too)</span>
-      <input id="p-smail" name="spare_email" type="email" value="{{.Permit.SpareMail}}" maxlength="160" autocomplete="off">
-    </label>
-    <p class="note">Check the addresses: the decision is sent only to them. If nothing arrives, look in Spam or Junk. We are not responsible for mail lost because an address is wrong or an inbox is full.</p>
-    <label class="field" for="p-loc">
-      <span>Work location</span>
-      <select id="p-loc" name="work_location" required>
-        <option value="">Choose…</option>
-        {{range .Permit.Locations}}<option value="{{.}}"{{if eq . $.Permit.WorkLocation}} selected{{end}}>{{.}}</option>{{end}}
-      </select>
-    </label>
-    <label class="field" for="p-name">
-      <span>Worker's name (type at least 4 letters, then pick)</span>
-      <input id="p-name" name="name" type="text" value="{{.Permit.Name}}" minlength="4" maxlength="120" required
-             data-namesearch="/api/worker-names" data-min="4" autocomplete="off" spellcheck="false">
-    </label>
-    <label class="field" for="p-dob">
-      <span>Worker's date of birth (dd/mm/yyyy)</span>
-      <input data-date="dob" id="p-dob" name="dob" type="text" value="{{.Permit.DOB}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required autocomplete="off">
-    </label>
-    <div class="field">{{template "turnstile" .}}</div>
-    <button type="submit" class="btn">Check the worker</button>
+    <div class="pair">
+    <section class="fcard" aria-labelledby="h-p-who">
+      <h2 class="fcard-title" id="h-p-who"><span class="step">1</span>Who is asking</h2>
+      <label class="field" for="p-rname">
+        <span>Your name (the person making this request)</span>
+        <input id="p-rname" name="requester_name" type="text" value="{{.Permit.RequesterName}}" maxlength="120" required autocomplete="name">
+      </label>
+      <label class="field" for="p-rmail">
+        <span>Your email (the decision is sent here)</span>
+        <input id="p-rmail" name="requester_email" type="email" value="{{.Permit.RequesterMail}}" maxlength="160" required autocomplete="email">
+      </label>
+      <label class="field" for="p-smail">
+        <span>Spare email (optional, a second address that gets the decision too)</span>
+        <input id="p-smail" name="spare_email" type="email" value="{{.Permit.SpareMail}}" maxlength="160" autocomplete="off">
+      </label>
+      <p class="note">Check the addresses: the decision is sent only to them. If nothing arrives, look in Spam or Junk. We are not responsible for mail lost because an address is wrong or an inbox is full.</p>
+    </section>
+    <section class="fcard" aria-labelledby="h-p-worker">
+      <h2 class="fcard-title" id="h-p-worker"><span class="step">2</span>The worker</h2>
+      <label class="field" for="p-loc">
+        <span>Work location</span>
+        <select id="p-loc" name="work_location" required>
+          <option value="">Choose…</option>
+          {{range .Permit.Locations}}<option value="{{.}}"{{if eq . $.Permit.WorkLocation}} selected{{end}}>{{.}}</option>{{end}}
+        </select>
+      </label>
+      <label class="field" for="p-name">
+        <span>Worker's name (type at least 4 letters, then pick)</span>
+        <input id="p-name" name="name" type="text" value="{{.Permit.Name}}" minlength="4" maxlength="120" required
+               data-namesearch="/api/worker-names" data-min="4" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="field" for="p-dob">
+        <span>Worker's date of birth (dd/mm/yyyy)</span>
+        <input data-date="dob" id="p-dob" name="dob" type="text" value="{{.Permit.DOB}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required autocomplete="off">
+      </label>
+      <p class="note">Their company, position and MCU come from the clinic record and cannot be changed here.</p>
+    </section>
+    </div>
+    <div class="check-row">
+      <div class="field">{{template "turnstile" .}}</div>
+      <button type="submit" class="btn">Check the worker</button>
+    </div>
   </form>
   <script src="/static/namesearch.js"></script>
   {{else}}<p class="note">This form is not available right now. Please try again later.</p>{{end}}
