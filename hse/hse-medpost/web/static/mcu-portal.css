@@ -577,6 +577,7 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
 .tone-followup { --tone: #4a63a8; }
 .tone-progress { --tone: #7a6f8f; }
 .tone-none { --tone: #8a8190; }
+.tone-needs { --tone: var(--accent-light); }
 
 /* Tiles: the validity filter as clickable labels, four to a row (the eight statuses fit in two rows). */
 .mp-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin: 8px 0 6px; }
@@ -584,10 +585,13 @@ body.mp { font-size: 0.8125rem; line-height: 1.4; }
 .mp .mp-tile:hover { background: var(--hl); color: var(--text-1); }
 .mp .mp-tile b { min-width: 1.8em; padding: 0 6px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--hl); border-radius: 2px; }
 .mp .mp-tile.on { background: var(--hl); box-shadow: inset 0 0 0 1px var(--tone); font-weight: 700; }
+/* Needs action (Expired + Expiring soon) is the one that asks for work, so it gets a full-width tile of its own above the eight statuses. */
+.mp .mp-tile.tone-needs { grid-column: 1 / -1; font-weight: 700; }
 @media (max-width: 900px) { .mp-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 .mp-listbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; margin: 2px 0 6px; }
 .mp-listbar .mp-hint { margin: 0; }
+.mp-listbar-actions { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: flex-end; gap: 8px; }
 /* The sort boxes are for phones, where the table headings are hidden; wide screens keep them out of sight. */
 .mp-filter .mp-sort-field { display: none; }
 

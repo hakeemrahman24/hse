@@ -85,8 +85,7 @@ func (a *API) CertificatesZip(w http.ResponseWriter, r *http.Request) {
 
 	// Build the files first so a failure can still be a normal error page; once the zip starts the
 	// status is already sent.
-	type entry struct{ name, path string }
-	var files []entry
+	var files []zipEntry
 	var skipped []string
 	for _, d := range docs {
 		cert, err := a.certs.Certificate(r.Context(), d.CertRecordID)
@@ -100,7 +99,7 @@ func (a *API) CertificatesZip(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// Two documents can share a filename; the document id keeps the names apart.
-		files = append(files, entry{name: strconv.FormatInt(d.ID, 10) + "-" + cert.Filename, path: cert.Path})
+		files = append(files, zipEntry{name: strconv.FormatInt(d.ID, 10) + "-" + cert.Filename, path: cert.Path})
 		if err := a.Store.LogEvent(r.Context(), Event{ActorType: ActorSubmitter, ActorID: u.ID, EntityType: EntitySubmission, EntityID: d.ID, Action: "CertificateDownloaded", Detail: "zip"}); err != nil {
 			log.Printf("mcusubmit: log certificate download: %v", err)
 		}
@@ -110,9 +109,19 @@ func (a *API) CertificatesZip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	writeZip(w, "certificates.zip", files, skipped)
+}
+
+// zipEntry is one certificate file to put in a zip: its name inside the zip and where it is on disk.
+type zipEntry struct{ name, path string }
+
+// writeZip sends the files as a zip download. It is shared by the documents zip and the Employee
+// checkups zip, so both behave the same: once it starts the status is already sent, which is why the
+// callers build every file first. Anything skipped is named in a short note inside the zip.
+func writeZip(w http.ResponseWriter, filename string, files []zipEntry, skipped []string) {
 	h := w.Header()
 	h.Set("Content-Type", "application/zip")
-	h.Set("Content-Disposition", `attachment; filename="certificates.zip"`)
+	h.Set("Content-Disposition", `attachment; filename="`+filename+`"`)
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Cache-Control", "no-store")
 	zw := zip.NewWriter(w)
@@ -130,6 +139,75 @@ func (a *API) CertificatesZip(w http.ResponseWriter, r *http.Request) {
 	if err := zw.Close(); err != nil {
 		log.Printf("mcusubmit: close zip: %v", err)
 	}
+}
+
+// EmployeeCertificatesZip sends one zip with the certificates of the N most recent checkups among the
+// workers the account may see (owner, 2026-11-14), newest first. Like "Latest N records" in the Excel
+// export it ignores the filters on screen: it is "the latest certificates", not "these rows". It asks the
+// same CertificateSource as the single download and applies the same rule (Unfit always, Fit once Close,
+// already worked out as Employee.HasCertificate), and N is capped like the documents zip, because each
+// certificate may be built on demand. The list comes from employeeSource, so a company account never
+// gets another company's certificates; the admin gets everybody's.
+func (a *API) EmployeeCertificatesZip(w http.ResponseWriter, r *http.Request) {
+	u := a.requireUser(w, r)
+	if u == nil {
+		return
+	}
+	if a.certs == nil {
+		a.notFound(w, u)
+		return
+	}
+	q := r.URL.Query()
+	n, err := strconv.Atoi(strings.TrimSpace(q.Get("n")))
+	if err != nil || n < 1 || n > maxZipCertificates {
+		a.message(w, http.StatusBadRequest, "Invalid request", fmt.Sprintf("Enter how many certificates, from 1 to %d.", maxZipCertificates), u)
+		return
+	}
+	all, _, _, err := a.employeeSource(r.Context(), u, q.Get("subs") == "1")
+	if err != nil {
+		a.serverError(w, "company employees", err)
+		return
+	}
+	var picked []Employee
+	for _, e := range sortEmployees(all, sortCheckup, dirDesc) {
+		if !e.HasCertificate || e.RecordID == 0 {
+			continue
+		}
+		picked = append(picked, e)
+		if len(picked) == n {
+			break
+		}
+	}
+	if len(picked) == 0 {
+		a.message(w, http.StatusNotFound, "No certificates", "None of the employees has a certificate to download yet.", u)
+		return
+	}
+
+	// Build the files first so a failure can still be a normal error page (see writeZip).
+	var files []zipEntry
+	var skipped []string
+	for _, e := range picked {
+		cert, err := a.certs.Certificate(r.Context(), e.RecordID)
+		var unavailable *CertificateUnavailable
+		switch {
+		case errors.As(err, &unavailable):
+			skipped = append(skipped, fmt.Sprintf("%s: %s", oneLine(e.Name), unavailable.Reason))
+			continue
+		case err != nil:
+			a.serverError(w, "employee certificate zip", err)
+			return
+		}
+		files = append(files, zipEntry{name: strconv.FormatInt(e.RecordID, 10) + "-" + cert.Filename, path: cert.Path})
+		// The audit row is about the account that downloaded; Detail holds the checkup record id, never a name.
+		if err := a.Store.LogEvent(r.Context(), Event{ActorType: ActorSubmitter, ActorID: u.ID, EntityType: EntitySubmitter, EntityID: u.ID, Action: "CertificateDownloaded", Detail: "zip record " + strconv.FormatInt(e.RecordID, 10)}); err != nil {
+			log.Printf("mcusubmit: log certificate download: %v", err)
+		}
+	}
+	if len(files) == 0 {
+		a.message(w, http.StatusConflict, "No certificates available", "A certificate cannot be issued for these checkups. Please contact the medical team.", u)
+		return
+	}
+	writeZip(w, "latest-certificates.zip", files, skipped)
 }
 
 func addZipFile(zw *zip.Writer, name, path string) error {

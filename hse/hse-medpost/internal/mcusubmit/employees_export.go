@@ -87,10 +87,7 @@ func (a *API) EmployeesExport(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	status := q.Get("status")
-	known := status == ""
-	for _, s := range employeeStatuses {
-		known = known || s == status
-	}
+	known := validStatusFilter(status)
 	if !known {
 		http.Error(w, "Check the status you chose.", http.StatusBadRequest)
 		return

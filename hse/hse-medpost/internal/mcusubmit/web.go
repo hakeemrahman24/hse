@@ -161,6 +161,7 @@ func (a *API) Register(mux *http.ServeMux) {
 	in.HandleFunc("GET "+basePath+"/documents", a.Documents)
 	in.HandleFunc("GET "+basePath+"/employees", a.Employees)
 	in.HandleFunc("GET "+basePath+"/employees/export.xlsx", a.EmployeesExport)
+	in.HandleFunc("GET "+basePath+"/employees/certificates.zip", a.EmployeeCertificatesZip)
 	in.HandleFunc("GET "+basePath+"/employees/{id}/certificate", a.EmployeeCertificate)
 	in.HandleFunc("GET "+basePath+"/documents/{id}/review", a.ReviewPage)
 	in.HandleFunc("POST "+basePath+"/documents/{id}/confirm", a.ConfirmDocument)
@@ -267,6 +268,7 @@ type page struct {
 	Unconfirmed   int               // documents of the open batch still in Review
 	Statuses      []string          // choices of the status filter
 	Result        DocPage           // paging numbers of the list on screen
+	CanCertZip    bool              // Employee checkups: offer "Download certificates" (the clinical side is wired in)
 	AllTotal      int               // Employee checkups: every worker the account may see, whatever the filter (shown in the export panel)
 	Tiles         []StatusTile      // Employee checkups: the clickable validity labels with their counts
 	SortKey       string            // Employee checkups: the column the list is ordered by

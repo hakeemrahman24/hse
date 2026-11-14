@@ -1,10 +1,12 @@
 package mcusubmit
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -697,5 +699,205 @@ func TestEmployeeCheckupsExportPanelAndExpandingMore(t *testing.T) {
 	}
 	if strings.Contains(body, "mp-dlg-more") {
 		t.Errorf("More must no longer live in the popup")
+	}
+}
+
+// ---- Needs action: Expired + Expiring soon, soonest expiry first (owner, 2026-11-14) ----
+
+func TestNeedsActionFilterKeepsOnlyLapsedAndLapsingWorkers(t *testing.T) {
+	for _, c := range []struct {
+		filter, status string
+		want           bool
+	}{
+		{"", ValValid, true}, {needsAction, ValExpired, true}, {needsAction, ValExpiring, true},
+		{needsAction, ValValid, false}, {needsAction, ValUnfit, false}, {needsAction, ValNone, false},
+		{ValValid, ValValid, true}, {ValValid, ValExpired, false},
+	} {
+		if got := statusMatches(c.filter, c.status); got != c.want {
+			t.Errorf("statusMatches(%q, %q) = %v, want %v", c.filter, c.status, got, c.want)
+		}
+	}
+	for _, ok := range []string{"", needsAction, ValValid, ValNone} {
+		if !validStatusFilter(ok) {
+			t.Errorf("%q should be a valid filter", ok)
+		}
+	}
+	if validStatusFilter("Bogus") || validStatusFilter("needs action") {
+		t.Errorf("only the exact words are accepted")
+	}
+}
+
+func TestNeedsActionTileComesFirstSetsTheOrderAndTurnsOff(t *testing.T) {
+	counts := map[string]int{ValExpired: 2, ValExpiring: 3, ValValid: 5}
+	tiles := statusTiles(counts, map[string]string{"worker": "x"}, "")
+	if len(tiles) == 0 || tiles[0].Label != needsAction || tiles[0].Count != 5 || tiles[0].Slug != "needs" || tiles[0].On {
+		t.Fatalf("first tile = %+v, want Needs action with 5 (2 expired + 3 expiring), off", tiles)
+	}
+	if want := basePath + "/employees?dir=asc&sort=until&status=Needs+action&worker=x"; tiles[0].URL != want {
+		t.Errorf("turn-on link = %s, want %s", tiles[0].URL, want)
+	}
+	// In use: the link clears the filter AND the order it set, and keeps the other filters.
+	on := statusTiles(counts, map[string]string{"worker": "x", "status": needsAction, "sort": sortUntil, "dir": dirAsc}, needsAction)
+	if !on[0].On || on[0].URL != basePath+"/employees?worker=x" {
+		t.Errorf("turn-off = %+v, want On and a link without status, sort or dir", on[0])
+	}
+	// Nobody to act on: no tile, so it never offers an empty list.
+	for _, tile := range statusTiles(map[string]int{ValValid: 4}, nil, "") {
+		if tile.Label == needsAction {
+			t.Errorf("Needs action offered with nobody to act on")
+		}
+	}
+}
+
+func TestNeedsActionPageAndExportListTheLongestOverdueFirst(t *testing.T) {
+	e := newEnv(t)
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	today := e.store.clinicToday()
+	for _, w := range []struct {
+		name string
+		days int // valid-until relative to the store's today
+	}{
+		{"Recently Expired", -3}, {"Long Expired", -30}, {"About To Expire", 10}, {"Fine For Long", 200},
+	} {
+		id := seedWorker(t, e.store, w.name, "1990-01-01", e.companyID)
+		addRecord(t, e.store, id, "N-"+w.name, "Fit", today.AddDate(0, 0, w.days).Format("2006-01-02"), "Close", 1)
+	}
+	order := func(body string) string {
+		var got []string
+		for _, m := range regexp.MustCompile(`class="c-name"[^>]*>([^<]+)<`).FindAllStringSubmatch(body, -1) {
+			got = append(got, m[1])
+		}
+		return strings.Join(got, ",")
+	}
+
+	// The tile's own link is what the person clicks: it carries the filter and the order together.
+	home := e.get("/mcu-submit/employees", cookie).Body.String()
+	if !strings.Contains(home, `class="mp-tile tone-needs" href="/mcu-submit/employees?dir=asc&amp;sort=until&amp;status=Needs&#43;action"`) {
+		t.Errorf("the page should open with a Needs action tile that sets the filter and the order")
+	}
+	if !strings.Contains(home, `<option value="Needs action">Needs action</option>`) {
+		t.Errorf("the validity box should offer Needs action")
+	}
+
+	body := e.get("/mcu-submit/employees?status=Needs+action&sort=until&dir=asc", cookie).Body.String()
+	if got := order(body); got != "Long Expired,Recently Expired,About To Expire" {
+		t.Errorf("Needs action = %s, want the longest overdue first and nobody who is fine", got)
+	}
+	for _, want := range []string{`mp-tile tone-needs on`, `<option value="Needs action" selected>`, ">3 employees<", `<input type="hidden" name="status" value="Needs action" />`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("page lacks %q", want)
+		}
+	}
+	// The chosen order shows on the heading too, and the tile in use links back to the plain page.
+	if !strings.Contains(body, `<th scope="col" aria-sort="ascending"><a class="mp-sort" href="/mcu-submit/employees?dir=desc&amp;sort=until&amp;status=Needs&#43;action">Valid until`) {
+		t.Errorf("Valid until should be the column in use, ascending")
+	}
+	if !strings.Contains(body, `class="mp-tile tone-needs on" href="/mcu-submit/employees"`) {
+		t.Errorf("the tile in use should link back to the unfiltered, default-order page")
+	}
+
+	rows, code := exportRows(t, e, cookie, "?scope=displayed&status=Needs+action&sort=until&dir=asc")
+	if code != 200 || len(rows) != 4 || rows[1][0] != "Long Expired" {
+		t.Errorf("export = %d %v, want the three workers who need action, longest overdue first", code, rows)
+	}
+}
+
+// ---- Download certificates: a zip of the latest N (owner, 2026-11-14) ----
+
+func TestEmployeeCertificatesZipHoldsTheLatestNNewestFirst(t *testing.T) {
+	u := newUploadEnv(t)
+	certs := &fakeCerts{dir: t.TempDir()}
+	u.api.SetCertificates(certs)
+	record := func(checkUpID string) int64 {
+		var id int64
+		if err := u.store.DB.QueryRow(`SELECT McuRecordID FROM McuRecord WHERE CheckUpID = ?`, checkUpID).Scan(&id); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	for _, w := range []struct{ name, id, status, date string }{
+		{"Old Closed", "Z-1", "Close", "2025-01-01"},
+		{"Newest Closed", "Z-2", "Close", "2026-06-01"},
+		{"Mid Closed", "Z-3", "Close", "2025-09-01"},
+		{"Newest But Open", "Z-4", "Open", "2027-01-01"}, // Fit still Open: no certificate yet, so never in the zip
+	} {
+		id := seedWorker(t, u.store, w.name, "1990-01-01", u.companyID)
+		addRecord(t, u.store, id, w.id, "Fit", "2099-01-01", w.status, 1)
+		setCheckupDate(t, u.store, w.id, w.date)
+	}
+	res, err := u.store.DB.Exec(`INSERT INTO Company (Name) VALUES ('PT Other')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, _ := res.LastInsertId()
+	stranger := seedWorker(t, u.store, "Stranger", "1990-01-01", other)
+	addRecord(t, u.store, stranger, "Z-5", "Fit", "2099-01-01", "Close", 1)
+	setCheckupDate(t, u.store, "Z-5", "2027-06-01")
+
+	rec := u.get("/mcu-submit/employees/certificates.zip?n=2", u.cookie)
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/zip" || !strings.Contains(rec.Header().Get("Content-Disposition"), "latest-certificates.zip") {
+		t.Fatalf("zip = %d %v", rec.Code, rec.Header())
+	}
+	zr, err := zip.NewReader(bytes.NewReader(rec.Body.Bytes()), int64(rec.Body.Len()))
+	if err != nil {
+		t.Fatalf("not a zip: %v", err)
+	}
+	if len(zr.File) != 2 {
+		t.Fatalf("%d files, want 2", len(zr.File))
+	}
+	// Asked for in newest-first order, only the closed own-company checkups: Newest Closed, then Mid Closed.
+	if want := []int64{record("Z-2"), record("Z-3")}; len(certs.asked) != 2 || certs.asked[0] != want[0] || certs.asked[1] != want[1] {
+		t.Errorf("certificates asked for = %v, want %v", certs.asked, want)
+	}
+	for i, f := range zr.File {
+		rc, err := f.Open()
+		if err != nil {
+			t.Fatal(err)
+		}
+		data, _ := io.ReadAll(rc)
+		rc.Close()
+		if !strings.HasPrefix(string(data), "%PDF") {
+			t.Errorf("file %d (%s) is not a PDF", i, f.Name)
+		}
+	}
+	// Each certificate handed over is one audit row with the record id and no name.
+	var n int
+	_ = u.store.DB.QueryRow(`SELECT COUNT(*) FROM McuSubmissionEvent WHERE Action = 'CertificateDownloaded' AND Detail LIKE 'zip record %'`).Scan(&n)
+	if n != 2 {
+		t.Errorf("%d audit rows, want 2", n)
+	}
+	// More than there are: everything that qualifies and nothing else (3 own closed, not the open one, not the stranger).
+	certs.asked = nil
+	if rec := u.get("/mcu-submit/employees/certificates.zip?n=50", u.cookie); rec.Code != http.StatusOK || len(certs.asked) != 3 {
+		t.Errorf("n=50 gave %d and asked for %d certificates, want 200 and 3", rec.Code, len(certs.asked))
+	}
+	for _, bad := range []string{"?n=0", "?n=abc", "?n=", "?n=101", ""} {
+		if got := u.get("/mcu-submit/employees/certificates.zip"+bad, u.cookie).Code; got != http.StatusBadRequest {
+			t.Errorf("%q gave %d, want 400", bad, got)
+		}
+	}
+	if got := u.get("/mcu-submit/employees/certificates.zip?n=2").Code; got == http.StatusOK {
+		t.Errorf("zip open without sign-in")
+	}
+	// The page offers the control, with a safe default, because certificates are wired in.
+	page := u.get("/mcu-submit/employees", u.cookie).Body.String()
+	for _, want := range []string{`action="/mcu-submit/employees/certificates.zip"`, `name="n" value="20" min="1" max="100"`, "Download certificates"} {
+		if !strings.Contains(page, want) {
+			t.Errorf("page lacks %q", want)
+		}
+	}
+}
+
+func TestEmployeeCertificatesZipNeedsTheClinicalSideAndAnyCertificate(t *testing.T) {
+	e := newEnv(t) // no SetCertificates: a build without the clinical side
+	e.onboard("hr@example.com", "hr.budi", "a-long-passphrase-1")
+	_, cookie := e.signIn("hr.budi", "a-long-passphrase-1")
+	seedWorker(t, e.store, "Budi Santoso", "1990-01-01", e.companyID)
+	if strings.Contains(e.get("/mcu-submit/employees", cookie).Body.String(), "certificates.zip") {
+		t.Errorf("no certificate source, so no Download certificates control")
+	}
+	if got := e.get("/mcu-submit/employees/certificates.zip?n=5", cookie).Code; got != http.StatusNotFound {
+		t.Errorf("without a certificate source the route gave %d, want 404", got)
 	}
 }

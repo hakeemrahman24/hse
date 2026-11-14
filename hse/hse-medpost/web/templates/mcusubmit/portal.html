@@ -15,7 +15,7 @@
   <link rel="icon" type="image/png" href="/static/favicon.png" />
   <link rel="stylesheet" href="/static/clearwave/templatemo-622-clearwave.css" />
   <link rel="stylesheet" href="/static/clearwave/app.css" />
-  <link rel="stylesheet" href="/static/mcu-portal.css?v=45" />
+  <link rel="stylesheet" href="/static/mcu-portal.css?v=46" />
   <script src="/static/mcu-portal-combobox.js?v=1" defer></script>
   <script src="/static/mcu-portal-name.js?v=3" defer></script>
   <script src="/static/mcu-portal-cards.js?v=5" defer></script>
@@ -633,6 +633,7 @@
           <input id="f-worker" name="worker" type="text" maxlength="60" value="{{.Form.worker}}" /></div>
         <div class="field"><label for="f-status"><span>Validity</span></label>
           <select id="f-status" name="status"><option value="">All</option>
+            <option value="Needs action"{{if eq "Needs action" $.Form.status}} selected{{end}}>Needs action</option>
             {{range .Statuses}}<option value="{{.}}"{{if eq . $.Form.status}} selected{{end}}>{{.}}</option>{{end}}
           </select></div>
         {{if .Nationalities}}<div class="field"><label for="f-nat"><span>Nationality</span></label>
@@ -659,6 +660,7 @@
       {{if .Employees}}
       {{/* Export to Excel opens a small panel (a <details>, so it works without JavaScript) with the three choices. The hidden fields repeat the filters and order now on screen, which "Displayed records" uses; the other two choices ignore the filters. */}}
       <div class="mp-listbar"><span class="mp-hint" role="status">{{.Result.Total}} {{if eq .Result.Total 1}}employee{{else}}employees{{end}}</span>
+        <div class="mp-listbar-actions">
         <details class="mp-export"><summary class="btn-ghost">Export to Excel</summary>
           <form method="get" action="/mcu-submit/employees/export.xlsx" class="mp-export-form">
             {{range $k, $v := .Form}}{{if $v}}<input type="hidden" name="{{$k}}" value="{{$v}}" />{{end}}{{end}}
@@ -667,7 +669,16 @@
             <label class="mp-check"><input type="radio" name="scope" value="latest" /> <span>Latest</span> <input class="mp-n" type="number" name="n" value="100" min="1" max="10000" inputmode="numeric" aria-label="Number of records" /> <span>records</span></label>
             <button type="submit" class="btn-primary">Download</button>
           </form>
-        </details></div>
+        </details>
+        {{/* One zip of the newest certificates (up to 100). It ignores the filters on screen, like "Latest records" above; only the subcontractor tick is repeated, since that decides whose workers are in the list. */}}
+        {{if .CanCertZip}}<details class="mp-export"><summary class="btn-ghost">Download certificates</summary>
+          <form method="get" action="/mcu-submit/employees/certificates.zip" class="mp-export-form">
+            {{if .Form.subs}}<input type="hidden" name="subs" value="1" />{{end}}
+            <label class="mp-check"><span>Latest</span> <input class="mp-n" type="number" name="n" value="20" min="1" max="100" inputmode="numeric" aria-label="Number of certificates" /> <span>certificates</span></label>
+            <button type="submit" class="btn-primary">Download</button>
+          </form>
+        </details>{{end}}
+        </div></div>
       <div class="mp-scroll mp-emp-scroll"><table class="mp-table mp-emp">
         <caption>{{.Caption}}</caption>
         <thead><tr>

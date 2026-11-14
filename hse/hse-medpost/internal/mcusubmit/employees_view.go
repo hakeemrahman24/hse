@@ -28,6 +28,37 @@ const (
 	defaultSortDir = dirDesc
 )
 
+// needsAction is a filter value, not a validity status: it keeps the workers whose checkup has lapsed or
+// is about to (Expired and Expiring soon), the two groups HR has to act on (owner, 2026-11-14). It is
+// offered as its own tile and as the first choice of the validity box.
+const needsAction = "Needs action"
+
+// validStatusFilter says whether a request's status word is one the page knows: nothing, a validity
+// status, or Needs action. Page and export share it so they accept the same words.
+func validStatusFilter(status string) bool {
+	if status == "" || status == needsAction {
+		return true
+	}
+	for _, s := range employeeStatuses {
+		if s == status {
+			return true
+		}
+	}
+	return false
+}
+
+// statusMatches is the status filter itself: empty keeps everybody, Needs action keeps Expired and
+// Expiring soon, anything else keeps that one status.
+func statusMatches(filter, status string) bool {
+	switch filter {
+	case "":
+		return true
+	case needsAction:
+		return status == ValExpired || status == ValExpiring
+	}
+	return status == filter
+}
+
 // employeeSortKeys is the set a request may name, in the order the columns appear.
 var employeeSortKeys = []string{sortName, sortCompany, sortCheckup, sortUntil, sortValidity}
 
@@ -178,6 +209,15 @@ type StatusTile struct {
 // the chips were before, unless it is the one in use (so it can still be switched off).
 func statusTiles(counts map[string]int, filter map[string]string, active string) []StatusTile {
 	var tiles []StatusTile
+	// Needs action comes first and is the only tile that also sets the order: turning it on sorts by
+	// the soonest expiry (the longest overdue first), turning it off puts the default order back.
+	if n := counts[ValExpired] + counts[ValExpiring]; n > 0 || active == needsAction {
+		set := map[string]string{"status": needsAction, "sort": sortUntil, "dir": dirAsc}
+		if active == needsAction {
+			set = map[string]string{"status": "", "sort": "", "dir": ""}
+		}
+		tiles = append(tiles, StatusTile{Label: needsAction, Slug: "needs", Count: n, On: active == needsAction, URL: employeesLink(filter, set)})
+	}
 	for _, s := range employeeStatuses {
 		if counts[s] == 0 && s != active {
 			continue

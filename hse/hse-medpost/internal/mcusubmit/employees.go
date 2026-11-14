@@ -36,6 +36,7 @@ var employeeStatuses = []string{ValValid, ValExpiring, ValExpired, ValUnfit, Val
 type Employee struct {
 	PatientID                       int64
 	Name, Position, Company         string
+	RecordID                        int64  // McuRecord of the latest checkup, 0 when there is none; the certificate zip asks the clinical side for it
 	Nationality                     string // from NationalityTable; empty when the worker has none on record
 	CheckUpDate, Result, ValidUntil string
 	Status                          string // one of the Val* labels
@@ -159,6 +160,7 @@ func (s *Store) listEmployees(ctx context.Context, where string, args []any, win
 		if err := rows.Scan(&e.PatientID, &e.Name, &e.Position, &e.Company, &e.Nationality, &record, &e.CheckUpDate, &e.Result, &e.ValidUntil, &checkUpStatus, &notes, &recommendation); err != nil {
 			return nil, err
 		}
+		e.RecordID = record
 		if checkUpStatus == "Archived / Exit" {
 			continue
 		}
@@ -195,7 +197,7 @@ func filterEmployees(all []Employee, worker, status, nationality string) []Emplo
 	words := splitWords(worker)
 	var out []Employee
 	for _, e := range all {
-		if status != "" && e.Status != status {
+		if !statusMatches(status, e.Status) {
 			continue
 		}
 		if nationality != "" && e.Nationality != nationality {
@@ -224,10 +226,7 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	status := q.Get("status")
-	known := status == ""
-	for _, s := range employeeStatuses {
-		known = known || s == status
-	}
+	known := validStatusFilter(status)
 	p := a.newPage("Employee checkups")
 	p.User, p.Caption = u, "Latest medical checkup of every worker of your company"
 	p.Statuses = employeeStatuses
@@ -275,6 +274,7 @@ func (a *API) Employees(w http.ResponseWriter, r *http.Request) {
 	// with nobody in it. The export panel shows both totals: what is on screen and everything.
 	p.Nationalities = employeeNationalities(all)
 	p.AllTotal = len(all)
+	p.CanCertZip = a.certs != nil // a build without the clinical side has no certificate downloads, so no button
 	p.Employees = sortEmployees(filterEmployees(all, p.Form["worker"], status, p.Form["nationality"]), sortKey, sortDir)
 	p.Result = DocPage{Total: len(p.Employees)}
 	a.render(w, http.StatusOK, "employees.html", p)
