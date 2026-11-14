@@ -189,7 +189,8 @@ type MyPermit struct {
 	CardURL                       string // blank when the permit has no card
 	CanTicket                     bool   // a Valid permit: the worker may open the ticket page
 	HasPhoto                      bool   // a photo file is stored for this permit
-	TicketText                    string // the newest live working ticket ("2026-11-20 to 2026-11-27, Approved"); blank when there is none
+	TicketText                    string // the live working ticket ("2026-11-20 to 2026-11-27, Approved"); blank when there is none
+	TicketEnded                   string // "The last one ended on ..." when every ticket has departed; blank otherwise
 }
 
 // maxMyPermits keeps the list short: the newest few are what a worker needs.
@@ -220,7 +221,7 @@ func (a *App) myPermits(r *http.Request, e worker.Employee) []MyPermit {
 			m.Label, m.Class, m.CardURL = state.Label(), stateClass(state), "/c/"+p.LEP
 			m.CanTicket = state == card.Valid
 			if m.CanTicket {
-				m.TicketText = a.liveTicketText(r, p.LEP)
+				m.TicketText, m.TicketEnded = a.scheduleText(r, p.LEP)
 			}
 			m.HasPhoto = a.photoOnDisk(p.IDPhoto)
 		}
@@ -229,34 +230,55 @@ func (a *App) myPermits(r *http.Request, e worker.Employee) []MyPermit {
 	return out
 }
 
-// liveTicket finds the newest approved working ticket on a permit. found is false when there is none,
-// so the worker page and the card can say "no working ticket yet" and offer "Apply".
+// Working schedule states of a permit.
+const (
+	scheduleActive = "active" // an approved ticket whose departure is today or later
+	scheduleEnded  = "ended"  // approved tickets exist, but every one has departed
+	scheduleNone   = "none"   // no approved ticket at all
+)
+
+// scheduleOf finds the schedule a permit has now. For "active" t is the ticket that counts (the newest by
+// arrival among those not yet departed); for "ended" it is the one that ended last, so the page can say when.
+// WHY a ticket whose departure is before today is not valid: the person is no longer on site under it, so
+// the worker page and the card must say there is no valid working schedule rather than show old dates.
 // WHY a failure reads as "none": the worker can still open the schedule page, where the real list is shown.
-func (a *App) liveTicket(r *http.Request, lep string) (t ticket.Ticket, found bool) {
+func (a *App) scheduleOf(r *http.Request, lep string) (t ticket.Ticket, state string) {
 	if a.Tickets == nil {
-		return t, false
+		return t, scheduleNone
 	}
 	rows, err := a.Tickets.ForLEP(r.Context(), lep)
 	if err != nil {
 		log.Printf("my permits: tickets of %s: %v", lep, err)
-		return t, false
+		return t, scheduleNone
 	}
+	today := a.Clock.Today()
+	state = scheduleNone
 	for _, c := range rows {
 		// A worker's ticket is approved by the rules at once (no doctor stage), so Approved is the only live state.
-		if ticket.NormalizeStatus(string(c.Status)) == ticket.StatusApproved && (!found || c.Arrival > t.Arrival) {
-			t, found = c, true
+		if ticket.NormalizeStatus(string(c.Status)) != ticket.StatusApproved {
+			continue
+		}
+		switch {
+		case c.Departure >= today && (state != scheduleActive || c.Arrival > t.Arrival):
+			t, state = c, scheduleActive
+		case c.Departure < today && state != scheduleActive && (state == scheduleNone || c.Departure > t.Departure):
+			t, state = c, scheduleEnded
 		}
 	}
-	return t, found
+	return t, state
 }
 
-// liveTicketText is liveTicket as one line for the worker page: "2026-11-20 to 2026-11-27, Approved", or "".
-func (a *App) liveTicketText(r *http.Request, lep string) string {
-	t, found := a.liveTicket(r, lep)
-	if !found {
-		return ""
+// scheduleText is scheduleOf as the lines the worker page shows: the live ticket ("2026-11-20 to 2026-11-27,
+// Approved") or, when the last one has departed, when it ended. Both are "" when there never was a ticket.
+func (a *App) scheduleText(r *http.Request, lep string) (live, ended string) {
+	t, state := a.scheduleOf(r, lep)
+	switch state {
+	case scheduleActive:
+		return fmt.Sprintf("%s to %s, Approved", t.Arrival, t.Departure), ""
+	case scheduleEnded:
+		return "", fmt.Sprintf("The last one ended on %s.", t.Departure)
 	}
-	return fmt.Sprintf("%s to %s, Approved", t.Arrival, t.Departure)
+	return "", ""
 }
 
 // myTicket opens the working-ticket page for a permit of the worker who just proved who they

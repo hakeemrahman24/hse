@@ -208,7 +208,7 @@ one option chosen only that section shows, and without CSS support all three sim
           {{if .CanTicket}}<div class="ticket-line">
             {{if .TicketText}}<span class="chip chip-ticket">Working ticket</span> <span class="note">{{.TicketText}}</span>
             <a class="btn-small" href="/ticket?lep={{.LEP}}">View my schedule</a>
-            {{else}}<span class="chip chip-none">No working ticket yet</span>
+            {{else}}<span class="chip chip-none">No valid working schedule</span>{{if .TicketEnded}} <span class="note">{{.TicketEnded}}</span>{{end}}
             <a class="btn" href="/ticket?lep={{.LEP}}">Apply for working ticket</a>{{end}}
           </div>{{end}}
         </li>

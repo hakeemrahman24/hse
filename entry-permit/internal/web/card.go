@@ -171,10 +171,14 @@ func (a *App) cardPage(w http.ResponseWriter, r *http.Request) {
 	// WHY only the worker and staff: the card page is open to anyone holding the number, and whether a
 	// person has a working schedule is not for strangers.
 	if state == card.Valid && (owner || a.currentUser(r) != nil) {
-		if t, has := a.liveTicket(r, lep); has {
+		t, sched := a.scheduleOf(r, lep)
+		switch sched {
+		case scheduleActive:
 			ticketTitle, ticketDates, ticketClass = "Working ticket", shortDM(string(t.Arrival))+" to "+shortDM(string(t.Departure)), "has"
-		} else {
-			ticketTitle, ticketClass = "No working ticket", "none"
+		case scheduleEnded:
+			ticketTitle, ticketDates, ticketClass = "No valid working schedule", "Ended "+shortDM(string(t.Departure)), "none"
+		default:
+			ticketTitle, ticketClass = "No valid working schedule", "none"
 		}
 	}
 	d := CardData{

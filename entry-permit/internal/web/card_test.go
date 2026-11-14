@@ -274,8 +274,8 @@ func TestCardPageSaysWhetherThereIsAWorkingTicketToTheOwnerAndStaffOnly(t *testi
 	}
 	// The owner and staff see "No working ticket yet" while there is none.
 	for name, who := range map[string][]*http.Cookie{"owner": owner, "staff": doctor} {
-		if _, body := e.get(t, "/c/"+testLEP, who); !strings.Contains(body, "<b>No working ticket</b>") {
-			t.Errorf("%s: no 'No working ticket' marker inside the card", name)
+		if _, body := e.get(t, "/c/"+testLEP, who); !strings.Contains(body, "<b>No valid working schedule</b>") {
+			t.Errorf("%s: no No-valid-working-schedule marker inside the card", name)
 		}
 	}
 	// With an approved ticket they see its dates instead.
@@ -284,7 +284,30 @@ func TestCardPageSaysWhetherThereIsAWorkingTicketToTheOwnerAndStaffOnly(t *testi
 		t.Fatal(err)
 	}
 	_, body = e.get(t, "/c/"+testLEP, owner)
-	if !strings.Contains(body, "<b>Working ticket</b><span>20 Nov to 27 Nov</span>") || strings.Contains(body, "No working ticket") {
+	if !strings.Contains(body, "<b>Working ticket</b><span>20 Nov to 27 Nov</span>") || strings.Contains(body, "No valid working schedule") {
 		t.Error("the owner's card does not show the approved ticket")
+	}
+}
+
+func TestAWorkingTicketThatHasDepartedIsNotAValidSchedule(t *testing.T) {
+	e := newEnv(t) // the test clock says 2026-11-06
+	e.cardPermit(t)
+	owner := e.signedInWorker(t)
+	if err := (ticketlog.Store{DB: e.db}).Create(context.Background(), ticketlog.NewTicket{ID: "TKT-OLD01", LEP: testLEP, Work: true, Status: "Approved",
+		Arrival: "2026-10-20", Departure: "2026-10-27", Location: "Onshore", Pattern: "Normal", RotationNo: 1, SubmittedAt: "2026-10-15 08:00:00"}); err != nil {
+		t.Fatal(err)
+	}
+	_, body := e.get(t, "/c/"+testLEP, owner)
+	if !strings.Contains(body, "<b>No valid working schedule</b><span>Ended 27 Oct</span>") || strings.Contains(body, "<b>Working ticket</b>") {
+		t.Error("a departed ticket must read as no valid schedule, with the day it ended")
+	}
+	// A ticket that has not departed yet (today is its departure day) is valid again.
+	if err := (ticketlog.Store{DB: e.db}).Create(context.Background(), ticketlog.NewTicket{ID: "TKT-NEW01", LEP: testLEP, Work: true, Status: "Approved",
+		Arrival: "2026-11-01", Departure: "2026-11-06", Location: "Onshore", Pattern: "Normal", RotationNo: 2, SubmittedAt: "2026-10-30 08:00:00"}); err != nil {
+		t.Fatal(err)
+	}
+	_, body = e.get(t, "/c/"+testLEP, owner)
+	if !strings.Contains(body, "<b>Working ticket</b><span>1 Nov to 6 Nov</span>") {
+		t.Error("a ticket departing today is still valid")
 	}
 }

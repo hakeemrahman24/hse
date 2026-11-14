@@ -255,7 +255,7 @@ func TestResultPageShowsTheMedicalCheckupAndEachPermitWithItsLinks(t *testing.T)
 	if n := strings.Count(body, "Apply for working ticket"); n != 1 {
 		t.Errorf("%d Apply buttons, want 1 (only the Valid permit)", n)
 	}
-	if !strings.Contains(body, "No working ticket yet") || !strings.Contains(body, "permit-row no-ticket") {
+	if !strings.Contains(body, "No valid working schedule") || !strings.Contains(body, "permit-row no-ticket") {
 		t.Error("a Valid permit without a ticket is not marked as such")
 	}
 	if strings.Contains(body, `action="/my/ticket"`) || strings.Contains(body, "Propose a working ticket") {
@@ -511,5 +511,24 @@ func TestResultPageSeparatesAPermitWithAWorkingTicketFromOneWithout(t *testing.T
 	}
 	if n := strings.Count(body, "Apply for working ticket"); n != 1 {
 		t.Errorf("%d Apply buttons, want 1 (only the permit without a ticket)", n)
+	}
+}
+
+func TestWorkerPageSaysWhenTheLastWorkingTicketHasEnded(t *testing.T) {
+	e := newEnv(t) // the test clock says 2026-11-06
+	e.seedPermit(t, "WEP-AAAAA", "Approved", "LEP-AAAAA", "PT Maju", "2027-01-31", "2027-01-31")
+	if err := (ticketlog.Store{DB: e.db}).Create(context.Background(), ticketlog.NewTicket{ID: "TKT-OLD01", LEP: "LEP-AAAAA", Work: true, Status: "Approved",
+		Arrival: "2026-10-20", Departure: "2026-10-27", Location: "Onshore", Pattern: "Normal", RotationNo: 1, SubmittedAt: "2026-10-15 08:00:00"}); err != nil {
+		t.Fatal(err)
+	}
+	e.workers.people = []worker.Person{budi}
+	_, body := e.lookup(t, "Budi Santoso", "05/03/1988", "dev-pass")
+	for _, want := range []string{"permit-row no-ticket", "No valid working schedule", "The last one ended on 2026-10-27.", "Apply for working ticket"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("worker page lacks %q", want)
+		}
+	}
+	if strings.Contains(body, "permit-row has-ticket") {
+		t.Error("a departed ticket must not mark the permit as having a working ticket")
 	}
 }
