@@ -33,7 +33,7 @@ date of birth form below is only shown again after a failed "My Entry Permit" lo
     <input type="hidden" name="name" value="{{.SignIn.Name}}">
     <p>My Layar Entry Permit for <strong>{{.SignIn.Name}}</strong>. <a href="/my/signin">Not you?</a></p>
     <label class="field" for="si-dob">
-      <span>Date of birth (dd/mm/yyyy)</span>
+      <span>Date of birth <i class="hint">(dd/mm/yyyy)</i></span>
       <input data-date="dob" id="si-dob" name="dob" type="text" value="{{.My.DOB}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required autocomplete="off">
     </label>
     <div class="field">{{template "turnstile" .}}</div>

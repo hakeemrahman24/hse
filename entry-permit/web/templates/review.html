@@ -32,7 +32,7 @@
     <input type="hidden" name="_csrf" value="{{$.CSRF}}">
     <input type="hidden" name="stage" value="{{$.Review.Stage}}">
     <input type="hidden" name="subject" value="{{.RequestID}}">
-    <label class="field" for="note-{{.RequestID}}"><span>Note (needed to reject)</span>
+    <label class="field" for="note-{{.RequestID}}"><span>Note <i class="hint">(needed to reject)</i></span>
       <textarea id="note-{{.RequestID}}" name="note" rows="2" maxlength="500"></textarea></label>
     <button type="submit" class="btn" name="action" value="approve">Approve</button>
     <button type="submit" class="btn-small-quiet" name="action" value="reject">Reject</button>
@@ -67,7 +67,7 @@
     <input type="hidden" name="_csrf" value="{{$.CSRF}}">
     <input type="hidden" name="stage" value="{{$.Review.Stage}}">
     <input type="hidden" name="subject" value="{{.RequestID}}">
-    <label class="field" for="note-{{.RequestID}}"><span>Note (needed to reject)</span>
+    <label class="field" for="note-{{.RequestID}}"><span>Note <i class="hint">(needed to reject)</i></span>
       <textarea id="note-{{.RequestID}}" name="note" rows="2" maxlength="500"></textarea></label>
     <button type="submit" class="btn" name="action" value="approve">Approve</button>
     <button type="submit" class="btn-small-quiet" name="action" value="reject">Reject</button>

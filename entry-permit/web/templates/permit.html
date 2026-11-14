@@ -10,15 +10,15 @@
     <section class="fcard" aria-labelledby="h-p-who">
       <h2 class="fcard-title" id="h-p-who"><span class="step">1</span>Who is asking</h2>
       <label class="field" for="p-rname">
-        <span>Your name (the person making this request)</span>
+        <span>Your name <i class="hint">(the person making this request)</i></span>
         <input id="p-rname" data-name name="requester_name" type="text" value="{{.Permit.RequesterName}}" maxlength="120" required autocomplete="name">
       </label>
       <label class="field" for="p-rmail">
-        <span>Your email (the decision is sent here)</span>
+        <span>Your email <i class="hint">(required, the decision is sent here)</i></span>
         <input id="p-rmail" name="requester_email" type="email" data-mxcheck="/api/check-email" value="{{.Permit.RequesterMail}}" maxlength="160" required autocomplete="email">
       </label>
       <label class="field" for="p-smail">
-        <span>Spare email (optional, a second address that gets the decision too)</span>
+        <span>Spare email <i class="hint">(optional, a second address that gets the decision too)</i></span>
         <input id="p-smail" name="spare_email" type="email" data-mxcheck="/api/check-email" value="{{.Permit.SpareMail}}" maxlength="160" autocomplete="off">
       </label>
       <p class="note">Check the addresses: the decision is sent only to them. If nothing arrives, look in Spam or Junk. We are not responsible for mail lost because an address is wrong or an inbox is full.</p>
@@ -33,12 +33,12 @@
         </select>
       </label>
       <label class="field" for="p-name">
-        <span>Worker's name (type at least 4 letters, then pick)</span>
+        <span>Worker's name <i class="hint">(type at least 4 letters, then pick)</i></span>
         <input id="p-name" name="name" type="text" value="{{.Permit.Name}}" minlength="4" maxlength="120" required
                data-namesearch="/api/worker-names" data-min="4" autocomplete="off" spellcheck="false">
       </label>
       <label class="field" for="p-dob">
-        <span>Worker's date of birth (dd/mm/yyyy)</span>
+        <span>Worker's date of birth <i class="hint">(dd/mm/yyyy)</i></span>
         <input data-date="dob" id="p-dob" name="dob" type="text" value="{{.Permit.DOB}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required autocomplete="off">
       </label>
       <p class="note">Their company, position and MCU come from the clinic record and cannot be changed here.</p>
@@ -99,7 +99,7 @@
     <input id="p-phone" name="phone" type="tel" value="{{index .Vals "phone"}}" maxlength="20" required placeholder="081234567890"></label>
   <label class="field" for="p-ename"><span>Emergency contact name</span>
     <input id="p-ename" data-name name="emergency_name" type="text" value="{{index .Vals "emergency_name"}}" maxlength="120" required></label>
-  <label class="field" for="p-ephone"><span>Emergency contact phone number (not the worker's own)</span>
+  <label class="field" for="p-ephone"><span>Emergency contact phone number <i class="hint">(not the worker's own)</i></span>
     <input id="p-ephone" name="emergency_phone" type="tel" value="{{index .Vals "emergency_phone"}}" maxlength="20" required></label>
   <label class="field" for="p-regency"><span>Home regency or city</span>
     <select id="p-regency" name="regency" required>
@@ -118,21 +118,21 @@
     <h2 class="fcard-title"><span class="step"></span>Contract and insurance</h2>
     <div class="form-grid">
   {{if .Sec.ContractShown}}
-  <label class="field" for="p-cdoc"><span>Contract document{{if not .Sec.ContractRequired}} (optional){{end}}</span>
+  <label class="field" for="p-cdoc"><span>Contract document{{if not .Sec.ContractRequired}} <i class="hint">(optional)</i>{{end}}</span>
     <input id="p-cdoc" name="contract_doc" type="file" accept="application/pdf,image/jpeg,image/png"{{if .Sec.ContractRequired}} required{{end}}></label>
-  <label class="field" for="p-cuntil"><span>Contract valid until, dd/mm/yyyy{{if not .Sec.ContractRequired}} (optional){{end}}</span>
+  <label class="field" for="p-cuntil"><span>Contract valid until, dd/mm/yyyy{{if not .Sec.ContractRequired}} <i class="hint">(optional)</i>{{end}}</span>
     <input data-date id="p-cuntil" name="contract_until" type="text" value="{{index .Vals "contract_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10"{{if .Sec.ContractRequired}} required{{end}}></label>
   {{end}}
   {{if .Sec.BpjsKesShown}}
-  <label class="field" for="p-bkes"><span>BPJS Kesehatan number{{if not .Sec.BpjsKesRequired}} (optional){{end}}</span>
+  <label class="field" for="p-bkes"><span>BPJS Kesehatan number{{if not .Sec.BpjsKesRequired}} <i class="hint">(optional)</i>{{end}}</span>
     <input data-digits id="p-bkes" name="bpjs_kes" type="text" value="{{index .Vals "bpjs_kes"}}" inputmode="numeric" maxlength="30"{{if .Sec.BpjsKesRequired}} required{{end}}></label>
-  <label class="field" for="p-bkesdoc"><span>BPJS Kesehatan card (optional)</span>
+  <label class="field" for="p-bkesdoc"><span>BPJS Kesehatan card <i class="hint">(optional)</i></span>
     <input id="p-bkesdoc" name="bpjs_kes_doc" type="file" accept="application/pdf,image/jpeg,image/png"></label>
   {{end}}
   {{if .Sec.BpjsTkShown}}
-  <label class="field" for="p-btk"><span>BPJS Ketenagakerjaan number{{if not .Sec.BpjsTkRequired}} (optional){{end}}</span>
+  <label class="field" for="p-btk"><span>BPJS Ketenagakerjaan number{{if not .Sec.BpjsTkRequired}} <i class="hint">(optional)</i>{{end}}</span>
     <input data-digits id="p-btk" name="bpjs_tk" type="text" value="{{index .Vals "bpjs_tk"}}" inputmode="numeric" maxlength="30"{{if .Sec.BpjsTkRequired}} required{{end}}></label>
-  <label class="field" for="p-btkdoc"><span>BPJS Ketenagakerjaan card (optional)</span>
+  <label class="field" for="p-btkdoc"><span>BPJS Ketenagakerjaan card <i class="hint">(optional)</i></span>
     <input id="p-btkdoc" name="bpjs_tk_doc" type="file" accept="application/pdf,image/jpeg,image/png"></label>
   {{end}}
     </div>
@@ -141,10 +141,10 @@
     <h2 class="fcard-title"><span class="step"></span>Certificate of competence</h2>
     <div class="form-grid">
   <p class="note">{{.Sec.Position.Canonical}} needs a certificate{{if .Sec.CertName}}: {{.Sec.CertName}}{{end}}.</p>
-  <label class="field" for="p-certdoc"><span>Certificate of competence{{if not .Sec.CertRequired}} (optional){{end}}</span>
+  <label class="field" for="p-certdoc"><span>Certificate of competence{{if not .Sec.CertRequired}} <i class="hint">(optional)</i>{{end}}</span>
     <input id="p-certdoc" name="cert_doc" type="file" accept="application/pdf,image/jpeg,image/png"{{if .Sec.CertRequired}} required{{end}}></label>
   {{if .Sec.CertFixedUntil}}<p class="note">This certificate does not expire, so no date is needed.</p>{{else}}
-  <label class="field" for="p-certuntil"><span>Certificate valid until, dd/mm/yyyy{{if not .Sec.CertRequired}} (optional){{end}}</span>
+  <label class="field" for="p-certuntil"><span>Certificate valid until, dd/mm/yyyy{{if not .Sec.CertRequired}} <i class="hint">(optional)</i>{{end}}</span>
     <input data-date id="p-certuntil" name="cert_until" type="text" value="{{index .Vals "cert_until"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10"{{if .Sec.CertRequired}} required{{end}}></label>{{end}}
     </div>
   </section>{{end}}
@@ -168,11 +168,11 @@
       <option value="ITAS"{{if eq $vt "ITAS"}} selected{{end}}>ITAS</option>
       <option value="ITAP"{{if eq $vt "ITAP"}} selected{{end}}>ITAP</option>
     </select></label>
-  <label class="field" for="p-vcode"><span>ITAS or ITAP code (not needed for a Visa)</span>
+  <label class="field" for="p-vcode"><span>ITAS or ITAP code <i class="hint">(not needed for a Visa)</i></span>
     <input id="p-vcode" name="visa_code" type="text" value="{{index .Vals "visa_code"}}" maxlength="60"></label>
-  <label class="field" for="p-vissued"><span>Visa issue date, dd/mm/yyyy (Visa only)</span>
+  <label class="field" for="p-vissued"><span>Visa issue date, dd/mm/yyyy <i class="hint">(Visa only)</i></span>
     <input data-date id="p-vissued" name="visa_issued" type="text" value="{{index .Vals "visa_issued"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10"></label>
-  <label class="field" for="p-vby"><span>Office that issued the ITAP (ITAP only)</span>
+  <label class="field" for="p-vby"><span>Office that issued the ITAP <i class="hint">(ITAP only)</i></span>
     <input id="p-vby" name="visa_issued_by" type="text" value="{{index .Vals "visa_issued_by"}}" maxlength="120"></label>
   <label class="field" for="p-vexp"><span>Work visa expiry date, dd/mm/yyyy</span>
     <input data-date id="p-vexp" name="visa_expiry" type="text" value="{{index .Vals "visa_expiry"}}" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required></label>

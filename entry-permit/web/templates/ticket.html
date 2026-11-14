@@ -6,9 +6,9 @@
   {{if .Ticket.Err}}<p class="error" role="alert">{{.Ticket.Err}}</p>{{end}}
   {{if .Ticket.Available}}
   <form method="post" action="/ticket" autocomplete="off">
-    <label class="field" for="t-lep"><span>Permit number (LEP-xxxxx, or WVR-xxxxx for a visitor)</span>
+    <label class="field" for="t-lep"><span>Permit number <i class="hint">(LEP-xxxxx, or WVR-xxxxx for a visitor)</i></span>
       <input id="t-lep" name="lep" type="text" value="{{.Ticket.LEP}}" maxlength="12" required autocapitalize="characters" spellcheck="false"></label>
-    <label class="field" for="t-dob"><span>Date of birth (ddmmyyyy, for example 05031988)</span>
+    <label class="field" for="t-dob"><span>Date of birth <i class="hint">(ddmmyyyy, for example 05031988)</i></span>
       <input id="t-dob" name="dob" type="text" inputmode="numeric" maxlength="10" placeholder="ddmmyyyy" required autocomplete="off"></label>
     <div class="field">{{template "turnstile" .}}</div>
     <button type="submit" class="btn">Open my schedule</button>
@@ -60,9 +60,9 @@
         <option value="N"{{if eq $m "N"}} selected{{end}}>No</option>
         <option value="Y"{{if eq $m "Y"}} selected{{end}}>Yes</option>
       </select></label>
-    <label class="field" for="t-meddet"><span>Medication details (if yes)</span>
+    <label class="field" for="t-meddet"><span>Medication details <i class="hint">(if yes)</i></span>
       <input id="t-meddet" name="medication_details" type="text" value="{{index .Vals "medication_details"}}" maxlength="255"></label>
-    <label class="field field-wide" for="t-medphoto"><span>Photo of the medicine (if yes)</span>
+    <label class="field field-wide" for="t-medphoto"><span>Photo of the medicine <i class="hint">(if yes)</i></span>
       <input id="t-medphoto" name="medicine_photo" type="file" accept="image/jpeg,image/png"></label>
     {{end}}
     <button type="submit" class="btn">Apply for working ticket</button>

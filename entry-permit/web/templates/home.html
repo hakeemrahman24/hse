@@ -146,7 +146,7 @@ small links at the bottom, because most visitors are companies and workers. */}}
              data-namesearch="/api/worker-names" data-min="4" autocomplete="off" spellcheck="false">
     </label>
     <label class="field" for="mi-dob">
-      <span>Date of birth (dd/mm/yyyy)</span>
+      <span>Date of birth <i class="hint">(dd/mm/yyyy)</i></span>
       <input data-date="dob" id="mi-dob" name="dob" type="text" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10" required autocomplete="off">
     </label>
     <div class="field">{{template "turnstile" .}}</div>
@@ -238,7 +238,7 @@ one option chosen only that section shows, and without CSS support all three sim
   <form method="post" action="/my/photo" enctype="multipart/form-data" class="photo-form">
     <input type="hidden" name="token" value="{{.}}">
     <label class="field" for="my-photo">
-      <span>Choose a new photo (JPG or PNG). It is sent as soon as you choose it, made small automatically, and replaces your old one.</span>
+      <span>Choose a new photo <i class="hint">(JPG or PNG)</i>. It is sent as soon as you choose it, made small automatically, and replaces your old one.</span>
       <input id="my-photo" name="photo" type="file" accept="image/jpeg,image/png" data-autosubmit required>
     </label>
     <noscript><button type="submit" class="btn">Upload</button></noscript>

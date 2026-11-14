@@ -10,11 +10,11 @@
     <section class="fcard" id="sec-1">
     <h2 class="fcard-title"><span class="step">1</span>Who is asking</h2>
     <div class="form-grid">
-    <label class="field" for="w-rname"><span>Your name (the person making this request)</span>
+    <label class="field" for="w-rname"><span>Your name <i class="hint">(the person making this request)</i></span>
       <input id="w-rname" data-name name="requester_name" type="text" value="{{index .Vals "requester_name"}}" maxlength="120" required autocomplete="name"></label>
-    <label class="field" for="w-rmail"><span>Your email (the decision is sent here)</span>
+    <label class="field" for="w-rmail"><span>Your email <i class="hint">(required, the decision is sent here)</i></span>
       <input id="w-rmail" name="requester_email" type="email" data-mxcheck="/api/check-email" value="{{index .Vals "requester_email"}}" maxlength="160" required autocomplete="email"></label>
-    <label class="field" for="w-smail"><span>Spare email (optional, a second address that gets the decision too)</span>
+    <label class="field" for="w-smail"><span>Spare email <i class="hint">(optional, a second address that gets the decision too)</i></span>
       <input id="w-smail" name="spare_email" type="email" data-mxcheck="/api/check-email" value="{{index .Vals "spare_email"}}" maxlength="160" autocomplete="off"></label>
     </div>
   </section>
@@ -26,7 +26,7 @@
         {{$t := index .Vals "applicant_type"}}
         {{range .Types}}<option value="{{.}}"{{if eq . $t}} selected{{end}}>{{if eq . "Government"}}A Government office{{else}}A company{{end}}</option>{{end}}
       </select></label>
-    <label class="field" for="w-company"><span>Company (a Government visitor picks a Government office)</span>
+    <label class="field" for="w-company"><span>Company <i class="hint">(a Government visitor picks a Government office)</i></span>
       <select id="w-company" name="company_id" required>
         <option value="">Choose…</option>
         {{$c := index .Vals "company_id"}}{{range .Companies}}<option value="{{.ID}}"{{if eq (printf "%d" .ID) $c}} selected{{end}}>{{.Name}}{{if .Gov}} (Government){{end}}</option>{{end}}
@@ -97,7 +97,7 @@
     <label class="field" for="w-dose2"><span>Dosage, mg (2)</span><input id="w-dose2" name="dosage2" type="text" value="{{index .Vals "dosage2"}}" maxlength="120"></label>
     <label class="field" for="w-med3"><span>Medicine name (3)</span><input id="w-med3" name="medicine3" type="text" value="{{index .Vals "medicine3"}}" maxlength="120"></label>
     <label class="field" for="w-dose3"><span>Dosage, mg (3)</span><input id="w-dose3" name="dosage3" type="text" value="{{index .Vals "dosage3"}}" maxlength="120"></label>
-    <label class="field field-wide" for="w-mnotes"><span>Your own notes (optional): how often, when, prescribing doctor</span>
+    <label class="field field-wide" for="w-mnotes"><span>Your own notes <i class="hint">(optional)</i>: how often, when, prescribing doctor</span>
       <textarea id="w-mnotes" name="medicine_notes" rows="2" maxlength="500">{{index .Vals "medicine_notes"}}</textarea></label>
     </div>
   </section>

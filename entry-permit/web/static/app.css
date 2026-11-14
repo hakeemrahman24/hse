@@ -950,3 +950,7 @@ input[type="checkbox"], input[type="radio"], progress { accent-color: var(--acce
 
 /* An email box whose domain cannot receive mail gets the same red outline as a field the server refused. */
 input[aria-invalid="true"] { border-color: var(--error); outline: 1px solid var(--error); outline-offset: 0; }
+
+/* The explanation inside a field label (what it is for, "optional", "required") is regular weight and italic,
+   so the label itself stays the bold part. */
+.hint { font-style: italic; font-weight: 400; letter-spacing: normal; text-transform: none; }

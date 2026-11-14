@@ -295,8 +295,8 @@ still call it where their old tab bar used to be. */}}
   <h2>Name and username</h2>
   <form method="post" action="/account/profile">
     <input type="hidden" name="_csrf" value="{{.CSRF}}">
-    <label class="field"><span>Name (shown in the sign-in list)</span><input type="text" name="display" value="{{.User.DisplayName}}" maxlength="120" required></label>
-    <label class="field"><span>Username (lower-case letters, digits, dot, dash, underscore)</span><input type="text" name="username" value="{{.User.Username}}" maxlength="40" autocomplete="off" required></label>
+    <label class="field"><span>Name <i class="hint">(shown in the sign-in list)</i></span><input type="text" name="display" value="{{.User.DisplayName}}" maxlength="120" required></label>
+    <label class="field"><span>Username <i class="hint">(lower-case letters, digits, dot, dash, underscore)</i></span><input type="text" name="username" value="{{.User.Username}}" maxlength="40" autocomplete="off" required></label>
     <button class="btn" type="submit">Save</button>
   </form>
 </section>
@@ -305,7 +305,7 @@ still call it where their old tab bar used to be. */}}
   <form method="post" action="/account/pin">
     <input type="hidden" name="_csrf" value="{{.CSRF}}">
     <label class="field"><span>Current PIN</span><input type="password" name="current" autocomplete="current-password" required></label>
-    <label class="field"><span>New PIN (4 to 8 letters or digits)</span><input type="password" name="new" autocomplete="new-password" minlength="4" maxlength="8" required></label>
+    <label class="field"><span>New PIN <i class="hint">(4 to 8 letters or digits)</i></span><input type="password" name="new" autocomplete="new-password" minlength="4" maxlength="8" required></label>
     <label class="field"><span>New PIN again</span><input type="password" name="again" autocomplete="new-password" minlength="4" maxlength="8" required></label>
     <button class="btn" type="submit">Change PIN</button>
   </form>
@@ -321,9 +321,9 @@ still call it where their old tab bar used to be. */}}
 
 <form class="addrow card" method="post" action="/staff/admin/gate-officers">
   <input type="hidden" name="_csrf" value="{{.CSRF}}">
-  <label class="field" for="officer-name"><span>Name (type 4 letters, then pick)</span><input id="officer-name" type="text" name="name" maxlength="120" autocomplete="off" required data-namesearch="/staff/admin/employee-names" data-min="4" data-pick-message="Pick a name from the list." spellcheck="false"></label>
+  <label class="field" for="officer-name"><span>Name <i class="hint">(type 4 letters, then pick)</i></span><input id="officer-name" type="text" name="name" maxlength="120" autocomplete="off" required data-namesearch="/staff/admin/employee-names" data-min="4" data-pick-message="Pick a name from the list." spellcheck="false"></label>
   <label class="field"><span>Username</span><input type="text" name="username" minlength="2" maxlength="40" autocomplete="off" autocapitalize="none" required></label>
-  <label class="field"><span>PIN (4 to 8 letters or digits)</span><input type="password" name="pin" minlength="4" maxlength="8" autocomplete="new-password" required></label>
+  <label class="field"><span>PIN <i class="hint">(4 to 8 letters or digits)</i></span><input type="password" name="pin" minlength="4" maxlength="8" autocomplete="new-password" required></label>
   <button class="btn" type="submit">Add</button>
 </form>
 
